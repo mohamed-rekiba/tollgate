@@ -37,3 +37,4 @@ def _compile(pattern: str) -> re.Pattern:
 def matches(path: str, patterns) -> bool:
     """Return True when the path matches any of the patterns."""
     return any(_compile(p).match(path) for p in patterns)
+# lab-5: a tier 4 change
