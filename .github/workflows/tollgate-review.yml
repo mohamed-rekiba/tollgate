@@ -1,0 +1,84 @@
+# Tollgate review. Written by /tollgate:init. Do not edit by hand.
+# pull_request_target runs this copy from the main branch. The review job reads
+# the change as text, runs none of it, and holds the model key. It posts the
+# check "tollgate review": a pass for tier 1 and 2, a model review for 3 and 4.
+name: tollgate review
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+permissions: {}
+jobs:
+  find:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+       (startsWith(github.event.comment.body, 'tollgate approve ') ||
+        startsWith(github.event.comment.body, 'tollgate check')))
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      sha: ${{ steps.pr.outputs.sha }}
+      branch: ${{ steps.pr.outputs.branch }}
+      ticket: ${{ steps.pr.outputs.ticket }}
+    steps:
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          data="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")"
+          # Only a pull request into the main branch gets a gate result.
+          if [[ "$(jq -r .base.ref <<<"$data")" != main ]]; then exit 0; fi
+          branch="$(jq -r .head.ref <<<"$data")"
+          # A branch name is text from the author of the change. Only a plain
+          # ticket branch goes on. Any other name fails gate rule 1.
+          [[ "$branch" =~ ^tg/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || branch="not-a-ticket-branch"
+          {
+            echo "pr=$PR"
+            echo "sha=$(jq -r .head.sha <<<"$data")"
+            echo "branch=$branch"
+            echo "ticket=${branch#tg/}"
+          } >> "$GITHUB_OUTPUT"
+  review:
+    needs: find
+    if: needs.find.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fetch the change as data
+        env:
+          PR: ${{ needs.find.outputs.pr }}
+        run: git fetch --no-tags origin "refs/pull/$PR/head"
+      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+        with:
+          command: review
+          args: >-
+            --base origin/main --head ${{ needs.find.outputs.sha }}
+            --branch ${{ needs.find.outputs.branch }} --tier-out ${{ runner.temp }}/tier.txt
+      - id: tier
+        run: echo "tier=$(cat "$RUNNER_TEMP/tier.txt")" >> "$GITHUB_OUTPUT"
+      - name: Install Claude Code for tier 3 and 4
+        if: steps.tier.outputs.tier >= 3
+        run: npm install -g @anthropic-ai/claude-code
+      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          command: review
+          args: >-
+            --base origin/main --head ${{ needs.find.outputs.sha }}
+            --branch ${{ needs.find.outputs.branch }}
+            --repository ${{ github.repository }} --post ${{ needs.find.outputs.sha }}

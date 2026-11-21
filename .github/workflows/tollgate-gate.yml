@@ -56,11 +56,11 @@ jobs:
           ref: ${{ needs.find.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
         with:
           command: prepare
           args: --base origin/main --ticket ${{ needs.find.outputs.ticket }}
-      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
         with:
           command: checks
           args: --base origin/main --setup --out ${{ runner.temp }}/results.json
@@ -97,7 +97,7 @@ jobs:
         run: |
           f="$RUNNER_TEMP/in/results.json"
           test -f "$f" || echo '{"checks":[{"name":"checks","passed":false,"timed_out":false,"output":"the test job did not finish"}],"tests":{}}' > "$f"
-      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
         env:
           GH_TOKEN: ${{ github.token }}
         with:
