@@ -16,7 +16,9 @@ Each ticket in the header has a file .tollgate/tickets/<id>/ticket.md whose
 header names this plan.
 """
 
+import argparse
 import re
+import sys
 from dataclasses import dataclass, field
 
 from action.tickets import TicketError
@@ -105,3 +107,23 @@ def check_tickets(plan: Plan, read) -> list:
         if ticket.plan != plan.id:
             problems.append(f"ticket {tid} names plan {ticket.plan}, not {plan.id}")
     return problems
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="python3 -m action.plan",
+                                     description="Check one plan file.")
+    parser.add_argument("path")
+    args = parser.parse_args(argv)
+    try:
+        with open(args.path, encoding="utf-8") as f:
+            plan = parse(f.read())
+    except (OSError, UnicodeDecodeError, PlanError) as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+    print(f"id: {plan.id}")
+    print(f"tickets: {', '.join(plan.tickets)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
