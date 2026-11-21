@@ -3,7 +3,7 @@
 Each icon is a list of SVG path strings, stroked with round ends and no fill.
 `icon(name, x, y, size, color)` returns the SVG for one icon at that place.
 
-    from driver.icons import ICONS, icon
+    from diagram.icons import ICONS, icon
 """
 
 ICONS = {

@@ -7,9 +7,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from driver import aws
-from driver.diagram import draw
-from setup import aws_icons
+from diagram import aws, draw
+from diagram.aws import unpack
 
 PACK = str(Path(__file__).parent / "fixtures" / "aws-pack")
 
@@ -71,7 +70,7 @@ class AwsIconsTest(unittest.TestCase):
             z.writestr("groups.zip", inner.getvalue())
             z.writestr("../evil.svg", "<svg/>")
         with tempfile.TemporaryDirectory() as d:
-            self.assertEqual(aws_icons.unpack(outer.getvalue(), Path(d)), 2)
+            self.assertEqual(unpack(outer.getvalue(), Path(d)), 2)
             self.assertFalse(Path(d).parent.joinpath("evil.svg").exists())
 
 

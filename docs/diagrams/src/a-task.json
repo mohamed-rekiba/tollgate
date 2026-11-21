@@ -9,7 +9,8 @@
    "row": 0,
    "kind": "you",
    "icon": "person",
-   "step": 1
+   "step": 1,
+   "shape": "start"
   },
   {
    "id": "s2",
@@ -18,7 +19,8 @@
    "row": 1,
    "kind": "ai",
    "icon": "plan",
-   "step": 2
+   "step": 2,
+   "shape": "document"
   },
   {
    "id": "s3",
@@ -36,7 +38,8 @@
    "row": 3,
    "kind": "server",
    "icon": "lock",
-   "step": 4
+   "step": 4,
+   "shape": "data"
   },
   {
    "id": "s5",
@@ -45,7 +48,8 @@
    "row": 4,
    "kind": "ai",
    "icon": "ai",
-   "step": 5
+   "step": 5,
+   "shape": "subprocess"
   },
   {
    "id": "s6",
@@ -63,14 +67,16 @@
    "row": 6,
    "kind": "you",
    "icon": "retro",
-   "step": 7
+   "step": 7,
+   "shape": "end"
   },
   {
    "id": "adv",
    "text": "The advisor decides\nA second AI, or you",
    "col": 1,
    "row": 4,
-   "kind": "advisor"
+   "kind": "advisor",
+   "shape": "wait"
   }
  ],
  "edges": [

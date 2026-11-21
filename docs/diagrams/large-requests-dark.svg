@@ -7,7 +7,7 @@
 <rect x="-24" y="-24" width="684" height="151" fill="url(#grid)"/>
 <path class="main" d="M180.0,51.5 L228.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path class="main" d="M408.0,51.5 L456.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<rect x="0.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<rect x="0.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <path d="M171.0,107.0 H184.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5l8-4.5"/><path d="M12 12v9"/></g>
@@ -15,7 +15,7 @@
 <text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The base</text>
 <text x="14.0" y="70.0" font-size="12" fill="#9198a1">It builds, tests,</text>
 <text x="14.0" y="87.0" font-size="12" fill="#9198a1">and runs</text>
-<rect x="228.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<rect x="228.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M237.0,-4.0 H224.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <path d="M399.0,107.0 H412.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <g transform="translate(242.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z"/><path d="M10 8.5v7l6-3.5z"/></g>
@@ -23,7 +23,7 @@
 <text x="242.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The skeleton</text>
 <text x="242.0" y="70.0" font-size="12" fill="#9198a1">Shared rules, one</text>
 <text x="242.0" y="87.0" font-size="12" fill="#9198a1">thin path that works</text>
-<rect x="456.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<rect x="456.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M465.0,-4.0 H452.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <path d="M627.0,107.0 H640.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
 <g transform="translate(470.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" width="1180" height="720" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">How Tollgate works, with its three feedback loops</title>
-<desc id="desc">An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; on problems it goes back to the plan. The tests are locked before any code. The AI builds in its own room. At the gate, the locked tests decide: on a fail, what failed goes back to the builder; when stuck, the advisor decides; on a pass, the barrier lifts and the change goes into main. The retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails once, then passes.</desc>
+<desc id="desc">An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own room. At the gate, the locked tests decide: on a fail, what failed goes back to the builder; when it is stuck, the advisor decides; on a pass, the barrier lifts and the change goes into main. The retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails once, then passes.</desc>
 <defs><radialGradient id="glow" cx="0.398" cy="0.556" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1180" height="720" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#8250df"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.arm{transform-box:view-box;animation:arm 14.64s ease-in-out infinite}@keyframes arm{0%,68.2%{transform:rotate(0)}72.2%,85.7%{transform:rotate(80deg)}91.7%,100%{transform:rotate(0)}}@media (prefers-reduced-motion:reduce){.main,.side,.arm{animation:none}.ticket{display:none}}</style>
 <rect width="1180" height="720" fill="#ffffff"/>
@@ -86,27 +86,6 @@
 <polyline class="main" points="456.0,406.3 513.6,373.0" fill="none" stroke="#1a7f37" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
 <polyline class="main" points="566.6,342.4 599.4,323.5" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-main)"/>
 <polyline class="main" points="683.6,323.5 893.2,444.6" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-main)"/>
-<polygon points="859.7,445.9 929.8,486.4 929.8,508.0 859.7,467.5" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="929.8,486.4 1000.0,445.9 1000.0,467.5 929.8,508.0" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="859.7,445.9 929.8,486.4 1000.0,445.9 929.8,405.4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<circle cx="870.6" cy="463.0" r="2.1" fill="#1a7f37"/>
-<circle cx="877.6" cy="467.1" r="2.1" fill="#1a7f37"/>
-<circle cx="884.6" cy="471.1" r="2.1" fill="#1a7f37"/>
-<line x1="899.4" y1="479.6" x2="923.6" y2="493.6" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
-<polygon points="859.7,420.7 929.8,461.2 929.8,482.8 859.7,442.3" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="929.8,461.2 1000.0,420.7 1000.0,442.3 929.8,482.8" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="859.7,420.7 929.8,461.2 1000.0,420.7 929.8,380.2" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<circle cx="870.6" cy="437.8" r="2.1" fill="#1a7f37"/>
-<circle cx="877.6" cy="441.9" r="2.1" fill="#1a7f37"/>
-<circle cx="884.6" cy="445.9" r="2.1" fill="#1a7f37"/>
-<line x1="899.4" y1="454.4" x2="923.6" y2="468.4" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
-<polygon points="859.7,395.5 929.8,436.0 929.8,457.6 859.7,417.1" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="929.8,436.0 1000.0,395.5 1000.0,417.1 929.8,457.6" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="859.7,395.5 929.8,436.0 1000.0,395.5 929.8,355.0" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
-<circle cx="870.6" cy="412.6" r="2.1" fill="#1a7f37"/>
-<circle cx="877.6" cy="416.6" r="2.1" fill="#1a7f37"/>
-<circle cx="884.6" cy="420.7" r="2.1" fill="#1a7f37"/>
-<line x1="899.4" y1="429.2" x2="923.6" y2="443.2" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
 <polygon points="560.4,296.5 641.5,343.3 641.5,347.8 560.4,301.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="641.5,343.3 722.5,296.5 722.5,301.0 641.5,347.8" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="560.4,296.5 641.5,343.3 722.5,296.5 641.5,249.7" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
@@ -134,26 +113,39 @@
 <polygon points="490.3,307.3 540.1,336.1 590.0,307.3 540.1,278.5" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
 <rect x="507.2" y="343.9" width="16" height="13" rx="2" fill="#1a7f37"/>
 <path d="M510.7,343.9 v-4.5 a4.5,4.5 0 0 1 9,0 v4.5" fill="none" stroke="#1a7f37" stroke-width="2"/>
-<polygon points="642.2,445.4 676.5,465.2 676.5,485.1 642.2,465.2" fill="#f4dac8" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="676.5,465.2 710.8,445.4 710.8,465.2 676.5,485.1" fill="#ebc2a7" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="642.2,445.4 676.5,465.2 710.8,445.4 676.5,425.6" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
-<line x1="676.5" y1="416.6" x2="676.5" y2="409.2" stroke="#bc4c00" stroke-width="1" stroke-dasharray="2 3"/>
-<circle cx="676.5" cy="393.2" r="16" fill="#ffffff" stroke="#bc4c00" stroke-width="1.4"/>
-<g transform="translate(666.5,383.2) scale(0.8333)" fill="none" stroke="#bc4c00" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
 <polygon points="404.5,398.2 438.8,418.0 438.8,437.8 404.5,418.0" fill="#efe2c0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="438.8,418.0 473.1,398.2 473.1,418.0 438.8,437.8" fill="#e1cda0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="404.5,398.2 438.8,418.0 473.1,398.2 438.8,378.4" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <line x1="438.8" y1="369.4" x2="438.8" y2="362.0" stroke="#9a6700" stroke-width="1" stroke-dasharray="2 3"/>
 <circle cx="438.8" cy="346.0" r="16" fill="#ffffff" stroke="#9a6700" stroke-width="1.4"/>
 <g transform="translate(428.8,336.0) scale(0.8333)" fill="none" stroke="#9a6700" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
-<polygon points="795.8,602.5 805.1,607.9 805.1,634.9 795.8,629.5" fill="#dde0e4" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="805.1,607.9 814.5,602.5 814.5,629.5 805.1,634.9" fill="#c7cbd0" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="795.8,602.5 805.1,607.9 814.5,602.5 805.1,597.1" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="837.9,583.6 772.4,621.4 772.4,571.0 837.9,533.2" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
-<line x1="823.8" y1="584.5" x2="823.8" y2="571.9" stroke="#8250df" stroke-width="5"/>
-<line x1="809.8" y1="592.6" x2="809.8" y2="565.6" stroke="#8250df" stroke-width="5"/>
-<line x1="795.8" y1="600.7" x2="795.8" y2="580.9" stroke="#8250df" stroke-width="5"/>
-<line x1="781.8" y1="608.8" x2="781.8" y2="572.8" stroke="#8250df" stroke-width="5"/>
+<polygon points="642.2,445.4 676.5,465.2 676.5,485.1 642.2,465.2" fill="#f4dac8" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="676.5,465.2 710.8,445.4 710.8,465.2 676.5,485.1" fill="#ebc2a7" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="642.2,445.4 676.5,465.2 710.8,445.4 676.5,425.6" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
+<line x1="676.5" y1="416.6" x2="676.5" y2="409.2" stroke="#bc4c00" stroke-width="1" stroke-dasharray="2 3"/>
+<circle cx="676.5" cy="393.2" r="16" fill="#ffffff" stroke="#bc4c00" stroke-width="1.4"/>
+<g transform="translate(666.5,383.2) scale(0.8333)" fill="none" stroke="#bc4c00" stroke-width="2.04" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<polygon points="859.7,445.9 929.8,486.4 929.8,508.0 859.7,467.5" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="929.8,486.4 1000.0,445.9 1000.0,467.5 929.8,508.0" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="859.7,445.9 929.8,486.4 1000.0,445.9 929.8,405.4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="870.6" cy="463.0" r="2.1" fill="#1a7f37"/>
+<circle cx="877.6" cy="467.1" r="2.1" fill="#1a7f37"/>
+<circle cx="884.6" cy="471.1" r="2.1" fill="#1a7f37"/>
+<line x1="899.4" y1="479.6" x2="923.6" y2="493.6" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
+<polygon points="859.7,420.7 929.8,461.2 929.8,482.8 859.7,442.3" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="929.8,461.2 1000.0,420.7 1000.0,442.3 929.8,482.8" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="859.7,420.7 929.8,461.2 1000.0,420.7 929.8,380.2" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="870.6" cy="437.8" r="2.1" fill="#1a7f37"/>
+<circle cx="877.6" cy="441.9" r="2.1" fill="#1a7f37"/>
+<circle cx="884.6" cy="445.9" r="2.1" fill="#1a7f37"/>
+<line x1="899.4" y1="454.4" x2="923.6" y2="468.4" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
+<polygon points="859.7,395.5 929.8,436.0 929.8,457.6 859.7,417.1" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="929.8,436.0 1000.0,395.5 1000.0,417.1 929.8,457.6" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="859.7,395.5 929.8,436.0 1000.0,395.5 929.8,355.0" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="870.6" cy="412.6" r="2.1" fill="#1a7f37"/>
+<circle cx="877.6" cy="416.6" r="2.1" fill="#1a7f37"/>
+<circle cx="884.6" cy="420.7" r="2.1" fill="#1a7f37"/>
+<line x1="899.4" y1="429.2" x2="923.6" y2="443.2" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
 <polygon points="282.9,477.4 329.7,504.4 329.7,508.0 282.9,481.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="329.7,504.4 392.1,468.4 392.1,472.0 329.7,508.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="282.9,477.4 329.7,504.4 392.1,468.4 345.3,441.4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
@@ -173,26 +165,34 @@
 <polygon points="244.0,499.0 181.6,535.0 181.6,483.7 244.0,447.7" fill="#cee1f9" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="237.7,495.4 187.9,524.2 187.9,486.4 237.7,457.6" fill="#f3f8ff" stroke="#0969da" stroke-width="1"/>
 <line x1="197.2" y1="494.5" x2="216.7" y2="483.2" stroke="#0969da" stroke-width="2" stroke-linecap="round"/>
+<polygon points="795.8,602.5 805.1,607.9 805.1,634.9 795.8,629.5" fill="#dde0e4" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="805.1,607.9 814.5,602.5 814.5,629.5 805.1,634.9" fill="#c7cbd0" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="795.8,602.5 805.1,607.9 814.5,602.5 805.1,597.1" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="837.9,583.6 772.4,621.4 772.4,571.0 837.9,533.2" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<line x1="823.8" y1="584.5" x2="823.8" y2="571.9" stroke="#8250df" stroke-width="5"/>
+<line x1="809.8" y1="592.6" x2="809.8" y2="565.6" stroke="#8250df" stroke-width="5"/>
+<line x1="795.8" y1="600.7" x2="795.8" y2="580.9" stroke="#8250df" stroke-width="5"/>
+<line x1="781.8" y1="608.8" x2="781.8" y2="572.8" stroke="#8250df" stroke-width="5"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#1f2328">HOW TOLLGATE WORKS</text>
-<text x="40" y="68" font-size="12" fill="#59636e">three loops: review the plan, build to green, learn</text>
-<rect x="268.8" y="385.5" width="68.8" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
-<text x="303.2" y="399.5" text-anchor="middle" font-size="11" fill="#cf222e">problems</text>
+<text x="40" y="68" font-size="12" fill="#59636e">three loops: check the plan, build until the tests pass, learn</text>
+<rect x="249.0" y="385.5" width="108.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
+<text x="303.2" y="399.5" text-anchor="middle" font-size="11" fill="#cf222e">problems found</text>
 <rect x="695.3" y="238.9" width="154.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
 <text x="772.6" y="252.9" text-anchor="middle" font-size="11" fill="#cf222e">what failed goes back</text>
-<rect x="421.9" y="565.7" width="181.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
-<text x="512.4" y="579.7" text-anchor="middle" font-size="11" fill="#59636e">lessons tighten the rules</text>
+<rect x="402.1" y="565.7" width="220.6" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="512.4" y="579.7" text-anchor="middle" font-size="11" fill="#59636e">lessons make the rules stricter</text>
 <rect x="717.9" y="415.4" width="49.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="742.4" y="429.4" text-anchor="middle" font-size="11" fill="#59636e">stuck</text>
-<rect x="580.6" y="400.2" width="49.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
-<text x="605.1" y="414.2" text-anchor="middle" font-size="11" fill="#59636e">retry</text>
-<rect x="460.3" y="379.6" width="49.0" height="20" rx="3" fill="#ffffff" stroke="#1a7f37"/>
-<text x="484.8" y="393.6" text-anchor="middle" font-size="11" fill="#1a7f37">clean</text>
+<rect x="567.4" y="400.2" width="75.4" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="605.1" y="414.2" text-anchor="middle" font-size="11" fill="#59636e">try again</text>
+<rect x="440.5" y="379.6" width="88.6" height="20" rx="3" fill="#ffffff" stroke="#1a7f37"/>
+<text x="484.8" y="393.6" text-anchor="middle" font-size="11" fill="#1a7f37">no problems</text>
 <text x="953.2" y="544.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">MAIN</text>
 <text x="953.2" y="560.0" text-anchor="start" font-size="12" fill="#59636e">only a pass goes in</text>
 <text x="703.8" y="116.5" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE AI BUILDS</text>
 <text x="703.8" y="132.5" text-anchor="middle" font-size="12" fill="#59636e">in its own room</text>
 <text x="922.1" y="328.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE GATE</text>
-<text x="922.1" y="344.0" text-anchor="start" font-size="12" fill="#59636e">locked tests decide</text>
+<text x="922.1" y="344.0" text-anchor="start" font-size="12" fill="#59636e">the locked tests decide</text>
 <text x="672.6" y="515.2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">ADVISOR</text>
 <text x="672.6" y="531.2" text-anchor="middle" font-size="12" fill="#59636e">a second AI, or you</text>
 <text x="497.3" y="281.6" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">TESTS LOCKED</text>

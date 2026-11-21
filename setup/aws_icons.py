@@ -1,45 +1,23 @@
-"""Fetch the official AWS architecture icon package into a local cache.
+"""Fetch the official AWS architecture icon package into the local cache.
 
-    python3 -m setup.aws_icons                  # download the package named below
+    python3 -m setup.aws_icons                  # download it now (diagrams also do this on first use)
     python3 -m setup.aws_icons --zip FILE.zip   # use a package you downloaded yourself
     python3 -m setup.aws_icons --url URL        # a newer release
 
 The package is AWS's, from https://aws.amazon.com/architecture/icons/. AWS
-allows its icons in architecture diagrams. Tollgate keeps them out of git: they
-live in the cache (TOLLGATE_AWS_ICONS, or ~/.cache/tollgate/aws-icons), and a
-diagram copies in only the icons it uses. AWS releases a new package each
-quarter; pass its link with --url.
+allows its icons in architecture diagrams. Tollgate keeps them out of git:
+they live in the cache (TOLLGATE_AWS_ICONS, or ~/.cache/tollgate/aws-icons),
+and a diagram copies in only the icons it uses.
 """
 
 import argparse
-import io
 import shutil
 import sys
-import urllib.request
-import zipfile
 from pathlib import Path
 
-from driver.aws import CACHE
+from diagram.aws import CACHE, URL, fetch, unpack
 
-URL = ("https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/"
-       "architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip")
-
-
-def unpack(data: bytes, target: Path) -> int:
-    """Unpack the package, and any zip inside it. Return how many SVG files there are."""
-    with zipfile.ZipFile(io.BytesIO(data)) as z:
-        for info in z.infolist():
-            name = Path(info.filename)
-            if info.is_dir() or name.is_absolute() or ".." in name.parts or name.name.startswith("."):
-                continue
-            body = z.read(info)
-            if name.suffix == ".zip":
-                unpack(body, target / name.stem)
-            elif name.suffix == ".svg":
-                out = target / name
-                out.parent.mkdir(parents=True, exist_ok=True)
-                out.write_bytes(body)
-    return sum(1 for _ in target.rglob("*.svg"))
+__all__ = ["main", "unpack"]
 
 
 def main(argv=None) -> int:
@@ -49,12 +27,14 @@ def main(argv=None) -> int:
     parser.add_argument("--url", default=URL, help="the package link from the AWS page")
     parser.add_argument("--to", default=str(CACHE), help="where to keep the icons")
     args = parser.parse_args(argv)
-    data = Path(args.zip).read_bytes() if args.zip else urllib.request.urlopen(args.url).read()
     target = Path(args.to)
     if target.exists():
         shutil.rmtree(target)
-    target.mkdir(parents=True)
-    count = unpack(data, target)
+    if args.zip:
+        target.mkdir(parents=True)
+        count = unpack(Path(args.zip).read_bytes(), target)
+    else:
+        count = fetch(args.url, target)
     print(f"{count} AWS icons in {target}")
     return 0 if count else 1
 

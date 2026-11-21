@@ -1,19 +1,26 @@
 """AWS architecture icons, read from a local copy of the official icon package.
 
 AWS allows its icons in architecture diagrams, unchanged. Tollgate does not
-ship them: `python3 -m setup.aws_icons` fetches the official package once
-into a cache on your machine (TOLLGATE_AWS_ICONS, or ~/.cache/tollgate/aws-icons).
+ship them. The first diagram that needs one downloads the official package
+from AWS into a cache on your machine (TOLLGATE_AWS_ICONS, or
+~/.cache/tollgate/aws-icons), once. Set TOLLGATE_AWS_ICONS_FETCH=0 to stop
+that; then run `python3 -m setup.aws_icons --zip <file>` with a package you
+downloaded yourself.
 A diagram then copies each icon it needs into its own SVG, unchanged except
 that the icon's internal ids get a prefix, so two icons in one file do not
 clash.
 
-    from driver import aws
+    from diagram import aws
     aws.service("s3")       # the SVG text of the Amazon S3 icon
     aws.group("vpc")        # (the SVG text of the VPC group icon, its color, dashed?)
 """
 
+import io
 import os
 import re
+import sys
+import urllib.request
+import zipfile
 from functools import cache
 from pathlib import Path
 
@@ -43,8 +50,40 @@ GROUPS = {
 }
 
 
+# The newest package on https://aws.amazon.com/architecture/icons/ (AWS releases
+# one each quarter). Update this link when AWS releases a new one.
+URL = ("https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/"
+       "architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip")
+
+
 class Missing(LookupError):
     pass
+
+
+def unpack(data: bytes, target: Path) -> int:
+    """Unpack the package, and any zip inside it. Return how many SVG files there are."""
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        for info in z.infolist():
+            name = Path(info.filename)
+            if info.is_dir() or name.is_absolute() or ".." in name.parts or name.name.startswith("."):
+                continue
+            body = z.read(info)
+            if name.suffix == ".zip":
+                unpack(body, target / name.stem)
+            elif name.suffix == ".svg":
+                out = target / name
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_bytes(body)
+    return sum(1 for _ in target.rglob("*.svg"))
+
+
+def fetch(url: str = URL, target: Path | None = None) -> int:
+    """Download the official package from AWS into the cache. Return the icon count."""
+    target = Path(target or CACHE)
+    print(f"Downloading the AWS icon package once, into {target} ...", file=sys.stderr)
+    data = urllib.request.urlopen(url, timeout=120).read()
+    target.mkdir(parents=True, exist_ok=True)
+    return unpack(data, target)
 
 
 def _words(name: str) -> str:
@@ -57,6 +96,13 @@ def _words(name: str) -> str:
 def index(root: str) -> dict:
     """Every SVG of the package by kind ('service', 'resource', 'group') and words."""
     base = Path(root)
+    if not base.exists() and root == str(CACHE) and os.environ.get("TOLLGATE_AWS_ICONS_FETCH") != "0":
+        try:
+            fetch()
+        except OSError as err:
+            raise Missing(f"Could not download the AWS icons ({err}). Download the package from "
+                          f"https://aws.amazon.com/architecture/icons/ and run: "
+                          f"python3 -m setup.aws_icons --zip <file>") from err
     if not base.exists():
         raise Missing(f"No AWS icons at {base}. Run: python3 -m setup.aws_icons")
     out = {"service": {}, "resource": {}, "group": {}}

@@ -62,6 +62,16 @@ class TestDiagrams(unittest.TestCase):
                 if "@keyframes" in text or "<animate" in text:
                     self.assertIn("prefers-reduced-motion", text, "motion must stop on request")
 
+    def test_words_are_for_people(self):
+        """No internal names in a picture: tag names, long hex ids, file paths."""
+        for path in files("*.svg"):
+            if "icons" in path.name:
+                continue
+            words = " ".join(e.text or "" for e in ET.fromstring(path.read_text()).iter()
+                             if e.tag in (f"{NS}text",))
+            with self.subTest(path=path.name):
+                self.assertNotRegex(words, r"tg/|\b[0-9a-f]{12,}\b|\.py\b|\.ya?ml\b")
+
     def test_light_and_dark_twins(self):
         for path in DIAGRAMS.glob("*.svg"):
             twin = (path.with_name(path.stem[:-5] + ".svg") if path.stem.endswith("-dark")

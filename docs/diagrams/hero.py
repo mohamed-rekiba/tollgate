@@ -179,7 +179,7 @@ def paths(c):
 def callout(c):
     stroke = c["gate"][0]
     gx, gy = iso(0, 8, 46)
-    x, y, w = gx - 300, gy - 185, 236
+    x, y, w = gx - 310, gy - 185, 270
     out = [
         (f'<line x1="{x + w / 2:.1f}" y1="{y + 78:.1f}" x2="{gx - 8:.1f}" y2="{gy - 4:.1f}" '
         f'stroke="{stroke}" stroke-width="1.2" stroke-dasharray="2 4"/>'),
@@ -189,11 +189,11 @@ def callout(c):
         f'<rect x="{x:.1f}" y="{y:.1f}" width="{w}" height="22" rx="4" fill="{stroke}"/>',
         f'<rect x="{x:.1f}" y="{y + 14:.1f}" width="{w}" height="8" fill="{stroke}"/>',
         (f'<text x="{x + w / 2:.1f}" y="{y + 15:.1f}" text-anchor="middle" font-size="11" '
-        f'font-weight="700" letter-spacing="1.4" fill="{c["page"]}">GATE · TICKET T-12</text>'),
+        f'font-weight="700" letter-spacing="1.4" fill="{c["page"]}">THE GATE · TICKET 12</text>'),
         (f'<text x="{x + 12:.1f}" y="{y + 42:.1f}" font-size="12" fill="{c["ink"]}">'
-        f'locked tests   14 / 14 pass</text>'),
+        f'locked tests: 14 of 14 pass</text>'),
         (f'<text x="{x + 12:.1f}" y="{y + 62:.1f}" font-size="12" fill="{c["muted"]}">'
-        f'tag tg/freeze/T-12/1</text>'),
+        f'checked by the server, not the AI</text>'),
     ]
     return out
 

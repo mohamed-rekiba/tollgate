@@ -112,14 +112,14 @@
 <line x1="1037.9" y1="179.9" x2="1056.9" y2="190.8" stroke="#3fb950" stroke-width="2" stroke-linecap="round"/>
 <text x="1063.6" y="77.7" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.6" fill="#f0f6fc">MAIN</text>
 <text x="1063.6" y="94.7" text-anchor="middle" font-size="12" fill="#9198a1">only a pass goes in</text>
-<line x1="727.6" y1="160.2" x2="901.6" y2="263.2" stroke="#d29922" stroke-width="1.2" stroke-dasharray="2 4"/>
+<line x1="734.6" y1="160.2" x2="901.6" y2="263.2" stroke="#d29922" stroke-width="1.2" stroke-dasharray="2 4"/>
 <circle cx="901.6" cy="263.2" r="3" fill="#d29922"/>
-<rect x="609.6" y="82.2" width="236" height="78" rx="4" fill="#0d1117" stroke="#d29922"/>
-<rect x="609.6" y="82.2" width="236" height="22" rx="4" fill="#d29922"/>
-<rect x="609.6" y="96.2" width="236" height="8" fill="#d29922"/>
-<text x="727.6" y="97.2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="1.4" fill="#0d1117">GATE · TICKET T-12</text>
-<text x="621.6" y="124.2" font-size="12" fill="#f0f6fc">locked tests   14 / 14 pass</text>
-<text x="621.6" y="144.2" font-size="12" fill="#9198a1">tag tg/freeze/T-12/1</text>
+<rect x="599.6" y="82.2" width="270" height="78" rx="4" fill="#0d1117" stroke="#d29922"/>
+<rect x="599.6" y="82.2" width="270" height="22" rx="4" fill="#d29922"/>
+<rect x="599.6" y="96.2" width="270" height="8" fill="#d29922"/>
+<text x="734.6" y="97.2" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="1.4" fill="#0d1117">THE GATE · TICKET 12</text>
+<text x="611.6" y="124.2" font-size="12" fill="#f0f6fc">locked tests: 14 of 14 pass</text>
+<text x="611.6" y="144.2" font-size="12" fill="#9198a1">checked by the server, not the AI</text>
 <g class="ticket">
 <circle r="13" fill="#ab7df8" opacity="0.2"><animate attributeName="fill" values="#ab7df8;#ab7df8;#3fb950;#3fb950" keyTimes="0;0.4;0.42;1" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>
 <circle r="6.5" fill="#ab7df8" stroke="#0d1117" stroke-width="2"><animate attributeName="fill" values="#ab7df8;#ab7df8;#3fb950;#3fb950" keyTimes="0;0.4;0.42;1" calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>

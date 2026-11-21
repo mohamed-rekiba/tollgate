@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 496" width="816" height="496" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Tollgate's icons</title>
-<desc id="desc">Every icon in driver/icons.py, with its name: person, ai, server, check, advisor, lock, gate, test, plan, ticket, branch, pull-request, merge, retro, retry, home, folder, package, workflow, cost, warning, clock, terminal.</desc>
+<desc id="desc">Every icon in diagram/icons.py, with its name: person, ai, server, check, advisor, lock, gate, test, plan, ticket, branch, pull-request, merge, retro, retry, home, folder, package, workflow, cost, warning, clock, terminal.</desc>
 <rect width="816" height="496" fill="#0d1117"/>
 <rect x="30" y="30" width="116" height="100" rx="6" fill="#151b23" stroke="#3d444d"/>
 <g transform="translate(68.0,46.0) scale(1.6667)" fill="none" stroke="#f0f6fc" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>

@@ -9,7 +9,8 @@
    "row": 0,
    "kind": "ai",
    "icon": "test",
-   "step": 1
+   "step": 1,
+   "shape": "document"
   },
   {
    "id": "b",
@@ -18,7 +19,8 @@
    "row": 0,
    "kind": "server",
    "icon": "lock",
-   "step": 2
+   "step": 2,
+   "shape": "data"
   },
   {
    "id": "c",
@@ -27,7 +29,8 @@
    "row": 0,
    "kind": "ai",
    "icon": "ai",
-   "step": 3
+   "step": 3,
+   "shape": "step"
   },
   {
    "id": "d",
@@ -36,7 +39,8 @@
    "row": 0,
    "kind": "check",
    "icon": "gate",
-   "step": 4
+   "step": 4,
+   "shape": "end"
   }
  ],
  "edges": [

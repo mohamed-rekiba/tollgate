@@ -1,6 +1,6 @@
 """Draw a diagram as SVG, in a light and a dark theme: the flat blueprint style.
 
-    from driver.diagram import draw
+    from diagram import draw
     svg = draw(spec, "light")   # or "dark"
 
 A spec is a dict, often read from JSON:
@@ -8,6 +8,8 @@ A spec is a dict, often read from JSON:
     {"title": "Short name of the diagram",
      "desc": "What it shows, in one or two sentences, for a screen reader.",
      "nodes": [{"id": "a", "text": "Title\\nOne line under it", "col": 0, "row": 0,
+                "shape": "step" | "start" | "end" | "decision" | "io" | "document" |
+                         "data" | "subprocess" | "wait" | "manual",
                 "kind": "you" | "ai" | "server" | "check" | "advisor",
                 "icon": "lock", "tag": "OWN LABEL", "step": 1,
                 "aws": "s3"}],
@@ -21,14 +23,20 @@ A spec is a dict, often read from JSON:
 
 The design:
 - A fine grid behind everything, monospace type, square tags.
+- "shape" follows the flowchart standard (ISO 5807): "start" and "end" are
+  pills, a "step" is a box, a "decision" is a diamond, "io" (something comes in
+  or goes out) is a slanted box, a "document" has a wavy foot, "data" (stored,
+  like a database or locked tests) is a cylinder, a "subprocess" (a step
+  described elsewhere) has double sides, "wait" is a D, and "manual" (a person
+  does it by hand) is a trapezoid.
 - Nodes sit on a grid of columns and rows. All boxes share one width.
 - "kind" says who acts. It sets the color, the icon, and the small label over
   the title (YOU, AI, SERVER, CHECK, ADVISOR). "icon" picks another icon from
-  driver/icons.py. "step" adds STEP n. "tag" replaces the label. A box with
+  diagram/icons.py. "step" adds STEP n. "tag" replaces the label. A box with
   no kind is neutral slate.
 - "aws" draws the official AWS service icon with its name under it, the way
   AWS diagrams do. The icons come from a local copy of the AWS package; see
-  driver/aws.py.
+  diagram/aws.py.
 - "groups" draw a border around nodes: a place, a boundary, or an AWS group
   ("aws": "cloud", "region", "az", "vpc", "public subnet", "private subnet",
   "security group", ...), in AWS's own color with its group icon. Groups may
@@ -52,8 +60,8 @@ description named by aria-labelledby, no scripts, and no external files.
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
-from driver import aws
-from driver.icons import FOR_KIND, icon
+from diagram import aws
+from diagram.icons import FOR_KIND, icon
 
 MONO = ("ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, "
         "'Liberation Mono', monospace")
@@ -113,15 +121,36 @@ def eyebrow(node):
     return name
 
 
+# Flowchart shapes (ISO 5807): what each step is decides its outline.
+SHAPES = ("step", "start", "end", "decision", "io", "document", "data", "subprocess", "wait",
+          "manual")
+# Room each shape needs around its text: left, right, top, bottom.
+INSETS = {"step": (0, 0, 0, 0), "start": (14, 14, 0, 0), "end": (14, 14, 0, 0),
+          "io": (16, 16, 0, 0), "document": (0, 0, 0, 10), "data": (0, 0, 12, 4),
+          "subprocess": (10, 10, 0, 0), "wait": (0, 18, 0, 0), "manual": (16, 16, 0, 0),
+          "decision": (0, 0, 0, 0)}
+CENTERED = {"start", "end", "decision"}
+
+
+def content_size(node):
+    title, *sub = node["text"].split("\n")
+    head = ICON + 8 + text_width(eyebrow(node), EYEBROW, 1.2)
+    w = max(head, text_width(title, TITLE), *(text_width(s, SUB) for s in sub))
+    h = ICON + 9 + 16 + 17 * len(sub)
+    return w, h
+
+
 def node_size(node):
     title, *sub = node["text"].split("\n")
     if node.get("aws"):
         w = max(text_width(title, TITLE - 1), *(text_width(s, SUB) for s in sub), AWS_ICON) + 16
         return w, AWS_ICON + 12 + 17 * (1 + len(sub))
-    head = ICON + 8 + text_width(eyebrow(node), EYEBROW, 1.2)
-    w = max(head, text_width(title, TITLE), *(text_width(s, SUB) for s in sub)) + 2 * PAD_X
-    h = PAD_Y + ICON + 9 + 16 + 17 * len(sub) + PAD_Y + 2
-    return w, h
+    w, h = content_size(node)
+    shape = node.get("shape", "step")
+    if shape == "decision":
+        return w * 1.75 + 28, h * 1.8 + 16
+    left, right, top, bottom = INSETS[shape]
+    return w + 2 * PAD_X + left + right, h + 2 * PAD_Y + 2 + top + bottom
 
 
 def label_size(label):
@@ -142,7 +171,9 @@ def group_depths(spec):
 
 def layout(spec):
     nodes = spec["nodes"]
-    width = max(MIN_W, *(node_size(n)[0] for n in nodes))
+    boxes_w = [node_size(n)[0] for n in nodes if n.get("shape") != "decision"]
+    width = max(MIN_W, *boxes_w) if boxes_w else MIN_W
+    column = max(width, *(node_size(n)[0] for n in nodes))
     where = {n["id"]: (n["col"], n["row"]) for n in nodes}
     gap_x, gap_y = GAP_X, GAP_Y
     depth = max(group_depths(spec), default=-1)
@@ -159,23 +190,40 @@ def layout(spec):
             gap_x = max(gap_x, lw + 28)
         else:
             gap_y = max(gap_y, lh + 30)
-    heights = {}
+    # A row is as tall as its boxes. A diamond keeps its own height and reaches
+    # into the gaps above and below its row.
+    heights, tall = {}, {}
     for n in nodes:
-        heights[n["row"]] = max(heights.get(n["row"], 0), node_size(n)[1])
+        h = node_size(n)[1]
+        if n.get("shape") == "decision":
+            tall[n["row"]] = max(tall.get(n["row"], 0), h)
+        else:
+            heights[n["row"]] = max(heights.get(n["row"], 0), h)
+    for r, h in tall.items():
+        heights.setdefault(r, min(h, 80))
+    over = {r: max(0, (tall.get(r, 0) - heights[r]) / 2) for r in heights}
     ys, y = {}, 0
-    for r in sorted(heights):
+    order = sorted(heights)
+    for i, r in enumerate(order):
+        y += over[r] if i == 0 else 0
         ys[r] = y
-        y += heights[r] + gap_y
+        nxt = over[order[i + 1]] if i + 1 < len(order) else 0
+        y += heights[r] + over[r] + gap_y + nxt
     boxes = {}
     for n in nodes:
-        left = n["col"] * (width + gap_x)
+        cell_left = n["col"] * (column + gap_x)
+        own = node_size(n)[0] if n.get("shape") == "decision" else width
+        left = cell_left + (column - own) / 2
         top, bottom = ys[n["row"]], ys[n["row"]] + heights[n["row"]]
-        boxes[n["id"]] = {"l": left, "t": top, "r": left + width, "b": bottom,
-                          "x": left + width / 2, "y": (top + bottom) / 2,
-                          "cell": (left, top, left + width, bottom)}
+        if n.get("shape") == "decision":
+            mid, half = (top + bottom) / 2, node_size(n)[1] / 2
+            top, bottom = mid - half, mid + half
+        boxes[n["id"]] = {"l": left, "t": top, "r": left + own, "b": bottom,
+                          "x": left + own / 2, "y": (top + bottom) / 2,
+                          "cell": (left, top, left + own, bottom)}
         if n.get("aws"):
             # Arrows meet the icon, not the cell; the name sits under the icon.
-            x = left + width / 2
+            x = left + own / 2
             boxes[n["id"]].update(l=x - AWS_ICON / 2 - 4, r=x + AWS_ICON / 2 + 4, t=top,
                                   b=top + AWS_ICON, y=top + AWS_ICON / 2)
     return boxes
@@ -382,18 +430,80 @@ def draw_node(n, bx, t, i):
                        f'{escape(s)}</text>')
         return out
     accent, tint = t["kinds"][n.get("kind", "neutral")]
-    w, h = bx["r"] - bx["l"], bx["b"] - bx["t"]
-    out.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{w:.1f}" height="{h:.1f}" '
-               f'rx="{RADIUS}" fill="{tint}" stroke="{accent}" stroke-opacity="0.7" '
-               f'stroke-width="1.2"/>')
-    # Corner ticks, like marks on a drawing.
-    for cx, cy, dx, dy in ((bx["l"], bx["t"], 1, 1), (bx["r"], bx["b"], -1, -1)):
-        out.append(f'<path d="M{cx + 9 * dx:.1f},{cy - 4 * dy:.1f} H{cx - 4 * dx:.1f} '
-                   f'V{cy + 9 * dy:.1f}" fill="none" stroke="{accent}" stroke-width="1.2"/>')
-    x, y = bx["l"] + PAD_X, bx["t"] + PAD_Y
+    shape = n.get("shape", "step")
+    out.append(outline(shape, bx, accent, tint))
+    if shape == "step":
+        # Corner ticks, like marks on a drawing.
+        for cx, cy, dx, dy in ((bx["l"], bx["t"], 1, 1), (bx["r"], bx["b"], -1, -1)):
+            out.append(f'<path d="M{cx + 9 * dx:.1f},{cy - 4 * dy:.1f} H{cx - 4 * dx:.1f} '
+                       f'V{cy + 9 * dy:.1f}" fill="none" stroke="{accent}" stroke-width="1.2"/>')
+    out += content(n, bx, t, accent, shape)
+    return out
+
+
+def outline(shape, bx, accent, tint):
+    """The outline of one node, by its flowchart shape."""
+    l, r, top, b = bx["l"], bx["r"], bx["t"], bx["b"]
+    w, h = r - l, b - top
+    paint = f'fill="{tint}" stroke="{accent}" stroke-width="1.3" stroke-linejoin="round"'
+    if shape in ("start", "end"):
+        return f'<rect x="{l:.1f}" y="{top:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{h / 2:.1f}" {paint}/>'
+    if shape == "decision":
+        return (f'<polygon points="{bx["x"]:.1f},{top:.1f} {r:.1f},{bx["y"]:.1f} '
+                f'{bx["x"]:.1f},{b:.1f} {l:.1f},{bx["y"]:.1f}" {paint}/>')
+    if shape == "io":
+        k = 14
+        return f'<polygon points="{l + k:.1f},{top:.1f} {r:.1f},{top:.1f} {r - k:.1f},{b:.1f} {l:.1f},{b:.1f}" {paint}/>'
+    if shape == "manual":
+        k = 14
+        return f'<polygon points="{l:.1f},{top:.1f} {r:.1f},{top:.1f} {r - k:.1f},{b:.1f} {l + k:.1f},{b:.1f}" {paint}/>'
+    if shape == "document":
+        wave = 8
+        return (f'<path d="M{l:.1f},{top:.1f} H{r:.1f} V{b - wave:.1f} '
+                f'C{r - w * 0.25:.1f},{b - 2 * wave:.1f} {l + w * 0.6:.1f},{b + wave:.1f} '
+                f'{l:.1f},{b - wave / 2:.1f} Z" {paint}/>')
+    if shape == "data":
+        ry = 8
+        return (f'<path d="M{l:.1f},{top + ry:.1f} A{w / 2:.1f},{ry} 0 0 1 {r:.1f},{top + ry:.1f} '
+                f'V{b - ry:.1f} A{w / 2:.1f},{ry} 0 0 1 {l:.1f},{b - ry:.1f} Z" {paint}/>'
+                f'<path d="M{l:.1f},{top + ry:.1f} A{w / 2:.1f},{ry} 0 0 0 {r:.1f},{top + ry:.1f}" '
+                f'fill="none" stroke="{accent}" stroke-width="1.3"/>')
+    if shape == "wait":
+        k = h / 2
+        return (f'<path d="M{l:.1f},{top:.1f} H{r - k:.1f} A{k:.1f},{k:.1f} 0 0 1 {r - k:.1f},{b:.1f} '
+                f'H{l:.1f} Z" {paint}/>')
+    if shape == "subprocess":
+        return (f'<rect x="{l:.1f}" y="{top:.1f}" width="{w:.1f}" height="{h:.1f}" rx="2" {paint}/>'
+                f'<path d="M{l + 8:.1f},{top:.1f} V{b:.1f} M{r - 8:.1f},{top:.1f} V{b:.1f}" '
+                f'stroke="{accent}" stroke-width="1.3"/>')
+    return f'<rect x="{l:.1f}" y="{top:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{RADIUS}" {paint}/>'
+
+
+def content(n, bx, t, accent, shape):
+    """The icon, the label over the title, the title, and the lines under it."""
+    out = []
+    title, *sub = n["text"].split("\n")
+    _, ch = content_size(n)
     name = n.get("icon") or FOR_KIND.get(n.get("kind"), "ticket")
-    out.append(icon(name, x, y, ICON, accent))
     brow = eyebrow(n)
+    if shape in CENTERED:
+        y = bx["y"] - ch / 2
+        head_w = ICON + (8 + text_width(brow, EYEBROW, 1.2) if brow else 0)
+        hx = bx["x"] - head_w / 2
+        out.append(icon(name, hx, y, ICON, accent))
+        if brow:
+            out.append(f'<text x="{hx + ICON + 8:.1f}" y="{y + 13:.1f}" font-size="{EYEBROW}" '
+                       f'font-weight="700" letter-spacing="1.2" fill="{accent}">{escape(brow)}</text>')
+        y += ICON + 9
+        out.append(f'<text x="{bx["x"]:.1f}" y="{y + 13:.1f}" text-anchor="middle" '
+                   f'font-size="{TITLE}" font-weight="700" fill="{t["text"]}">{escape(title)}</text>')
+        for j, s in enumerate(sub):
+            out.append(f'<text x="{bx["x"]:.1f}" y="{y + 31 + 17 * j:.1f}" text-anchor="middle" '
+                       f'font-size="{SUB}" fill="{t["sub"]}">{escape(s)}</text>')
+        return out
+    left, _, top, _ = INSETS[shape]
+    x, y = bx["l"] + PAD_X + left, bx["t"] + PAD_Y + top
+    out.append(icon(name, x, y, ICON, accent))
     if brow:
         out.append(f'<text x="{x + ICON + 8:.1f}" y="{y + 13:.1f}" font-size="{EYEBROW}" '
                    f'font-weight="700" letter-spacing="1.2" fill="{accent}">{escape(brow)}</text>')

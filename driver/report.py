@@ -149,7 +149,7 @@ def picture(project: str, task: str) -> dict:
 
 def write(project: str, task: str) -> str:
     """Write the report, and its picture in a light and a dark SVG next to it."""
-    from driver.diagram import draw
+    from diagram import draw
     path = Path(project, ".tollgate", "reports", f"{task}.md")
     path.parent.mkdir(parents=True, exist_ok=True)
     spec = picture(project, task)

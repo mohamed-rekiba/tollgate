@@ -1,4 +1,4 @@
-"""A small kit for isometric scenes, in the same colors and type as the flat diagrams.
+"""Isometric scenes, in the same colors and type as the flat diagrams.
 
 A scene is a ground of fine grid, objects standing on it, lanes between them
 with dots that move, labels in monospace, and one ticket that travels a path.
@@ -15,8 +15,9 @@ left, z runs up.
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
-from driver.diagram import MONO, THEMES
-from driver.icons import icon
+from diagram import aws
+from diagram.flow import MONO, THEMES
+from diagram.icons import icon
 
 
 def mix(a: str, b: str, t: float) -> str:
@@ -250,6 +251,39 @@ class Scene:
                 self.iso(x - 10, y + h, 28), self.iso(x + 10, y + h, 28)]
         self.out.append(f'<polygon points="{self.pts(door)}" fill="{stroke}"/>')
 
+    def database(self, x, y, kind="server", r=34, h=60):
+        """A cylinder: stored data."""
+        stroke, top, left, _ = self.faces(kind)
+        cx, cy0 = self.iso(x, y, 0)
+        _, cy1 = self.iso(x, y, h)
+        rx, ry = r * 1.2247 * self.s, r * 0.7071 * self.s
+        self.out.append(f'<path d="M{cx - rx:.1f},{cy1:.1f} V{cy0:.1f} A{rx:.1f},{ry:.1f} 0 0 0 '
+                        f'{cx + rx:.1f},{cy0:.1f} V{cy1:.1f} Z" fill="{left}" stroke="{stroke}" '
+                        f'stroke-width="1.3"/>')
+        mid = (cy0 + cy1) / 2
+        self.out.append(f'<path d="M{cx - rx:.1f},{mid:.1f} A{rx:.1f},{ry:.1f} 0 0 0 '
+                        f'{cx + rx:.1f},{mid:.1f}" fill="none" stroke="{stroke}" stroke-width="1"/>')
+        self.out.append(f'<ellipse cx="{cx:.1f}" cy="{cy1:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
+                        f'fill="{top}" stroke="{stroke}" stroke-width="1.3"/>')
+
+    def pedestal(self, x, y, kind="neutral", icon_name=None, aws_name=None):
+        """A short stand with an icon over it: any station that has no object of its own."""
+        self.prism(x - 22, y - 22, x + 22, y + 22, 0, 22, kind)
+        if aws_name:
+            self.aws_icon(x, y, 70, aws_name)
+        elif icon_name:
+            self.badge(x, y, 80, icon_name, kind)
+
+    def aws_icon(self, x, y, z, name, size=40):
+        """An official AWS icon, unchanged, standing over a spot."""
+        px, py = self.iso(x, y, z)
+        self.ids += 1
+        self.out.append(aws.place(aws.service(name, prefix=f"s{self.ids}"), px - size / 2,
+                                  py - size / 2, size))
+
+    def wall(self, x0, y0, x1, y1, h=46, kind="neutral"):
+        self.prism(x0, y0, x1, y1, 8, h, kind)
+
     # The ticket ----------------------------------------------------------------
     def leg(self, points, tone=None, wait=0.4):
         """One stretch of the ticket's trip: page points, its color, the wait at the end."""
@@ -356,3 +390,67 @@ class Scene:
             f'<rect width="{self.w}" height="{self.h}" fill="{c["page"]}"/>',
         ]
         return "\n".join(head + self.back + self.out + self.front + ["</svg>"]) + "\n"
+
+
+OBJECTS = ("zone", "room", "gate", "server", "vault", "papers", "laptop", "board", "house",
+           "database", "pedestal", "wall", "aws")
+
+
+def from_spec(spec: dict, theme: str) -> str:
+    """Draw a scene from a spec. See the format in diagram/__init__.py."""
+    w, h = spec.get("size", [1120, 640])
+    s = Scene(theme, w, h, origin=tuple(spec.get("origin", [w / 2, h / 2])),
+              scale=spec.get("scale", 0.8))
+    s.grid(spec.get("grid", 460))
+    if spec.get("caption"):
+        s.caption(40, 48, spec["caption"][0].upper(), spec["caption"][1])
+    for zone in spec.get("zones", []):
+        x0, y0, x1, y1 = zone["at"]
+        s.platform(x0, y0, x1, y1, zone.get("kind", "neutral"))
+    for lane in spec.get("lanes", []):
+        s.lane([tuple(p) for p in lane["path"]], lane.get("label"), lane.get("at", 0.5),
+               lane.get("tone"), lane.get("side", False))
+    # Objects from back to front, so nearer ones cover farther ones.
+    for o in sorted(spec.get("objects", []), key=lambda o: o["at"][0] + o["at"][1]):
+        x, y = o["at"][:2]
+        kind = o.get("kind")
+        what = o["type"]
+        if what == "room":
+            s.room(x, y, kind or "ai", o.get("size", 110))
+        elif what == "gate":
+            s.booth(x, y, o["arm_to"], kind or "check", o.get("name", "arm"), o.get("axis", "x"))
+        elif what == "server":
+            s.server(x, y, kind or "server", o.get("levels", 3), o.get("size", 90))
+        elif what == "vault":
+            s.vault(x, y, kind or "server")
+        elif what == "papers":
+            s.papers(x, y, kind or "ai")
+        elif what == "laptop":
+            s.laptop(x, y, kind or "you")
+        elif what == "board":
+            s.board(x, y, kind or "ai")
+        elif what == "house":
+            s.house(x, y, kind or "you", o.get("size", 90))
+        elif what == "database":
+            s.database(x, y, kind or "server")
+        elif what == "pedestal":
+            s.pedestal(x, y, kind or "neutral", o.get("icon"))
+        elif what == "aws":
+            s.pedestal(x, y, kind or "neutral", aws_name=o["aws"])
+        elif what == "wall":
+            x1, y1 = o["to"]
+            s.wall(x, y, x1, y1, o.get("height", 46), kind or "neutral")
+        else:
+            raise ValueError(f"unknown object '{what}'; use one of {', '.join(OBJECTS)}")
+    for label in spec.get("labels", []):
+        x, y, z = (label["at"] + [0])[:3]
+        s.text(x, y, z, label["head"].upper(), label.get("sub"), label.get("anchor", "middle"))
+    ticket = spec.get("ticket")
+    if ticket:
+        for leg in ticket["legs"]:
+            s.leg([s.iso(x, y, 2) for x, y in leg["path"]], leg.get("tone"), leg.get("wait", 0.4))
+        dur, times = s.ticket(speed=ticket.get("speed", 150))
+        if "lift" in ticket:
+            n = ticket["lift"]
+            s.lift(ticket.get("gate", "arm"), dur, times[n][0] - 0.75, times[n][1])
+    return s.render(spec["title"], spec["desc"])

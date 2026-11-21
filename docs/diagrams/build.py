@@ -4,8 +4,8 @@
     python3 docs/diagrams/build.py --check  # end with 1 if a drawn file is out of date
 
 Two kinds of diagram:
-- Written: a spec in docs/diagrams/src/<name>.json. The spec format is in
-  driver/diagram.py.
+- Written: a spec in docs/diagrams/src/<name>.json, a flow or a scene. The
+  formats are in diagram/__init__.py and diagram/flow.py.
 - Read from the code: the spec is made here, from a file of the project, each
   time. When that file changes and the picture does not, --check fails, so
   the picture cannot drift from the code. "workflow" is the jobs of
@@ -14,7 +14,6 @@ Two kinds of diagram:
 """
 
 import argparse
-import json
 import re
 import sys
 import textwrap
@@ -26,12 +25,27 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 
 import hero
-import scenes
 
-from driver.diagram import THEMES, draw
+from diagram import draw
+from diagram.__main__ import build as build_folder
+from diagram.flow import MONO, THEMES
 
 __all__ = ["THEMES", "build", "workflow_spec"]
 
+# What each job does, in plain words, for the picture. A new job with no entry
+# shows the comment above it in the workflow file.
+JOB_TEXT = {
+    "freeze-test": ("Check the new tests", "runs them with read-only access"),
+    "freeze-lock": ("Lock the tests", "so nobody can change them after"),
+    "plan-lock": ("Lock the plan", "its tickets cannot change after"),
+    "task": ("Build a whole task", "plan, tests, code, pull requests"),
+    "plain": ("Build without Tollgate", "the same request, to compare"),
+    "e2": ("Try the closed room", "an experiment: the AI with no network"),
+    "find": ("Find the pull request", "and check its branch name"),
+    "test": ("Run the tests", "with no secrets"),
+    "review": ("Review the change", "an AI reads it and cannot edit"),
+    "gate": ("Decide: pass or fail", "from the tests and the review"),
+}
 # Who acts in each job of the workflow. A new job with no entry is neutral.
 JOB_ICONS = {"freeze-test": "test", "freeze-lock": "lock", "plan-lock": "lock", "task": "ai",
              "plain": "terminal", "e2": "terminal", "find": "pull-request", "test": "test",
@@ -124,10 +138,8 @@ def workflow_spec() -> dict:
             next_row = max(next_row, r + 1)
         taken.add((col, r))
         row[name] = r
-        tag = f"DISPATCH · {job['kind'].upper()}" if job["kind"] else (
-            "AFTER " + ", ".join(job["needs"]).upper() if job["needs"] else "PULL REQUEST")
-        node = {"id": name, "text": "\n".join([name, *about(job["about"])]), "col": col, "row": r,
-                "tag": tag}
+        title, line = JOB_TEXT.get(name, (name, " ".join(about(job["about"]))))
+        node = {"id": name, "text": "\n".join([title, line, f"job: {name}"]), "col": col, "row": r}
         if JOB_KINDS.get(name):
             node["kind"] = JOB_KINDS[name]
         if JOB_ICONS.get(name):
@@ -151,7 +163,7 @@ def workflow_spec() -> dict:
                  f"what starts the job and what it does."),
         "nodes": nodes, "edges": edges,
         "groups": [g for g in (
-            {"label": "Started by Tollgate", "kind": "neutral", "icon": "workflow",
+            {"label": "Run by Tollgate", "kind": "neutral", "icon": "workflow",
              "nodes": [j["name"] for j in jobs if j["kind"] or _started_by_dispatch(j, jobs)]},
             {"label": "On every pull request", "kind": "neutral", "icon": "pull-request",
              "nodes": [j["name"] for j in jobs if not j["kind"] and j["name"] not in
@@ -162,11 +174,10 @@ def workflow_spec() -> dict:
 
 
 def icons_sheet(theme: str) -> str:
-    """Every icon in driver/icons.py, large, with its name: a reference for writers."""
+    """Every icon in diagram/icons.py, large, with its name: a reference for writers."""
     from xml.sax.saxutils import escape
 
-    from driver.diagram import MONO
-    from driver.icons import ICONS, icon
+    from diagram.icons import ICONS, icon
     c = THEMES[theme]
     per_row, cw, ch, pad = 6, 128, 112, 24
     rows = -(-len(ICONS) // per_row)
@@ -174,7 +185,7 @@ def icons_sheet(theme: str) -> str:
     out = [(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" '
            f'height="{h}" role="img" aria-labelledby="title desc" font-family="{MONO}">'),
            "<title id=\"title\">Tollgate's icons</title>",
-           (f'<desc id="desc">Every icon in driver/icons.py, with its name: '
+           (f'<desc id="desc">Every icon in diagram/icons.py, with its name: '
            f'{escape(", ".join(ICONS))}.</desc>'),
            f'<rect width="{w}" height="{h}" fill="{c["page"]}"/>']
     for i, name in enumerate(ICONS):
@@ -189,31 +200,14 @@ def icons_sheet(theme: str) -> str:
 
 GENERATED = {"workflow": workflow_spec}
 # Drawn by hand in code, not from a spec.
-ART = {"hero": hero.draw, "icons": icons_sheet, "how-it-works": scenes.how_it_works,
-       "who-holds-the-key": scenes.who_holds_the_key, "packaging": scenes.packaging,
-       "home": scenes.home}
-
-
-def specs() -> dict:
-    out = {src.stem: json.loads(src.read_text()) for src in sorted((HERE / "src").glob("*.json"))}
-    out.update({name: make() for name, make in GENERATED.items()})
-    return out
+ART = {"hero": hero.draw, "icons": icons_sheet}
 
 
 def build(check=False) -> list:
-    """Draw every diagram. Return the files that changed, or with check, that would."""
-    stale = []
-    drawings = {name: (lambda theme, spec=spec: draw(spec, theme)) for name, spec in specs().items()}
-    drawings.update(ART)
-    for name, make in drawings.items():
-        for theme, suffix in (("light", ""), ("dark", "-dark")):
-            target = HERE / f"{name}{suffix}.svg"
-            text = make(theme)
-            if not target.exists() or target.read_text() != text:
-                stale.append(target.name)
-                if not check:
-                    target.write_text(text)
-    return stale
+    """Draw every diagram: the specs in src/, the ones from the code, and the art."""
+    extra = {name: (lambda theme, make=make: draw(make(), theme)) for name, make in GENERATED.items()}
+    extra.update(ART)
+    return build_folder(str(HERE), check, extra)
 
 
 def main(argv=None) -> int:

@@ -7,15 +7,17 @@
    "text": "The AI builds\nOne attempt",
    "col": 0,
    "row": 0,
-   "kind": "ai"
+   "kind": "ai",
+   "shape": "start"
   },
   {
    "id": "q",
-   "text": "Run the locked tests\nOn the AI's own machine",
+   "text": "Do the tests pass?\nThe locked ones,\non the AI's machine",
    "col": 1,
    "row": 0,
    "kind": "check",
-   "icon": "test"
+   "icon": "test",
+   "shape": "decision"
   },
   {
    "id": "s",
@@ -23,7 +25,8 @@
    "col": 2,
    "row": 0,
    "kind": "server",
-   "icon": "pull-request"
+   "icon": "pull-request",
+   "shape": "end"
   },
   {
    "id": "t",
@@ -31,14 +34,16 @@
    "col": 1,
    "row": 1,
    "kind": "ai",
-   "icon": "retry"
+   "icon": "retry",
+   "shape": "step"
   },
   {
    "id": "a",
    "text": "Ask the advisor\nA second AI, or you",
    "col": 2,
    "row": 1,
-   "kind": "advisor"
+   "kind": "advisor",
+   "shape": "wait"
   }
  ],
  "edges": [
