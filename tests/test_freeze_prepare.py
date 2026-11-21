@@ -128,6 +128,13 @@ class WorkflowTemplatesTest(unittest.TestCase):
             self.skipTest("no YAML parser here")
         return yaml.safe_load(self.FILE.read_text())["jobs"]
 
+    def test_this_repository_runs_the_template_as_it_is(self):
+        # Tollgate guards itself with this file, so the installed copy must match.
+        installed = ROOT / ".github/workflows/tollgate.yml"
+        if installed.exists():
+            self.assertEqual(installed.read_text(), self.FILE.read_text(),
+                             "run: python3 -m setup.write_workflows --version self")
+
     def test_no_broad_permissions_and_no_pin_in_the_file(self):
         text = self.FILE.read_text()
         self.assertIn("permissions: {}", text)
