@@ -7,3 +7,5 @@ __pycache__/
 .tollgate/reports/
 .tollgate/requests/
 .tollgate/lessons/
+*.tar.gz
+*.whl
