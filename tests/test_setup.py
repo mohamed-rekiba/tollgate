@@ -117,6 +117,22 @@ class ApplyRulesetsTest(unittest.TestCase):
         self.assertEqual(org["rules"][0], {"type": "creation"})
         self.assertEqual(org["bypass_actors"][0]["actor_type"], "Integration")
 
+    def test_owner_type_counts_anything_odd_as_an_organization(self):
+        for answer in (None, [], "x", {"owner": "User"}, {"owner": None}, {"owner": {"type": 5}}):
+            gh = FakeGh({("GET", "repos/o/r"): answer})
+            self.assertEqual(apply_rulesets.owner_type_of(gh, "o/r"), "Organization", answer)
+        gh = FakeGh({("GET", "repos/o/r"): {"owner": {"type": "User"}}})
+        self.assertEqual(apply_rulesets.owner_type_of(gh, "o/r"), "User")
+
+    def test_print_falls_back_to_the_stricter_rules_when_github_cannot_be_read(self):
+        import contextlib
+        import io
+        gh = FakeGh({("GET", "repos/o/r"): GhError(403, "no access")})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(apply_rulesets.main(["o/r", "--print"], gh=gh), 0)
+        self.assertIn('"creation"', out.getvalue())
+
     def test_print_shows_both_requests(self):
         text = apply_rulesets.commands("o/r")
         self.assertEqual(text.count("gh api -X POST repos/o/r/rulesets"), 2)

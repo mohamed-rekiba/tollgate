@@ -82,9 +82,10 @@ def owner_type_of(gh, repository: str) -> str:
     """"User" only when GitHub says so. Anything else counts as an organization, so
     the stricter rules are asked for: GitHub rejects them if they do not fit,
     which is safer than a weaker ruleset made in silence."""
-    data = gh.get(f"repos/{repository}") or {}
-    owner = data.get("owner") or {} if isinstance(data, dict) else {}
-    return "User" if owner.get("type") == "User" else "Organization"
+    data = gh.get(f"repos/{repository}")
+    owner = data.get("owner") if isinstance(data, dict) else None
+    kind = owner.get("type") if isinstance(owner, dict) else None
+    return "User" if kind == "User" else "Organization"
 
 
 def apply(gh, repository: str) -> list:
