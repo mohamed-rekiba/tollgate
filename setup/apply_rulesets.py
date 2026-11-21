@@ -15,9 +15,12 @@ GITHUB_ACTIONS_APP = 15368
 ADMIN_ROLE = 5  # the repository role "admin"
 BRANCH_RULESET = "tollgate main"
 TAG_RULESET = "tollgate tags"
+TAG_PATTERN = "refs/tags/tg/**/*"
 
 
-def wanted() -> list:
+def wanted(owner_type: str = "Organization") -> list:
+    """owner_type is "User" for a personal account. GitHub accepts an app as a bypass
+    actor only in an organization, so a personal repository gets no creation rule."""
     branch = {
         "name": BRANCH_RULESET, "target": "branch", "enforcement": "active",
         "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
@@ -39,28 +42,48 @@ def wanted() -> list:
         "bypass_actors": [{"actor_id": ADMIN_ROLE, "actor_type": "RepositoryRole",
                            "bypass_mode": "pull_request"}],
     }
-    # Only the freeze workflow, through GitHub Actions, may create these tags.
-    # Nobody may move or delete them.
+    # Nobody may move or delete these tags. In an organization, only the freeze
+    # and plan workflows, through GitHub Actions, may create them. On a personal
+    # account anyone with write access may create one, and the gate rejects any
+    # tag that its run did not record (rule 1 and rule 2).
     tags = {
         "name": TAG_RULESET, "target": "tag", "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/tags/tg/**"], "exclude": []}},
-        "rules": [{"type": "creation"}, {"type": "update"}, {"type": "deletion"}],
-        "bypass_actors": [{"actor_id": GITHUB_ACTIONS_APP, "actor_type": "Integration",
-                           "bypass_mode": "always"}],
+        # GitHub matches with fnmatch and FNM_PATHNAME: a trailing ** covers one
+        # level only, so tg/** would miss tg/freeze/<ticket>/<n>. **/* covers all.
+        "conditions": {"ref_name": {"include": [TAG_PATTERN], "exclude": []}},
+        "rules": [{"type": "update"}, {"type": "deletion"}],
+        "bypass_actors": [],
     }
+    if owner_type == "Organization":
+        tags["rules"].insert(0, {"type": "creation"})
+        tags["bypass_actors"] = [{"actor_id": GITHUB_ACTIONS_APP, "actor_type": "Integration",
+                                  "bypass_mode": "always"}]
     return [branch, tags]
+
+
+def _covers(have, want) -> bool:
+    """True when `have` holds everything in `want`. GitHub adds default fields when it
+    reads a ruleset back, such as allowed_merge_methods, so equality is too strict."""
+    if isinstance(want, dict):
+        return isinstance(have, dict) and all(k in have and _covers(have[k], v)
+                                              for k, v in want.items())
+    if isinstance(want, list):
+        return (isinstance(have, list) and len(have) == len(want)
+                and all(_covers(h, w) for h, w in zip(have, want, strict=True)))
+    return have == want
 
 
 def _same(have: dict, want: dict) -> bool:
     keys = ("target", "enforcement", "conditions", "rules", "bypass_actors")
-    return all(have.get(k) == want[k] for k in keys)
+    return all(_covers(have.get(k), want[k]) for k in keys)
 
 
 def apply(gh, repository: str) -> list:
     """Create or update both rulesets. Return what it did for each."""
+    owner_type = (gh.get(f"repos/{repository}").get("owner") or {}).get("type", "User")
     existing = {r["name"]: r["id"] for r in gh.get(f"repos/{repository}/rulesets") or []}
     done = []
-    for rule in wanted():
+    for rule in wanted(owner_type):
         if rule["name"] in existing:
             path = f"repos/{repository}/rulesets/{existing[rule['name']]}"
             if _same(gh.get(path), rule):
@@ -72,15 +95,15 @@ def apply(gh, repository: str) -> list:
             gh.api("POST", f"repos/{repository}/rulesets", rule)
             done.append(f"{rule['name']}: created")
     after = {r["name"]: r["id"] for r in gh.get(f"repos/{repository}/rulesets") or []}
-    for rule in wanted():
+    for rule in wanted(owner_type):
         if rule["name"] not in after:
             raise RuntimeError(f"{rule['name']} is missing after it was written")
     return done
 
 
-def commands(repository: str) -> str:
+def commands(repository: str, owner_type: str = "Organization") -> str:
     lines = []
-    for rule in wanted():
+    for rule in wanted(owner_type):
         lines.append(f"gh api -X POST repos/{repository}/rulesets --input - <<'JSON'\n"
                      f"{json.dumps(rule, indent=2)}\nJSON")
     return "\n\n".join(lines)

@@ -26,6 +26,10 @@ A tagger name proves nothing, because anyone with write access can set one. Poin
 
 A ticket's `tests:` header may not name harness or a tier 3 or 4 path. The freeze refuses it. If such a file is frozen anyway, it still counts for the tier, and the restore step keeps the main branch's copy.
 
+## Tag creation on a personal account
+
+GitHub accepts the GitHub Actions app as a bypass actor only in an organization. On a personal account, the tag ruleset blocks moving and deleting `tg/` tags, but not creating them. A forged tag still fails the gate: its run id names no run of the freeze or plan workflow that recorded the same manifest.
+
 ## The admin bypass
 
 The ruleset on the main branch lets a repository admin merge a pull request that the gate blocks. GitHub logs each such merge. This is the only way a change under `.github/` can merge, because the gate fails every such change. It gives an admin no new power: an admin can delete the ruleset anyway. The driver never uses it.
