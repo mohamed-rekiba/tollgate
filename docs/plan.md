@@ -145,7 +145,7 @@ flowchart LR
 
 The closed room is a container: a sealed box on your machine that holds one copy of the project for one ticket, the key for the AI model, and nothing else. The builder runs the fast tests inside it. Tests that need other services run outside it, in the driver and on the server.
 
-An approval by a person is one of two things. On a team, it is a normal review by someone other than the author. When you work alone, it is a comment by you on the pull request that names the latest commit, because the server does not let an author approve their own pull request. The builder cannot write that comment: it has no key to the server.
+An approval by a person is one of two things. On a team, it is a normal review by someone other than the author. When you work alone, it is a comment on the pull request that reads `tollgate approve <the full id of the latest commit>`, because the server does not let an author approve their own pull request. The gate accepts the comment only from a person listed under `approvers` in the settings on the main branch. The builder cannot write that comment: it has no key to the server.
 
 ### The gate
 
@@ -153,10 +153,10 @@ The gate uses no AI, so it gives the same answer every time. The same code runs 
 
 A change passes when all six rules hold:
 
-1. **Ticket.** The change names a ticket, and the server holds a freeze for it.
+1. **Ticket.** The branch is named `tg/<ticket id>`, and the server holds a freeze for that ticket. The gate uses the freeze with the highest number. It accepts the freeze only when the run that created it was the freeze workflow, on the main branch, started by hand, and it succeeded. It also checks that the tag points at the commit that the manifest names.
 2. **Plan.** The server holds an approved plan that lists this ticket. Tier 1 needs no plan.
 3. **Locked files.** Every file in the manifest has the fingerprint in the manifest.
-4. **Tier.** The gate works out the tier from the files that changed. Tier 4 needs an approval by a person, on the latest version of the change. So does a ticket with a replaced test.
+4. **Tier.** The gate works out the tier from the files that changed. Tier 4 needs an approval by a person, on the latest version of the change. So does a ticket with a replaced test. A change to any file under `.github/` always fails: the driver never sends one, and a person makes that change outside Tollgate.
 5. **Tests and checks.** Every check passes. Every test in the manifest ran and passed. No locked test was skipped.
 6. **Review.** For tier 3 and 4, the review on the server passed.
 
@@ -654,7 +654,8 @@ A ticket describes behavior and seams. It holds no file paths, because they go s
     "types": {"run": "make types"},
     "secrets": {"run": "gitleaks detect"}
   },
-  "harness": ["**/conftest.py", "pyproject.toml", "Makefile", ".github/**"],
+  "harness": ["Makefile"],
+  "approvers": ["mohamed-rekiba"],
   "tiers": {
     "3": ["src/auth/**", "src/payments/**"],
     "4": ["migrations/**", "deploy/**", ".tollgate/**"]
@@ -698,11 +699,15 @@ Each ticket has its own log file, and each task has one. One file has one writer
 
 | Workflow | Starts when | What it does |
 | --- | --- | --- |
-| Freeze | The driver asks, with a ticket id and a commit | A job with no secrets runs the tests of the ticket and confirms that none passes, apart from tests marked "keeps behavior". A second job, which runs none of the code, writes the manifest and creates the freeze tag. |
-| Gate | A pull request opens or changes | A job with no secrets takes the harness from the main branch and the locked tests from the freeze, runs the checks, and runs the gate. |
-| Review | A pull request of tier 3 or 4 opens or changes | A job that holds the model key reads the change as text and runs the change and security lenses. It runs none of the code. A blocking finding fails it. |
+| Freeze | The driver starts it by hand (`workflow_dispatch`) on the main branch, with the ticket id as input. The ticket and its tests are on the branch `tg/<ticket id>`. | A job with a token that can only read, and no secrets, runs the tests at the head of that branch, with the harness from the main branch. It saves the test report. A second job, which runs none of the code, reads the report, writes the manifest with its own run id, and creates the freeze tag. |
+| Gate | `pull_request_target`, when a pull request opens or changes. GitHub then runs the copy of the workflow from the main branch, not from the pull request. | A job with a token that can only read, and no secrets, checks out the change without saving the token, puts back the harness from the main branch and the locked tests from the freeze, runs the checks, and runs the gate. |
+| Review | `pull_request_target`, for a pull request of tier 3 or 4 | A job that holds the model key reads the change as text and runs the change and security lenses. It never checks out the change and runs none of it. A blocking finding fails it. |
 
 Each workflow calls the Action at the commit in the settings on the main branch.
+
+A workflow on `pull_request` would run the copy from the pull request, so a change could rewrite its own gate. Experiment E3 showed this. That is why the gate and the review use `pull_request_target`.
+
+A test report can be forged by code that the change brings. That is the stated limit of the tool.
 
 The driver uses your own access to the server. It needs no extra account, no App, and no right that you do not already have. The gate accepts an approval only on the latest commit of the pull request.
 
@@ -713,7 +718,7 @@ Tollgate works with the rights you have. `/tollgate:init` checks them first and 
 | Your rights | What you get |
 | --- | --- |
 | Admin of the repository | Full protection. One ruleset makes the gate required on the main branch, and for tier 3 and 4 the review. A second ruleset stops anyone from changing a tag under `tg/`. |
-| Write access only | The freeze and the gate still run on every pull request and show pass or fail. Nothing forces a merge to wait, and a changed lock is detected, not prevented. Each pull request says that the gate is not enforced. The skill prints the two ruleset commands for an admin to run. |
+| Write access only | The freeze and the gate still run on every pull request and show pass or fail. Nothing forces a merge to wait, and a changed lock is detected, not prevented: a moved tag no longer matches its manifest, and a tag from any other run fails the check of the run. Tollgate turns `auto_merge` off. Each pull request says that the gate is not enforced. The skill prints the two ruleset commands for an admin to run. |
 | The organization blocks outside Actions | The skill copies the Action into the project. The copy counts as harness, so a change to it is tier 4. |
 
 Tollgate asks for nothing at the level of the organization: no App, no extra account, no organization setting.
