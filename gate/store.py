@@ -73,11 +73,12 @@ class Store:
         self._check_key()
         sign.write(path, record, namespace)
 
-    def _read(self, path: Path, namespace: str, keys: set, commit: str) -> dict | None:
+    def _read(self, path: Path, namespace: str, keys: set, commit: str,
+              signers: list | None = None) -> dict | None:
         """The verified record at path, or None when it is missing, does not verify,
         has other keys, or names another commit."""
         try:
-            found = sign.read(path, namespace, self._signers())
+            found = sign.read(path, namespace, self._signers() if signers is None else signers)
         except sign.SignError:
             return None
         if set(found) != keys or found.get("commit") != commit:
@@ -290,7 +291,8 @@ class Store:
         """The verified approvals of a commit."""
         self._commit_name(commit)
         found = self._read(state.path(self.project, "approvals", f"{commit}.json"),
-                           "tollgate-approval", APPROVAL_KEYS, commit)
+                           "tollgate-approval", APPROVAL_KEYS, commit,
+                           self._settings()["owners"])
         return [found] if found else []
 
     def merge(self, commit: str) -> str:

@@ -54,6 +54,9 @@ DEFAULTS = {
     "pass_score": 70,
     # The public keys that may sign locks, pass records, and approvals.
     "signers": [],
+    # The public SSH keys of the people who may approve a tier 3 or 4 merge. Only these
+    # keys verify an approval, so the machine key that signs locks can never approve.
+    "owners": [],
     # How the builder is kept apart: "container" (Docker) or "sandbox" (Claude Code's).
     "isolation": "container",
     "require_plan": True,
@@ -130,6 +133,12 @@ def parse(text: str) -> dict:
     for n, line in enumerate(settings["signers"], 1):
         if not is_public_key(line):
             raise SettingsError(f"signers item {n} is not an SSH public key line")
+    for key in ("owners",):
+        if not isinstance(settings[key], list):
+            raise SettingsError(f"{key} must be a list of public key lines")
+        for n, line in enumerate(settings[key], 1):
+            if not is_public_key(line):
+                raise SettingsError(f"{key} item {n} is not an SSH public key line")
     for tier in settings["tiers"]:
         if tier not in ("3", "4"):
             raise SettingsError(f"unknown key: tiers.{tier}")

@@ -52,14 +52,15 @@ class StoreCase(unittest.TestCase):
         r.write("run_tests.py", RUN_TESTS)
         r.write("tests/__init__.py", "")
         r.write(".gitignore", "report.xml\n__pycache__/\n")
-        self.write_settings([self.pub, self.owner_pub])
+        self.write_settings([self.pub])
         self.main = r.commit("main")
         self.store = Store(str(r.path))
 
     def write_settings(self, signers, **extra):
         self.repo.write(".tollgate/settings.json", json.dumps({
             "checks": {"tests": {"run": f"{sys.executable} run_tests.py", "report": "report.xml"}},
-            "harness": ["run_tests.py"], "require_plan": False, "signers": signers, **extra}))
+            "harness": ["run_tests.py"], "require_plan": False, "signers": signers,
+            "owners": extra.pop("owners", [self.owner_pub]), **extra}))
 
     def ticket_branch(self, tests=TESTS, ticket=TICKET):
         r = self.repo
@@ -242,6 +243,13 @@ class ApprovalTest(StoreCase):
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)],
                        check=True)
         self.approve(commit, key=other)
+        self.assertEqual(self.store.approvals(commit), [])
+
+
+    def test_the_machine_key_cannot_approve(self):
+        # The driver can use the machine key, so an approval must come from an owner key.
+        commit = self.change()
+        self.approve(commit, key=sign.machine_key())
         self.assertEqual(self.store.approvals(commit), [])
 
 
