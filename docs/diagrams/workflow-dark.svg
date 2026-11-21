@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -62 1075 828" width="1075" height="828" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">The jobs of the Tollgate workflow</title>
+<desc id="desc">The jobs of the Tollgate workflow, drawn from the workflow file itself (freeze-test, freeze-lock, plan-lock, task, plain, e2, find, test, review, gate). An arrow means a job waits for the one before it. Each box says what starts the job and what it does.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-40" y="-62" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-40" y="-62" width="1075" height="828" fill="#0d1117"/>
+<rect x="-40" y="-62" width="1075" height="828" fill="url(#grid)"/>
+<rect x="-16.0" y="-38.0" width="676.8" height="460.0" rx="6" fill="none" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
+<g transform="translate(-4.0,-30.0) scale(0.6250)" fill="none" stroke="#9198a1" stroke-width="2.56" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z"/><path d="M10 8.5v7l6-3.5z"/></g>
+<text x="17.0" y="-18.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">RUN BY TOLLGATE</text>
+<rect x="-16.0" y="442.0" width="1027.2" height="300.0" rx="6" fill="none" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
+<g transform="translate(-4.0,450.0) scale(0.6250)" fill="none" stroke="#9198a1" stroke-width="2.56" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M18 16v-6a3 3 0 0 0-3-3h-4"/><path d="M13 4.5L10.5 7L13 9.5"/></g>
+<text x="17.0" y="462.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">ON EVERY PULL REQUEST</text>
+<path class="main" d="M294.4,43.0 L350.4,43.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M294.4,523.0 L350.4,523.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M147.2,566.0 L147.2,591.0 Q147.2,603.0 159.2,603.0 L485.6,603.0 Q497.6,603.0 497.6,615.0 L497.6,640.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M644.8,523.0 L700.8,523.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M644.8,683.0 L836.0,683.0 Q848.0,683.0 848.0,671.0 L848.0,566.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="294.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<path d="M285.4,90.0 H298.4 V77.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Check the new tests</text>
+<text x="14.0" y="70.0" font-size="12" fill="#9198a1">runs them with read-only access</text>
+<rect x="350.4" y="0.0" width="294.4" height="86.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M359.4,-4.0 H346.4 V9.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<path d="M635.8,90.0 H648.8 V77.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<g transform="translate(364.4,12.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="390.4" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">SERVER</text>
+<text x="364.4" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Lock the tests</text>
+<text x="364.4" y="70.0" font-size="12" fill="#9198a1">so nobody can change them after</text>
+<rect x="0.0" y="160.0" width="294.4" height="86.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M9.0,156.0 H-4.0 V169.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<path d="M285.4,250.0 H298.4 V237.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<g transform="translate(14.0,172.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="40.0" y="185.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">SERVER</text>
+<text x="14.0" y="212.0" font-size="14" font-weight="700" fill="#f0f6fc">Lock the plan</text>
+<text x="14.0" y="230.0" font-size="12" fill="#9198a1">its tickets cannot change after</text>
+<rect x="350.4" y="160.0" width="294.4" height="86.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M359.4,156.0 H346.4 V169.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M635.8,250.0 H648.8 V237.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(364.4,172.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
+<text x="390.4" y="185.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="364.4" y="212.0" font-size="14" font-weight="700" fill="#f0f6fc">Build a whole task</text>
+<text x="364.4" y="230.0" font-size="12" fill="#9198a1">plan, tests, code, pull requests</text>
+<rect x="0.0" y="320.0" width="294.4" height="86.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M9.0,316.0 H-4.0 V329.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M285.4,410.0 H298.4 V397.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(14.0,332.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h17v15h-17z"/><path d="M7 9l3 3l-3 3"/><path d="M12.5 15H17"/></g>
+<text x="40.0" y="345.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="14.0" y="372.0" font-size="14" font-weight="700" fill="#f0f6fc">Build without Tollgate</text>
+<text x="14.0" y="390.0" font-size="12" fill="#9198a1">the same request, to compare</text>
+<rect x="350.4" y="320.0" width="294.4" height="86.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M359.4,316.0 H346.4 V329.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M635.8,410.0 H648.8 V397.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(364.4,332.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h17v15h-17z"/><path d="M7 9l3 3l-3 3"/><path d="M12.5 15H17"/></g>
+<text x="390.4" y="345.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="364.4" y="372.0" font-size="14" font-weight="700" fill="#f0f6fc">Try the closed room</text>
+<text x="364.4" y="390.0" font-size="12" fill="#9198a1">an experiment: the AI with no network</text>
+<rect x="0.0" y="480.0" width="294.4" height="86.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M9.0,476.0 H-4.0 V489.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<path d="M285.4,570.0 H298.4 V557.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<g transform="translate(14.0,492.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M18 16v-6a3 3 0 0 0-3-3h-4"/><path d="M13 4.5L10.5 7L13 9.5"/></g>
+<text x="40.0" y="505.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">SERVER</text>
+<text x="14.0" y="532.0" font-size="14" font-weight="700" fill="#f0f6fc">Find the pull request</text>
+<text x="14.0" y="550.0" font-size="12" fill="#9198a1">and check its branch name</text>
+<rect x="350.4" y="480.0" width="294.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M359.4,476.0 H346.4 V489.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<path d="M635.8,570.0 H648.8 V557.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<g transform="translate(364.4,492.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="390.4" y="505.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="364.4" y="532.0" font-size="14" font-weight="700" fill="#f0f6fc">Run the tests</text>
+<text x="364.4" y="550.0" font-size="12" fill="#9198a1">with no secrets</text>
+<rect x="350.4" y="640.0" width="294.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M359.4,636.0 H346.4 V649.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<path d="M635.8,730.0 H648.8 V717.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<g transform="translate(364.4,652.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
+<text x="390.4" y="665.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="364.4" y="692.0" font-size="14" font-weight="700" fill="#f0f6fc">Review the change</text>
+<text x="364.4" y="710.0" font-size="12" fill="#9198a1">an AI reads it and cannot edit</text>
+<rect x="700.8" y="480.0" width="294.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M709.8,476.0 H696.8 V489.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<path d="M986.2,570.0 H999.2 V557.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<g transform="translate(714.8,492.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
+<text x="740.8" y="505.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="714.8" y="532.0" font-size="14" font-weight="700" fill="#f0f6fc">Decide: pass or fail</text>
+<text x="714.8" y="550.0" font-size="12" fill="#9198a1">from the tests and the review</text>
+</svg>

@@ -1,0 +1,88 @@
+{
+ "title": "The flowchart shapes",
+ "desc": "The nine shapes a flow can use, each with what it means: start or end, step, decision, in or out, document, stored data, sub-process, wait, and by hand.",
+ "nodes": [
+  {
+   "id": "start",
+   "text": "Start or end\nwhere the flow\nbegins and ends",
+   "col": 0,
+   "row": 0,
+   "shape": "start",
+   "kind": "you",
+   "tag": "\"start\""
+  },
+  {
+   "id": "step",
+   "text": "Step\nsomething is done",
+   "col": 1,
+   "row": 0,
+   "shape": "step",
+   "kind": "ai",
+   "tag": "\"step\""
+  },
+  {
+   "id": "decision",
+   "text": "Decision\nyes or no?",
+   "col": 2,
+   "row": 0,
+   "shape": "decision",
+   "kind": "check",
+   "tag": "\"decision\""
+  },
+  {
+   "id": "io",
+   "text": "In or out\nsomething comes in\nor goes out",
+   "col": 0,
+   "row": 1,
+   "shape": "io",
+   "kind": "server",
+   "tag": "\"io\""
+  },
+  {
+   "id": "document",
+   "text": "Document\na page a person reads",
+   "col": 1,
+   "row": 1,
+   "shape": "document",
+   "kind": "server",
+   "tag": "\"document\""
+  },
+  {
+   "id": "data",
+   "text": "Stored data\na database,\nlocked tests",
+   "col": 2,
+   "row": 1,
+   "shape": "data",
+   "kind": "server",
+   "tag": "\"data\""
+  },
+  {
+   "id": "subprocess",
+   "text": "Sub-process\na step with its\nown diagram",
+   "col": 0,
+   "row": 2,
+   "shape": "subprocess",
+   "kind": "ai",
+   "tag": "\"subprocess\""
+  },
+  {
+   "id": "wait",
+   "text": "Wait\nfor a person or time",
+   "col": 1,
+   "row": 2,
+   "shape": "wait",
+   "kind": "advisor",
+   "tag": "\"wait\""
+  },
+  {
+   "id": "manual",
+   "text": "By hand\na person does it",
+   "col": 2,
+   "row": 2,
+   "shape": "manual",
+   "kind": "you",
+   "tag": "\"manual\""
+  }
+ ],
+ "edges": []
+}

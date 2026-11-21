@@ -8,10 +8,10 @@ Tollgate is a tool for Claude Code. It lets an AI build a change to your softwar
 
 You give Tollgate a task. Tollgate gives you merged code and a report.
 
-```mermaid
-flowchart LR
-  A["1. Write the tests<br/>They say what done means"] --> B["2. Lock them<br/>On the server, where the AI cannot reach"] --> C["3. The AI builds<br/>It can try again. It cannot move the goal."] --> D["4. The tests decide<br/>Pass: the change goes in"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
+  <img alt="The idea of Tollgate in four steps" src="diagrams/the-lock.svg">
+</picture>
 
 Think of an exam. The questions are set and sealed before the student starts. The student can take the exam more than once, but the student cannot rewrite the questions or mark the paper.
 
@@ -66,24 +66,19 @@ Each thing has one word. This table explains the word once. The rest of the plan
 
 ## A task from start to finish
 
-```mermaid
-flowchart TD
-  S1["1. You say what you want"] --> S2["2. The AI writes a plan<br/>Other AIs with fresh eyes check it"] --> S3["3. The plan is cut into small tickets"] --> S4["4. Tests are written and locked"] --> S5["5. The AI builds until the locked tests pass"] --> S6["6. The server checks again and merges"] --> S7["7. You read the report"]
-  S5 -. stuck .-> A["The advisor decides<br/>A person, or a second AI"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/a-task-dark.svg">
+  <img alt="A task from start to finish" src="diagrams/a-task.svg">
+</picture>
 
 Steps 4 to 6 repeat for each ticket. If the advisor chain has no person, steps 2 to 6 need no person for tiers 1 to 3.
 
 ## How one ticket is built
 
-```mermaid
-flowchart LR
-  B["The AI builds<br/>one attempt"] --> Q{"Do the locked<br/>tests pass?"}
-  Q -- yes --> S["The change goes to the server<br/>The server runs the tests again"]
-  Q -- no --> T["Try again<br/>with what went wrong"]
-  T --> B
-  T -- "after 3 tries, or when stuck" --> A["Ask the advisor"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/one-ticket-dark.svg">
+  <img alt="How one ticket is built" src="diagrams/one-ticket.svg">
+</picture>
 
 ### The steps
 
@@ -122,17 +117,10 @@ Each number is a setting.
 
 ## What is locked, and who holds the key
 
-```mermaid
-flowchart LR
-  subgraph R["The AI's room"]
-    R1["The AI writes code and runs the tests.<br/>It has no key to the server.<br/>It cannot touch the locks."]
-  end
-  subgraph S["The server"]
-    S1["It locks the tests and runs them on every change.<br/>Nobody can change a lock.<br/>Only a pass lets a change in."]
-  end
-  R -- "Tollgate carries the change over" --> S
-  S -- "pass or fail" --> R
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/who-holds-the-key-dark.svg">
+  <img alt="The AI's room and the server" src="diagrams/who-holds-the-key.svg">
+</picture>
 
 ### Who can do what
 
@@ -198,10 +186,10 @@ A reviewer that fails to answer gets one retry. After that, the round does not c
 
 ## Tiers
 
-```mermaid
-flowchart LR
-  T1["Tier 1<br/>A small fix<br/>Locked tests"] --> T2["Tier 2<br/>A normal change<br/>Locked tests, a plan and a review"] --> T3["Tier 3<br/>Login, payments, user data<br/>All of tier 2, a review on the server"] --> T4["Tier 4<br/>Data, production, the locks<br/>All of tier 3, a person approves"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/tiers-dark.svg">
+  <img alt="The four tiers" src="diagrams/tiers.svg">
+</picture>
 
 No AI picks the tier. Path rules in the settings map file paths to tiers, and the gate works out the tier from the files that a change touches.
 
@@ -242,10 +230,10 @@ Three limits:
 
 A request that needs more than one plan gets a roadmap: one file with an ordered list of tasks. Example: "build an order service with login and an admin page".
 
-```mermaid
-flowchart LR
-  A["1. The base<br/>The project can be built, tested, and run"] --> B["2. The skeleton<br/>The shared rules, and one thin path that works"] --> C["3. The features<br/>One at a time, each proven from end to end"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/large-requests-dark.svg">
+  <img alt="A large request in three parts" src="diagrams/large-requests.svg">
+</picture>
 
 1. **The base.** A new project starts from the standard starter tool of its language. Tickets then close each gap until the base suite passes. The base suite is a set of scripts that prove five things: the checks run, the tests run side by side, the test environment starts and stops, a wrong setting stops the start, and one request writes one structured log line. An existing project gets tickets for its gaps only.
 2. **The skeleton.** First, one ticket for each rule that all code must follow: the shape of an error, the format of the API, the login check, the fields of a log line. Then the thinnest slice of the riskiest feature, through every one of those rules, with one test from end to end.
@@ -263,12 +251,10 @@ One project needs nothing but itself. You run `/tollgate:init` inside it.
 
 For many projects, a home is optional. A skill creates it for you as a private repository of your own. It is not a copy of Tollgate, so an upgrade of Tollgate never touches it.
 
-```mermaid
-flowchart TD
-  H["Home folder<br/>The list of projects and the shared rules"] --> A["Project A<br/>Its own rules and gate"]
-  H --> B["Project B<br/>Its own rules and gate"]
-  H --> C["Project C<br/>Its own rules and gate"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/home-dark.svg">
+  <img alt="A home with three projects" src="diagrams/home.svg">
+</picture>
 
 Each project sits inside the home as a git submodule: a link from the home to the project's own repository. One download of the home brings every project with it, and git keeps the list of projects.
 
@@ -289,11 +275,10 @@ Tollgate can make a rule stricter. Only a person makes a rule looser.
 
 ## How you use it
 
-```mermaid
-flowchart LR
-  P["On your machine: the plugin<br/>The skills you type in Claude Code<br/>The driver that runs the steps<br/>The instructions for each AI role"]
-  A["On the server: the Action<br/>The freeze that locks the tests<br/>The gate that runs them"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/packaging-dark.svg">
+  <img alt="Where each part runs" src="diagrams/packaging.svg">
+</picture>
 
 You install the plugin in Claude Code once, from the repository mohamed-rekiba/tollgate. There is no separate program to install or keep up to date. The machine needs Python 3.11 and a container tool.
 
@@ -382,10 +367,10 @@ Python 3.11 with the standard library only. It calls `git`, `gh`, a container to
 
 ## Reference: build order
 
-```mermaid
-flowchart LR
-  S0["0. Experiments<br/>You know the design holds"] --> S1["1. The lock<br/>You protect a change by hand"] --> S2["2. The loop<br/>Tollgate builds one ticket"] --> S3["3. The task<br/>You give a task and read a report"] --> S4["4. Scale<br/>Large requests and many projects"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/build-order-dark.svg">
+  <img alt="The build order in five stages" src="diagrams/build-order.svg">
+</picture>
 
 | Stage | Builds | Proof, as a script against a test repository |
 | --- | --- | --- |

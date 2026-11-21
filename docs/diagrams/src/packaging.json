@@ -1,0 +1,149 @@
+{
+ "type": "scene",
+ "title": "Where each part runs",
+ "desc": "An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On the server runs one workflow: it locks the tests, and the gate runs them on every change. The plugin starts the workflow, and the workflow reports back.",
+ "size": [
+  1120,
+  600
+ ],
+ "origin": [
+  560,
+  330
+ ],
+ "scale": 0.78,
+ "grid": 420,
+ "caption": [
+  "Where each part runs",
+  "a plugin on your machine, one workflow on the server"
+ ],
+ "zones": [
+  {
+   "at": [
+    -330,
+    -170,
+    -60,
+    170
+   ],
+   "kind": "you"
+  },
+  {
+   "at": [
+    60,
+    -170,
+    330,
+    170
+   ],
+   "kind": "server"
+  }
+ ],
+ "lanes": [
+  {
+   "path": [
+    [
+     -130,
+     -30
+    ],
+    [
+     140,
+     -30
+    ]
+   ],
+   "label": "starts"
+  },
+  {
+   "path": [
+    [
+     140,
+     40
+    ],
+    [
+     -130,
+     40
+    ]
+   ],
+   "label": "reports back",
+   "side": true
+  }
+ ],
+ "objects": [
+  {
+   "type": "vault",
+   "at": [
+    150,
+    -100
+   ]
+  },
+  {
+   "type": "server",
+   "at": [
+    240,
+    10
+   ],
+   "levels": 2,
+   "size": 76
+  },
+  {
+   "type": "gate",
+   "at": [
+    200,
+    120
+   ],
+   "arm_to": 120,
+   "axis": "x",
+   "name": "still"
+  },
+  {
+   "type": "papers",
+   "at": [
+    -270,
+    -90
+   ],
+   "kind": "you"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    -168,
+    -4
+   ],
+   "kind": "ai",
+   "icon": "package"
+  },
+  {
+   "type": "laptop",
+   "at": [
+    -260,
+    100
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    -120,
+    250,
+    -20
+   ],
+   "head": "Your machine: the plugin",
+   "sub": [
+    "the commands you type in Claude Code",
+    "the driver that runs the steps",
+    "the instructions for each AI role"
+   ],
+   "anchor": "end"
+  },
+  {
+   "at": [
+    380,
+    60,
+    -20
+   ],
+   "head": "The server: one workflow",
+   "sub": [
+    "it locks the tests",
+    "the gate runs them on every change"
+   ],
+   "anchor": "start"
+  }
+ ]
+}

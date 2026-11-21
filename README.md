@@ -1,5 +1,10 @@
 # Tollgate
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/hero-dark.svg">
+  <img alt="Tollgate: AI writes the code, locked tests decide" src="docs/diagrams/hero.svg">
+</picture>
+
 Tollgate lets an AI build changes to your software, and keeps each change out of your main branch until it passes tests the AI cannot touch.
 
 It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it, cuts it into small tickets, has the tests written and locked first, has the code built, checks it, and opens a pull request. A gate with no AI in it decides whether that pull request may merge.
@@ -20,21 +25,10 @@ It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change i
 
 ## How it works
 
-```mermaid
-flowchart LR
-  A["You ask<br/>in plain words"] --> B["A plan"]
-  B --> R1{"Reviewers<br/>find problems?"}
-  R1 -- "yes: fix and review again" --> B
-  R1 -- "no" --> C["Tests written<br/>and locked first"]
-  C --> D["The AI builds"]
-  D --> E{"Gate and<br/>reviewers pass?"}
-  E -- "no: what failed goes back" --> D
-  E -- "yes" --> F["Merge"]
-  E -. "stuck" .-> G["The advisor decides<br/>an AI or you"]
-  G -. "retry" .-> D
-  F --> H["Retro<br/>numbers and lessons"]
-  H -. "lessons make the rules stricter" .-> B
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
+  <img alt="How Tollgate works, with its three feedback loops" src="docs/diagrams/how-it-works.svg">
+</picture>
 
 Three loops keep the work honest:
 

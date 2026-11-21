@@ -1,0 +1,132 @@
+{
+ "title": "A task from start to finish",
+ "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and the server checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.",
+ "nodes": [
+  {
+   "id": "s1",
+   "text": "You say what you want\nIn plain words",
+   "col": 0,
+   "row": 0,
+   "kind": "you",
+   "icon": "person",
+   "step": 1,
+   "shape": "start"
+  },
+  {
+   "id": "s2",
+   "text": "The AI writes a plan\nFresh AIs check it",
+   "col": 0,
+   "row": 1,
+   "kind": "ai",
+   "icon": "plan",
+   "step": 2,
+   "shape": "document"
+  },
+  {
+   "id": "s3",
+   "text": "It cuts the plan into tickets\nEach one small",
+   "col": 0,
+   "row": 2,
+   "kind": "ai",
+   "icon": "ticket",
+   "step": 3
+  },
+  {
+   "id": "s4",
+   "text": "Tests are written, then locked\nBefore any code",
+   "col": 0,
+   "row": 3,
+   "kind": "server",
+   "icon": "lock",
+   "step": 4,
+   "shape": "data"
+  },
+  {
+   "id": "s5",
+   "text": "The AI builds\nUntil the locked tests pass",
+   "col": 0,
+   "row": 4,
+   "kind": "ai",
+   "icon": "ai",
+   "step": 5,
+   "shape": "subprocess"
+  },
+  {
+   "id": "s6",
+   "text": "The server checks and merges\nIt runs the tests again",
+   "col": 0,
+   "row": 5,
+   "kind": "server",
+   "icon": "merge",
+   "step": 6
+  },
+  {
+   "id": "s7",
+   "text": "You read the report\nDone, and still to do",
+   "col": 0,
+   "row": 6,
+   "kind": "you",
+   "icon": "retro",
+   "step": 7,
+   "shape": "end"
+  },
+  {
+   "id": "adv",
+   "text": "The advisor decides\nA second AI, or you",
+   "col": 1,
+   "row": 4,
+   "kind": "advisor",
+   "shape": "wait"
+  }
+ ],
+ "edges": [
+  {
+   "from": "s1",
+   "to": "s2"
+  },
+  {
+   "from": "s2",
+   "to": "s3"
+  },
+  {
+   "from": "s3",
+   "to": "s4"
+  },
+  {
+   "from": "s4",
+   "to": "s5"
+  },
+  {
+   "from": "s5",
+   "to": "s6"
+  },
+  {
+   "from": "s6",
+   "to": "s7"
+  },
+  {
+   "from": "s6",
+   "to": "s4",
+   "label": "next ticket",
+   "loop": "left"
+  },
+  {
+   "from": "s5",
+   "to": "adv",
+   "label": "stuck",
+   "dashed": true
+  }
+ ],
+ "groups": [
+  {
+   "label": "For each ticket",
+   "nodes": [
+    "s4",
+    "s5",
+    "s6"
+   ],
+   "kind": "neutral",
+   "icon": "retry"
+  }
+ ]
+}

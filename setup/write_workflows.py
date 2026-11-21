@@ -22,7 +22,7 @@ SETTINGS = ".tollgate/settings.json"
 VERSION = re.compile(r"^(self|copy|[0-9a-f]{40})$")
 RUNNER = ".tollgate/runner"
 # The packages the workflow runs. The copy holds these and the role and lens files.
-COPIED = ("action", "driver", "setup", "roles", "lenses")
+COPIED = ("action", "driver", "diagram", "setup", "roles", "lenses")
 ROOT = Path(__file__).resolve().parent.parent
 
 

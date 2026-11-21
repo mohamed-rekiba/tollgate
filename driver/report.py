@@ -71,7 +71,11 @@ def render(project: str, task: str) -> str:
     plan_cost = cost_of(task_events)
     total = round(plan_cost + sum(r["cost_usd"] for r in tickets), 4)
     waiting = [e for e in task_events if e["event"] == "task_waiting"]
-    lines = [f"# Report: task {task}", "", brief(project, task), "", "## Details", "",
+    pic = ('<picture>\n'
+           f'  <source media="(prefers-color-scheme: dark)" srcset="{task}-dark.svg">\n'
+           f'  <img alt="Task {task}: where each ticket stands" src="{task}.svg">\n'
+           '</picture>')
+    lines = [f"# Report: task {task}", "", brief(project, task), "", pic, "", "## Details", "",
              f"- Cost: {total} USD ({plan_cost} USD for the plan).",
              f"- Time: {_minutes(all_events)} minutes from the first event to the last.",
              f"- Plan: {'locked' if any(e['event'] == 'plan_locked' for e in task_events) else 'not locked'}.",
@@ -92,9 +96,65 @@ def render(project: str, task: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+# How each state looks in the picture: who acts, and the label over the title.
+LOOKS = {"merged": ("server", "MERGED", "merge"),
+         "pull request open": ("check", "PULL REQUEST", "pull-request"),
+         "building": ("ai", "BUILDING", "ai"), "tests written": ("ai", "TESTS WRITTEN", "test"),
+         "frozen": ("server", "TESTS LOCKED", "lock"), "started": ("ai", "STARTED", "ai"),
+         "waits for a person": ("advisor", "WAITS FOR YOU", "advisor"),
+         "parked": ("advisor", "PARKED", "warning"), "stopped": ("advisor", "STOPPED", "warning"),
+         "not started": ("neutral", "NOT STARTED", "ticket")}
+
+
+def _short(text: str, size: int = 40) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= size else text[:size - 1].rstrip() + "…"
+
+
+def picture(project: str, task: str) -> dict:
+    """A diagram spec of the task: the plan, then one box per ticket, in build order."""
+    task_events = read(str(logs_dir(project) / f"task-{task}.jsonl"))
+    locked = any(e["event"] == "plan_locked" for e in task_events)
+    found = {r["ticket"]: r for r in rows(project, task)}
+    order = _planned(project, task)
+    order += [t for t in found if t not in order]
+    nodes = [{"id": "plan", "text": f"The plan\n{len(order)} tickets", "col": 0, "row": 0,
+              "kind": "server" if locked else "ai",
+              "tag": "PLAN · LOCKED" if locked else "PLAN · IN REVIEW", "icon": "plan"}]
+    counts = {}
+    for i, tid in enumerate(order):
+        r = found.get(tid) or {"state": "not started", "tier": None, "attempts": 0,
+                               "cost_usd": 0, "pr": None, "reason": ""}
+        kind, tag, mark = LOOKS.get(r["state"], ("neutral", r["state"].upper(), "ticket"))
+        counts[r["state"]] = counts.get(r["state"], 0) + 1
+        if r["pr"]:
+            tag += f" #{r['pr']}"
+        if r["state"] == "building":
+            tag += f" · TRY {r['attempts'] + 1}"
+        facts = [f"tier {r['tier']}" if r["tier"] else "", (f"{r['attempts']} tr{'y' if r['attempts'] == 1 else 'ies'}") if r["attempts"]
+                 else "", f"{r['cost_usd']} USD" if r["cost_usd"] else ""]
+        lines = [tid, " · ".join(f for f in facts if f) or "nothing yet"]
+        if r["reason"]:
+            lines.append(_short(r["reason"]))
+        nodes.append({"id": f"t{i}", "text": "\n".join(lines), "col": i % 3, "row": 1 + i // 3,
+                      "kind": kind, "icon": mark, "tag": f"{i + 1} · {tag}"})
+    summary = ", ".join(f"{n} {state}" for state, n in counts.items()) or "no tickets yet"
+    return {"title": f"Task {task}: where each ticket stands",
+            "desc": f"The plan is {'locked' if locked else 'in review'}. "
+                    f"{len(order)} tickets, in build order: {summary}.",
+            "nodes": nodes, "edges": [],
+            "groups": [{"label": "Tickets, in build order", "kind": "neutral", "icon": "ticket",
+                        "nodes": [n["id"] for n in nodes[1:]]}] if len(nodes) > 1 else []}
+
+
 def write(project: str, task: str) -> str:
+    """Write the report, and its picture in a light and a dark SVG next to it."""
+    from diagram import draw
     path = Path(project, ".tollgate", "reports", f"{task}.md")
     path.parent.mkdir(parents=True, exist_ok=True)
+    spec = picture(project, task)
+    for theme, suffix in (("light", ""), ("dark", "-dark")):
+        path.with_name(f"{task}{suffix}.svg").write_text(draw(spec, theme))
     path.write_text(render(project, task))
     return str(path)
 
