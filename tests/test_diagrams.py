@@ -1,0 +1,94 @@
+"""Every diagram is an accessible SVG file, light and dark, drawn from its spec."""
+
+import re
+import subprocess
+import sys
+import unittest
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+DIAGRAMS = ROOT / "docs" / "diagrams"
+NS = "{http://www.w3.org/2000/svg}"
+SKIP = {".git", "node_modules", ".tollgate"}
+
+
+def files(pattern):
+    return [p for p in ROOT.rglob(pattern) if not SKIP & set(p.relative_to(ROOT).parts)]
+
+
+def luminance(color):
+    rgb = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    rgb = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
+
+
+def contrast(a, b):
+    la, lb = sorted((luminance(a), luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+class TestDiagrams(unittest.TestCase):
+    def test_no_mermaid_in_markdown(self):
+        found = [str(p.relative_to(ROOT)) for p in files("*.md")
+                 if "```mermaid" in p.read_text(errors="ignore")]
+        self.assertEqual(found, [], "draw these as SVG with the diagram skill")
+
+    def test_every_svg_is_accessible_and_safe(self):
+        svgs = files("*.svg")
+        self.assertTrue(svgs)
+        for path in svgs:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text()
+                root = ET.fromstring(text)
+                self.assertEqual(root.get("role"), "img")
+                self.assertTrue(root.get("viewBox"))
+                ids = (root.get("aria-labelledby") or "").split()
+                self.assertEqual(len(ids), 2, "aria-labelledby names a title and a desc")
+                title = root.find(f"{NS}title")
+                desc = root.find(f"{NS}desc")
+                self.assertIsNotNone(title)
+                self.assertIsNotNone(desc)
+                self.assertEqual([title.get("id"), desc.get("id")], ids)
+                self.assertTrue((title.text or "").strip() and (desc.text or "").strip())
+                self.assertTrue(root.findall(f".//{NS}text"), "use real text")
+                for bad in ("script", "foreignObject", "image"):
+                    self.assertFalse(root.findall(f".//{NS}{bad}"), bad)
+                self.assertIsNone(re.search(r"\son[a-z]+\s*=", text), "event attribute")
+                self.assertNotIn("prefers-color-scheme", text)
+                self.assertIsNone(re.search(r"(href|src)=\"(https?:|//)", text), "external file")
+
+    def test_light_and_dark_twins(self):
+        for path in DIAGRAMS.glob("*.svg"):
+            twin = (path.with_name(path.stem[:-5] + ".svg") if path.stem.endswith("-dark")
+                    else path.with_name(path.stem + "-dark.svg"))
+            self.assertTrue(twin.exists(), f"{path.name} has no twin {twin.name}")
+
+    def test_generator_output_is_current(self):
+        result = subprocess.run([sys.executable, str(DIAGRAMS / "build.py"), "--check"],
+                                capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_theme_colors_meet_contrast(self):
+        sys.path.insert(0, str(DIAGRAMS))
+        try:
+            import build
+        finally:
+            sys.path.pop(0)
+        for name, t in build.THEMES.items():
+            for fill in ("page", "box", "decision", "note"):
+                with self.subTest(theme=name, fill=fill):
+                    self.assertGreaterEqual(contrast(t["text"], t[fill]), 4.5)
+            self.assertGreaterEqual(contrast(t["edge"], t["page"]), 3.0, name)
+            self.assertGreaterEqual(contrast(t["label"], t["page"]), 4.5, name)
+
+    def test_every_diagram_is_used(self):
+        markdown = "".join(p.read_text(errors="ignore") for p in files("*.md"))
+        for spec in (DIAGRAMS / "src").glob("*.json"):
+            with self.subTest(diagram=spec.stem):
+                self.assertIn(f"{spec.stem}.svg", markdown)
+                self.assertIn(f"{spec.stem}-dark.svg", markdown)
+
+
+if __name__ == "__main__":
+    unittest.main()

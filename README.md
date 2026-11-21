@@ -20,21 +20,10 @@ It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change i
 
 ## How it works
 
-```mermaid
-flowchart LR
-  A["You ask<br/>in plain words"] --> B["A plan"]
-  B --> R1{"Reviewers<br/>find problems?"}
-  R1 -- "yes: fix and review again" --> B
-  R1 -- "no" --> C["Tests written<br/>and locked first"]
-  C --> D["The AI builds"]
-  D --> E{"Gate and<br/>reviewers pass?"}
-  E -- "no: what failed goes back" --> D
-  E -- "yes" --> F["Merge"]
-  E -. "stuck" .-> G["The advisor decides<br/>an AI or you"]
-  G -. "retry" .-> D
-  F --> H["Retro<br/>numbers and lessons"]
-  H -. "lessons make the rules stricter" .-> B
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
+  <img alt="How Tollgate works, with its three feedback loops" src="docs/diagrams/how-it-works.svg">
+</picture>
 
 Three loops keep the work honest:
 

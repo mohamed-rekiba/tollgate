@@ -1,0 +1,34 @@
+{
+ "title": "A large request in three parts",
+ "desc": "First the base: the project can be built, tested, and run. Then the skeleton: the shared rules and one thin path that works. Then the features, one at a time, each proven from end to end.",
+ "nodes": [
+  {
+   "id": "a",
+   "text": "1. The base\nThe project can be built,\ntested, and run",
+   "col": 0,
+   "row": 0
+  },
+  {
+   "id": "b",
+   "text": "2. The skeleton\nThe shared rules, and\none thin path that works",
+   "col": 1,
+   "row": 0
+  },
+  {
+   "id": "c",
+   "text": "3. The features\nOne at a time, each\nproven from end to end",
+   "col": 2,
+   "row": 0
+  }
+ ],
+ "edges": [
+  {
+   "from": "a",
+   "to": "b"
+  },
+  {
+   "from": "b",
+   "to": "c"
+  }
+ ]
+}

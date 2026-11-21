@@ -1,0 +1,54 @@
+{
+ "title": "The build order in five stages",
+ "desc": "Stage 0, experiments: you know the design holds. Stage 1, the lock: you protect a change by hand. Stage 2, the loop: Tollgate builds one ticket. Stage 3, the task: you give a task and read a report. Stage 4, scale: large requests and many projects.",
+ "nodes": [
+  {
+   "id": "s0",
+   "text": "0. Experiments\nThe design holds",
+   "col": 0,
+   "row": 0
+  },
+  {
+   "id": "s1",
+   "text": "1. The lock\nYou protect a change by hand",
+   "col": 1,
+   "row": 0
+  },
+  {
+   "id": "s2",
+   "text": "2. The loop\nTollgate builds one ticket",
+   "col": 2,
+   "row": 0
+  },
+  {
+   "id": "s3",
+   "text": "3. The task\nYou give a task, read a report",
+   "col": 3,
+   "row": 0
+  },
+  {
+   "id": "s4",
+   "text": "4. Scale\nLarge requests, many projects",
+   "col": 4,
+   "row": 0
+  }
+ ],
+ "edges": [
+  {
+   "from": "s0",
+   "to": "s1"
+  },
+  {
+   "from": "s1",
+   "to": "s2"
+  },
+  {
+   "from": "s2",
+   "to": "s3"
+  },
+  {
+   "from": "s3",
+   "to": "s4"
+  }
+ ]
+}

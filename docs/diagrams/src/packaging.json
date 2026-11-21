@@ -1,0 +1,19 @@
+{
+ "title": "Where each part runs",
+ "desc": "On your machine runs the plugin: the skills you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On the server runs the workflow: the freeze that locks the tests, and the gate that runs them.",
+ "nodes": [
+  {
+   "id": "p",
+   "text": "On your machine: the plugin\nThe skills you type in Claude Code\nThe driver that runs the steps\nThe instructions for each AI role",
+   "col": 0,
+   "row": 0
+  },
+  {
+   "id": "a",
+   "text": "On the server: the workflow\nThe freeze that locks the tests\nThe gate that runs them",
+   "col": 1,
+   "row": 0
+  }
+ ],
+ "edges": []
+}

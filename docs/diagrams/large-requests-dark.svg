@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 821 152" width="821" height="152" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14">
+<title id="title">A large request in three parts</title>
+<desc id="desc">First the base: the project can be built, tested, and run. Then the skeleton: the shared rules and one thin path that works. Then the features, one at a time, each proven from end to end.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker></defs>
+<rect x="-12" y="-12" width="821" height="152" fill="#0d1117"/>
+<line x1="237.0" y1="64.0" x2="307.0" y2="64.0" stroke="#8b949e" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="512.6" y1="64.0" x2="582.6" y2="64.0" stroke="#8b949e" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="24.0" y="24.0" width="213.0" height="80.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
+<text x="130.5" y="49.7" text-anchor="middle" fill="#e6edf3" font-weight="600">1. The base</text>
+<text x="130.5" y="68.7" text-anchor="middle" fill="#e6edf3">The project can be built,</text>
+<text x="130.5" y="87.7" text-anchor="middle" fill="#e6edf3">tested, and run</text>
+<rect x="307.0" y="24.0" width="205.6" height="80.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
+<text x="409.8" y="49.7" text-anchor="middle" fill="#e6edf3" font-weight="600">2. The skeleton</text>
+<text x="409.8" y="68.7" text-anchor="middle" fill="#e6edf3">The shared rules, and</text>
+<text x="409.8" y="87.7" text-anchor="middle" fill="#e6edf3">one thin path that works</text>
+<rect x="582.6" y="24.0" width="190.8" height="80.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
+<text x="678.0" y="49.7" text-anchor="middle" fill="#e6edf3" font-weight="600">3. The features</text>
+<text x="678.0" y="68.7" text-anchor="middle" fill="#e6edf3">One at a time, each</text>
+<text x="678.0" y="87.7" text-anchor="middle" fill="#e6edf3">proven from end to end</text>
+</svg>
