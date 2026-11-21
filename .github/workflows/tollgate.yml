@@ -1,0 +1,621 @@
+# Tollgate. Written by /tollgate:init. This file does not change when Tollgate
+# changes: it reads "version" from .tollgate/settings.json on the main branch,
+# "self" (this repository is Tollgate), "copy" (Tollgate's code is copied into
+# .tollgate/runner/, for an organization that allows only local actions), or a
+# full commit id of Tollgate.
+#
+# Started by hand or by /tollgate:task (workflow_dispatch): a freeze, a plan
+# lock, a task run by the driver on GitHub (task), a roadmap run by the driver
+# on GitHub (roadmap), or the tests and the review for one pull request (check).
+# On a pull request into main, or a comment "tollgate check" or "tollgate approve":
+# the tests and the review.
+# A job that runs the change has a read-only token, no secrets, and no saved token.
+name: tollgate
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('tollgate {0} {1}', inputs.kind, inputs.id)
+      || format('tollgate check #{0}', github.event.pull_request.number || github.event.issue.number) }}
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: What to run
+        required: true
+        type: choice
+        options: [freeze, plan, task, roadmap, check]
+      id:
+        description: >-
+          The ticket id (freeze), task id (plan, task), roadmap id (roadmap), or pull
+          request number (check).
+        required: true
+      request:
+        description: The request in plain words (task).
+        required: false
+        default: ""
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+permissions: {}
+concurrency:
+  # One freeze or plan lock at a time for each id. Pull request runs do not queue.
+  group: ${{ github.event_name == 'workflow_dispatch' && format('tollgate-{0}-{1}', inputs.kind, inputs.id) || github.run_id }}
+jobs:
+  # Freeze, job one: run the ticket's tests with a read-only token.
+  freeze-test:
+    if: github.event_name == 'workflow_dispatch' && inputs.kind == 'freeze'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      commit: ${{ steps.head.outputs.commit }}
+    steps:
+      - name: Refuse a run outside main or a bad id
+        env:
+          ID: ${{ inputs.id }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: tg/${{ inputs.id }}
+          path: change
+          fetch-depth: 0
+          persist-credentials: false
+      - id: head
+        run: echo "commit=$(git -C change rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Put back the harness from main
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+        run: python3 -P -m action.prepare --repo change --base origin/main
+      - name: Run the tests
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+        run: python3 -P -m action.checks --repo change --base origin/main --setup --only tests --out "$RUNNER_TEMP/results.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: ${{ runner.temp }}/results.json
+  # Freeze, job two: runs none of the change's code, and creates the tag.
+  freeze-lock:
+    needs: freeze-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: results
+          path: ${{ runner.temp }}/in
+      - name: Build the manifest
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          ID: ${{ inputs.id }}
+          COMMIT: ${{ needs.freeze-test.outputs.commit }}
+        run: python3 -P -m action.freeze --repo main --ticket "$ID" --commit "$COMMIT" --results "$RUNNER_TEMP/in/results.json" --run-id "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/tag.txt" --name-out "$RUNNER_TEMP/name.txt"
+      - name: Create the freeze tag
+        env:
+          COMMIT: ${{ needs.freeze-test.outputs.commit }}
+        run: |
+          name="$(cat "$RUNNER_TEMP/name.txt")"
+          git -C main -c user.name="tollgate freeze" -c user.email="tollgate@users.noreply.github.com" \
+            tag -a "$name" -F "$RUNNER_TEMP/tag.txt" "$COMMIT"
+          git -C main push origin "refs/tags/$name"
+      # The gate compares the tag with this copy, which only this run could upload.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tollgate-manifest
+          path: ${{ runner.temp }}/tag.txt
+          retention-days: 90
+  # Plan lock: reads the plan and its tickets as files, and creates the tag.
+  plan-lock:
+    if: github.event_name == 'workflow_dispatch' && inputs.kind == 'plan'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse a run outside main or a bad id
+        env:
+          ID: ${{ inputs.id }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - id: head
+        env:
+          ID: ${{ inputs.id }}
+        run: |
+          git -C main fetch --no-tags origin "refs/heads/tg-plan/$ID"
+          echo "commit=$(git -C main rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build the plan tag
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          ID: ${{ inputs.id }}
+          COMMIT: ${{ steps.head.outputs.commit }}
+        run: python3 -P -m action.plantag --repo main --task "$ID" --commit "$COMMIT" --run-id "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/tag.txt" --name-out "$RUNNER_TEMP/name.txt"
+      - name: Create the plan tag
+        env:
+          COMMIT: ${{ steps.head.outputs.commit }}
+        run: |
+          name="$(cat "$RUNNER_TEMP/name.txt")"
+          git -C main -c user.name="tollgate plan" -c user.email="tollgate@users.noreply.github.com" \
+            tag -a "$name" -F "$RUNNER_TEMP/tag.txt" "$COMMIT"
+          git -C main push origin "refs/tags/$name"
+      - name: Remove the plan branch
+        # The tag keeps the plan. Remove the branch only if it still points at the
+        # tagged commit, so a newer push to it is never lost.
+        env:
+          ID: ${{ inputs.id }}
+          COMMIT: ${{ steps.head.outputs.commit }}
+        run: |
+          # The id was checked against a strict pattern in the first step.
+          now="$(git -C main ls-remote origin "refs/heads/tg-plan/$ID" | cut -f1)"
+          if [[ -z "$now" ]]; then
+            echo "The plan branch is already gone."
+          elif [[ "$now" != "$COMMIT" ]]; then
+            echo "The plan branch moved after the tag, so it stays."
+          else
+            git -C main push origin --force-with-lease="refs/heads/tg-plan/$ID:$COMMIT" \
+              ":refs/heads/tg-plan/$ID"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tollgate-manifest
+          path: ${{ runner.temp }}/tag.txt
+          retention-days: 90
+  # The driver on GitHub: plan, freeze, build, and open pull requests. Each role
+  # runs in a container that gets only the model access. The driver pushes from
+  # outside it, with the token passed to each push alone. A roadmap runs its tasks
+  # one after another, so it gets the longest time GitHub allows a job.
+  task:
+    if: github.event_name == 'workflow_dispatch' && (inputs.kind == 'task' || inputs.kind == 'roadmap')
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.kind == 'roadmap' && 350 || 150 }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      checks: read
+    steps:
+      - name: Refuse a run outside main, a bad id, or no request
+        env:
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+          [[ "$KIND" == roadmap || -n "$REQUEST" ]] || { echo "give a request"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - name: Build the builder's image
+        # Claude Code, git, and Python for the project's tests. No credentials go in.
+        run: |
+          mkdir -p "$RUNNER_TEMP/image"
+          cat > "$RUNNER_TEMP/image/Dockerfile" <<'DOCKERFILE'
+          FROM node:22-slim
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates \
+           && rm -rf /var/lib/apt/lists/* \
+           && pip3 install --no-cache-dir --break-system-packages pytest pyyaml ruff \
+           && npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
+          DOCKERFILE
+          docker build -q -t tollgate-builder:ci "$RUNNER_TEMP/image"
+      - name: Get the roadmap, and where an earlier run stopped
+        # The roadmap and its checklist ticket come from the branch tg-roadmap/<id>,
+        # which /tollgate:task pushes. The roadmap's log comes from tollgate-logs, so a
+        # roadmap that ran out of time skips the tasks it finished.
+        if: inputs.kind == 'roadmap'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+        run: |
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -C main -c "http.extraheader=$auth" fetch -q origin "refs/heads/tg-roadmap/$ID"
+          # Only this roadmap's two files, and never over a file main already has.
+          road=".tollgate/roadmaps/$ID.md"
+          [[ ! -e "main/$road" ]] || { echo "main already has $road"; exit 1; }
+          mkdir -p main/.tollgate/roadmaps
+          git -C main show "FETCH_HEAD:$road" > "main/$road"
+          check="$(sed -n 's/^checklist: *//p' "main/$road" | head -1)"
+          [[ "$check" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "bad checklist id"; exit 1; }
+          [[ ! -e "main/.tollgate/tickets/$check" ]] || { echo "main already has the ticket $check"; exit 1; }
+          mkdir -p "main/.tollgate/tickets/$check"
+          git -C main show "FETCH_HEAD:.tollgate/tickets/$check/ticket.md" \
+            > "main/.tollgate/tickets/$check/ticket.md"
+          if git -C main -c "http.extraheader=$auth" fetch -q origin tollgate-logs 2>/dev/null; then
+            mkdir -p main/.tollgate/logs
+            git -C main show "FETCH_HEAD:.tollgate/logs/roadmap-$ID.jsonl" \
+              > "main/.tollgate/logs/roadmap-$ID.jsonl" 2>/dev/null \
+              || rm -f "main/.tollgate/logs/roadmap-$ID.jsonl"
+          fi
+      - name: Run the driver
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ID: ${{ inputs.id }}
+          KIND: ${{ inputs.kind }}
+          REQUEST: ${{ inputs.request }}
+        run: |
+          printf '%s\n' "$REQUEST" > "$RUNNER_TEMP/request.md"
+          git config --global user.name "tollgate driver"
+          git config --global user.email "tollgate@users.noreply.github.com"
+          started=$(date +%s)
+          set +e
+          if [[ "$KIND" == roadmap ]]; then
+            python3 -P -m driver.roadmap --project main --roadmap "$ID" \
+              --repository "$GITHUB_REPOSITORY"
+          else
+            python3 -P -m driver.task --project main --task "$ID" \
+              --request-file "$RUNNER_TEMP/request.md" --repository "$GITHUB_REPOSITORY"
+          fi
+          code=$?
+          echo "driver ended with $code after $(( ($(date +%s) - started) / 60 )) minutes"
+          [[ "$KIND" == task ]] && { python3 -P -m driver.report --project main --task "$ID" >/dev/null || true; }
+          python3 -P -m driver.report --project main --brief >> "$GITHUB_STEP_SUMMARY" || true
+          [ "$code" = 0 ] || [ "$code" = 3 ]
+      - name: Keep the logs on the branch tollgate-logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          src="$GITHUB_WORKSPACE/main/.tollgate"
+          dst="$RUNNER_TEMP/logs-branch"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          url="https://github.com/$GITHUB_REPOSITORY"
+          if git -c "http.extraheader=$auth" clone -q --depth 1 -b tollgate-logs "$url" "$dst" 2>/dev/null; then :; else
+            git init -q -b tollgate-logs "$dst"
+            git -C "$dst" remote add origin "$url"
+          fi
+          mkdir -p "$dst/.tollgate"
+          for part in logs reports plans roadmaps; do
+            [ -d "$src/$part" ] && cp -r "$src/$part" "$dst/.tollgate/"
+          done
+          cd "$dst"
+          git add -A
+          git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+            commit -q -m "logs: $KIND $ID" || exit 0
+          # Many runs push here at once. On a collision, take theirs and try again.
+          for try in 1 2 3 4 5; do
+            git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs && exit 0
+            sleep $(( try * 3 ))
+            git -c "http.extraheader=$auth" fetch -q origin tollgate-logs
+            git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+              rebase -q FETCH_HEAD || { git rebase --abort; exit 1; }
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tollgate-${{ inputs.kind }}-${{ inputs.id }}
+          path: |
+            main/.tollgate/logs
+            main/.tollgate/reports
+          if-no-files-found: ignore
+  # A pull request: find it, and check its branch name.
+  find:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'workflow_dispatch' && inputs.kind == 'check') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       (startsWith(github.event.comment.body, 'tollgate approve ') ||
+        startsWith(github.event.comment.body, 'tollgate check')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      sha: ${{ steps.pr.outputs.sha }}
+      branch: ${{ steps.pr.outputs.branch }}
+      ticket: ${{ steps.pr.outputs.ticket }}
+      approved: ${{ steps.pr.outputs.approved }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.id }}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || exit 1
+          data="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")"
+          # Only a pull request into the main branch gets a gate result.
+          if [[ "$(jq -r .base.ref <<<"$data")" != main ]]; then exit 0; fi
+          branch="$(jq -r .head.ref <<<"$data")"
+          # A branch name is text from the author of the change. Only a plain
+          # ticket branch goes on. Any other name fails gate rule 1.
+          [[ "$branch" =~ ^tg/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || branch="not-a-ticket-branch"
+          sha="$(jq -r .head.sha <<<"$data")"
+          # Approved: a person the settings on main accept approved this commit, by the
+          # same rule the gate applies. For a change made by hand, it decides whether
+          # its tests run with its own harness. Any error counts as not approved.
+          answer="$(python3 -P -m action.approval --repo main --repository "$GITHUB_REPOSITORY" \
+            --pr "$PR" --sha "$sha")" || answer=false
+          approved=false
+          [[ "$answer" == true ]] && approved=true
+          {
+            echo "pr=$PR"
+            echo "sha=$sha"
+            echo "branch=$branch"
+            echo "ticket=${branch#tg/}"
+            echo "approved=$approved"
+          } >> "$GITHUB_OUTPUT"
+  # Run the change's tests with a read-only token and no secrets.
+  test:
+    needs: find
+    if: needs.find.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.find.outputs.sha }}
+          path: change
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Put back the harness from main and the locked files
+        # A change made by hand and approved by a person runs with its own harness:
+        # the person vouches for it. Any other change runs with main's harness, so
+        # it cannot rewrite the tests that judge it.
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          TICKET: ${{ needs.find.outputs.ticket }}
+          BRANCH: ${{ needs.find.outputs.branch }}
+          APPROVED: ${{ needs.find.outputs.approved }}
+        run: |
+          if [[ "$BRANCH" == not-a-ticket-branch && "$APPROVED" == true ]]; then
+            echo "Approved by a person: the change's own harness stays."
+          else
+            python3 -P -m action.prepare --repo change --base origin/main --ticket "$TICKET"
+          fi
+      - name: Run the checks
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+        run: python3 -P -m action.checks --repo change --base origin/main --setup --out "$RUNNER_TEMP/results.json"
+      - name: Fail when a check failed
+        run: |
+          python3 - "$RUNNER_TEMP/results.json" <<'PY'
+          import json, sys
+          failed = [c["name"] for c in json.load(open(sys.argv[1]))["checks"] if not c["passed"]]
+          print("Failed checks: " + (", ".join(failed) if failed else "none"))
+          sys.exit(1 if failed else 0)
+          PY
+  # The review reads the change as text. It holds the model access.
+  review:
+    needs: find
+    if: needs.find.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tollgate-ai/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - name: Fetch the change as data
+        env:
+          PR: ${{ needs.find.outputs.pr }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C main -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            fetch --no-tags origin "refs/pull/$PR/head"
+      - name: Work out the tier
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          SHA: ${{ needs.find.outputs.sha }}
+          BRANCH: ${{ needs.find.outputs.branch }}
+        run: python3 -P -m action.review --repo main --base origin/main --head "$SHA" --branch "$BRANCH" --tier-out "$RUNNER_TEMP/tier.txt"
+      - id: tier
+        run: echo "tier=$(cat "$RUNNER_TEMP/tier.txt")" >> "$GITHUB_OUTPUT"
+      # Newer npm skips install scripts unless they are allowed.
+      - name: Install Claude Code for tier 3 and 4
+        if: steps.tier.outputs.tier >= 3
+        run: |
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
+          claude --version
+      - name: Review
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          SHA: ${{ needs.find.outputs.sha }}
+          BRANCH: ${{ needs.find.outputs.branch }}
+          GH_TOKEN: ${{ github.token }}
+          # Either one works. An unset secret arrives as an empty string.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python3 -P -m action.review --repo main --base origin/main --head "$SHA" --branch "$BRANCH" --repository "$GITHUB_REPOSITORY" --post "$SHA"
