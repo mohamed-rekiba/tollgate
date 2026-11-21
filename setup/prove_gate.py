@@ -43,9 +43,6 @@ def prove(gh, repository: str, ticket: str, project: str = ".", git=_git, sleep=
           seconds: int = WAIT_SECONDS, keep_branch: bool = False) -> dict:
     branch = f"tg/{ticket}"
     tag = f"tg/freeze/{ticket}/1"
-    gh.api("POST", f"repos/{repository}/actions/workflows/tollgate-freeze.yml/dispatches",
-           {"ref": "main", "inputs": {"ticket": ticket}})
-
     def tag_message():
         try:
             ref = gh.get(f"repos/{repository}/git/ref/tags/{tag}")
@@ -55,10 +52,14 @@ def prove(gh, repository: str, ticket: str, project: str = ".", git=_git, sleep=
             raise
         return gh.get(f"repos/{repository}/git/tags/{ref['object']['sha']}")["message"]
 
+    # A second run reuses the freeze it made, so it gives the same result.
+    if tag_message() is None:
+        gh.api("POST", f"repos/{repository}/actions/workflows/tollgate-freeze.yml/dispatches",
+               {"ref": "main", "inputs": {"ticket": ticket}})
     manifest = mf.loads(_wait(tag_message, f"the tag {tag}", sleep, seconds))
     locked = min(p for p in manifest["files"] if not p.endswith("ticket.md"))
     git(project, "fetch", "origin", branch)
-    git(project, "switch", "-C", branch, f"origin/{branch}")
+    git(project, "switch", "-C", branch, "FETCH_HEAD")
     with open(f"{project}/{locked}", "a") as f:
         f.write("\n")
     git(project, "commit", "-am", "proof: change a locked test")

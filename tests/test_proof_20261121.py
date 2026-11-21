@@ -11,3 +11,4 @@ class Proof(unittest.TestCase):
     def test_c2_takes_no_arguments(self):
         from lab.proof import tollgate_proof
         self.assertEqual(tollgate_proof.__code__.co_argcount, 0)
+
