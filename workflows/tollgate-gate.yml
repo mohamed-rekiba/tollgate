@@ -78,15 +78,16 @@ jobs:
       actions: read
       checks: write
     steps:
+      # This job runs no code from the change, so it keeps its read-only token
+      # to fetch the change from a private repository.
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: false
       - name: Fetch the change as data
         env:
           PR: ${{ needs.find.outputs.pr }}
-        run: git fetch --no-tags "https://github.com/$GITHUB_REPOSITORY" "refs/pull/$PR/head"
+        run: git fetch --no-tags origin "refs/pull/$PR/head"
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
