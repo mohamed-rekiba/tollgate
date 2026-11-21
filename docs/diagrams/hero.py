@@ -1,7 +1,7 @@
 """The README banner: an isometric line drawing of a change passing the gate.
 
 On the left, the name and the promise. On the right, on a fine grid: the AI's
-room, the gate with its barrier, and the main branch on the server. One
+room, the gate with its barrier, and the main branch on GitHub. One
 change leaves the room, waits at the gate while the locked tests run, the
 barrier lifts, and it goes in. A red path shows what happens on a fail.
 
@@ -36,7 +36,7 @@ COLORS = {
 
 TITLE = "Tollgate: AI writes the code, locked tests decide"
 DESC = ("A banner. On the left: Tollgate, a governed workflow for Claude Code. AI writes the "
-        "code; locked tests decide. Tests are written first and locked on the server, out of "
+        "code; locked tests decide. Tests are written first and locked on GitHub, out of "
         "the AI's reach, and only a pass goes in. On the right, an isometric drawing: a change "
         "leaves the AI's room, waits at the gate while the locked tests run, the barrier lifts, "
         "and it goes into the main branch. A red path shows that what failed goes back to the "
@@ -193,7 +193,7 @@ def callout(c):
         (f'<text x="{x + 12:.1f}" y="{y + 42:.1f}" font-size="12" fill="{c["ink"]}">'
         f'locked tests: 14 of 14 pass</text>'),
         (f'<text x="{x + 12:.1f}" y="{y + 62:.1f}" font-size="12" fill="{c["muted"]}">'
-        f'checked by the server, not the AI</text>'),
+        f'checked on GitHub, not by the AI</text>'),
     ]
     return out
 
@@ -241,7 +241,7 @@ def left_panel(c):
         out.append(f'<text x="60" y="{212 + i * 60}" font-size="46" font-weight="800" '
                    f'letter-spacing="-0.5" fill="{c["ink"]}">{line}</text>')
     for i, line in enumerate(("Tests are written first and locked on",
-                              "the server, out of the AI's reach.",
+                              "GitHub, out of the AI's reach.",
                               "Only a pass goes in.")):
         out.append(f'<text x="60" y="{340 + i * 27}" font-size="17" '
                    f'fill="{c["muted"]}">{escape(line)}</text>')

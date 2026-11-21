@@ -1,7 +1,7 @@
 {
  "type": "scene",
- "title": "The AI's room and the server",
- "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to the server. On the right, the server: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.",
+ "title": "The AI's room and GitHub",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to GitHub. On the right, GitHub: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.",
  "size": [
   1120,
   620
@@ -14,7 +14,7 @@
  "grid": 420,
  "caption": [
   "Who holds the key",
-  "the AI builds in its room; only the server can let a change in"
+  "the AI builds in its room; only GitHub can let a change in"
  ],
  "zones": [
   {
@@ -134,7 +134,7 @@
    "head": "The AI's room",
    "sub": [
     "writes code, runs tests",
-    "no key to the server"
+    "no key to GitHub"
    ],
    "anchor": "middle"
   },

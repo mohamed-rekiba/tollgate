@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" width="1120" height="600" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Where each part runs</title>
-<desc id="desc">An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On the server runs one workflow: it locks the tests, and the gate runs them on every change. The plugin starts the workflow, and the workflow reports back.</desc>
+<desc id="desc">An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On GitHub runs one workflow: it locks the tests, and the gate runs them on every change. The plugin starts the workflow, and the workflow reports back.</desc>
 <defs><radialGradient id="glow" cx="0.500" cy="0.550" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1120" height="600" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#8250df"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect width="1120" height="600" fill="#ffffff"/>
@@ -130,7 +130,7 @@
 <g class="still" style="transform-origin:599.2px 413.5px"><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#9a6700" stroke-width="8" stroke-linecap="round"/><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#ffffff" stroke-width="4" stroke-dasharray="9 9"/></g>
 <circle cx="599.2" cy="413.5" r="4.5" fill="#9a6700"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#1f2328">WHERE EACH PART RUNS</text>
-<text x="40" y="68" font-size="12" fill="#59636e">a plugin on your machine, one workflow on the server</text>
+<text x="40" y="68" font-size="12" fill="#59636e">a plugin on your machine, one workflow on GitHub</text>
 <rect x="555.8" y="308.7" width="55.6" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="583.6" y="322.7" text-anchor="middle" font-size="11" fill="#59636e">starts</text>
 <rect x="488.8" y="336.0" width="95.2" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
@@ -139,7 +139,7 @@
 <text x="310.1" y="412.3" text-anchor="end" font-size="12" fill="#59636e">the commands you type in Claude Code</text>
 <text x="310.1" y="428.3" text-anchor="end" font-size="12" fill="#59636e">the driver that runs the steps</text>
 <text x="310.1" y="444.3" text-anchor="end" font-size="12" fill="#59636e">the instructions for each AI role</text>
-<text x="776.2" y="517.2" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE SERVER: ONE WORKFLOW</text>
+<text x="776.2" y="517.2" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">GITHUB: ONE WORKFLOW</text>
 <text x="776.2" y="533.2" text-anchor="start" font-size="12" fill="#59636e">it locks the tests</text>
 <text x="776.2" y="549.2" text-anchor="start" font-size="12" fill="#59636e">the gate runs them on every change</text>
 </svg>

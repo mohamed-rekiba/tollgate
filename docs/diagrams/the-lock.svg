@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 954 167" width="954" height="167" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The idea of Tollgate in four steps</title>
-<desc id="desc">First the tests are written; they say what done means. Then they are locked on the server, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.</desc>
+<desc id="desc">First the tests are written; they say what done means. Then they are locked on GitHub, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-24" y="-24" width="954" height="167" fill="#ffffff"/>
@@ -16,9 +16,9 @@
 <text x="14.0" y="87.0" font-size="12" fill="#59636e">done means</text>
 <path d="M238.4,8.0 A95.2,8 0 0 1 428.8,8.0 V111.0 A95.2,8 0 0 1 238.4,111.0 Z" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/><path d="M238.4,8.0 A95.2,8 0 0 0 428.8,8.0" fill="none" stroke="#1a7f37" stroke-width="1.3"/>
 <g transform="translate(252.4,24.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
-<text x="278.4" y="37.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 2 · SERVER</text>
+<text x="278.4" y="37.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 2 · GITHUB</text>
 <text x="252.4" y="64.0" font-size="14" font-weight="700" fill="#1f2328">Lock them</text>
-<text x="252.4" y="82.0" font-size="12" fill="#59636e">On the server, out</text>
+<text x="252.4" y="82.0" font-size="12" fill="#59636e">On GitHub, out</text>
 <text x="252.4" y="99.0" font-size="12" fill="#59636e">of the AI's reach</text>
 <rect x="476.8" y="0.0" width="190.4" height="119.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M485.8,-4.0 H472.8 V9.0" fill="none" stroke="#8250df" stroke-width="1.2"/>

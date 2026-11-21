@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 620" width="1120" height="620" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
-<title id="title">The AI's room and the server</title>
-<desc id="desc">An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to the server. On the right, the server: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.</desc>
+<title id="title">The AI's room and GitHub</title>
+<desc id="desc">An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to GitHub. On the right, GitHub: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.</desc>
 <defs><radialGradient id="glow" cx="0.500" cy="0.581" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1120" height="620" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#ab7df8"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.arm{transform-box:view-box;animation:arm 6.15s ease-in-out infinite}@keyframes arm{0%,21.7%{transform:rotate(0)}25.7%,65.9%{transform:rotate(80deg)}71.9%,100%{transform:rotate(0)}}@media (prefers-reduced-motion:reduce){.main,.side,.arm{animation:none}.ticket{display:none}}</style>
 <rect width="1120" height="620" fill="#0d1117"/>
@@ -127,14 +127,14 @@
 <circle cx="699.9" cy="426.4" r="2.1" fill="#3fb950"/>
 <line x1="709.6" y1="432.0" x2="727.7" y2="442.4" stroke="#3fb950" stroke-width="2" stroke-linecap="round"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#f0f6fc">WHO HOLDS THE KEY</text>
-<text x="40" y="68" font-size="12" fill="#9198a1">the AI builds in its room; only the server can let a change in</text>
+<text x="40" y="68" font-size="12" fill="#9198a1">the AI builds in its room; only GitHub can let a change in</text>
 <rect x="622.9" y="395.6" width="82.0" height="20" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="663.9" y="409.6" text-anchor="middle" font-size="11" fill="#9198a1">the change</text>
 <rect x="435.9" y="325.0" width="95.2" height="20" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="483.5" y="339.0" text-anchor="middle" font-size="11" fill="#9198a1">pass or fail</text>
 <text x="310.6" y="152.0" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">THE AI'S ROOM</text>
 <text x="310.6" y="168.0" text-anchor="middle" font-size="12" fill="#9198a1">writes code, runs tests</text>
-<text x="310.6" y="184.0" text-anchor="middle" font-size="12" fill="#9198a1">no key to the server</text>
+<text x="310.6" y="184.0" text-anchor="middle" font-size="12" fill="#9198a1">no key to GitHub</text>
 <text x="754.0" y="296.0" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">LOCKED TESTS</text>
 <text x="754.0" y="312.0" text-anchor="middle" font-size="12" fill="#9198a1">nobody can change them</text>
 <text x="719.3" y="532.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">MAIN</text>

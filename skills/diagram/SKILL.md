@@ -18,6 +18,7 @@ The reader has never seen the project's code. Every word in the picture is for t
 
 - Use plain words. No ids, tag names, hashes, file paths, job names, or code names in a box. "Lock the tests", not "freeze-lock" or `tg/freeze/T-12/1`. A name from the code may appear once, small, on the last line of a box, when the reader needs it to find the code.
 - Use the same word for the same thing in every diagram and in the text around it.
+- Name the real thing. "GitHub", not "the server"; "your laptop", not "the client".
 - A box has a title of a few words, then at most two short lines.
 - One diagram, one idea, about ten boxes at most. Split a bigger one.
 - `desc` says what the picture means, in one or two sentences, for someone who cannot see it.
@@ -43,7 +44,7 @@ The format, with every option, is at the top of `$TG/diagram/flow.py`. In short:
   - `subprocess`: a box with double sides. A step that has its own diagram.
   - `wait`: a D. The flow waits, for a person or for time.
   - `manual`: a trapezoid. A person does it by hand.
-- `kind`: who acts or drives the step: `you` (blue), `ai` (purple), `server` (green), `check` (amber), `advisor` (orange). It sets the color, the icon, and the small label over the title. Use the same kind for the same actor everywhere. Give every box the kind closest to its meaning: a diagram that is all gray reads as unfinished, and the test refuses it. Leave a box gray only when it is outside the story, like a legend.
+- `kind`: who acts or drives the step: `you` (blue), `ai` (purple), `server` (green), `check` (amber), `advisor` (orange). It sets the color, the icon, and the small label over the title. Use the same kind for the same actor everywhere. Name it for the reader: `"names": {"server": "GitHub"}` makes the label say GITHUB, because "the server" alone tells a reader nothing. Give every box the kind closest to its meaning: a diagram that is all gray reads as unfinished, and the test refuses it. Leave a box gray only when it is outside the story, like a legend.
 - `icon`: another icon by name. The sheet of icons is `$TG/docs/diagrams/icons.svg`. `step` adds STEP n; `tag` sets the small label.
 - `edges`: arrows. `label` says what travels or why. `tone` is `pass` (green) or `fail` (red), always with a label. `dashed` is a side path. `loop` (left, right, above, below) is an arrow that goes back. `route` (vhv, vh, hv) picks where it bends.
 - `groups`: a border around boxes that belong together, such as "For each ticket".

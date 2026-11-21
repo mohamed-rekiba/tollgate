@@ -1,6 +1,6 @@
 {
  "title": "How one ticket is built",
- "desc": "The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to the server, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
+ "desc": "The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to GitHub, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
  "nodes": [
   {
    "id": "b",
@@ -21,7 +21,7 @@
   },
   {
    "id": "s",
-   "text": "Send to the server\nIt runs the tests again",
+   "text": "Send to GitHub\nIt runs the tests again",
    "col": 2,
    "row": 0,
    "kind": "server",
@@ -74,5 +74,8 @@
    "label": "after 3 tries",
    "dashed": true
   }
- ]
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
 }

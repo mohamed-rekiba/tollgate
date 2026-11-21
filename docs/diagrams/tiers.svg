@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 1010 134" width="1010" height="134" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The four tiers</title>
-<desc id="desc">Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tier 3, login, payments, or user data, adds a review on the server. Tier 4, data, production, or the locks themselves, adds a person's approval.</desc>
+<desc id="desc">Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tier 3, login, payments, or user data, adds a review on GitHub. Tier 4, data, production, or the locks themselves, adds a person's approval.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-24" y="-24" width="1010" height="134" fill="#ffffff"/>
@@ -28,7 +28,7 @@
 <g transform="translate(518.8,12.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
 <text x="544.8" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">TIER 3</text>
 <text x="518.8" y="52.0" font-size="14" font-weight="700" fill="#1f2328">Login, payments, data</text>
-<text x="518.8" y="70.0" font-size="12" fill="#59636e">+ a server review</text>
+<text x="518.8" y="70.0" font-size="12" fill="#59636e">+ a review on GitHub</text>
 <rect x="757.2" y="0.0" width="204.4" height="86.0" rx="4" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M766.2,-4.0 H753.2 V9.0" fill="none" stroke="#0969da" stroke-width="1.2"/>
 <path d="M952.6,90.0 H965.6 V77.0" fill="none" stroke="#0969da" stroke-width="1.2"/>

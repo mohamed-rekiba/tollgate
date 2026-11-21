@@ -65,5 +65,8 @@
    "from": "s3",
    "to": "s4"
   }
- ]
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
 }

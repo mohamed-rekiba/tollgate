@@ -39,5 +39,8 @@
    "from": "b",
    "to": "c"
   }
- ]
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
 }
