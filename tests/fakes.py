@@ -246,9 +246,6 @@ class LocalServer:
         self.prs.append({"branch": branch, "title": title, "body": body})
         return len(self.prs)
 
-    def wait_gate(self, sha):
-        return "success"
-
     def merge(self, pr):
         self.merged.append(pr)
 

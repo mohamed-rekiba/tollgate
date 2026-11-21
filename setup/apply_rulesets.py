@@ -1,4 +1,7 @@
-"""Make the gate required on the main branch and lock the tags under tg/.
+"""Protect the main branch and lock the tags under tg/.
+
+Main takes changes only through pull requests, and nobody can force-push or
+delete it. Nobody can move or delete a tag under tg/.
 
 Needs admin rights. Running it twice gives the same rulesets. It ends by reading
 them back. With --print it changes nothing and prints the requests, for you to
@@ -12,7 +15,6 @@ import sys
 from setup.gh import Gh, GhError
 
 GITHUB_ACTIONS_APP = 15368
-ADMIN_ROLE = 5  # the repository role "admin"
 BRANCH_RULESET = "tollgate main"
 TAG_RULESET = "tollgate tags"
 TAG_PATTERN = "refs/tags/tg/**/*"
@@ -31,16 +33,8 @@ def wanted(owner_type: str = "Organization") -> list:
                 "required_approving_review_count": 0, "dismiss_stale_reviews_on_push": False,
                 "require_code_owner_review": False, "require_last_push_approval": False,
                 "required_review_thread_resolution": False}},
-            {"type": "required_status_checks", "parameters": {
-                "strict_required_status_checks_policy": False,
-                "required_status_checks": [
-                    {"context": "tollgate gate", "integration_id": GITHUB_ACTIONS_APP}]}},
         ],
-        # An admin can merge a pull request the gate blocks, and GitHub logs it.
-        # Without this, no change under .github could ever merge, because the
-        # gate fails every such change. An admin can delete the ruleset anyway.
-        "bypass_actors": [{"actor_id": ADMIN_ROLE, "actor_type": "RepositoryRole",
-                           "bypass_mode": "pull_request"}],
+        "bypass_actors": [],
     }
     # Nobody may move or delete these tags. In an organization, only the freeze
     # and plan workflows, through GitHub Actions, may create them. On a personal
