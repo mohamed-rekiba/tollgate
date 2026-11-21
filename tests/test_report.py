@@ -1,5 +1,6 @@
 """Tests for the done and still-to-do summary."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -101,3 +102,61 @@ class ProgressTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RoadmapReportTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.p = self.tmp.name
+        Path(self.p, ".tollgate/logs").mkdir(parents=True)
+
+    def log(self, rid, events):
+        Path(self.p, ".tollgate/logs").mkdir(parents=True, exist_ok=True)
+        Path(self.p, f".tollgate/logs/roadmap-{rid}.jsonl").write_text(
+            "".join(json.dumps(e) + "\n" for e in events))
+
+    def roadmap(self, rid, tasks):
+        Path(self.p, ".tollgate/roadmaps").mkdir(parents=True, exist_ok=True)
+        lines = "".join(f"- {t}: do {t}.\n" for t in tasks[1:])
+        Path(self.p, f".tollgate/roadmaps/{rid}.md").write_text(
+            f"---\nid: {rid}\nchecklist: {rid}-done\n---\n## Request\nAll of it.\n\n"
+            f"## Base\n- {tasks[0]}: the base.\n\n## Skeleton\n\n## Features\n{lines}\n"
+            f"## Not yet specified\nMore.\n")
+
+    def test_a_running_roadmap_shows_its_count_and_the_next_task(self):
+        self.roadmap("orders", ["orders-base", "orders-create", "orders-list"])
+        self.log("orders", [{"event": "checklist_frozen"},
+                            {"event": "task_done", "stage": "Base", "task": "orders-base", "code": 0},
+                            {"event": "base_passed"}])
+        text = report.brief(self.p)
+        self.assertIn("Roadmap orders: the base passes all five checks.", text)
+        self.assertIn("Roadmap orders: 1 of 3 tasks done. Now: orders-create (features).", text)
+
+    def test_a_stopped_roadmap_says_why_and_a_finished_one_says_done(self):
+        self.log("a", [{"event": "checklist_frozen"},
+                       {"event": "roadmap_waiting", "reason": "the base is not ready: one_log_line"}])
+        self.log("b", [{"event": "task_done", "stage": "Base", "task": "b-1", "code": 0},
+                       {"event": "roadmap_done"}])
+        text = report.brief(self.p)
+        self.assertIn("Roadmap a: stopped, 0 tasks done so far. The base is not ready", text)
+        self.assertIn("Roadmap b: done. All 1 tasks and the checklist for the whole request pass.",
+                      text)
+
+    def test_local_runs_and_github_runs_are_read_together(self):
+        import subprocess
+        def git(*a):
+            subprocess.run(["git", *a], cwd=self.p, check=True, capture_output=True)
+        git("init", "-q", "-b", "main")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x")
+        git("checkout", "-q", "-b", "tollgate-logs")
+        self.log("remote", [{"event": "roadmap_done"}])
+        git("add", "-f", ".tollgate")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "logs")
+        git("checkout", "-q", "main")
+        git("update-ref", "refs/remotes/origin/tollgate-logs", "tollgate-logs")
+        self.log("local", [{"event": "checklist_frozen"}])
+        folder = report.logs_from_branch(self.p, "tollgate-logs")
+        text = report.brief(folder)
+        self.assertIn("Roadmap remote: done.", text)
+        self.assertIn("Roadmap local:", text)
