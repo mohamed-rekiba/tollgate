@@ -148,7 +148,7 @@ A change passes when all six rules hold:
 5. **Tests and checks.** Every check passes. Every test in the manifest ran and passed. No locked test was skipped.
 6. **Review.** For tier 3, the review on the server passed, or a person approved. For tier 4, the review is advice for the person who approves: it never blocks an approval, so a broken review cannot block its own fix.
 
-A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
+A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. A change made by hand, on a branch that is not a ticket branch, needs an approval by a person in place of a ticket, as described under rule 4: rules 1 and 2 then pass, rule 4 is met by the same approval, the checks still run, and they run with the change's own harness, because the person vouches for it. A ticket branch can never take this path: its locked tests always apply. When the gate fails for want of an approval, it prints the exact comment to write. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
 
 On the server, the gate itself comes from the Action, the harness comes from the main branch, and the locked tests come from the freeze. A change cannot bring its own.
 

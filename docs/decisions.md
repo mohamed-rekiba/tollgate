@@ -127,3 +127,9 @@ Two attempts failed the same way when the names of the failed checks and the ids
 - E2, the container: [experiments/scripts/e2_closed_room.sh](experiments/scripts/e2_closed_room.sh).
 - E3, a fake check with the gate's name: [experiments/scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md). Tollgate's own defense is that the driver never sends a change under `.github/`. A person who adds such a file can still fake the check. If GitHub counts the fake check as passed, the fallback is a second required check that a pull request cannot add: the review workflow, which then also runs for tier 1 and 2.
 - E4, a driver that outlives a closed session: [experiments/scripts/e4_long_run.md](experiments/scripts/e4_long_run.md).
+
+## A change made by hand needs a person, not a ticket
+
+The gate's rules 1 to 3 prove that an AI change was built against tests locked before the build. A change a person makes by hand has no ticket and no locked tests, so it always failed rule 1, and a change to the harness always failed rule 5: the test job puts main's harness back, so a new workflow was tested against the old one. The only way through was to merge around a red gate.
+
+Now a change on a branch that is not a ticket branch passes rules 1 and 2 with an approval by a person under `approvers`: a comment `tollgate approve <the head commit>`, or an approving review. The same approval meets rule 4, and the test job then keeps the change's own harness. The checks still run and must pass. A ticket branch cannot take this path. The gate's failure message prints the comment to write.
