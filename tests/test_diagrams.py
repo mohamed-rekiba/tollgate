@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIAGRAMS = ROOT / "docs" / "diagrams"
 NS = "{http://www.w3.org/2000/svg}"
-SKIP = {".git", "node_modules", ".tollgate", "fixtures"}
+SKIP = {".git", "node_modules", "dist", ".tollgate", "fixtures"}
 
 
 def files(pattern):
