@@ -1,6 +1,19 @@
 # E2: The closed room
 
-**Result: the container half passed. The model half is not run.**
+**Result: passed, both halves.**
+
+## The model half, on GitHub
+
+Run `tollgate e2 room-1`, on 2026-11-21, as `tollgate.yml` kind `e2`: Claude Code 2.1.330 in `tollgate-builder:ci`, with only `CLAUDE_CODE_OAUTH_TOKEN` passed in.
+
+| Check | Result |
+| --- | --- |
+| The output parses as data and holds a cost | Yes, 0.04 USD. |
+| The file changed in the copy | Yes. |
+| A push from inside, to GitHub, fails | Yes. |
+| GitHub tokens inside the container | 0. |
+
+## The container half
 
 ## What ran
 
@@ -16,10 +29,6 @@ The roles were fake roles with the same contract as Claude Code: read the prompt
 | A `GH_TOKEN` set for the driver does not reach the role. | Passed: the role saw no variable with `TOKEN` or `GH` in its name, and an empty home folder. |
 | Files written inside belong to the user who runs the driver. | Passed. |
 | The driver builds a ticket with `sandbox: container`, every role in the container: one failed attempt, one passed attempt, a pull request. | Passed. |
-
-## What is not run
-
-Claude Code inside the container, with a model key. The workspace has no model key, and it must not use its own model access as Tollgate's builder. [scripts/e2_closed_room.sh](scripts/e2_closed_room.sh) runs that half on any machine with Docker or Podman and `ANTHROPIC_API_KEY`.
 
 ## How to run it again
 
