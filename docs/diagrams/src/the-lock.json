@@ -1,6 +1,6 @@
 {
  "title": "The idea of Tollgate in four steps",
- "desc": "First the tests are written; they say what done means. Then they are locked on the server, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.",
+ "desc": "First the tests are written; they say what done means. Then they are locked on GitHub, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.",
  "nodes": [
   {
    "id": "a",
@@ -14,7 +14,7 @@
   },
   {
    "id": "b",
-   "text": "Lock them\nOn the server, out\nof the AI's reach",
+   "text": "Lock them\nOn GitHub, out\nof the AI's reach",
    "col": 1,
    "row": 0,
    "kind": "server",
@@ -56,5 +56,8 @@
    "from": "c",
    "to": "d"
   }
- ]
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
 }

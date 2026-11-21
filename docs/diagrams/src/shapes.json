@@ -84,5 +84,8 @@
    "tag": "\"manual\""
   }
  ],
- "edges": []
+ "edges": [],
+ "names": {
+  "server": "GITHUB"
+ }
 }

@@ -1,7 +1,7 @@
 {
  "type": "scene",
  "title": "Where each part runs",
- "desc": "An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On the server runs one workflow: it locks the tests, and the gate runs them on every change. The plugin starts the workflow, and the workflow reports back.",
+ "desc": "An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On GitHub runs one workflow: it locks the tests, and the gate runs them on every change. The plugin starts the workflow, and the workflow reports back.",
  "size": [
   1120,
   600
@@ -14,7 +14,7 @@
  "grid": 420,
  "caption": [
   "Where each part runs",
-  "a plugin on your machine, one workflow on the server"
+  "a plugin on your machine, one workflow on GitHub"
  ],
  "zones": [
   {
@@ -138,7 +138,7 @@
     60,
     -20
    ],
-   "head": "The server: one workflow",
+   "head": "GitHub: one workflow",
    "sub": [
     "it locks the tests",
     "the gate runs them on every change"

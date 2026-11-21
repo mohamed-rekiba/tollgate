@@ -1,6 +1,6 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and the server checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.",
+ "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and GitHub checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.",
  "nodes": [
   {
    "id": "s1",
@@ -53,7 +53,7 @@
   },
   {
    "id": "s6",
-   "text": "The server checks and merges\nIt runs the tests again",
+   "text": "GitHub checks and merges\nIt runs the tests again",
    "col": 0,
    "row": 5,
    "kind": "server",
@@ -128,5 +128,8 @@
    "kind": "neutral",
    "icon": "retry"
   }
- ]
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
 }

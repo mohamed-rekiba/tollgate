@@ -17,6 +17,7 @@ A spec is a dict, often read from JSON:
                 "tone": "pass" | "fail", "dashed": true,
                 "loop": "left" | "right" | "above" | "below",
                 "route": "vhv" | "vh" | "hv"}],
+     "names": {"server": "GitHub"},
      "groups": [{"label": "The server", "nodes": ["a", "b"], "kind": "server",
                  "icon": "lock", "aws": "vpc"}],
      "ticket": {"path": [["a", "b"], ["b", "c"]], "wait": {"b": 1.2}}}
@@ -31,7 +32,8 @@ The design:
   does it by hand) is a trapezoid.
 - Nodes sit on a grid of columns and rows. All boxes share one width.
 - "kind" says who acts. It sets the color, the icon, and the small label over
-  the title (YOU, AI, SERVER, CHECK, ADVISOR). "icon" picks another icon from
+  the title (YOU, AI, SERVER, CHECK, ADVISOR). "names" renames those labels
+  for the whole diagram, such as {"server": "GitHub"}. "icon" picks another icon from
   diagram/icons.py. "step" adds STEP n. "tag" replaces the label. A box with
   no kind is neutral slate.
 - "aws" draws the official AWS service icon with its name under it, the way
@@ -115,7 +117,7 @@ def text_width(s, size, spacing=0.0):
 def eyebrow(node):
     if node.get("tag"):
         return node["tag"]
-    name = KIND_NAMES.get(node.get("kind"), "")
+    name = node.get("kind_name") or KIND_NAMES.get(node.get("kind"), "")
     if node.get("step") is not None:
         return f"STEP {node['step']}" + (f" · {name}" if name else "")
     return name
@@ -557,6 +559,10 @@ def check(spec):
 
 def draw(spec, theme):
     check(spec)
+    names = {k: v.upper() for k, v in (spec.get("names") or {}).items()}
+    if names:
+        spec = dict(spec, nodes=[dict(n, kind_name=names[n["kind"]]) if n.get("kind") in names
+                                 else n for n in spec["nodes"]])
     t = THEMES[theme]
     boxes = layout(spec)
     lanes = loop_lanes(spec, boxes)

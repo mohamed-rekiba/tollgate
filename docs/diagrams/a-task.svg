@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-149 -24 808 1120" width="808" height="1120" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">A task from start to finish</title>
-<desc id="desc">You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and the server checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.</desc>
+<desc id="desc">You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and GitHub checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-149" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-149" y="-24" width="808" height="1120" fill="#ffffff"/>
@@ -35,7 +35,7 @@
 <text x="14.0" y="400.0" font-size="12" fill="#59636e">Each one small</text>
 <path d="M0.0,498.0 A140.0,8 0 0 1 280.0,498.0 V584.0 A140.0,8 0 0 1 0.0,584.0 Z" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/><path d="M0.0,498.0 A140.0,8 0 0 0 280.0,498.0" fill="none" stroke="#1a7f37" stroke-width="1.3"/>
 <g transform="translate(14.0,514.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
-<text x="40.0" y="527.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 4 · SERVER</text>
+<text x="40.0" y="527.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 4 · GITHUB</text>
 <text x="14.0" y="554.0" font-size="14" font-weight="700" fill="#1f2328">Tests are written, then locked</text>
 <text x="14.0" y="572.0" font-size="12" fill="#59636e">Before any code</text>
 <rect x="0.0" y="666.0" width="280.0" height="86.0" rx="2" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/><path d="M8.0,666.0 V752.0 M272.0,666.0 V752.0" stroke="#8250df" stroke-width="1.3"/>
@@ -47,8 +47,8 @@
 <path d="M9.0,822.0 H-4.0 V835.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <path d="M271.0,916.0 H284.0 V903.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <g transform="translate(14.0,838.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
-<text x="40.0" y="851.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 6 · SERVER</text>
-<text x="14.0" y="878.0" font-size="14" font-weight="700" fill="#1f2328">The server checks and merges</text>
+<text x="40.0" y="851.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 6 · GITHUB</text>
+<text x="14.0" y="878.0" font-size="14" font-weight="700" fill="#1f2328">GitHub checks and merges</text>
 <text x="14.0" y="896.0" font-size="12" fill="#59636e">It runs the tests again</text>
 <rect x="0.0" y="986.0" width="280.0" height="86.0" rx="43.0" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(82.0,999.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16"/><path d="M7 17v-4M12 17V8M17 17v-6.5"/><path d="M5 9l5-4.5l4 3l5-4"/></g>
