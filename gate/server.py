@@ -56,7 +56,7 @@ class Server:
         if proc.returncode != 0:
             raise ServerError(f"artifact of run {run_id}: {proc.stderr.decode().strip()}")
         with zipfile.ZipFile(io.BytesIO(proc.stdout)) as z:
-            from action import manifest as mf
+            from gate import manifest as mf
             return mf.loads(z.read("tag.txt").decode())
 
     def approvals(self, pr: int) -> list:

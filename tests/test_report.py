@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import plan as pl
+from gate import plan as pl
 from driver import report
 from driver.log import Log
 

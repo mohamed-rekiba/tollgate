@@ -9,8 +9,8 @@ import json
 import re
 import sys
 
-from action import plan as pl
-from action.gitio import fingerprint, git, show_bytes
+from gate import plan as pl
+from gate.gitio import fingerprint, git, show_bytes
 
 MAX_PLANS = 5
 NUMBER = re.compile(r"[1-9][0-9]{0,3}", re.ASCII)

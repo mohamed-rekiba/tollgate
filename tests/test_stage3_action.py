@@ -2,9 +2,9 @@
 
 import unittest
 
-from action import manifest as mf
-from action import plan as pl
-from action import plantag, review
+from gate import manifest as mf
+from gate import plan as pl
+from gate import plantag, review
 from tests.helpers import TICKET, Repo, settings_text
 
 PLAN = """---

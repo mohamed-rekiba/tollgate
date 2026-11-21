@@ -11,9 +11,9 @@ import json
 import sys
 import tempfile
 
-from action import gate, tiers
-from action import settings as st
-from action.gitio import changed_files, git, show_bytes
+from gate import gate, tiers
+from gate import settings as st
+from gate.gitio import changed_files, git, show_bytes
 
 REVIEW_CHECK = gate.REVIEW_CHECK
 LENSES_BY_TIER = {3: ("change", "security"), 4: ("change", "security")}
@@ -94,7 +94,7 @@ def main(argv=None) -> int:
     print(json.dumps({"passed": passed, "title": title}))
     print(text)
     if args.post and args.repository:
-        from action.server import Server
+        from gate.server import Server
         Server(args.repository).post_check(args.post, REVIEW_CHECK, passed, title, text)
     return 0 if passed else 1
 

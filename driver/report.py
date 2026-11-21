@@ -136,7 +136,7 @@ def write(project: str, task: str) -> str:
 
 def _planned(project: str, task: str) -> list:
     """The ticket ids the task's plan lists, in build order, or [] with no plan."""
-    from action import plan as pl
+    from gate import plan as pl
     path = Path(project, pl.plan_path(task))
     try:
         return pl.parse(path.read_text()).tickets
@@ -151,7 +151,7 @@ def _sentence(text: str) -> str:
 
 def roadmap_progress(project: str) -> tuple:
     """(done, still_to_do) for each roadmap: its base, its tasks in order, and its end."""
-    from action import roadmap as rm
+    from gate import roadmap as rm
     done, todo = [], []
     for path in sorted(logs_dir(project).glob("roadmap-*.jsonl")):
         rid = path.name[len("roadmap-"):-len(".jsonl")]

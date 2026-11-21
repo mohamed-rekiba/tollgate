@@ -15,11 +15,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from action import checks, gate, prepare, tickets
-from action import manifest as mf
-from action import settings as st
-from action.gitio import changed_files
-from action.tickets import item_of_test
+from gate import checks, gate, prepare, tickets
+from gate import manifest as mf
+from gate import settings as st
+from gate.gitio import changed_files
+from gate.tickets import item_of_test
 from driver import advisor, history, roles
 from driver.log import Log, read
 

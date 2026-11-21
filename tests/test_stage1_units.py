@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import checks, junit, manifest, paths, settings, tickets, tiers
+from gate import checks, junit, manifest, paths, settings, tickets, tiers
 from tests.helpers import TICKET, Repo, settings_text
 from tests.helpers import junit as make_junit
 

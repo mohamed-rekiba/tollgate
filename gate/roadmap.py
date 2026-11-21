@@ -23,7 +23,7 @@ and must pass after the last.
 import re
 from dataclasses import dataclass
 
-from action.plan import ID
+from gate.plan import ID
 
 ROADMAPS = ".tollgate/roadmaps"
 STAGES = ("Base", "Skeleton", "Features")

@@ -53,6 +53,10 @@ DEFAULTS = {
     "container_image": "",
     "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10.0, "task_usd": 60.0},
     "pass_score": 70,
+    # The public keys that may sign locks, pass records, and approvals.
+    "signers": [],
+    # How the builder is kept apart: "container" (Docker) or "sandbox" (Claude Code's).
+    "isolation": "container",
     "require_plan": True,
     "auto_merge": False,
     "check_minutes": 20,

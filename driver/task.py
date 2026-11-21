@@ -16,9 +16,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from action import plan as pl
-from action import settings as st
-from action import tickets as tk
+from gate import plan as pl
+from gate import settings as st
+from gate import tickets as tk
 from driver import advisor, report, roles
 from driver.driver import Busy, Driver, Parked, TicketLock, git, push
 from driver.log import Log, read

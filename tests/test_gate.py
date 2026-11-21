@@ -2,9 +2,9 @@
 
 import unittest
 
-from action import gate, settings
-from action import manifest as mf
-from action.checks import CheckResult, Results
+from gate import gate, settings
+from gate import manifest as mf
+from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
 
 HEAD = "a" * 40
@@ -258,7 +258,7 @@ class GateCollectTest(unittest.TestCase):
         self.frozen = r.commit("ticket and tests")
         m = {"ticket": "T-1", "commit": self.frozen, "run_id": 7, "tests": TESTS, "number": 1,
              "files": {mf.ticket_path("T-1"): "", "tests/test_t1.py": ""}}
-        from action.gitio import fingerprint, show_bytes
+        from gate.gitio import fingerprint, show_bytes
         for p in m["files"]:
             m["files"][p] = fingerprint(show_bytes(str(r.path), self.frozen, p))
         r.tag("tg/freeze/T-1/1", "Freeze of T-1\n\n" + mf.dumps(m), self.frozen)

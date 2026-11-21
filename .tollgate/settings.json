@@ -27,7 +27,7 @@
       "lenses/**"
     ],
     "4": [
-      "action/**",
+      "gate/**",
       "workflows/**",
       "setup/**",
       "skills/init/**"

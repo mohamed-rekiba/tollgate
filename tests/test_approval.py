@@ -11,8 +11,8 @@ from unittest import mock
 
 import yaml
 
-from action import approval
-from action import settings as st
+from gate import approval
+from gate import settings as st
 
 SHA = "a" * 40
 ROOT = Path(__file__).resolve().parent.parent
@@ -86,7 +86,7 @@ class MainTest(unittest.TestCase):
 
     def run_main(self, server):
         out, err = io.StringIO(), io.StringIO()
-        with mock.patch("action.server.Server", return_value=server), \
+        with mock.patch("gate.server.Server", return_value=server), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = approval.main(["--repo", str(self.repo), "--repository", "o/r",
                                   "--pr", "7", "--sha", SHA])
@@ -113,7 +113,7 @@ class WorkflowTest(unittest.TestCase):
     def test_the_find_job_asks_the_module_and_reads_only_main(self):
         job = yaml.safe_load((ROOT / "workflows/tollgate.yml").read_text())["jobs"]["find"]
         script = next(s["run"] for s in job["steps"] if s.get("id") == "pr")
-        self.assertIn("-m action.approval", script)
+        self.assertIn("-m gate.approval", script)
         self.assertNotIn("reviews", script)
         self.assertNotIn("comments", script)
         self.assertIn('[[ "$answer" == true ]] && approved=true', script)

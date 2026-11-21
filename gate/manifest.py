@@ -5,9 +5,9 @@ The manifest lives in the message of the freeze tag, as JSON.
 
 import json
 
-from action import junit
-from action.gitio import fingerprint, show_bytes
-from action.tickets import item_of_test
+from gate import junit
+from gate.gitio import fingerprint, show_bytes
+from gate.tickets import item_of_test
 
 TICKET_DIR = ".tollgate/tickets"
 

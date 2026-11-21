@@ -441,13 +441,13 @@ Every task here adds tests in `tests/`. "Done when" names the tests that matter 
 
 | Task | Produces | Done when | Needs |
 | --- | --- | --- | --- |
-| 1.1 | `action/settings.py` | A settings file with an unknown key is rejected and the key is named. The settings are read from the main branch, not from the working folder. | D0 |
-| 1.2 | `action/manifest.py` | A manifest built from a sample ticket lists each file with its fingerprint and each test by name. A changed file is reported. | 1.1 |
-| 1.3 | `action/tiers.py` | A change under a tier 3 path gives 3. A change to a harness path gives 4. A change of 2 files and 30 lines with no path rule gives 1. | 1.1 |
-| 1.4 | `action/checks.py` | It runs each check command and reads the test report. It returns, for each test name: ran, passed, skipped. A check that runs too long counts as failed. | 1.1 |
-| 1.5 | `action/gate.py` | Each of the six rules has a test that passes and a test that fails. It ends with 0, 1, or 2 and prints findings as data. | 1.2, 1.3, 1.4 |
-| 1.6 | `action/freeze.py` and `workflows/tollgate-freeze.yml` | In the lab, the workflow refuses a ticket whose test already passes, and creates the tag for a ticket whose tests all fail. | 1.2, E1, E3 |
-| 1.7 | `workflows/tollgate-gate.yml` and `action/action.yml` | In the lab, a pull request runs the gate from the pinned Action with the harness from the main branch. | 1.5, E3, E5 |
+| 1.1 | `gate/settings.py` | A settings file with an unknown key is rejected and the key is named. The settings are read from the main branch, not from the working folder. | D0 |
+| 1.2 | `gate/manifest.py` | A manifest built from a sample ticket lists each file with its fingerprint and each test by name. A changed file is reported. | 1.1 |
+| 1.3 | `gate/tiers.py` | A change under a tier 3 path gives 3. A change to a harness path gives 4. A change of 2 files and 30 lines with no path rule gives 1. | 1.1 |
+| 1.4 | `gate/checks.py` | It runs each check command and reads the test report. It returns, for each test name: ran, passed, skipped. A check that runs too long counts as failed. | 1.1 |
+| 1.5 | `gate/gate.py` | Each of the six rules has a test that passes and a test that fails. It ends with 0, 1, or 2 and prints findings as data. | 1.2, 1.3, 1.4 |
+| 1.6 | `gate/freeze.py` and `workflows/tollgate-freeze.yml` | In the lab, the workflow refuses a ticket whose test already passes, and creates the tag for a ticket whose tests all fail. | 1.2, E1, E3 |
+| 1.7 | `workflows/tollgate-gate.yml` and `gate/action.yml` | In the lab, a pull request runs the gate from the pinned Action with the harness from the main branch. | 1.5, E3, E5 |
 | 1.8 | `setup/check_rights.py`, `setup/write_workflows.py`, `setup/apply_rulesets.py` | Each script can run twice with the same result, and each ends by checking what it did. `check_rights.py` reports one of the three levels. | 1.6, 1.7 |
 | 1.10 | `skills/init/SKILL.md` | On a sample project in the lab, `/tollgate:init` ends with the proof passing and tells you which level of rights you have. | 1.9 |
 | 1.11 | `tests/proof_stage1.py`: the stage proof | The five pull requests from the build order fail the gate. A push of a freeze tag from a laptop is rejected. | 1.10 |

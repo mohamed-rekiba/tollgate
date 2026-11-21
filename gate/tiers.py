@@ -3,7 +3,7 @@
 Frozen files do not count: the gate checks them separately.
 """
 
-from action.paths import matches
+from gate.paths import matches
 
 
 def tier(settings: dict, changes: dict, frozen=()) -> tuple:

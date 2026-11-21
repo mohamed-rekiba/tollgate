@@ -14,7 +14,7 @@ Words: a **task** is what the user asks for, in their own words. The **driver** 
 ## 1. Check the project
 
 1. Confirm that `.tollgate/settings.json` exists on the main branch: `git fetch origin && git show origin/main:.tollgate/settings.json`. If it does not, stop and tell the user to run `/tollgate:init` first.
-2. Run `PYTHONPATH="$TG" python3 -m action.settings .tollgate/settings.json`. Done when it prints the settings with no error.
+2. Run `PYTHONPATH="$TG" python3 -m gate.settings .tollgate/settings.json`. Done when it prints the settings with no error.
 
 ## 2. Get the request
 
@@ -32,10 +32,10 @@ For one task, go to step 4.
 
 For a roadmap:
 
-1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/action/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
-2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/action/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
+1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/gate/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
+2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/gate/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
 3. If `base` in the settings has an empty command, tell the user which of the five base checks has none. The roadmap stops after the base tasks until all five pass.
-4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from action import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
+4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from gate import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
 5. Start it, on GitHub or here, as in step 4.
 
 ## 4. Start it: on GitHub, or on this machine

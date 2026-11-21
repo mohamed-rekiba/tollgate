@@ -9,9 +9,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from action import settings as st
-from action.gitio import git, show_bytes
-from action.paths import matches
+from gate import settings as st
+from gate.gitio import git, show_bytes
+from gate.paths import matches
 
 
 def _tree(repo, ref) -> list:
@@ -61,7 +61,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     freeze_commit = manifest = None
     if args.ticket:
-        from action.gate import _freeze
+        from gate.gate import _freeze
         freeze = _freeze(args.repo, args.ticket)
         if freeze:
             freeze_commit, manifest = freeze.tag_commit, freeze.manifest

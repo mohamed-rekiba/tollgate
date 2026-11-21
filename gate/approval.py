@@ -11,8 +11,8 @@ prints nothing on standard output, so the workflow treats it as not approved.
 import argparse
 import sys
 
-from action import gate
-from action import settings as st
+from gate import gate
+from gate import settings as st
 
 
 def is_approved(server, settings: dict, pr: int, sha: str) -> bool:
@@ -30,7 +30,7 @@ def main(argv=None) -> int:
     parser.add_argument("--sha", required=True, help="the commit the tests will run on")
     args = parser.parse_args(argv)
     try:
-        from action.server import Server
+        from gate.server import Server
         settings = st.load_from_ref(args.repo, "HEAD")
         answer = is_approved(Server(args.repository), settings, args.pr, args.sha)
     except Exception as err:  # noqa: BLE001 - any failure means not approved

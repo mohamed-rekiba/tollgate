@@ -19,8 +19,8 @@ header names this plan.
 import re
 from dataclasses import dataclass, field
 
-from action.tickets import TicketError
-from action.tickets import parse as parse_ticket
+from gate.tickets import TicketError
+from gate.tickets import parse as parse_ticket
 
 PLANS = ".tollgate/plans"
 SECTIONS = ("Task", "Design", "Files", "Seams", "Tickets")

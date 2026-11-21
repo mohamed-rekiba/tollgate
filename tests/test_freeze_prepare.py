@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import freeze, gate, prepare
-from action import manifest as mf
-from action.checks import CheckResult, Results
+from gate import freeze, gate, prepare
+from gate import manifest as mf
+from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
 
 ROOT = Path(__file__).resolve().parent.parent

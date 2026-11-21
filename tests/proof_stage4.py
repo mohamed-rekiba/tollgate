@@ -11,8 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import roadmap as rm
-from action import settings as st
+from gate import roadmap as rm
+from gate import settings as st
 from driver import retro
 from driver.log import read
 from setup import base_suite, home, inbox, sync_rules

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import tickets
+from gate import tickets
 from driver import roles
 from driver.driver import Busy, TicketLock, score
 from driver.log import Log, LogBusy, read

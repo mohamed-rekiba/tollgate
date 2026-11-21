@@ -7,7 +7,7 @@ import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from action import junit
+from gate import junit
 
 
 @dataclass
@@ -83,7 +83,7 @@ def run(settings: dict, workdir, only=None) -> Results:
 
 
 def main(argv=None) -> int:
-    from action import settings as st
+    from gate import settings as st
 
     parser = argparse.ArgumentParser(prog="tollgate checks", description=__doc__)
     parser.add_argument("--repo", default=".")

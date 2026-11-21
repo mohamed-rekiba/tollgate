@@ -7,9 +7,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-from action import checks, freeze, plantag, prepare
-from action import manifest as mf
-from action import settings as st
+from gate import checks, freeze, plantag, prepare
+from gate import manifest as mf
+from gate import settings as st
 from tests.helpers import sh
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")

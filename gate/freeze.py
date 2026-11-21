@@ -8,12 +8,12 @@ import argparse
 import re
 import sys
 
-from action import junit, tickets
-from action import manifest as mf
-from action import settings as st
-from action.checks import Results
-from action.gitio import git, show_bytes
-from action.paths import matches
+from gate import junit, tickets
+from gate import manifest as mf
+from gate import settings as st
+from gate.checks import Results
+from gate.gitio import git, show_bytes
+from gate.paths import matches
 
 TICKET_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_FREEZES = 2
@@ -60,7 +60,7 @@ def main(argv=None) -> int:
     parser.add_argument("--repo", default=".")
     parser.add_argument("--ticket", required=True)
     parser.add_argument("--commit", required=True)
-    parser.add_argument("--results", required=True, help="results file from action.checks")
+    parser.add_argument("--results", required=True, help="results file from gate.checks")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--out", required=True, help="file for the tag message")
     parser.add_argument("--name-out", required=True, help="file for the tag name")

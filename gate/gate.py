@@ -10,12 +10,12 @@ import re
 import sys
 from dataclasses import dataclass, field
 
-from action import manifest as mf
-from action import settings as st
-from action import tiers
-from action.checks import Results
-from action.gitio import changed_files, git
-from action.paths import matches
+from gate import manifest as mf
+from gate import settings as st
+from gate import tiers
+from gate.checks import Results
+from gate.gitio import changed_files, git
+from gate.paths import matches
 
 WORKFLOW = ".github/workflows/tollgate.yml"
 FREEZE_WORKFLOWS = {WORKFLOW}
@@ -231,8 +231,8 @@ def collect(repo, base: str, head: str, branch: str, results: Results,
             facts.freeze.run = server.run(run_id)
     facts.plan_required = bool(settings["require_plan"])
     if facts.plan_required and facts.freeze:
-        from action.gitio import show_bytes
-        from action.tickets import parse
+        from gate.gitio import show_bytes
+        from gate.tickets import parse
         data = show_bytes(repo, facts.freeze.tag_commit, mf.ticket_path(ticket))
         plan = parse(data.decode()).plan if data else ""
         facts.plan = _plan(repo, plan)
@@ -253,7 +253,7 @@ def main(argv=None) -> int:
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--head", default="HEAD")
     parser.add_argument("--branch", required=True)
-    parser.add_argument("--results", required=True, help="results file from action.checks")
+    parser.add_argument("--results", required=True, help="results file from gate.checks")
     parser.add_argument("--repository", help="owner/name, to ask the server")
     parser.add_argument("--pr", type=int)
     parser.add_argument("--post", metavar="SHA",
@@ -264,7 +264,7 @@ def main(argv=None) -> int:
             results = Results.from_json(f.read())
         server = None
         if args.repository:
-            from action.server import Server
+            from gate.server import Server
             server = Server(args.repository)
         facts = collect(args.repo, args.base, args.head, args.branch, results, server, args.pr)
         findings, level = evaluate(facts)
@@ -296,7 +296,7 @@ def _report(args, findings: list, level: int) -> None:
         print(json.dumps(finding))
     print(json.dumps({"tier": level, "passed": not findings}))
     if args.post and args.repository:
-        from action.server import Server
+        from gate.server import Server
         title, text = summary(findings, level)
         Server(args.repository).post_check(args.post, GATE_CHECK, not findings, title, text)
 

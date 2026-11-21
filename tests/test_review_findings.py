@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import freeze, gate, prepare, settings, tiers
-from action import manifest as mf
-from action.gitio import changed_files
+from gate import freeze, gate, prepare, settings, tiers
+from gate import manifest as mf
+from gate.gitio import changed_files
 from tests.helpers import TICKET, Repo, settings_text
 from tests.test_freeze_prepare import results_file
 from tests.test_gate import facts, rules

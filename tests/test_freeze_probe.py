@@ -3,7 +3,7 @@
 import unittest
 from unittest import mock
 
-from action.manifest import FreezeError
+from gate.manifest import FreezeError
 from driver import server as srv
 from setup.gh import GhError
 

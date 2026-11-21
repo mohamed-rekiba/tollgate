@@ -102,7 +102,7 @@ The plan tag arrives in stage 3. Until then, `require_plan` is off in the settin
 
 The gate workflow runs only for pull requests into the main branch, and it checks out the main branch by name. The action starts Python with `-P`, so a module in the change cannot replace the gate's code. Any error inside the gate posts a failing check.
 
-The gate does not run checks. A caller runs them with `action/checks.py`, writes the results to a file, and passes the file to the gate. The gate workflow does this on the server. The driver does it on your machine.
+The gate does not run checks. A caller runs them with `gate/checks.py`, writes the results to a file, and passes the file to the gate. The gate workflow does this on the server. The driver does it on your machine.
 
 ## The contract with Claude Code
 
@@ -146,4 +146,4 @@ The gate's rules 1 to 3 prove that an AI change was built against tests locked b
 
 Now a change on a branch that is not a ticket branch passes rules 1 and 2 with an approval by a person under `approvers`: a comment `tollgate approve <the head commit>`, or an approving review. The same approval meets rule 4, and the test job then keeps the change's own harness. The checks still run and must pass. A ticket branch cannot take this path. The gate's failure message prints the comment to write.
 
-The test job must know before the tests run whether the change is approved. The find job asks `action.approval`, which applies the gate's own rule, `gate.approved`, to the settings on main. So the rule is written once. Any error there counts as not approved, and the test job then puts main's harness back.
+The test job must know before the tests run whether the change is approved. The find job asks `gate.approval`, which applies the gate's own rule, `gate.approved`, to the settings on main. So the rule is written once. Any error there counts as not approved, and the test job then puts main's harness back.

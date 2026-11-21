@@ -10,8 +10,8 @@ import subprocess
 import time
 from urllib.parse import quote
 
-from action import manifest as mf
-from action.server import Server
+from gate import manifest as mf
+from gate.server import Server
 from setup.gh import Gh, GhError
 
 WAIT_SECONDS = 1800

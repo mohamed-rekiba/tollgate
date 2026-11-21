@@ -29,7 +29,7 @@ Done when the user has seen the level.
 2. Find a way for the test command to write a JUnit XML report. Most test tools have a flag for it, for example `pytest --junitxml=report.xml` or `go test` with `go-junit-report`.
 3. Ask the user, in one message, only what you cannot find: the paths that need a review (tier 3), the paths that need a person (tier 4), and who may approve with a comment.
 4. Write `.tollgate/settings.json`. Put the test command under `checks.tests` with its `report`. Set `require_plan` to `false`: plan tags are not built yet. With level `write`, set `auto_merge` to `false`.
-5. Run `python3 -m action.settings .tollgate/settings.json`.
+5. Run `python3 -m gate.settings .tollgate/settings.json`.
 
 Done when that command prints the settings with no error. Show the user the file.
 
