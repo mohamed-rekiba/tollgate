@@ -12,6 +12,7 @@ import sys
 from setup.gh import Gh, GhError
 
 GITHUB_ACTIONS_APP = 15368
+ADMIN_ROLE = 5  # the repository role "admin"
 BRANCH_RULESET = "tollgate main"
 TAG_RULESET = "tollgate tags"
 
@@ -32,7 +33,11 @@ def wanted() -> list:
                 "required_status_checks": [
                     {"context": "tollgate gate", "integration_id": GITHUB_ACTIONS_APP}]}},
         ],
-        "bypass_actors": [],
+        # An admin can merge a pull request the gate blocks, and GitHub logs it.
+        # Without this, no change under .github could ever merge, because the
+        # gate fails every such change. An admin can delete the ruleset anyway.
+        "bypass_actors": [{"actor_id": ADMIN_ROLE, "actor_type": "RepositoryRole",
+                           "bypass_mode": "pull_request"}],
     }
     # Only the freeze workflow, through GitHub Actions, may create these tags.
     # Nobody may move or delete them.
@@ -47,7 +52,7 @@ def wanted() -> list:
 
 
 def _same(have: dict, want: dict) -> bool:
-    keys = ("target", "enforcement", "conditions", "rules")
+    keys = ("target", "enforcement", "conditions", "rules", "bypass_actors")
     return all(have.get(k) == want[k] for k in keys)
 
 

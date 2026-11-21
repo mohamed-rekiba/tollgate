@@ -40,10 +40,13 @@ class GitHub(Server):
 
     def _tags(self, ticket: str) -> set:
         try:
-            refs = self.gh.get(f"repos/{self.repository}/git/matching-refs/tags/tg/freeze/{ticket}/")
+            # No trailing slash: some proxies refuse it. The prefix filter below
+            # keeps lab-1 apart from lab-10.
+            refs = self.gh.get(f"repos/{self.repository}/git/matching-refs/tags/tg/freeze/{ticket}")
         except GhError:
             return set()
-        return {r["ref"] for r in refs or []}
+        prefix = f"refs/tags/tg/freeze/{ticket}/"
+        return {r["ref"] for r in refs or [] if r["ref"].startswith(prefix)}
 
     def freeze(self, ticket: str) -> str:
         """Start the freeze workflow and wait for a new tag. Raise FreezeError if the run fails."""

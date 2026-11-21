@@ -26,6 +26,10 @@ A tagger name proves nothing, because anyone with write access can set one. Poin
 
 A ticket's `tests:` header may not name harness or a tier 3 or 4 path. The freeze refuses it. If such a file is frozen anyway, it still counts for the tier, and the restore step keeps the main branch's copy.
 
+## The admin bypass
+
+The ruleset on the main branch lets a repository admin merge a pull request that the gate blocks. GitHub logs each such merge. This is the only way a change under `.github/` can merge, because the gate fails every such change. It gives an admin no new power: an admin can delete the ruleset anyway. The driver never uses it.
+
 ## Which approvals count
 
 A review counts only from someone whose role in the repository is owner, member, or collaborator, or who is named under `approvers`.
