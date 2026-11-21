@@ -56,6 +56,14 @@ class TaskLoop(TaskCase):
         self.assertIn("| demo-2 | pull request open |", report)
         self.assertIn("Plan: locked.", report)
 
+    def test_a_plan_branch_that_moved_after_the_tag_stays(self):
+        self.start(builder="pass2")
+        run_task(self.sample, extra_env={"TOLLGATE_FAKE_PLAN_MOVES": "1"})
+        self.assertIn("tg/plan/demo/1", self.tags())
+        branches = subprocess.run(["git", "branch", "--list", "tg-plan/*"], cwd=self.sample.bare,
+                                  capture_output=True, text=True, check=True).stdout
+        self.assertIn("tg-plan/demo", branches)
+
     def test_the_gate_checks_the_plan_tag_run(self):
         """With require_plan on, each ticket's gate read the plan tag and its run."""
         self.start(builder="pass1", extra={**PLAN_ON, "tier1": {"max_files": 1, "max_lines": 1}})

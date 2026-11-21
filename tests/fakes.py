@@ -1,6 +1,7 @@
 """A sample project on a local server, and a fake server that freezes locally."""
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -136,6 +137,8 @@ class LocalServer:
 
     def __init__(self, bare: Path):
         self.bare = bare
+        # A test sets this: a push lands on the plan branch after the plan tag.
+        self.plan_branch_moves = os.environ.get("TOLLGATE_FAKE_PLAN_MOVES") == "1"
         self.prs = []
         self.merged = []
         self.freezes = 0
@@ -184,9 +187,17 @@ class LocalServer:
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
             sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
-            # As the workflow does: the tag keeps the plan, so the branch goes.
-            sh(d, "git", "push", "-q", f"--force-with-lease=refs/heads/tg-plan/{task}:{commit}",
-               "origin", f":refs/heads/tg-plan/{task}")
+            if self.plan_branch_moves:
+                sh(d, "git", "checkout", "-q", commit)
+                sh(d, "git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                   "--allow-empty", "-m", "a later push")
+                sh(d, "git", "push", "-q", "origin", f"HEAD:refs/heads/tg-plan/{task}")
+            # As the workflow does: the tag keeps the plan, so the branch goes,
+            # unless it moved after the tag.
+            now = sh(d, "git", "ls-remote", "origin", f"refs/heads/tg-plan/{task}").split()
+            if now and now[0] == commit:
+                sh(d, "git", "push", "-q", f"--force-with-lease=refs/heads/tg-plan/{task}:{commit}",
+                   "origin", f":refs/heads/tg-plan/{task}")
         self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate.yml",
                      mf.loads(message))
         return name
@@ -263,7 +274,8 @@ def run_driver(sample: Sample, ticket="T-1") -> subprocess.CompletedProcess:
                           capture_output=True, text=True, timeout=300, check=False)
 
 
-def run_task(sample: Sample, task="demo", request="Add shout and whisper.") -> subprocess.CompletedProcess:
+def run_task(sample: Sample, task="demo", request="Add shout and whisper.",
+             extra_env: dict | None = None) -> subprocess.CompletedProcess:
     """Run the task loop as its own process with the local server."""
     code = ("import sys; from driver.task import main; from tests.fakes import LocalServer; "
             "from pathlib import Path; "
@@ -272,5 +284,6 @@ def run_task(sample: Sample, task="demo", request="Add shout and whisper.") -> s
     root = Path(__file__).resolve().parent.parent
     env = driver_env(sample)
     env["PYTHONPATH"] = str(root)
+    env.update(extra_env or {})
     return subprocess.run([sys.executable, "-c", code], cwd=root, env=env,
                           capture_output=True, text=True, timeout=600, check=False)
