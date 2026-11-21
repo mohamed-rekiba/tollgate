@@ -1,6 +1,6 @@
 {
  "title": "How Tollgate works, with its three feedback loops",
- "desc": "You ask in plain words. The AI writes a plan, and fresh AIs check it until they find no problems. Tests are written and locked on the server, then the AI builds. When the gate fails, what failed goes back to the builder. When the builder is stuck, the advisor decides. After a merge, the retro turns lessons into stricter rules for the next plan.",
+ "desc": "You ask in plain words. The AI writes a plan, and fresh AIs check it until they find no problems. Tests are written and locked on the server, then the AI builds. When the gate fails, what failed goes back to the builder. When the builder is stuck, the advisor decides. After a merge, the retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails at the gate once, goes back, then passes and merges.",
  "nodes": [
   {
    "id": "ask",
@@ -134,5 +134,48 @@
    "dashed": true,
    "route": "vh"
   }
- ]
+ ],
+ "ticket": {
+  "path": [
+   [
+    "ask",
+    "plan"
+   ],
+   [
+    "plan",
+    "rev"
+   ],
+   [
+    "rev",
+    "tests"
+   ],
+   [
+    "tests",
+    "build"
+   ],
+   [
+    "build",
+    "gate"
+   ],
+   [
+    "gate",
+    "build"
+   ],
+   [
+    "build",
+    "gate"
+   ],
+   [
+    "gate",
+    "merge"
+   ],
+   [
+    "merge",
+    "retro"
+   ]
+  ],
+  "wait": {
+   "gate": 0.8
+  }
+ }
 }

@@ -44,6 +44,12 @@ The test checks each of these on every SVG file in the repo.
 - Motion shows direction only. The arrows are dotted and the dots move the way they point, by CSS in the SVG. Every animation stops under `prefers-reduced-motion`. No other motion.
 - Do not put `prefers-color-scheme` inside the SVG. Browsers ignore it when the SVG is an image. Use the two files and the `picture` element.
 
+## Diagrams from the code, and art
+
+- A diagram that shows code, like the jobs of a workflow, is made from that code in `build.py` (`GENERATED`), not written by hand. Then `--check` fails when the code changes and the picture does not.
+- A banner or an illustration is a small drawing module, like `docs/diagrams/hero.py`, listed in `ART` in `build.py`. It follows the same rules and the same colors.
+- A task's report draws its own picture: `driver.report` writes `<task>.svg` next to `<task>.md`.
+
 ## When the generator cannot draw it
 
 For a picture the grid cannot hold, write the SVG by hand in `docs/diagrams/`, with a `-dark.svg` twin. It must still pass the test.

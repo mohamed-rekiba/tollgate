@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 985 694" width="985" height="694" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<title id="title">The jobs of the Tollgate workflow</title>
+<desc id="desc">The jobs of .github/workflows/tollgate.yml, drawn from the file itself: freeze-test, freeze-lock, plan-lock, task, plain, e2, find, test, review, gate. An arrow means a job waits for the one before it. Each box says what starts the job and what it does.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
+<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-22" y="-22" width="985" height="694" fill="#ffffff"/>
+<path class="main" d="M281.8,49.0 L329.8,49.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M281.8,481.0 L329.8,481.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.9,530.0 L140.9,540.0 Q140.9,550.0 150.9,550.0 L460.7,550.0 Q470.7,550.0 470.7,560.0 L470.7,570.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M611.6,481.0 L659.6,481.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M611.6,610.0 L788.5,610.0 Q800.5,610.0 800.5,598.0 L800.5,530.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="281.8" height="98.0" rx="10" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip0"><rect x="0.0" y="0.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="0.0" y="0.0" width="4" height="98.0" fill="#9a6700" clip-path="url(#clip0)"/>
+<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9a6700">DISPATCH · FREEZE</text>
+<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">freeze-test</text>
+<text x="22.0" y="63.0" font-size="13" fill="#59636e">Freeze, job one: run the ticket's</text>
+<text x="22.0" y="81.0" font-size="13" fill="#59636e">tests with a read-only token</text>
+<rect x="329.8" y="0.0" width="281.8" height="98.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip1"><rect x="329.8" y="0.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="329.8" y="0.0" width="4" height="98.0" fill="#1a7f37" clip-path="url(#clip1)"/>
+<text x="351.8" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">AFTER FREEZE-TEST</text>
+<text x="351.8" y="44.0" font-size="15" font-weight="600" fill="#1f2328">freeze-lock</text>
+<text x="351.8" y="63.0" font-size="13" fill="#59636e">Freeze, job two: runs none of the</text>
+<text x="351.8" y="81.0" font-size="13" fill="#59636e">change's code, and creates the tag</text>
+<rect x="0.0" y="138.0" width="281.8" height="98.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip2"><rect x="0.0" y="138.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="0.0" y="138.0" width="4" height="98.0" fill="#1a7f37" clip-path="url(#clip2)"/>
+<text x="22.0" y="162.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">DISPATCH · PLAN</text>
+<text x="22.0" y="182.0" font-size="15" font-weight="600" fill="#1f2328">plan-lock</text>
+<text x="22.0" y="201.0" font-size="13" fill="#59636e">Plan lock: reads the plan and its</text>
+<text x="22.0" y="219.0" font-size="13" fill="#59636e">tickets as files, and creates the tag</text>
+<rect x="329.8" y="138.0" width="281.8" height="98.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip3"><rect x="329.8" y="138.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="329.8" y="138.0" width="4" height="98.0" fill="#8250df" clip-path="url(#clip3)"/>
+<text x="351.8" y="162.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">DISPATCH · TASK</text>
+<text x="351.8" y="182.0" font-size="15" font-weight="600" fill="#1f2328">task</text>
+<text x="351.8" y="201.0" font-size="13" fill="#59636e">The driver on GitHub: plan, freeze,</text>
+<text x="351.8" y="219.0" font-size="13" fill="#59636e">build, and open pull requests</text>
+<rect x="0.0" y="276.0" width="281.8" height="116.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip4"><rect x="0.0" y="276.0" width="281.8" height="116.0" rx="10"/></clipPath>
+<rect x="0.0" y="276.0" width="4" height="116.0" fill="#8250df" clip-path="url(#clip4)"/>
+<text x="22.0" y="300.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">DISPATCH · PLAIN</text>
+<text x="22.0" y="320.0" font-size="15" font-weight="600" fill="#1f2328">plain</text>
+<text x="22.0" y="339.0" font-size="13" fill="#59636e">The same request, built by Claude Code</text>
+<text x="22.0" y="357.0" font-size="13" fill="#59636e">alone in the same container, for the</text>
+<text x="22.0" y="375.0" font-size="13" fill="#59636e">comparison in docs/plan.md, "How we…</text>
+<rect x="329.8" y="276.0" width="281.8" height="116.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip5"><rect x="329.8" y="276.0" width="281.8" height="116.0" rx="10"/></clipPath>
+<rect x="329.8" y="276.0" width="4" height="116.0" fill="#8250df" clip-path="url(#clip5)"/>
+<text x="351.8" y="300.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">DISPATCH · E2</text>
+<text x="351.8" y="320.0" font-size="15" font-weight="600" fill="#1f2328">e2</text>
+<text x="351.8" y="339.0" font-size="13" fill="#59636e">Experiment E2, the model half: Claude</text>
+<text x="351.8" y="357.0" font-size="13" fill="#59636e">Code in the closed container</text>
+<rect x="0.0" y="432.0" width="281.8" height="98.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip6"><rect x="0.0" y="432.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="0.0" y="432.0" width="4" height="98.0" fill="#1a7f37" clip-path="url(#clip6)"/>
+<text x="22.0" y="456.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">PULL REQUEST</text>
+<text x="22.0" y="476.0" font-size="15" font-weight="600" fill="#1f2328">find</text>
+<text x="22.0" y="495.0" font-size="13" fill="#59636e">A pull request: find it, and check its</text>
+<text x="22.0" y="513.0" font-size="13" fill="#59636e">branch name</text>
+<rect x="329.8" y="432.0" width="281.8" height="98.0" rx="10" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip7"><rect x="329.8" y="432.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="329.8" y="432.0" width="4" height="98.0" fill="#9a6700" clip-path="url(#clip7)"/>
+<text x="351.8" y="456.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9a6700">AFTER FIND</text>
+<text x="351.8" y="476.0" font-size="15" font-weight="600" fill="#1f2328">test</text>
+<text x="351.8" y="495.0" font-size="13" fill="#59636e">Run the change's tests with a read-</text>
+<text x="351.8" y="513.0" font-size="13" fill="#59636e">only token and no secrets</text>
+<rect x="329.8" y="570.0" width="281.8" height="80.0" rx="10" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip8"><rect x="329.8" y="570.0" width="281.8" height="80.0" rx="10"/></clipPath>
+<rect x="329.8" y="570.0" width="4" height="80.0" fill="#9a6700" clip-path="url(#clip8)"/>
+<text x="351.8" y="594.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9a6700">AFTER FIND</text>
+<text x="351.8" y="614.0" font-size="15" font-weight="600" fill="#1f2328">review</text>
+<text x="351.8" y="633.0" font-size="13" fill="#59636e">The review reads the change as text</text>
+<rect x="659.6" y="432.0" width="281.8" height="98.0" rx="10" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip9"><rect x="659.6" y="432.0" width="281.8" height="98.0" rx="10"/></clipPath>
+<rect x="659.6" y="432.0" width="4" height="98.0" fill="#9a6700" clip-path="url(#clip9)"/>
+<text x="681.6" y="456.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9a6700">AFTER FIND, TEST, REVIEW</text>
+<text x="681.6" y="476.0" font-size="15" font-weight="600" fill="#1f2328">gate</text>
+<text x="681.6" y="495.0" font-size="13" fill="#59636e">The gate runs after the tests and the</text>
+<text x="681.6" y="513.0" font-size="13" fill="#59636e">review, so it reads their results</text>
+</svg>

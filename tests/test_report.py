@@ -85,6 +85,19 @@ class ProgressTest(unittest.TestCase):
         self.assertTrue(text.startswith("# Report: task shop\n\nDone\n"))
         self.assertIn("## Details", text)
 
+    def test_the_task_report_has_a_picture(self):
+        import xml.etree.ElementTree as ET
+        report.write(self.p, "shop")
+        folder = Path(self.p, ".tollgate", "reports")
+        text = (folder / "shop.md").read_text()
+        self.assertIn('srcset="shop-dark.svg"', text)
+        for name in ("shop.svg", "shop-dark.svg"):
+            root = ET.fromstring((folder / name).read_text())
+            self.assertEqual(root.get("role"), "img")
+            words = " ".join(e.text or "" for e in root.iter())
+            self.assertIn("PLAN · LOCKED", words)
+            self.assertIn("MERGED", words)
+
 
 if __name__ == "__main__":
     unittest.main()
