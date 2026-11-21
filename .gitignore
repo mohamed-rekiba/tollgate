@@ -9,3 +9,5 @@ __pycache__/
 .tollgate/lessons/
 *.tar.gz
 *.whl
+site/node_modules/
+site/dist/
