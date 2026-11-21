@@ -1,6 +1,6 @@
 # Tollgate website
 
-The page at https://mohamed-rekiba.github.io/tollgate/. It is one page, built with Vite, Vue 3, Tailwind CSS, and shadcn-vue components.
+The page at https://tollgate-ai.github.io/. It is one page, built with Vite, Vue 3, Tailwind CSS, and shadcn-vue components.
 
 ## Why it is built this way
 
@@ -11,10 +11,10 @@ The hero picture is the repository's own `docs/diagrams/how-it-works-dark.svg`, 
 ```sh
 cd site
 npm install
-npm run dev      # http://localhost:5173/tollgate/
+npm run dev      # http://localhost:5173/
 npm run build    # writes dist/
 ```
 
 ## When it is published
 
-The workflow `.github/workflows/pages.yml` builds and publishes the site on each push to main that changes `site/` or `docs/diagrams/`. In the repository settings, Pages must use "GitHub Actions" as its source.
+The repository tollgate-ai/tollgate-ai.github.io holds one workflow. It builds this folder from the main branch here and publishes it at https://tollgate-ai.github.io/. It runs once a day, and at once when someone presses "Run workflow" in that repository's Actions tab. So a change here shows up by the next day.

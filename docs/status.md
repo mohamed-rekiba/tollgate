@@ -32,7 +32,7 @@ Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass sc
 
 The gate no longer runs on GitHub: the owner removed it on 2026-11-21. No ruleset requires a check.
 
-To turn them on again, run `PYTHONPATH=. python3 -m setup.apply_rulesets mohamed-rekiba/tollgate`. With them on:
+To turn them on again, run `PYTHONPATH=. python3 -m setup.apply_rulesets tollgate-ai/tollgate`. With them on:
 
 - **tollgate main**: changes come through pull requests, and main cannot be force-pushed or deleted.
 - **tollgate tags**: nobody can move or delete a tag under `tg/`.

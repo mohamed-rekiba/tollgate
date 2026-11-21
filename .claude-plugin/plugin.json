@@ -3,6 +3,6 @@
   "description": "Keeps a change written by an AI out of the main branch until tests locked before the build pass on GitHub.",
   "version": "0.1.0",
   "author": {"name": "Mohamed Rekiba"},
-  "repository": "https://github.com/mohamed-rekiba/tollgate",
+  "repository": "https://github.com/tollgate-ai/tollgate",
   "license": "Apache-2.0"
 }

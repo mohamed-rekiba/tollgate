@@ -34,7 +34,7 @@ prompt = sys.stdin.read()
 open("from_container.txt", "w").write("written inside\n")
 push = subprocess.run(["git", "push", "origin", "HEAD:refs/heads/escape"],
                       capture_output=True, text=True)
-real = subprocess.run(["git", "push", "https://github.com/mohamed-rekiba/tollgate.git",
+real = subprocess.run(["git", "push", "https://github.com/tollgate-ai/tollgate.git",
                        "HEAD:refs/heads/tg-lab/escape"], capture_output=True, text=True,
                       timeout=60, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
 data = {"push_code": push.returncode, "push_err": push.stderr.strip()[-200:],

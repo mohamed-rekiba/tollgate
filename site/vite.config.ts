@@ -3,9 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
-// The site is served at https://mohamed-rekiba.github.io/tollgate/.
+// The site is served at https://tollgate-ai.github.io/.
 export default defineConfig({
-  base: '/tollgate/',
+  base: '/',
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {

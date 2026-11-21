@@ -280,14 +280,14 @@ Tollgate can make a rule stricter. Only a person makes a rule looser.
   <img alt="Where each part runs" src="diagrams/packaging.svg">
 </picture>
 
-You install the plugin in Claude Code once, from the repository mohamed-rekiba/tollgate. There is no separate program to install or keep up to date. The machine needs Python 3.11 and a container tool.
+You install the plugin in Claude Code once, from the repository tollgate-ai/tollgate. There is no separate program to install or keep up to date. The machine needs Python 3.11 and a container tool.
 
 ```
-/plugin marketplace add mohamed-rekiba/tollgate
-/plugin install tollgate@mohamed-rekiba
+/plugin marketplace add tollgate-ai/tollgate
+/plugin install tollgate@tollgate-ai
 ```
 
-The repository is its own catalog: a file at `.claude-plugin/marketplace.json` lists the one plugin. The catalog is named `mohamed-rekiba`, not `tollgate`, so the install name does not match the other plugin called tollgate.
+The repository is its own catalog: a file at `.claude-plugin/marketplace.json` lists the one plugin. The catalog is named `tollgate-ai`, not `tollgate`, so the install name does not match the other plugin called tollgate.
 
 | You type in Claude Code | What happens |
 | --- | --- |
@@ -325,7 +325,7 @@ Every feature combines these parts. A feature that needs a seventh is redesigned
 
 ### How it is packaged
 
-One repository, mohamed-rekiba/tollgate, holds both pieces, so they share one version and one manifest format. The plugin is the whole repository. Claude Code copies a plugin's folder on install and nothing outside it, so the Action folder stays inside the plugin.
+One repository, tollgate-ai/tollgate, holds both pieces, so they share one version and one manifest format. The plugin is the whole repository. Claude Code copies a plugin's folder on install and nothing outside it, so the Action folder stays inside the plugin.
 
 | Piece | Holds | Runs |
 | --- | --- | --- |
@@ -397,7 +397,7 @@ Then fresh reviewers read this plan once more, before any stage 1 code is writte
 
 ## Reference: tasks to build it
 
-These are the tasks for the repository mohamed-rekiba/tollgate, in order. Each task is small, and each has a condition that says when it is done. A task starts only when the tasks it needs are done.
+These are the tasks for the repository tollgate-ai/tollgate, in order. Each task is small, and each has a condition that says when it is done. A task starts only when the tasks it needs are done.
 
 Tollgate cannot build itself at the start. The tasks say when that changes:
 
@@ -449,7 +449,7 @@ Every task here adds tests in `tests/`. "Done when" names the tests that matter 
 | 1.8 | `setup/check_rights.py`, `setup/write_workflows.py`, `setup/apply_rulesets.py` | Each script can run twice with the same result, and each ends by checking what it did. `check_rights.py` reports one of the three levels. | 1.6, 1.7 |
 | 1.10 | `skills/init/SKILL.md` | On a sample project in the lab, `/tollgate:init` ends with the proof passing and tells you which level of rights you have. | 1.9 |
 | 1.11 | `tests/proof_stage1.py`: the stage proof | The five pull requests from the build order fail the gate. A push of a freeze tag from a laptop is rejected. | 1.10 |
-| 1.12 | Tollgate guards its own repository | `/tollgate:init` has run on mohamed-rekiba/tollgate, and the gate is a required check there. | 1.11 |
+| 1.12 | Tollgate guards its own repository | `/tollgate:init` has run on tollgate-ai/tollgate, and the gate is a required check there. | 1.11 |
 
 ### Stage 2: the loop
 
@@ -631,7 +631,7 @@ A ticket describes behavior and seams. It holds no file paths, because they go s
 
 ```json
 {
-  "action": "mohamed-rekiba/tollgate/action@3f9c2ab7",
+  "action": "tollgate-ai/tollgate/action@3f9c2ab7",
   "checks": {
     "tests": {"run": "make test", "report": "build/junit.xml"},
     "fast_tests": {"run": "make test-fast", "report": "build/junit.xml"},

@@ -35,7 +35,7 @@ Done when that command prints the settings with no error. Show the user the file
 
 ## 3. Write the workflows
 
-1. Get the commit of Tollgate to use: `gh api repos/mohamed-rekiba/tollgate/commits/main --jq .sha`. Tell the user the commit.
+1. Get the commit of Tollgate to use: `gh api repos/tollgate-ai/tollgate/commits/main --jq .sha`. Tell the user the commit.
 2. Run `python3 -m setup.write_workflows --version <commit>`. With level `copy`, run it with `--version copy` instead: it also copies Tollgate's code into `.tollgate/runner/`. It writes `.github/workflows/tollgate.yml`, which never changes, and sets `"version"` in the settings. A later upgrade changes only that line.
 3. On a new branch `tollgate-setup`, commit `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, push it, and open a pull request.
 4. Ask the user to merge it. The workflows run only from the main branch, so nothing after this step works before the merge.

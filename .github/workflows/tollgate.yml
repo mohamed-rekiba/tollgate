@@ -81,7 +81,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -136,7 +136,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -201,7 +201,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -295,7 +295,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -449,7 +449,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -514,7 +514,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false
@@ -584,7 +584,7 @@ jobs:
       - if: steps.code.outputs.ref != ''
         uses: actions/checkout@v4
         with:
-          repository: mohamed-rekiba/tollgate
+          repository: tollgate-ai/tollgate
           ref: ${{ steps.code.outputs.ref }}
           path: tollgate
           persist-credentials: false

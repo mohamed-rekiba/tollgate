@@ -323,7 +323,7 @@ def left_panel(c):
     out.append(f'<text x="60" y="548" font-size="12" font-weight="700" letter-spacing="1.6" '
                f'fill="{c["muted"]}">A PLUGIN FOR CLAUDE CODE · ONE GITHUB WORKFLOW</text>')
     out.append(f'<text x="{W - 60}" y="548" text-anchor="end" font-size="12" letter-spacing="1" '
-               f'fill="{c["muted"]}">github.com/mohamed-rekiba/tollgate</text>')
+               f'fill="{c["muted"]}">github.com/tollgate-ai/tollgate</text>')
     return out
 
 

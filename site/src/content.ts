@@ -1,10 +1,10 @@
 // Every fact on the page comes from the repository's README and plan.
-export const REPO = 'https://github.com/mohamed-rekiba/tollgate'
+export const REPO = 'https://github.com/tollgate-ai/tollgate'
 export const blob = (path: string) => `${REPO}/blob/main/${path}`
 
 export const INSTALL = [
-  '/plugin marketplace add mohamed-rekiba/tollgate',
-  '/plugin install tollgate@mohamed-rekiba',
+  '/plugin marketplace add tollgate-ai/tollgate',
+  '/plugin install tollgate@tollgate-ai',
   '/tollgate:init',
 ]
 
