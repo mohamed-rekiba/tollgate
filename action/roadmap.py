@@ -92,29 +92,3 @@ def parse(text: str) -> Roadmap:
         raise RoadmapError("the checklist ticket cannot also be a task")
     return Roadmap(header["id"], header["checklist"], "\n".join(sections["Request"]).strip(),
                    tasks)
-
-
-def main(argv=None) -> int:
-    import sys
-
-    args = sys.argv[1:] if argv is None else list(argv)
-    if len(args) != 1:
-        print("usage: python3 -m action.roadmap <path>", file=sys.stderr)
-        return 1
-    try:
-        with open(args[0], encoding="utf-8") as f:
-            text = f.read()
-        road = parse(text)
-    except (OSError, UnicodeDecodeError) as e:
-        print(f"error: cannot read {args[0]}: {e}", file=sys.stderr)
-        return 1
-    except RoadmapError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
-    for stage, task_id, request in road.tasks:
-        print(f"{stage}\t{task_id}\t{request}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

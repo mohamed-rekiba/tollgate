@@ -1,21 +1,42 @@
 """Build a roadmap: freeze its checklist, run each task in order, then check the whole.
 
-    PYTHONPATH=<tollgate> python3 -m driver.roadmap --project . --roadmap orders
-
-The roadmap file and its checklist ticket are in the project's working folder.
+The task skill starts this for a request too large for one plan, after it writes
+the roadmap file and its checklist ticket in the project's working folder.
 A task that does not finish stops the roadmap, because later tasks build on it.
+After the base tasks, the base suite must pass before the skeleton starts.
 Exit codes as for driver.task.
 """
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 from action import roadmap as rm
+from action import settings as st
 from driver.driver import Busy, Driver, TicketLock
 from driver.log import Log, read
 from driver.task import Task
+from setup import base_suite
+
+
+def check_base(project: str, log, ref: str = "origin/main") -> int:
+    """Run the base suite with the settings on main. Log it; 0 when all five pass."""
+    try:
+        settings = st.load_from_ref(project, ref)
+    except (st.SettingsError, OSError, ValueError, subprocess.CalledProcessError) as err:
+        log.add("roadmap_waiting", reason=f"cannot read the settings on {ref} for the base "
+                                          f"suite: {err}")
+        return 1
+    results = base_suite.run(settings, project)
+    failed = [r for r in results if not r["passed"]]
+    if failed:
+        log.add("roadmap_waiting", reason="the base is not ready: " + "; ".join(
+            f"{r['name']} ({r['why']})" for r in failed), base=results)
+        return 1
+    log.add("base_passed", base=results)
+    return 0
 
 
 def run(project: str, roadmap_id: str, server) -> int:
@@ -34,13 +55,24 @@ def run(project: str, roadmap_id: str, server) -> int:
                     log.add("roadmap_waiting", reason="the checklist could not be frozen")
                     return code
                 log.add("checklist_frozen", ticket=roadmap.checklist)
+            base_checked = any(e["event"] == "base_passed" for e in read(log_path))
             for stage, task_id, request in roadmap.tasks:
+                if stage != "Base" and not base_checked:
+                    # The base is done: it must prove the five things before the rest builds on it.
+                    code = check_base(project, log)
+                    if code != 0:
+                        return code
+                    base_checked = True
                 if done.get(task_id) == 0:
                     continue
                 code = Task(project, task_id, request, server).run()
                 log.add("task_done", stage=stage, task=task_id, code=code)
                 if code != 0:
                     log.add("roadmap_waiting", reason=f"task {task_id} did not finish")
+                    return code
+            if not base_checked:
+                code = check_base(project, log)
+                if code != 0:
                     return code
             code = Driver(project, roadmap.checklist, server).run()
             log.add("roadmap_done" if code == 0 else "roadmap_waiting", checklist_code=code)

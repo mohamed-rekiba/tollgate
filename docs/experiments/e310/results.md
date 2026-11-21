@@ -82,3 +82,7 @@ As the advisor set before the run: odd tickets merge the Tollgate arm, even tick
 - `packet/` and the key: the blind review.
 - `invented_names.py`, `fixes_after_merge.py`, `blind_packet.py`: the measuring scripts.
 - The raw logs are on the branch `tollgate-logs`. `python3 -m driver.report --project . --logs-branch tollgate-logs` reads them.
+
+## Cleanup on 2026-11-21: not a fix
+
+The 3.10 requests asked for command-line entry points and flags. The merged ones were: from Tollgate, ticket-file-cli (the tickets command), roadmap-check-cli (the roadmap command), human-flag (`--human` on the rights check), inbox-json-flag (`--json` on the inbox); from Claude Code alone, e310-02 (the plan command), e310-04 (the base-suite flag), e310-06 (the settings column in the home list), e310-07 (`--check` on the rules sync), e310-08 (`--print` on the retro), e310-10 (the manifest command). The plan's decision is "skills in Claude Code, and no command-line program", so those requests should not have been chosen. Every one that merged was removed on 2026-11-21, in both arms. The fixes-after-merge count must not count these removals: the changes did what they were asked; the request was wrong. Only report-minutes stays, because `/tollgate:status` shows its column.
