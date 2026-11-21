@@ -24,10 +24,10 @@ _Avoid_: required item, critical item
 **seam**: A public point where a test observes behavior: a web address, a command, the name and inputs of a function.
 _Avoid_: boundary, touchpoint
 
-**attempt**: One builder session, then one run of the gate.
-_Avoid_: iteration
+**try**: One builder session, then one run of the gate. The driver starts each try from the best try so far.
+_Avoid_: attempt, iteration
 
-**score**: The share of checklist items that passed, as a percentage.
+**score**: The share of checklist items that passed, as a percentage. A try needs 70 or more.
 _Avoid_: rating, grade
 
 ### Roles
@@ -67,7 +67,7 @@ _Avoid_: lock-in, snapshot
 **manifest**: The record of a freeze: each frozen file with its fingerprint, and the name of each frozen test.
 _Avoid_: lockfile, inventory
 
-**gate**: The check that decides whether a change may merge. It uses no AI.
+**gate**: The program that decides whether a try may become a pull request. It uses no AI, and it runs on your machine after each try.
 _Avoid_: judge, verifier, quality gate
 
 **tier**: A number from 1 to 4 that says how much a change puts at risk. The gate works it out from the files that changed.
@@ -99,5 +99,5 @@ _Avoid_: Action, pipeline
 **home**: An optional git repository that holds many projects as submodules.
 _Avoid_: ops repo, workspace, portfolio
 
-**GitHub**: Where the locked tests, the workflow, the gate, and the main branch live. The AI cannot change anything there.
+**GitHub**: Where the locked tests, the workflow, and the main branch live. It runs the tests again on every change. The AI cannot change anything there.
 _Avoid_: the server, remote

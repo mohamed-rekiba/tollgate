@@ -4,7 +4,7 @@ Author: Mohamed Rekiba. Date: 2026-11-21.
 
 ## What Tollgate is
 
-Tollgate is a tool for Claude Code. It lets an AI build a change to your software, and it keeps that change out until tests that the AI cannot change pass it.
+Tollgate is a plugin for Claude Code. It lets an AI write your code, and merges only what works: a change goes on only when tests that the AI cannot change pass, and its score is 70% or more.
 
 You give Tollgate a task. Tollgate gives you merged code and a report.
 
@@ -19,11 +19,11 @@ Think of an exam. The questions are set and sealed before the student starts. Th
 
 **The problem.** An AI that writes code makes four kinds of mistake. It invents things: a function, a file, a fact. It pads its work. It stops before the work is done. It weakens a test to make the test pass. Written instructions do not stop these mistakes, because the AI can ignore instructions. A review by the same AI does not stop them either, because it defends its own work.
 
-**The answer.** Tollgate does not ask the AI to behave. The server locks the tests before the AI builds, and the server runs them after.
+**The answer.** Tollgate does not ask the AI to behave. GitHub locks the tests before the AI builds. The gate, a program with no AI in it, checks each try on your machine. GitHub runs the tests again on every change. The nine principles in [principles.md](principles.md) say what Tollgate holds to, and why.
 
 **The limit.** Tollgate stops an AI that takes a shortcut. It does not stop code that is written to attack the test tools themselves. A reviewer and a person are the only defense against that.
 
-**Status.** Nothing in this plan is built. Nothing is tested. Five experiments must pass before any other code is written. The section "Reference: build order" lists them.
+**Status.** Tollgate is built and in use. [status.md](status.md) says what works, and what is still being measured. The section "Reference: build order" says how it was built.
 
 **How to read this plan.** The first 11 sections explain the tool in plain words. A reader who does not write code can stop after "How you use it". The sections after that are the reference for the person who builds it.
 
@@ -46,23 +46,22 @@ Each thing has one word. This table explains the word once. The rest of the plan
 | finding | One problem that a reviewer or a check reports. A finding is blocking, major, or minor. |
 | advisor | Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder. |
 | checks | Commands that pass or fail with no AI: tests, style, types, a scan for secrets. They are your project's own tools. |
-| harness | The files that decide how tests run: test settings, shared test helpers, the list of dependencies, the server workflows. |
+| harness | The files that decide how tests run: test settings, shared test helpers, the list of dependencies, GitHub workflows. |
 | freeze | The point after which a ticket and its tests cannot change. |
 | manifest | The record of a freeze: each frozen file with its fingerprint, and the name of each frozen test. |
-| gate | The check that decides whether a change may merge. It uses no AI. |
-| attempt | One builder session, then one run of the gate. |
-| score | The share of checklist items that passed, as a percentage. |
+| gate | The program that decides whether a try may become a pull request. It uses no AI, and it runs on your machine after each try. |
+| try | One builder session, then one run of the gate. The next try starts from the best try so far. |
+| score | The share of checklist items that passed, as a percentage. A try needs 70 or more. |
 | skill | A set of instructions that Claude Code follows when you type its name, for example `/tollgate:task`. |
 | plugin | The package that adds Tollgate to Claude Code: the skills, the driver, and the role and lens files. |
-| Action | The code that the server runs for the freeze and the gate. Each project uses one fixed version of it. |
+| `action/` folder | The code for the freeze and the gate. GitHub runs the freeze, and the driver runs the gate. Each project uses one fixed version of it. |
 | driver | The Tollgate script that runs the steps in order. |
 | log | A file on your machine. The driver adds one line for each event. |
 | report | A file that the driver writes from the logs when a task ends. |
 | tier | A number from 1 to 4. It says how much a change puts at risk. |
 | home | An optional folder that holds many projects. |
-| server | GitHub. |
-| pull request | A proposed change on the server. |
-| ruleset | The settings on the server that say what a branch or a tag accepts. |
+| pull request | A proposed change on GitHub. |
+| ruleset | The settings on GitHub that say what a branch or a tag accepts. |
 
 ## A task from start to finish
 
@@ -71,7 +70,7 @@ Each thing has one word. This table explains the word once. The rest of the plan
   <img alt="A task from start to finish" src="diagrams/a-task.svg">
 </picture>
 
-Steps 4 to 6 repeat for each ticket. If the advisor chain has no person, steps 2 to 6 need no person for tiers 1 to 3.
+Steps 4 to 6 repeat for each ticket. If the advisor chain has no person and `auto_merge` is on, tiers 1 and 2 need no person. You merge tiers 3 and 4.
 
 ## How one ticket is built
 
@@ -84,27 +83,27 @@ Steps 4 to 6 repeat for each ticket. If the advisor chain has no person, steps 2
 
 1. The test writer writes one test at a seam for each must-have item.
 2. A reviewer confirms three things for each test: it fits its item, it can fail, and its expected result does not come from the code it tests.
-3. The driver sends the ticket and its tests to the server and asks for a freeze.
-4. The server runs the tests. None may pass yet, because nothing is built. The server then writes the manifest and locks it.
+3. The driver sends the ticket and its tests to GitHub and asks for a freeze.
+4. GitHub runs the tests. None may pass yet, because nothing is built. GitHub then writes the manifest and locks it.
 5. The builder builds. It writes its own smaller tests as it goes.
 6. The driver runs the gate. If the locked tests or the checks fail, the findings go to the builder and step 5 repeats.
 7. The driver computes the score and runs the reviewers. A low score or a blocking finding goes to the builder, and step 5 repeats.
-8. The driver opens a pull request. The server runs the gate.
-9. The change merges when the server passes it.
+8. The driver opens a pull request. GitHub runs the tests again, and reviews a tier 3 or 4 change.
+9. With `auto_merge` on, the driver merges a tier 1 or 2 change. You merge the rest.
 
 ### The score
 
 The score is the share of checklist items that passed. An item with a test passes when its test passes. A reviewer decides each other item and names the file and the line that prove it. The driver confirms that the line exists.
 
-An attempt goes on to step 8 only with a score of 70 or more. Every must-have item has a locked test, so no score can excuse a failed must-have item. The driver keeps the best attempt so far and builds the next one from it.
+A try goes on to step 8 only with a score of 70 or more. Every must-have item has a locked test, so no score can excuse a failed must-have item. The driver keeps the best try so far and builds the next one from it.
 
-### When the attempts stop
+### When the tries stop
 
 The driver stops and asks the advisor when one of these is true:
 
-- The ticket used 3 attempts.
-- The same checks failed as in the attempt before.
-- One attempt ran for 30 minutes.
+- The ticket used 3 tries.
+- The same checks failed as in the try before.
+- One try ran for 30 minutes.
 - The ticket cost 10 USD, or the task reached its own cost limit.
 
 Each number is a setting.
@@ -113,9 +112,9 @@ Each number is a setting.
 
 - **A test is rejected** in step 2 or step 4. It goes back to the test writer, at most 2 times, then to the advisor.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item as "keeps behavior", and the reviewer names one change to the code that would make the test fail.
-- **A locked test is wrong.** The builder cannot change it. The builder says so with evidence, the test writer writes a new test, and the server locks it as a second freeze. The change then needs an approval by a person. A ticket gets one replacement.
+- **A locked test is wrong.** The builder cannot change it. The builder says so with evidence, the test writer writes a new test, and GitHub locks it as a second freeze. You merge that change yourself. A ticket gets one replacement.
 
-## What is locked, and who holds the key
+## What is locked, and who can change it
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/who-holds-the-key-dark.svg">
@@ -126,37 +125,36 @@ Each number is a setting.
 
 | Actor | Can | Cannot |
 | --- | --- | --- |
-| Builder | Edit files in its own copy of the project. Run the fast tests. | Send anything to the server. Create a lock. |
-| Driver | Send a change to the server. Open a pull request. Ask for a freeze. | Create, move, or remove a lock. |
-| Server | Create a lock. Run the gate. Merge. | Change a lock. |
-| A person | Approve a pull request. Decide as an advisor. |  |
+| Builder | Edit files in its own copy of the project. Run the fast tests. | Send anything to GitHub. Create a lock. |
+| Driver | Run the gate. Send a change to GitHub. Open a pull request. Ask for a freeze. Merge tier 1 and 2 when `auto_merge` is on. | Create, move, or remove a lock. |
+| GitHub | Create a lock. Run the tests again. Review tier 3 and 4 changes. | Change a lock. |
+| You | Merge a pull request. Decide as an advisor. |  |
 
-The closed room is a container: a sealed box on your machine that holds one copy of the project for one ticket, the key for the AI model, and nothing else. The builder runs the fast tests inside it. Tests that need other services run outside it, in the driver and on the server.
-
-An approval by a person is one of two things. On a team, it is a normal review by someone other than the author. When you work alone, it is a comment on the pull request that reads `tollgate approve <the full id of the latest commit>`, because the server does not let an author approve their own pull request. The gate accepts the comment only from a person listed under `approvers` in the settings on the main branch. The builder cannot write that comment: it has no key to the server.
+The closed room is a container: a sealed box on your machine that holds one copy of the project for one ticket, the key for the AI model, and nothing else. The builder runs the fast tests inside it. Tests that need other services run outside it, in the driver and on GitHub.
 
 ### The gate
 
-The gate uses no AI, so it gives the same answer every time. The driver runs it on your machine after each attempt. It does not run on GitHub: the owner removed it from the workflow on 2026-11-21, so no check on GitHub blocks a merge. On GitHub, the test job runs the checks again with main's harness and the locked files, and fails when a check fails. The review runs for tier 3 and 4. A tier 3 or 4 change waits for a person to merge it.
+The gate uses no AI, so it gives the same answer every time. The driver runs it on your machine after each try. A try may become a pull request only when all five rules hold:
 
-A change passes when all six rules hold:
-
-1. **Ticket.** The branch is named `tg/<ticket id>`, and the server holds a freeze for that ticket. The gate uses the freeze with the highest number. It accepts the freeze only when the run that created it was the freeze workflow, on the main branch, started by hand, and it succeeded. It also checks that the tag points at the commit that the manifest names.
-2. **Plan.** The server holds an approved plan that lists this ticket. Tier 1 needs no plan.
+1. **Ticket.** The branch is named `tg/<ticket id>`, and GitHub holds a freeze for that ticket. The gate uses the freeze with the highest number. It accepts the freeze only when the run that created it was the freeze workflow, on the main branch, started by hand, and it succeeded. It also checks that the tag points at the commit that the manifest names.
+2. **Plan.** GitHub holds an approved plan that lists this ticket. Tier 1 needs no plan.
 3. **Locked files.** Every file in the manifest has the fingerprint in the manifest.
-4. **Tier.** The gate works out the tier from the files that changed. Tier 4 needs an approval by a person, on the latest version of the change. So does a ticket with a replaced test. A change under `.github/` is harness, so it is tier 4: the driver never sends one, and a person approves it like any other harness change.
+4. **Tier.** The gate works out the tier from the files that changed. If the change is a higher tier than the plan predicted, the gate fails and the advisor decides. The driver never sends a change under `.github/`.
 5. **Tests and checks.** Every check passes. Every test in the manifest ran and passed. No locked test was skipped.
-6. **Review.** For tier 3, the review on the server passed, or a person approved. For tier 4, the review is advice for the person who approves: it never blocks an approval, so a broken review cannot block its own fix.
 
-A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. A change made by hand, on a branch that is not a ticket branch, needs an approval by a person in place of a ticket, as described under rule 4: rules 1 and 2 then pass, rule 4 is met by the same approval, the checks still run, and they run with the change's own harness, because the person vouches for it. A ticket branch can never take this path: its locked tests always apply. When the gate fails for want of an approval, it prints the exact comment to write. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
+Then the score decides: a try needs 70 or more.
 
-On GitHub, the test job's code comes from the main branch, the harness comes from the main branch, and the locked tests come from the freeze. A change cannot bring its own.
+A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
+
+The gate does not run on GitHub. The owner removed it from the workflow on 2026-11-21: [decisions.md](decisions.md) says why. On GitHub, the test job runs the checks again and fails when a check fails, but it does not block a merge. Its code comes from the main branch, its harness comes from the main branch, and the locked tests come from the freeze, so a change cannot bring its own.
 
 ### What the gate proves
 
-The gate proves that the locked tests ran unchanged and passed, on a machine the builder cannot reach.
+The gate proves that the locked tests ran unchanged and passed, and that the try scored 70 or more, on your machine.
 
-For tier 1 and 2, the score and the reviews come from your machine and reach the pull request as text. They are as trustworthy as your machine. For tier 3 and 4, the server runs the reviews again: a separate job reads the change as text, runs none of it, and holds the model key.
+Its proof is as trustworthy as your machine. GitHub then runs the tests again where the builder cannot reach. For tier 3 and 4, GitHub also runs the review again: a separate job reads the change as text, runs none of it, and holds the model key. You read that review before you merge.
+
+What it does not prove: nothing on GitHub stops a change that skips the driver, such as a change pushed by hand.
 
 ## The reviewers
 
@@ -170,7 +168,7 @@ Every reviewer is the same role with a different lens.
 | Test fit | A ticket and its tests | Before the freeze | The three points in step 2. |
 | Checklist | A ticket and the change | Step 7, every tier | Each item with no test. |
 | Change | The ticket, the change, the project's own standards | Step 7, tier 2 and higher | Behavior nobody asked for. Errors at the edges. New logic with no test. Broken project rules. |
-| Security | The change | Step 7 and the server review, tier 3 and 4 | Ways to misuse the change. |
+| Security | The change | Step 7 and GitHub review, tier 3 and 4 | Ways to misuse the change. |
 
 ### Plan review
 
@@ -180,7 +178,7 @@ The builder writes the plan, with its tickets, checklists, and must-have marks. 
 - **Contest.** The finding is wrong, and the builder points to evidence that the reviewer could read.
 - **Escalate.** The builder cannot settle it. The advisor decides.
 
-The review is finished after one round with no open blocking or major finding. The limit is 4 rounds. Then the advisor approves the plan, and the server locks it.
+The review is finished after one round with no open blocking or major finding. The limit is 4 rounds. Then the advisor approves the plan, and GitHub locks it.
 
 A reviewer that fails to answer gets one retry. After that, the round does not count as clean.
 
@@ -193,12 +191,14 @@ A reviewer that fails to answer gets one retry. After that, the round does not c
 
 No AI picks the tier. Path rules in the settings map file paths to tiers, and the gate works out the tier from the files that a change touches.
 
-| Tier | When | Plan | Advisor |
-| --- | --- | --- | --- |
-| 1 | At most 3 files and 50 lines, and no path rule matches | No | AI or person |
-| 2 | Everything else | Yes | AI or person |
-| 3 | A path rule matches. Examples: login, payments, user data | Yes | Two AI advisors from different providers that agree, or a person |
-| 4 | A path rule matches. Examples: database changes, production settings, the harness, Tollgate's own rules | Yes | A person |
+| Tier | When | Plan | Advisor | Who merges |
+| --- | --- | --- | --- | --- |
+| 1 | At most 3 files and 50 lines, and no path rule matches | No | AI or person | Tollgate, when `auto_merge` is on |
+| 2 | Everything else | Yes | AI or person | Tollgate, when `auto_merge` is on |
+| 3 | A path rule matches. Examples: login, payments, user data | Yes | Two AI advisors from different providers that agree, or a person | You |
+| 4 | A path rule matches. Examples: database changes, production settings, the harness, Tollgate's own rules | Yes | A person | You |
+
+`auto_merge` is off by default. Then you merge every change.
 
 Before the build, the driver predicts the tier from the file list in the plan. If the finished change is a higher tier than predicted, the gate fails and the advisor decides.
 
@@ -206,18 +206,18 @@ For tier 1, the builder writes the ticket straight from the task. The test write
 
 ## The advisor
 
-The driver asks the advisor in three cases: the builder has a question about the task, a plan needs approval, or the attempts stopped.
+The driver asks the advisor in three cases: the builder has a question about the task, a plan needs approval, or the tries stopped.
 
-The advisor chain is a list in the settings. You choose who is in it and in what order. The driver asks each entry in turn until one decides. A person answers on the server: a comment on the ticket, or an approval on the pull request. If nobody decides, the ticket is parked, the run moves on to other tickets, and the report says why.
+The advisor chain is a list in the settings. You choose who is in it and in what order. The driver asks each entry in turn until one decides. A person answers on GitHub: a comment on the ticket's issue that starts `tollgate decide`. If nobody decides, the ticket is parked, the run moves on to other tickets, and the report says why.
 
 | Decision | What the driver does |
 | --- | --- |
 | Answer | Gives the answer to the builder. |
-| Approve the plan | Asks the server to lock the plan. |
-| Retry | Runs one more attempt with a hint from the advisor. |
+| Approve the plan | Asks GitHub to lock the plan. |
+| Retry | Runs one more try with a hint from the advisor. |
 | Send the plan back | Returns the plan to the builder with the reason. |
 | Split | Cuts the ticket into smaller tickets. |
-| Stronger builder | Runs one more attempt with a stronger model. |
+| Stronger builder | Runs one more try with a stronger model. |
 | Park | Parks the ticket. |
 
 Three limits:
@@ -265,7 +265,7 @@ Each project sits inside the home as a git submodule: a link from the home to th
 | `/tollgate:home sync` | Opens a pull request in each project with the shared rules. |
 | `/tollgate:inbox` | Lists every ticket that waits for a person, across all projects. |
 
-The home never weakens a project. Each project keeps its own rules, and the server reads them from the project.
+The home never weakens a project. Each project keeps its own rules, and the gate reads them from the project's main branch.
 
 ### Learning
 
@@ -296,13 +296,15 @@ The repository is its own catalog: a file at `.claude-plugin/marketplace.json` l
 | `/tollgate:status` | Shows tasks, tickets, and cost. |
 | `/tollgate:retro` | Shows the numbers for a finished task and opens tickets for lessons. |
 | `/tollgate:home`, `/tollgate:inbox` | Work across many projects. |
+| `/tollgate:docs` | Writes docs, comments, commit messages, and pull requests in plain words. |
+| `/tollgate:diagram` | Draws a diagram as an SVG file, in light and dark. |
 
-You decide on the server, not in a tool: a comment on a ticket, an approval on a pull request. You stop a task with a label on its issue.
+You decide on GitHub, not in a tool: a comment on a ticket's issue, or a merge of a pull request. You stop a task with a label on its issue.
 
 When a task ends, you read the report. It has:
 
 - Whether the task is done, or which tickets are parked and why.
-- Each ticket, with its tier, its attempts, its score, and its pull request.
+- Each ticket, with its tier, its tries, its score, and its pull request.
 - Each decision, with who made it and why.
 - The cost and the time.
 
@@ -319,7 +321,7 @@ Every feature combines these parts. A feature that needs a seventh is redesigned
 | 1. Log | A file that only grows. Only the driver writes it. | Ticket states, the report, the numbers for learning, restart after a crash. |
 | 2. Role runner | One function in the driver: start an AI session with a prompt file, a tool list, and inputs. Return its output as data, with its cost. | Builder, test writer, every reviewer, the AI advisor. A new role is a new prompt file. |
 | 3. Check runner | Runs the check commands. Reads the test results from the report file that your test tool writes. | Tests, style, types, secrets. Tollgate ships none of these tools. It runs yours. |
-| 4. Gate | A program with no AI. It reads git, the check results, and the approvals on the pull request. | The same code runs on your machine and on the server. |
+| 4. Gate | A program with no AI. It reads git, the freeze, and the check results. | It runs on your machine, in the driver, after each try. |
 | 5. Driver | A loop: read the log, run the next step, write the log. | The build loop, plan review, tasks, roadmaps. |
 | 6. Rules as data | Settings, lenses, and tier presets, as files in the project. | A new rule is a new file. It needs no new version of Tollgate. |
 
@@ -330,7 +332,7 @@ One repository, tollgate-ai/tollgate, holds both pieces, so they share one versi
 | Piece | Holds | Runs |
 | --- | --- | --- |
 | Plugin | The skills, the role and lens files, the driver script, and the setup scripts | On your machine |
-| Action | The gate and the freeze | On the server, and on your machine when the driver calls the gate |
+| `action/` folder | The gate and the freeze | The freeze on GitHub; the gate on your machine, when the driver calls it |
 
 A project names the version of Tollgate in its settings: `"version"` is a full commit id, or `"self"` in the Tollgate repository itself. The one workflow file reads it from the main branch and never changes, so an upgrade is one line in the settings, in an ordinary pull request.
 
@@ -353,7 +355,7 @@ Each setup script does one step, can be run twice without harm, and ends by chec
 
 ### Where things live
 
-Run state lives only in the logs, on your machine, and is not committed. Labels and comments on the server are a view that the driver writes from the logs. Proof lives only on the server: the freezes, the settings on the main branch, the change, and the approvals. The gate reads proof and never reads a log.
+Run state lives only in the logs, on your machine, and is not committed. Labels and comments on GitHub are a view that the driver writes from the logs. Proof lives only on GitHub: the freezes, the settings on the main branch, and the change. The gate reads proof and never reads a log.
 
 ### The builder's copy
 
@@ -376,8 +378,8 @@ Python 3.11 with the standard library only. It calls `git`, `gh`, a container to
 | --- | --- | --- |
 | 0 | Five experiments, then a review of this plan | See below. |
 | 1 | The Action: manifest, freeze, gate, tier rules. The three workflows. The setup scripts. The `init` skill. | `/tollgate:init` on a sample project ends with its proof passing. Five pull requests fail the gate: one edits a locked test, one adds a skip mark, one adds a test settings file, one touches a tier 4 path with no approval, one names no ticket. A push of a freeze tag from a laptop is rejected. |
-| 2 | The driver: log, role runner, the builder's copy and container, test writer, builder, the test-fit and checklist lenses, stop rules | With fake roles: a builder that passes on attempt 2 ends with a pull request. A builder that fails the same check twice stops after 2 attempts. A builder that fails a different check each time stops after 3. A driver that is killed and started again repeats no finished step. A second driver for the same ticket refuses to start. |
-| 3 | Plan, plan review, the change and security lenses, the server review, advisor, the `task` and `status` skills, report | With fake roles: a task with 3 tickets ends as done with 3 merged pull requests. With one ticket that cannot pass, the report names it and the reason. |
+| 2 | The driver: log, the function that starts each role, the builder's copy and container, test writer, builder, the test-fit and checklist lenses, stop rules | With fake roles: a builder that passes on try 2 ends with a pull request. A builder that fails the same check twice stops after 2 tries. A builder that fails a different check each time stops after 3. A driver that is killed and started again repeats no finished step. A second driver for the same ticket refuses to start. |
+| 3 | Plan, plan review, the change and security lenses, GitHub review, advisor, the `task` and `status` skills, report | With fake roles: a task with 3 tickets ends as done with 3 merged pull requests. With one ticket that cannot pass, the report names it and the reason. |
 | 4 | Roadmap, base suite, the `home`, `inbox`, and `retro` skills | A roadmap with a skeleton and 2 features ends with its own locked tests passing. A home with 2 submodules lists the waiting tickets of both. |
 
 A fake role is a script named in the settings in place of Claude Code. It returns prepared output, so stages 2 and 3 are tested with no model and no cost.
@@ -390,7 +392,7 @@ Five experiments. Each is a short script against a throwaway repository. If one 
 
 1. **Locks.** A ruleset lets only a workflow create a tag under `tg/`, and lets nobody change or delete one.
 2. **The closed room.** Claude Code runs in a container with the model key and a fixed tool list, on a fresh copy of a repository, and returns its output as data with a cost.
-3. **The clean server job.** A job with no secrets runs the tests of a pull request, while the workflow file and the harness come from the main branch.
+3. **The clean GitHub job.** A job with no secrets runs the tests of a pull request, while the workflow file and the harness come from the main branch.
 4. **A long run from a skill.** A driver that a skill starts keeps running after the Claude Code session closes. The fifth experiment, the pinned Action, is task E5 in the next section.
 
 Then fresh reviewers read this plan once more, before any stage 1 code is written.
@@ -427,7 +429,7 @@ Each experiment produces a script in `docs/experiments/` and a short note: what 
 | --- | --- | --- | --- |
 | E1 | Locks. In the lab, a ruleset lets only a workflow create a tag under `tg/` and lets nobody change or delete one. Then the same test as a user with write access only: can that user add the workflows and start the freeze? | The note records what an admin gets and what a user with write access gets. | S3 |
 | E2 | The closed room. Claude Code runs in a container on a fresh copy of the lab, with the model key and a fixed tool list, and returns data with a cost. | A push from inside the container fails. The output parses as data. | S3 |
-| E3 | The clean server job. A job with no secrets runs the tests of a pull request while the workflow file and the harness come from the main branch. | A pull request that edits the test settings still runs with the settings from the main branch. | S3 |
+| E3 | The clean GitHub job. A job with no secrets runs the tests of a pull request while the workflow file and the harness come from the main branch. | A pull request that edits the test settings still runs with the settings from the main branch. | S3 |
 | E4 | A long run from a skill. A skill starts a script that writes one line each minute. | The script still writes after the Claude Code session is closed. | S4 |
 | E5 | Pin the Action. A workflow in the lab calls an action in the folder `action/` of this repository at one exact commit. | The workflow runs the pinned code after the main branch has moved on. | S5 |
 | R0 | A review of this plan by fresh reviewers, with the five notes in hand | Every blocking finding is fixed, contested with evidence, or recorded as an open point in the plan. | E1 to E5 |
@@ -475,11 +477,11 @@ From here, the driver builds each task. The list is coarser, because the plan de
 
 | Task | Produces | Needs |
 | --- | --- | --- |
-| 3.1 | The plan format and the plan tag, written by the server | 2.9 |
+| 3.1 | The plan format and the plan tag, written by GitHub | 2.9 |
 | 3.2 | The three plan lenses, and the plan review with fix, contest, or escalate | 3.1 |
 | 3.3 | The change lens and the security lens, in step 7 | 2.9 |
-| 3.4 | `workflows/review.yml`: the review on the server for tier 3 and 4 | 3.3 |
-| 3.5 | The advisor chain: the AI advisor role, a person's answer read from the server, the limit of 2, parking | 2.9 |
+| 3.4 | `workflows/review.yml`: the review on GitHub for tier 3 and 4 | 3.3 |
+| 3.5 | The advisor chain: the AI advisor role, a person's answer read from GitHub, the limit of 2, parking | 2.9 |
 | 3.6 | The task loop in the driver: plan, tickets, one ticket after another, and the cost limit for a task | 3.2, 3.5 |
 | 3.7 | The report | 3.6 |
 | 3.8 | The `task` and `status` skills | 3.6, E4 |
@@ -571,7 +573,7 @@ home/
 
 The home ignores which commit each submodule is on, so a merge in a project does not make the home look changed.
 
-### Names on the server
+### Names on GitHub
 
 | Thing | Name |
 | --- | --- |
@@ -678,7 +680,7 @@ The gate compares the branch with the point where it left the main branch. A fai
 
 Each ticket has its own log file, and each task has one. One file has one writer.
 
-## Reference: the server
+## Reference: GitHub
 
 ### The workflow
 
@@ -694,9 +696,9 @@ A workflow on `pull_request` would run the copy from the pull request, so a chan
 
 A test report can be forged by code that the change brings. That is the stated limit of the tool.
 
-The driver uses your own access to the server. It needs no extra account, no App, and no right that you do not already have. The gate accepts an approval only on the latest commit of the pull request.
+The driver uses your own access to GitHub. It needs no extra account, no App, and no right that you do not already have.
 
-### What Tollgate needs on the server
+### What Tollgate needs on GitHub
 
 Tollgate works with the rights you have. `/tollgate:init` checks them first and tells you which row applies.
 
@@ -791,16 +793,15 @@ These rules cover documents, code comments, commit messages, and pull requests. 
 | The gate and the freeze are an Action that each project pins. | A change cannot bring its own gate. | Gate code copied into each project by default. |
 | One repository for the plugin and the Action. | The driver, the freeze, and the gate share one manifest format and one version. | Two repositories. |
 | Tollgate needs only the rights you have. | It must work in an organization where you are not an admin. | A GitHub App as the driver's identity. A setting at the level of the organization. |
-| A person approves with a review, or alone with a comment that names the latest commit. | The server does not let an author approve their own pull request. | A signed comment, which is custom cryptography for one person to maintain. |
-| The server creates every freeze. | The builder runs on your machine. A lock made there would prove nothing. | The driver creates the lock from your machine. |
-| The gate uses no AI. | An AI gate needs a model key next to untrusted code, costs money on every push, and can differ from run to run. | Reviewers on the server for every change. Tier 3 and 4 get them. |
+| GitHub creates every freeze. | The builder runs on your machine. A lock made there would prove nothing. | The driver creates the lock from your machine. |
+| The gate uses no AI. | An AI gate needs a model key next to untrusted code, costs money on every push, and can differ from run to run. | Reviewers on GitHub for every change. Tier 3 and 4 get them. |
 | Every must-have item has a locked test. | A test gives the same result each time. | A separate AI judge that runs in 3 sessions. |
 | The test writer writes one test for each must-have item, not all tests. | Tests written before any code check imagined behavior. | The test writer writes every test. |
 | The builder runs in a container, on a fresh copy for each ticket. | The builder runs as you and could read your keys. A fresh copy holds everything the container needs in one folder. | Edit hooks. A shared checkout with a separate working folder for each ticket. |
 | One reviewer role with lenses. | One mechanism to build and test. | A separate agent for each kind of review. |
 | Plan review is three lenses at the same time, one clean round. | The cost of five stages with two clean rounds each is unknown and may exceed the build. | Five review stages in order. |
 | The gate works out the tier. | A builder that picks the tier of its own work can pick a low one. | The tier written on the ticket. |
-| Run state in logs, proof on the server. | The gate must not trust a file from your machine. | Records uploaded from your machine. |
+| Run state in logs, proof on GitHub. | The gate must not trust a file from your machine. | Records uploaded from your machine. |
 | The home is created by a skill, and each project is a submodule. | An upgrade never merges into your data. Git keeps the list of projects, and one download brings them all. | A fork of a framework repository as the home. A separate registry file. |
 | Shared code moves when a second feature needs it. | A list of shared parts written before any feature is a guess. | A foundation layer built first. |
 | A base is whatever passes the base suite. | A template for each language is upkeep that grows with every language. | A starter template for each stack. |
@@ -819,18 +820,17 @@ Out of scope: product management documents, deployment to production, a hosted s
 | --- | --- | --- |
 | A ruleset cannot limit who creates a tag. | Stage 0 tests it first. | The manifests live on a protected branch that only the freeze workflow can write. |
 | You are not an admin of the repository. | The freeze and the gate still run and report. Each pull request says that the gate is not enforced. | An admin runs the two ruleset commands that the skill prints. |
-| A skill sets up a project wrongly. | Scripts do the fixed steps. The `init` skill ends with a proof pull request. | The gate fails on the server with a clear message. |
+| A skill sets up a project wrongly. | Scripts do the fixed steps. The `init` skill ends with a proof pull request. | The gate fails on GitHub with a clear message. |
 | The driver stops when the Claude Code session closes. | The skill starts it as its own process. Stage 0 tests this. | You start the driver script from a terminal. |
 | The setup scripts grow into a command-line tool. | One script for each step, no shared framework. | Fold a script back into the Action or remove it. |
 | The builder cannot run in a container on some machine. | `sandbox: none`, with `auto_merge` off and a note on the pull request. | You review each pull request yourself. |
-| The builder cannot see a failure of a slow test itself. | The driver runs the slow tests and passes the output to the builder. | More attempts, within the stop rules. |
+| The builder cannot see a failure of a slow test itself. | The driver runs the slow tests and passes the output to the builder. | More tries, within the stop rules. |
 | A fresh copy for each ticket is slow on a large repository. | The copy reuses the data of the checkout that is already on disk. | A setting keeps one copy for each task. |
-| Code in a change forges its own test results. | The harness and the locked tests come from the server. New test settings count as harness. | Nothing. This is the stated limit of the tool. |
-| A locked test tests the wrong thing. | The test-fit lens runs before the freeze. | One replacement, with an approval by a person. |
-| Text in a change talks a reviewer into a pass. | No reviewer decides gate rules 1 to 5. | Tier 3 and 4 run the review again on the server. |
-| The freeze adds a wait for the server to every ticket. | The test writer for the next ticket works during the wait. | A setting freezes all tickets of a plan in one run. |
+| Code in a change forges its own test results. | The harness and the locked tests come from GitHub. New test settings count as harness. | Nothing. This is the stated limit of the tool. |
+| A locked test tests the wrong thing. | The test-fit lens runs before the freeze. | One replacement, which you merge yourself. |
+| Text in a change talks a reviewer into a pass. | No reviewer decides gate rules 1 to 5. | Tier 3 and 4 run the review again on GitHub. |
+| The freeze adds a wait for GitHub to every ticket. | The test writer for the next ticket works during the wait. | A setting freezes all tickets of a plan in one run. |
 | A run costs too much. | Reviewers run only after the gate passes. Limits hold for each ticket and each task. | The driver parks the ticket. |
-| The driver uses your access, so it could write an approval comment. | The driver script never writes one, and the builder has no key. The gate checks that the comment names the latest commit. | On a team, require a review by a second person for tier 4. |
 
 ### Limits
 
@@ -850,12 +850,12 @@ Each line comes from documentation or from reasoning. No test has confirmed it.
 - A project can pin an Action that sits in a folder of another repository, at one exact commit.
 - Claude Code reports its cost in its output.
 - One clean round of three lenses finds enough errors in a plan.
-- Every number in this plan: 3 attempts, 70, 30 minutes, 10 USD, 4 rounds, 2 advisor decisions, 3 files and 50 lines.
+- Every number in this plan: 3 tries, 70, 30 minutes, 10 USD, 4 rounds, 2 advisor decisions, 3 files and 50 lines.
 
 ### Open
 
 - **The name is already in use.** A web search found a Claude Code plugin named tollgate that handles payments for AI agents, and a Ruby tool named tollgate that runs checks and prints pass or fail. The skills of this plan would be typed as `/tollgate:...`, in the same plugin namespace. Nobody has checked trademarks or package registries. Settle this before the first release.
-- **A run with no machine of yours.** A label on an issue could start a task in a workflow on the server. That puts the driver, the model key, and a token that can write in one place, which removes the separation that the proof rests on. Until this is designed, run tasks on a machine that stays on. The design can be reopened when the job that runs code holds no token that can write, and after stages 1 to 3 have run on a real project.
+- **A run with no machine of yours.** A label on an issue could start a task in a workflow on GitHub. That puts the driver, the model key, and a token that can write in one place, which removes the separation that the proof rests on. Until this is designed, run tasks on a machine that stays on. The design can be reopened when the job that runs code holds no token that can write, and after stages 1 to 3 have run on a real project.
 - **Tickets at the same time.** Two tickets that touch different files could run side by side. The plan does not design this.
 
 ## How we will know it works
@@ -883,12 +883,12 @@ Fresh reviewers read the core design in two rounds: the freeze, the gate, the ro
 
 | Round | Main findings | Answer in this plan |
 | --- | --- | --- |
-| 1 | Locked files do not lock the test run. An AI gate on the server needs a model key next to untrusted code. Nothing tied a change to its ticket. | Test names in the manifest. A gate with no AI. Gate rules 1 and 4. |
-| 2 | The builder shares your credentials. An AI could approve the replacement of a locked test. The builder wrote its own tier. Test results come from the code under test. | The server creates freezes. The builder runs in a container. A replacement needs a person. The gate works out the tier. The limit on forged results is stated. |
+| 1 | Locked files do not lock the test run. An AI gate on GitHub needs a model key next to untrusted code. Nothing tied a change to its ticket. | Test names in the manifest. A gate with no AI. Gate rules 1 and 4. |
+| 2 | The builder shares your credentials. An AI could approve the replacement of a locked test. The builder wrote its own tier. Test results come from the code under test. | GitHub creates freezes. The builder runs in a container. A replacement needs a person. The gate works out the tier. The limit on forged results is stated. |
 
 Two findings were contested. One reviewer asked to cut the home, the roadmap, and the retro as unproven needs. They stay as stage 4, and they start only after real use. One reviewer asked for two tiers. Four stay, because a tier is a row of settings and adds no code.
 
-No reviewer has read three parts: skills and scripts in place of a command-line program, projects as submodules, and the three levels of rights on the server.
+No reviewer has read three parts: skills and scripts in place of a command-line program, projects as submodules, and the three levels of rights on GitHub.
 
 The next review is a named step: after stage 0, and before any stage 1 code.
 

@@ -5,63 +5,57 @@
   <img alt="Tollgate: let AI write your code, merge only what works" src="docs/diagrams/hero.svg">
 </picture>
 
-Tollgate lets an AI build changes to your software, and keeps each change out of your main branch until it passes tests the AI cannot change.
+Tollgate lets an AI write your code, and merges only what works.
 
-It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it, cuts it into small tickets, has the tests written and locked first, has the code built, checks it, and opens a pull request. The gate, a program with no AI in it, decides whether a change is ready for a pull request. On GitHub, the tests run again and an AI reviews the riskier changes.
+It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it and cuts it into small tickets. For each ticket, it writes the tests first and locks them, has the AI build until the tests pass and the score reaches 70%, and opens a pull request.
 
 The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.github.io](https://github.com/tollgate-ai/tollgate-ai.github.io)).
 
-## What you gain
+## Why it exists
 
-- **The AI cannot grade its own work.** A check with no AI decides every merge, and no AI can override it.
-- **The AI cannot weaken a test to pass it.** Tests are written from the ticket and locked on GitHub before any code exists. They must fail first, and nobody can change them after.
-- **"Done" means the same thing every time.** A ticket passes only when each must-have item is proven by a locked test, or by a file and line that Tollgate confirms exists.
-- **Less invented code reaches you.** Separate AI sessions write the tests, build, and review. Each reviewer starts fresh and cannot edit. It looks for one thing: behavior nobody asked for, untested logic, or ways to misuse the change.
-- **You step in only when it matters.** Small changes go through on their own. Changes to risky paths, such as security code, the test setup, or the workflows, wait for you to merge them.
-- **Work does not stall or loop.** Tollgate retries from its best attempt with what went wrong, and stops after 3 tries, the same failure twice, 30 minutes, or a cost limit. Then the advisor, a second AI or you, decides what happens next.
-- **You can leave it running.** One request becomes a plan and a pull request for each ticket. A stopped run picks up where it was.
-- **The AI cannot reach your accounts.** The builder works in a container on a copy of your project, with model access only: no git or GitHub credentials.
-- **You see where things stand at a glance.** `/tollgate:status` gives two short lists, Done and Still to do.
-- **It improves with use.** `/tollgate:retro` shows a task's numbers and turns at most 3 lessons into tickets. A lesson can make a rule stricter, never looser.
-- **Little to install, nothing to run.** One workflow file that never changes, one settings file, Python's standard library, and no server.
+An AI that writes code makes four kinds of mistake. It invents things: a function, a file, a fact. It pads its work. It stops before the work is done. It weakens a test to make the test pass. Telling it not to does not stop these mistakes. A review by the same AI does not stop them either, because it defends its own work.
+
+Tollgate does not ask the AI to behave. It makes these mistakes fail.
 
 ## The principles
 
 1. **Tests come first.** Before the AI writes any code, Tollgate writes tests for what you asked for and locks them. The AI cannot change them.
-2. **The AI never grades its own work.** The tests and fresh reviewers check it.
+2. **The AI never grades its own work.** The locked tests and fresh reviewers check each try. Each reviewer is a separate AI session that cannot edit.
 3. **Every try gets a score.** 70% or more passes. A failed must-have item always fails.
 4. **Each try builds on the best one.** When a try fails, the AI gets the reasons and tries again from its best try so far.
-5. **It knows when to stop.** After 3 tries, the AI asks for help: a second AI, or you.
-6. **Riskier changes get more checks.** You merge the riskiest ones yourself.
+5. **It knows when to stop.** After 3 tries, the same failure twice, 30 minutes, or a cost limit, the AI asks the advisor: a second AI, or you.
+6. **Riskier changes get more checks.** The files a change touches give it a tier from 1 to 4. You merge tiers 3 and 4 yourself.
 7. **Mistakes become rules.** After each task, up to 3 lessons become stricter rules. Rules never get looser.
-8. **Code enforces the rules.** A rule that is only written in a prompt does not count.
+8. **Code enforces the rules.** A rule that is only written in a prompt does not count. The AI works in a container with no git or GitHub credentials.
 9. **Plain words.** Everything is written for people to read.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/principles-dark.svg">
-  <img alt="Tollgate's principles: tests come first, others check each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks for help, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
+  <img alt="Tollgate's principles: tests come first, others check each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks the advisor, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
 </picture>
+
+[docs/principles.md](docs/principles.md) explains each principle: what it means, why it exists, how Tollgate does it, and where it stops.
 
 ## How it works
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
-  <img alt="How Tollgate works, with its three feedback loops" src="docs/diagrams/how-it-works.svg">
+  <img alt="How Tollgate works, with its three loops" src="docs/diagrams/how-it-works.svg">
 </picture>
 
-Three loops keep the work honest:
+Three loops send each problem back to the step that can fix it:
 
-1. **The build loop.** When the gate or a reviewer finds a problem, the findings and each failed check's output go back to the builder. It tries again from its best attempt, until it passes or a stop rule sends the ticket to the advisor.
-2. **The plan loop.** Reviewers read the plan before any code exists. The builder fixes, contests, or escalates each finding, for up to 4 rounds.
-3. **The learning loop.** After a task, `/tollgate:retro` turns at most 3 lessons into tickets: a new test, a new check, a new question for the reviewers, or a stricter rule. The next tasks run under them.
+1. **The plan loop.** Fresh reviewers read the plan before any code exists. For each problem they find, the builder fixes it, argues against it with evidence, or asks the advisor. This repeats for up to 4 rounds.
+2. **The build loop.** The gate, a program with no AI in it, checks each try on your machine. Below 70%, the builder gets the reasons and tries again from its best try. After 3 tries, the advisor decides.
+3. **The learning loop.** After a task, `/tollgate:retro` turns up to 3 lessons into tickets: a new test, a new check, a new question for the reviewers, or a stricter rule.
 
-Each change gets a tier from 1 to 4 from the paths it touches. With `auto_merge` on, Tollgate merges a tier 1 or 2 change itself. A tier 3 or 4 change waits for you to merge it, after an AI reviews it on GitHub.
-
-Code enforces every rule above. A rule that is only written in a prompt does not count. [docs/plan.md](docs/plan.md) explains each part.
+On GitHub, the tests run again on every change, and an AI reviews tier 3 and 4 changes. With `auto_merge` on, Tollgate merges tier 1 and 2 changes itself. You merge the rest.
 
 ## Get started
 
 You need Claude Code, Python 3.11 or later, git, and the `gh` command.
+
+There is little to install and nothing to run: one workflow file, one settings file, and Python's standard library.
 
 ```
 /plugin marketplace add tollgate-ai/tollgate
@@ -90,6 +84,8 @@ To run tasks on GitHub instead of your machine, add one of these repository secr
 | `/tollgate:docs` | Writes a README, docs, comments, commit messages, and pull requests in plain words. It adds a check for the writing rules. |
 | `/tollgate:diagram` | Draws a diagram as an SVG file, in light and dark. |
 
+A task runs in the background, so you can leave it running. A stopped task picks up where it stopped.
+
 A question for you arrives as a GitHub issue with the label `tg-waiting`. You answer with a comment that starts `tollgate decide`, followed by your choice.
 
 ## Cost, and when to use it
@@ -111,6 +107,7 @@ Still being measured: the blind review and the fixes after merge from [the compa
 
 ## Read more
 
+- [docs/principles.md](docs/principles.md): each principle in detail.
 - [docs/plan.md](docs/plan.md): the design, in plain words first and in detail after.
 - [docs/decisions.md](docs/decisions.md): each decision, and why.
 - [CONTEXT.md](CONTEXT.md): the words this project uses, one for each thing.
