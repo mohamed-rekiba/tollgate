@@ -15,13 +15,15 @@ from pathlib import Path
 
 from gate import roadmap as rm
 from gate import settings as st
-from driver.driver import Busy, Driver, TicketLock
+from gate import state
+from gate.store import Store
+from driver.driver import BASE, Busy, Driver, run_lock
 from driver.log import Log, read
 from driver.task import Task
 from setup import base_suite
 
 
-def check_base(project: str, log, ref: str = "origin/main") -> int:
+def check_base(project: str, log, ref: str = BASE) -> int:
     """Run the base suite with the settings on main. Log it; 0 when all five pass."""
     try:
         settings = st.load_from_ref(project, ref)
@@ -43,18 +45,19 @@ def check_base(project: str, log, ref: str = "origin/main") -> int:
     return 0
 
 
-def run(project: str, roadmap_id: str, server) -> int:
+def run(project: str, roadmap_id: str, store=None) -> int:
     project = os.path.abspath(project)
+    store = store or Store(project)
     roadmap = rm.parse(Path(project, rm.roadmap_path(roadmap_id)).read_text())
-    log_path = os.path.join(project, ".tollgate", "logs", f"roadmap-{roadmap_id}.jsonl")
-    lock = TicketLock(os.path.join(project, ".tollgate", "run", f"roadmap-{roadmap_id}.lock"))
+    log_path = str(state.path(project, "logs", f"roadmap-{roadmap_id}.jsonl"))
+    lock = run_lock(project, f"roadmap-{roadmap_id}")
     lock.acquire()
     try:
         done = {e["task"]: e["code"] for e in read(log_path) if e["event"] == "task_done"}
         frozen = any(e["event"] == "checklist_frozen" for e in read(log_path))
         with Log(log_path, roadmap=roadmap_id) as log:
             if not frozen:
-                code = Driver(project, roadmap.checklist, server).run(until="frozen")
+                code = Driver(project, roadmap.checklist, store).run(until="frozen")
                 if code != 0:
                     log.add("roadmap_waiting", reason="the checklist could not be frozen")
                     return code
@@ -69,7 +72,7 @@ def run(project: str, roadmap_id: str, server) -> int:
                     base_checked = True
                 if done.get(task_id) == 0:
                     continue
-                code = Task(project, task_id, request, server).run()
+                code = Task(project, task_id, request, store).run()
                 log.add("task_done", stage=stage, task=task_id, code=code)
                 if code != 0:
                     log.add("roadmap_waiting", reason=f"task {task_id} did not finish")
@@ -78,25 +81,21 @@ def run(project: str, roadmap_id: str, server) -> int:
                 code = check_base(project, log)
                 if code != 0:
                     return code
-            code = Driver(project, roadmap.checklist, server).run()
+            code = Driver(project, roadmap.checklist, store).run()
             log.add("roadmap_done" if code == 0 else "roadmap_waiting", checklist_code=code)
             return code
     finally:
         lock.release()
 
 
-def main(argv=None, server=None) -> int:
+def main(argv=None, store=None) -> int:
     parser = argparse.ArgumentParser(prog="tollgate roadmap", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--roadmap", required=True)
-    parser.add_argument("--repository")
     args = parser.parse_args(argv)
-    if server is None:
-        from driver.server import GitHub
-        server = GitHub.for_project(args.project, args.repository)
     try:
-        return run(args.project, args.roadmap, server)
+        return run(args.project, args.roadmap, store)
     except Busy as err:
         print(err, file=sys.stderr)
         return 4

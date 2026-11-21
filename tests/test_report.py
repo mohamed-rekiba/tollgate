@@ -1,9 +1,11 @@
 """Tests for the done and still-to-do summary."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from gate import plan as pl
 from driver import report
@@ -30,38 +32,49 @@ cart.add
 """
 
 
-class ProgressTest(unittest.TestCase):
+class StateCase(unittest.TestCase):
+    """A project folder and its own state folder."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.p = self.tmp.name
+        self.p = os.path.join(self.tmp.name, "project")
+        os.mkdir(self.p)
+        patch = mock.patch.dict(os.environ, {"TOLLGATE_STATE": os.path.join(self.tmp.name, "state")})
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.logs = report.logs_dir(self.p)
+
+
+class ProgressTest(StateCase):
+    def setUp(self):
+        super().setUp()
         Path(self.p, pl.plan_path("shop")).parent.mkdir(parents=True)
         Path(self.p, pl.plan_path("shop")).write_text(PLAN)
-        logs = Path(self.p, ".tollgate/logs")
-        with Log(str(logs / "task-shop.jsonl"), task="shop") as log:
-            log.add("plan_locked", tag="tg/plan/shop/1")
-        self.ticket("shop-1", [("merged", {"pr": 7})], pr=7, tier=1)
-        self.ticket("shop-2", [("waiting_for_merge", {"pr": 8})], pr=8, tier=4)
+        with Log(str(self.logs / "task-shop.jsonl"), task="shop") as log:
+            log.add("plan_locked", path="plans/shop.json")
+        self.ticket("shop-1", [("merged", {"commit": "c" * 40})], ready=True, tier=1)
+        self.ticket("shop-2", [("waiting_for_merge", {"commit": "d" * 40})], ready=True, tier=4)
         self.ticket("shop-3", [("stopped", {"reason": "the same checks failed"}),
-                               ("waiting_for_advisor", {"issue": 12, "reason": "the same checks failed"})])
-        self.ticket("shop-4", [("attempt_started", {"attempt": 2})])
+                               ("waiting_for_advisor", {"question": 12,
+                                                        "reason": "the same checks failed"})])
+        self.ticket("shop-4", [("try_started", {"attempt": 2})])
 
-    def ticket(self, tid, events, pr=None, tier=None):
-        with Log(str(Path(self.p, ".tollgate/logs", f"{tid}.jsonl")), ticket=tid, task="shop") as log:
-            log.add("attempt_passed" if pr else "attempt_failed", attempt=1, score=100, tier=tier or 1)
-            if pr:
-                log.add("pr_opened", pr=pr, commit="c")
+    def ticket(self, tid, events, ready=False, tier=None):
+        with Log(str(self.logs / f"{tid}.jsonl"), ticket=tid, task="shop") as log:
+            log.add("try_passed" if ready else "try_failed", attempt=1, score=100, tier=tier or 1)
+            if ready:
+                log.add("ready", branch=f"tg/{tid}", commit="c" * 40)
             for name, fields in events:
                 log.add(name, **fields)
 
     def test_each_state_reads_as_one_sentence(self):
         done, todo = report.progress(self.p, "shop")
-        self.assertEqual(done, ["Plan for shop: approved and locked.",
-                                "shop-1: merged (pull request #7)."])
+        self.assertEqual(done, ["Plan for shop: approved and locked.", "shop-1: merged."])
         self.assertEqual(todo, [
-            "shop-2: built, pull request #8 waits to merge. It needs your approval: tier 4.",
-            "shop-3: waits for your decision in issue #12. The same checks failed.",
-            "shop-4: being built, attempt 2.",
+            "shop-2: built, branch tg/shop-2 waits to merge. It needs your approval: tier 4.",
+            "shop-3: waits for your decision in question 12. The same checks failed.",
+            "shop-4: being built, try 2.",
             "shop-5: not started."])
 
     def test_brief_has_two_short_lists(self):
@@ -71,13 +84,14 @@ class ProgressTest(unittest.TestCase):
         self.assertNotIn("|", text)
 
     def test_a_task_waiting_for_plan_approval(self):
-        with Log(str(Path(self.p, ".tollgate/logs/task-blog.jsonl")), task="blog") as log:
-            log.add("waiting_for_advisor", issue=3, reason="review clean")
+        with Log(str(self.logs / "task-blog.jsonl"), task="blog") as log:
+            log.add("waiting_for_advisor", question=3, reason="review clean")
         _, todo = report.progress(self.p, "blog")
-        self.assertEqual(todo, ["Plan for blog: waits for your approval in issue #3."])
+        self.assertEqual(todo, ["Plan for blog: waits for your approval in question 3."])
 
     def test_nothing_run_yet(self):
         with tempfile.TemporaryDirectory() as empty:
+            empty = os.path.join(empty, "other")
             self.assertIn("- Nothing yet.", report.brief(empty))
             self.assertIn("- Nothing. Everything is done.", report.brief(empty))
 
@@ -89,7 +103,8 @@ class ProgressTest(unittest.TestCase):
     def test_the_task_report_has_a_picture(self):
         import xml.etree.ElementTree as ET
         report.write(self.p, "shop")
-        folder = Path(self.p, ".tollgate", "reports")
+        folder = Path(report.write(self.p, "shop")).parent
+        self.assertFalse(Path(self.p, ".tollgate", "reports").exists())
         text = (folder / "shop.md").read_text()
         self.assertIn('srcset="shop-dark.svg"', text)
         for name in ("shop.svg", "shop-dark.svg"):
@@ -101,16 +116,9 @@ class ProgressTest(unittest.TestCase):
 
 
 
-class RoadmapReportTest(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.p = self.tmp.name
-        Path(self.p, ".tollgate/logs").mkdir(parents=True)
-
+class RoadmapReportTest(StateCase):
     def log(self, rid, events):
-        Path(self.p, ".tollgate/logs").mkdir(parents=True, exist_ok=True)
-        Path(self.p, f".tollgate/logs/roadmap-{rid}.jsonl").write_text(
+        Path(self.logs, f"roadmap-{rid}.jsonl").write_text(
             "".join(json.dumps(e) + "\n" for e in events))
 
     def roadmap(self, rid, tasks):
@@ -139,24 +147,6 @@ class RoadmapReportTest(unittest.TestCase):
         self.assertIn("Roadmap a: stopped, 0 tasks done so far. The base is not ready", text)
         self.assertIn("Roadmap b: done. Its task and the checklist for the whole request pass.",
                       text)
-
-    def test_local_runs_and_github_runs_are_read_together(self):
-        import subprocess
-        def git(*a):
-            subprocess.run(["git", *a], cwd=self.p, check=True, capture_output=True)
-        git("init", "-q", "-b", "main")
-        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x")
-        git("checkout", "-q", "-b", "tollgate-logs")
-        self.log("remote", [{"event": "roadmap_done"}])
-        git("add", "-f", ".tollgate")
-        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "logs")
-        git("checkout", "-q", "main")
-        git("update-ref", "refs/remotes/origin/tollgate-logs", "tollgate-logs")
-        self.log("local", [{"event": "checklist_frozen"}])
-        folder = report.logs_from_branch(self.p, "tollgate-logs")
-        text = report.brief(folder)
-        self.assertIn("Roadmap remote: done.", text)
-        self.assertIn("Roadmap local:", text)
 
 
 if __name__ == "__main__":

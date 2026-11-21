@@ -8,13 +8,13 @@ from datetime import UTC, datetime
 
 # The state of a ticket, as a person reads it, from the last event that sets one.
 STATES = {
-    "merged": "merged", "waiting_for_merge": "pull request open", "pr_opened": "pull request open",
+    "merged": "merged", "waiting_for_merge": "ready to merge", "ready": "ready to merge",
     "parked": "parked", "waiting_for_advisor": "waits for a person", "still_waiting":
-    "waits for a person", "stopped": "stopped", "attempt_passed": "building",
-    "attempt_failed": "building", "attempt_started": "building", "frozen": "frozen",
+    "waits for a person", "stopped": "stopped", "try_passed": "building",
+    "try_failed": "building", "try_started": "building", "frozen": "frozen",
     "tests_reviewed": "tests written", "tests_written": "tests written", "started": "started",
 }
-ATTEMPT_ENDS = ("attempt_failed", "attempt_passed")
+TRY_ENDS = ("try_failed", "try_passed")
 REASONS = ("parked", "waiting_for_advisor", "stopped")
 
 
@@ -25,20 +25,23 @@ class Ticket:
     task: str = ""
     state: str = "not started"
     tests_done: bool = False
-    frozen: str = ""
+    frozen: str = ""           # the lock commit
     rejections: int = 0
-    attempts: int = 0
+    attempts: int = 0          # tries that ended
     best_commit: str = ""
     best_score: int = -1
-    last_failed: tuple = ()
     passed_commit: str = ""
     tier: int | None = None
-    pr: int = 0
+    ready: str = ""            # the commit of the ready change
     reason: str = ""
-    extra_attempts: int = 0
     ai_decisions: int = 0
     hint: str = ""
     stronger: bool = False
+
+
+def better(score: int, best: int) -> bool:
+    """A try becomes the best try when it scores higher than the best so far."""
+    return score > best
 
 
 def replay(events: list) -> Ticket:
@@ -55,35 +58,33 @@ def replay(events: list) -> Ticket:
         elif kind == "tests_rejected":
             t.rejections += 1
         elif kind == "frozen":
-            t.frozen = e.get("tag", "")
+            t.frozen = e.get("commit", "")
             t.best_commit = t.best_commit or e.get("commit", "")
-        elif kind in ATTEMPT_ENDS:
+        elif kind in TRY_ENDS:
             t.attempts = e.get("attempt", t.attempts + 1)
-            t.last_failed = tuple(map(tuple, e.get("failed_key", [[], []])))
             t.tier = e.get("tier", t.tier)
-            if e.get("score", -1) > t.best_score:
+            if better(e.get("score", -1), t.best_score):
                 t.best_score, t.best_commit = e["score"], e.get("commit", t.best_commit)
-            if kind == "attempt_passed":
+            if kind == "try_passed":
                 t.passed_commit = e.get("commit", "")
-        elif kind == "pr_opened":
-            t.pr = e.get("pr", 0)
+        elif kind == "ready":
+            t.ready = e.get("commit", "")
         elif kind == "advisor_decided":
             t.ai_decisions += 1 if e.get("by") == "ai" else 0
             if e.get("decision") in ("retry", "stronger"):
-                t.extra_attempts += 1
                 t.hint = e.get("hint", "")
                 t.stronger = t.stronger or e.get("decision") == "stronger"
     return t
 
 
 def open_question(events: list) -> dict | None:
-    """The question a person has not answered yet, or None: {"issue", "reason"}."""
-    answered = {e.get("issue") for e in events
+    """The question a person has not answered yet, or None: {"question", "reason"}."""
+    answered = {e.get("question") for e in events
                 if e["event"] == "advisor_decided" and e.get("by") == "person"}
     for e in reversed(events):
-        if e["event"] == "waiting_for_advisor" and e.get("issue"):
-            return None if e["issue"] in answered else {"issue": e["issue"],
-                                                        "reason": e.get("reason", "")}
+        if e["event"] == "waiting_for_advisor" and e.get("question"):
+            return None if e["question"] in answered else {"question": e["question"],
+                                                           "reason": e.get("reason", "")}
     return None
 
 
