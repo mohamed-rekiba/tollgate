@@ -3,6 +3,8 @@
     python3 -m unittest tests.proof_stage4 -v
 """
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -156,6 +158,28 @@ class BaseSuiteTest(unittest.TestCase):
         self.assertTrue(results["checks_run"]["passed"])
         self.assertIn("ended with 3", results["env_up_down"]["why"])
         self.assertEqual(results["bad_setting_stops"]["why"], "not set")
+    def project_dir(self, d, **base):
+        os.makedirs(f"{d}/.tollgate")
+        Path(d, st.PATH).write_text(json.dumps({"base": base}))
+
+    def test_only_runs_one_check(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.project_dir(d, checks_run="true", env_up_down="exit 3")
+            s = st.parse(Path(d, st.PATH).read_text())
+            self.assertEqual([r["name"] for r in base_suite.run(s, d, only="checks_run")],
+                             ["checks_run"])
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(base_suite.main(["--project", d, "--only", "checks_run"]), 0)
+                self.assertEqual(base_suite.main(["--project", d, "--only", "env_up_down"]), 1)
+            self.assertEqual(len(out.getvalue().splitlines()), 2)
+
+    def test_an_unknown_name_ends_with_1_and_names_the_five(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(base_suite.main(["--only", "nope"]), 1)
+        for name in base_suite.NAMES:
+            self.assertIn(name, err.getvalue())
 
 
 class RoadmapTest(unittest.TestCase):

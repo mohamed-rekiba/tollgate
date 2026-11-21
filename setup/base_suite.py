@@ -23,9 +23,11 @@ from action import settings as st
 NAMES = ("checks_run", "parallel_tests", "env_up_down", "bad_setting_stops", "one_log_line")
 
 
-def run(settings: dict, workdir: str, minutes: float = 10) -> list:
+def run(settings: dict, workdir: str, minutes: float = 10, only: str = "") -> list:
     out = []
     for name in NAMES:
+        if only and name != only:
+            continue
         command = settings["base"].get(name, "")
         if not command:
             out.append({"name": name, "passed": False, "why": "not set"})
@@ -47,10 +49,14 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--settings", default=st.PATH)
+    parser.add_argument("--only", metavar="NAME", help="run one check: " + ", ".join(NAMES))
     args = parser.parse_args(argv)
+    if args.only is not None and args.only not in NAMES:
+        print(f"unknown check {args.only!r}; the five are: {', '.join(NAMES)}", file=sys.stderr)
+        return 1
     with open(f"{args.project}/{args.settings}") as f:
         settings = st.parse(f.read())
-    results = run(settings, args.project)
+    results = run(settings, args.project, only=args.only or "")
     for r in results:
         print(json.dumps(r))
     return 0 if all(r["passed"] for r in results) else 1
