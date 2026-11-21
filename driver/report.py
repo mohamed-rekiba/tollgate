@@ -174,9 +174,44 @@ def _sentence(text: str) -> str:
     return (text[:1].upper() + text[1:] + ("" if text.endswith(".") else ".")) if text else ""
 
 
+def roadmap_progress(project: str) -> tuple:
+    """(done, still_to_do) for each roadmap: its base, its tasks in order, and its end."""
+    from action import roadmap as rm
+    done, todo = [], []
+    for path in sorted(logs_dir(project).glob("roadmap-*.jsonl")):
+        rid = path.name[len("roadmap-"):-len(".jsonl")]
+        events = read(str(path))
+        kinds = [e["event"] for e in events]
+        finished = [e["task"] for e in events if e["event"] == "task_done" and e.get("code") == 0]
+        try:
+            tasks = rm.parse(Path(project, rm.roadmap_path(rid)).read_text()).tasks
+        except (OSError, rm.RoadmapError):
+            tasks = None  # the roadmap file is not here: count what the log shows
+        name = f"Roadmap {rid}"
+        if "base_passed" in kinds:
+            done.append(f"{name}: the base passes all five checks.")
+        if kinds and kinds[-1] == "roadmap_done":
+            what = "its task" if len(set(finished)) == 1 else f"all {len(set(finished))} tasks"
+            done.append(f"{name}: done. {what.capitalize()} and the checklist for the whole "
+                        f"request pass.")
+            continue
+        plural = "task" if len(finished) == 1 else "tasks"
+        count = (f"{len(finished)} of {len(tasks)} tasks done" if tasks is not None
+                 else f"{len(finished)} {plural} done so far")
+        if kinds and kinds[-1] == "roadmap_waiting":
+            todo.append(f"{name}: stopped, {count}. {_sentence(events[-1].get('reason', ''))}"
+                        .strip())
+            continue
+        following = next(((stage, tid) for stage, tid, _ in tasks or [] if tid not in finished),
+                         None)
+        now = f" Now: {following[1]} ({following[0].lower()})." if following else ""
+        todo.append(f"{name}: {count}.{now}")
+    return done, todo
+
+
 def progress(project: str, task: str | None = None) -> tuple:
     """Return (done, still_to_do): two lists of short sentences for a person."""
-    done, todo = [], []
+    done, todo = roadmap_progress(project) if task is None else ([], [])
     tasks = [task] if task else sorted({r["task"] for r in rows(project) if r["task"]} | {
         p.name[len("task-"):-len(".jsonl")] for p in logs_dir(project).glob("task-*.jsonl")})
     for t in tasks:
@@ -241,15 +276,19 @@ def status(project: str) -> str:
 
 
 def logs_from_branch(project: str, branch: str) -> str:
-    """Copy the project's plans and the logs and reports on `branch` into a new folder,
-    and return it. The driver on GitHub pushes its logs to that branch."""
+    """Gather what this machine ran and what GitHub ran into a new folder, and return it.
+
+    It copies the project's own plans, logs, reports, and roadmaps, then the ones on
+    `branch`, where the driver on GitHub pushes them. With no such branch, the folder
+    holds the local ones only."""
     import shutil
     import subprocess
     import tempfile
     out = tempfile.mkdtemp(prefix="tollgate-status-")
-    plans = Path(project, ".tollgate", "plans")
-    if plans.exists():
-        shutil.copytree(plans, Path(out, ".tollgate", "plans"))
+    for part in ("plans", "logs", "reports", "roadmaps"):
+        local = Path(project, ".tollgate", part)
+        if local.exists():
+            shutil.copytree(local, Path(out, ".tollgate", part), dirs_exist_ok=True)
     fetched = subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=project, check=False,
                              capture_output=True)
     # What the fetch just returned. origin/<branch> may not exist in a clone whose
@@ -258,10 +297,15 @@ def logs_from_branch(project: str, branch: str) -> str:
     files = subprocess.run(["git", "ls-tree", "-r", "--name-only", ref, ".tollgate"], cwd=project,
                            capture_output=True, text=True, check=False).stdout.split()
     for name in files:
-        if name.startswith((".tollgate/logs/", ".tollgate/reports/", ".tollgate/plans/")):
+        if name.startswith((".tollgate/logs/", ".tollgate/reports/", ".tollgate/plans/",
+                            ".tollgate/roadmaps/")):
             data = subprocess.run(["git", "show", f"{ref}:{name}"], cwd=project,
                                   capture_output=True, check=False).stdout
             target = Path(out, name)
+            # A run on this machine may be newer than the copy on the branch: the
+            # fuller log wins.
+            if target.exists() and target.stat().st_size >= len(data):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
     return out
