@@ -1,0 +1,28 @@
+name: lab-e1
+# Experiment E1. A workflow creates a tag, then tries to move it.
+on:
+  push:
+    branches: ["tg-lab/e1-*"]
+permissions:
+  contents: write
+jobs:
+  tag:
+    name: e1 workflow creates a tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "tg-lab/e1-${{ github.run_id }}" -m "lab manifest" HEAD
+          git push origin "tg-lab/e1-${{ github.run_id }}"
+      - name: Try to move the tag
+        id: move
+        continue-on-error: true
+        run: |
+          git commit --allow-empty -q -m "move"
+          git tag -f -a "tg-lab/e1-${{ github.run_id }}" -m "moved" HEAD
+          git push -f origin "tg-lab/e1-${{ github.run_id }}"
+      - name: Report
+        run: echo "move outcome=${{ steps.move.outcome }}"
