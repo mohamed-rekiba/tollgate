@@ -1,0 +1,160 @@
+diff --git a/action/roadmap.py b/action/roadmap.py
+index 35bbe85..7c74b20 100644
+--- a/action/roadmap.py
++++ b/action/roadmap.py
+@@ -92,3 +92,29 @@ def parse(text: str) -> Roadmap:
+         raise RoadmapError("the checklist ticket cannot also be a task")
+     return Roadmap(header["id"], header["checklist"], "\n".join(sections["Request"]).strip(),
+                    tasks)
++
++
++def main(argv=None) -> int:
++    import sys
++
++    args = sys.argv[1:] if argv is None else list(argv)
++    if len(args) != 1:
++        print("usage: python3 -m action.roadmap <path>", file=sys.stderr)
++        return 1
++    try:
++        with open(args[0], encoding="utf-8") as f:
++            text = f.read()
++        road = parse(text)
++    except (OSError, UnicodeDecodeError) as e:
++        print(f"error: cannot read {args[0]}: {e}", file=sys.stderr)
++        return 1
++    except RoadmapError as e:
++        print(f"error: {e}", file=sys.stderr)
++        return 1
++    for stage, task_id, request in road.tasks:
++        print(f"{stage}\t{task_id}\t{request}")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/test_roadmap_cli.py b/tests/test_roadmap_cli.py
+new file mode 100644
+index 0000000..d37b3e1
+--- /dev/null
++++ b/tests/test_roadmap_cli.py
+@@ -0,0 +1,120 @@
++"""Tests for the roadmap check command line."""
++
++import contextlib
++import inspect
++import io
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++from action import roadmap as rm
++
++ROOT = Path(__file__).resolve().parent.parent
++
++GOOD = """---
++id: orders
++checklist: orders-done
++---
++## Request
++Build an order system.
++
++## Base
++- orders-base: Make the project build, test, and run.
++
++## Skeleton
++- orders-rules: One error shape and the login check.
++
++## Features
++- orders-create: Create an order.
++- orders-list: List the orders.
++
++## Not yet specified
++Payments.
++"""
++
++BAD = GOOD.replace("## Request\nBuild an order system.\n", "## Request\n")
++
++
++def run_main(path):
++    out, err = io.StringIO(), io.StringIO()
++    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
++        code = rm.main([str(path)])
++    return code, out.getvalue(), err.getvalue()
++
++
++class RoadmapCli(unittest.TestCase):
++    def setUp(self):
++        tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(tmp.cleanup)
++        self.dir = Path(tmp.name)
++        self.good = self.dir / "good.md"
++        self.good.write_text(GOOD)
++        self.bad = self.dir / "bad.md"
++        self.bad.write_text(BAD)
++
++    def test_c1_valid_roadmap_prints_tasks_in_order(self):
++        code, out, _ = run_main(self.good)
++        self.assertEqual(code, 0)
++        lines = [ln for ln in out.splitlines() if ln.strip()]
++        self.assertEqual(len(lines), 4)
++        expected = [
++            ("Base", "orders-base", "Make the project build, test, and run."),
++            ("Skeleton", "orders-rules", "One error shape and the login check."),
++            ("Features", "orders-create", "Create an order."),
++            ("Features", "orders-list", "List the orders."),
++        ]
++        for line, parts in zip(lines, expected):
++            for part in parts:
++                self.assertIn(part, line)
++
++    def test_c2_rejected_roadmap_prints_error_and_returns_1(self):
++        with self.assertRaises(rm.RoadmapError) as ctx:
++            rm.parse(BAD)
++        code, out, err = run_main(self.bad)
++        self.assertEqual(code, 1)
++        self.assertIn("error: " + str(ctx.exception), out + err)
++        for task in ("orders-base", "orders-create"):
++            self.assertNotIn(task, out + err)
++
++    def test_c3_missing_or_unreadable_path_prints_error_no_traceback(self):
++        for path in (self.dir / "nope.md", self.dir):  # missing; a directory cannot be read
++            code, out, err = run_main(path)
++            self.assertEqual(code, 1)
++            self.assertIn("error:", out + err)
++            self.assertNotIn("Traceback", out + err)
++
++    def test_c4_module_run_matches_main(self):
++        for path in (self.good, self.bad, self.dir / "nope.md"):
++            code, out, err = run_main(path)
++            proc = subprocess.run(
++                [sys.executable, "-m", "action.roadmap", str(path)],
++                check=False,
++                cwd=ROOT,
++                capture_output=True,
++                text=True,
++            )
++            self.assertEqual(proc.returncode, code)
++            self.assertEqual(proc.stdout + proc.stderr, out + err)
++            self.assertNotIn("Traceback", proc.stderr)
++
++    def test_c5_parse_unchanged(self):
++        r = rm.parse(GOOD)
++        self.assertEqual((r.id, r.checklist), ("orders", "orders-done"))
++        self.assertEqual(r.request, "Build an order system.")
++        self.assertEqual(
++            r.tasks[0], ("Base", "orders-base", "Make the project build, test, and run.")
++        )
++        self.assertEqual(
++            [t[1] for t in r.tasks], ["orders-base", "orders-rules", "orders-create", "orders-list"]
++        )
++        with self.assertRaisesRegex(rm.RoadmapError, "the Request section is empty"):
++            rm.parse(BAD)
++        with self.assertRaisesRegex(rm.RoadmapError, "starts with a header"):
++            rm.parse("no header")
++        self.assertTrue(inspect.isfunction(rm.parse))
++
++
++if __name__ == "__main__":
++    unittest.main()

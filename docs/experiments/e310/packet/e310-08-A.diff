@@ -1,0 +1,105 @@
+diff --git a/driver/retro.py b/driver/retro.py
+index ae0c31a..d044a1a 100644
+--- a/driver/retro.py
++++ b/driver/retro.py
+@@ -61,17 +61,24 @@ def candidates(tickets: list) -> list:
+     return [c for _, c in scored[:MAX_LESSONS]]
+ 
+ 
+-def write(project: str, task: str) -> str:
++def numbers_table(nums: dict) -> list:
++    lines = ["| Number | Value |", "| --- | --- |"]
++    return lines + [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
++
++
++def write(project: str, task: str, show: bool = False) -> str:
+     nums, tickets = numbers(project, task)
+     cands = candidates(tickets)
+-    lines = [f"# Retro: task {task}", "", "| Number | Value |", "| --- | --- |"]
+-    lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
++    table = numbers_table(nums)
++    lines = [f"# Retro: task {task}", ""] + table
+     lines += ["", f"## Candidates for lessons (at most {MAX_LESSONS})", ""]
+     lines += [f"- {c['ticket']}: a {c['kind']}. Evidence: {c['evidence']}" for c in cands] or [
+         "- None. No ticket stopped, had a test rejected, or needed a second attempt."]
+     path = Path(project, ".tollgate", "lessons", f"{task}.md")
+     path.parent.mkdir(parents=True, exist_ok=True)
+     path.write_text("\n".join(lines) + "\n")
++    if show:
++        print("\n".join(table))
+     return str(path)
+ 
+ 
+@@ -80,8 +87,10 @@ def main(argv=None) -> int:
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+     parser.add_argument("--project", default=".")
+     parser.add_argument("--task", required=True)
++    parser.add_argument("--print", dest="show", action="store_true",
++                        help="also print the numbers table to standard output")
+     args = parser.parse_args(argv)
+-    print(write(args.project, args.task))
++    print(write(args.project, args.task, args.show))
+     return 0
+ 
+ 
+diff --git a/tests/test_retro_print.py b/tests/test_retro_print.py
+new file mode 100644
+index 0000000..87bda50
+--- /dev/null
++++ b/tests/test_retro_print.py
+@@ -0,0 +1,55 @@
++"""Tests for retro --print."""
++
++import contextlib
++import io
++import json
++import tempfile
++import unittest
++from pathlib import Path
++
++from driver import retro
++
++
++class RetroPrintTest(unittest.TestCase):
++    def setUp(self):
++        tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(tmp.cleanup)
++        self.p = tmp.name
++        logs = Path(self.p, ".tollgate/logs")
++        logs.mkdir(parents=True)
++        events = [{"event": "attempt_passed", "ticket": "t-a", "task": "demo", "attempt": 1}]
++        (logs / "t-a.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
++
++    def run_main(self, *extra):
++        out = io.StringIO()
++        with contextlib.redirect_stdout(out):
++            code = retro.main(["--project", self.p, "--task", "demo", *extra])
++        return code, out.getvalue()
++
++    def lesson(self):
++        return Path(self.p, ".tollgate/lessons/demo.md")
++
++    def test_without_print_only_the_path(self):
++        code, out = self.run_main()
++        self.assertEqual(code, 0)
++        self.assertEqual(out.strip(), str(self.lesson()))
++        self.assertTrue(self.lesson().exists())
++
++    def test_print_shows_the_numbers_table_and_still_writes_the_file(self):
++        code, out = self.run_main("--print")
++        self.assertEqual(code, 0)
++        self.assertIn("| Number | Value |", out)
++        self.assertIn("| tickets | 1 |", out)
++        self.assertIn("| first attempt pass pct | 100 |", out)
++        self.assertNotIn("Candidates", out)
++        self.assertIn(str(self.lesson()), out)
++        self.assertIn("| tickets | 1 |", self.lesson().read_text())
++
++    def test_printed_table_matches_the_file(self):
++        _, out = self.run_main("--print")
++        table = [ln for ln in out.splitlines() if ln.startswith("|")]
++        self.assertTrue(all(ln in self.lesson().read_text() for ln in table))
++
++
++if __name__ == "__main__":
++    unittest.main()

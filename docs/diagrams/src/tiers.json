@@ -1,0 +1,59 @@
+{
+ "title": "The four tiers",
+ "desc": "Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tier 3, login, payments, or user data, adds a review on GitHub. Tier 4, data, production, or the locks themselves, adds a person's approval.",
+ "nodes": [
+  {
+   "id": "t1",
+   "text": "A small fix\nLocked tests",
+   "col": 0,
+   "row": 0,
+   "kind": "ai",
+   "icon": "test",
+   "tag": "TIER 1"
+  },
+  {
+   "id": "t2",
+   "text": "A normal change\n+ a plan and a review",
+   "col": 1,
+   "row": 0,
+   "kind": "check",
+   "icon": "plan",
+   "tag": "TIER 2"
+  },
+  {
+   "id": "t3",
+   "text": "Login, payments, data\n+ a review on GitHub",
+   "col": 2,
+   "row": 0,
+   "kind": "server",
+   "icon": "check",
+   "tag": "TIER 3"
+  },
+  {
+   "id": "t4",
+   "text": "Production, the locks\n+ a person approves",
+   "col": 3,
+   "row": 0,
+   "kind": "you",
+   "icon": "person",
+   "tag": "TIER 4"
+  }
+ ],
+ "edges": [
+  {
+   "from": "t1",
+   "to": "t2"
+  },
+  {
+   "from": "t2",
+   "to": "t3"
+  },
+  {
+   "from": "t3",
+   "to": "t4"
+  }
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
+}

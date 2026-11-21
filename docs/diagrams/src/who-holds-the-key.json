@@ -1,0 +1,204 @@
+{
+ "type": "scene",
+ "title": "The AI's room and GitHub",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to GitHub. On the right, GitHub: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.",
+ "size": [
+  1120,
+  620
+ ],
+ "origin": [
+  560,
+  360
+ ],
+ "scale": 0.8,
+ "grid": 420,
+ "caption": [
+  "Who holds the key",
+  "the AI builds in its room; only GitHub can let a change in"
+ ],
+ "zones": [
+  {
+   "at": [
+    -310,
+    -175,
+    -60,
+    175
+   ],
+   "kind": "ai"
+  },
+  {
+   "at": [
+    60,
+    -175,
+    340,
+    175
+   ],
+   "kind": "server"
+  }
+ ],
+ "lanes": [
+  {
+   "path": [
+    [
+     -150,
+     -16
+    ],
+    [
+     214,
+     -16
+    ]
+   ],
+   "label": "the change",
+   "at": 0.78
+  },
+  {
+   "path": [
+    [
+     214,
+     26
+    ],
+    [
+     -150,
+     26
+    ]
+   ],
+   "label": "pass or fail",
+   "at": 0.82,
+   "side": true
+  }
+ ],
+ "objects": [
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    -175
+   ],
+   "to": [
+    6,
+    -82
+   ]
+  },
+  {
+   "type": "vault",
+   "at": [
+    170,
+    -110
+   ]
+  },
+  {
+   "type": "server",
+   "at": [
+    260,
+    10
+   ],
+   "levels": 3,
+   "size": 80
+  },
+  {
+   "type": "room",
+   "at": [
+    -190,
+    0
+   ],
+   "size": 110
+  },
+  {
+   "type": "gate",
+   "at": [
+    0,
+    -58
+   ],
+   "arm_to": 62,
+   "axis": "y"
+  },
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    64
+   ],
+   "to": [
+    6,
+    175
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    -300,
+    60,
+    140
+   ],
+   "head": "The AI's room",
+   "sub": [
+    "writes code, runs tests",
+    "no key to GitHub"
+   ],
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    170,
+    -110,
+    110
+   ],
+   "head": "Locked tests",
+   "sub": "nobody can change them",
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    320,
+    90,
+    -10
+   ],
+   "head": "Main",
+   "sub": "only a pass goes in",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    0,
+    -58,
+    140
+   ],
+   "head": "The gate",
+   "sub": "runs the locked tests",
+   "anchor": "middle"
+  }
+ ],
+ "ticket": {
+  "legs": [
+   {
+    "path": [
+     [
+      -150,
+      -16
+     ],
+     [
+      -22,
+      -16
+     ]
+    ],
+    "wait": 0.9
+   },
+   {
+    "path": [
+     [
+      -22,
+      -16
+     ],
+     [
+      214,
+      -16
+     ]
+    ],
+    "tone": "pass",
+    "wait": 0.6
+   }
+  ],
+  "lift": 1
+ }
+}

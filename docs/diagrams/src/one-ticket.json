@@ -1,0 +1,81 @@
+{
+ "title": "How one ticket is built",
+ "desc": "The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to GitHub, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
+ "nodes": [
+  {
+   "id": "b",
+   "text": "The AI builds\nOne attempt",
+   "col": 0,
+   "row": 0,
+   "kind": "ai",
+   "shape": "start"
+  },
+  {
+   "id": "q",
+   "text": "Do the tests pass?\nThe locked ones,\non the AI's machine",
+   "col": 1,
+   "row": 0,
+   "kind": "check",
+   "icon": "test",
+   "shape": "decision"
+  },
+  {
+   "id": "s",
+   "text": "Send to GitHub\nIt runs the tests again",
+   "col": 2,
+   "row": 0,
+   "kind": "server",
+   "icon": "pull-request",
+   "shape": "end"
+  },
+  {
+   "id": "t",
+   "text": "Try again\nWith what went wrong",
+   "col": 1,
+   "row": 1,
+   "kind": "ai",
+   "icon": "retry",
+   "shape": "step"
+  },
+  {
+   "id": "a",
+   "text": "Ask the advisor\nA second AI, or you",
+   "col": 2,
+   "row": 1,
+   "kind": "advisor",
+   "shape": "wait"
+  }
+ ],
+ "edges": [
+  {
+   "from": "b",
+   "to": "q"
+  },
+  {
+   "from": "q",
+   "to": "s",
+   "label": "pass",
+   "tone": "pass"
+  },
+  {
+   "from": "q",
+   "to": "t",
+   "label": "fail",
+   "tone": "fail"
+  },
+  {
+   "from": "t",
+   "to": "b",
+   "route": "hv"
+  },
+  {
+   "from": "t",
+   "to": "a",
+   "label": "after 3 tries",
+   "dashed": true
+  }
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
+}
