@@ -285,17 +285,17 @@ def ticket(c, go):
 
 def left_panel(c):
     out = []
-    # The mark: corner brackets around a small gate.
+    # The mark, the lifted arm: a striped barrier arm rises from its pivot and draws
+    # a check. The locked tests passed, so the gate opens.
     x, y, s = 60, 52, 54
-    for dx, dy, hx, vy in ((0, 0, 1, 1), (s, 0, -1, 1), (0, s, 1, -1), (s, s, -1, -1)):
-        out.append(f'<path d="M{x + dx + 12 * hx},{y + dy} H{x + dx} V{y + dy + 12 * vy}" '
-                   f'fill="none" stroke="{c["ink"]}" stroke-width="2"/>')
-    g = c["gate"][0]
-    out.append(f'<rect x="{x + 33}" y="{y + 16}" width="10" height="24" rx="1.5" fill="{g}"/>')
-    out.append(f'<line x1="{x + 33}" y1="{y + 25}" x2="{x + 11}" y2="{y + 25}" stroke="{g}" '
-               f'stroke-width="5" stroke-linecap="round"/>')
-    out.append(f'<line x1="{x + 31}" y1="{y + 25}" x2="{x + 11}" y2="{y + 25}" '
-               f'stroke="{c["page"]}" stroke-width="2" stroke-dasharray="4 4"/>')
+    g, cut = c["gate"][0], c["page"]
+    out.append(f'<g transform="translate({x} {y}) scale({s / 100})">'
+               f'<path d="M20 55 L40 75 L82 25" fill="none" stroke="{g}" stroke-width="13" '
+               f'stroke-linecap="round" stroke-linejoin="round"/>'
+               f'<path d="M47 66.7 L82 25" fill="none" stroke="{cut}" stroke-width="13" '
+               f'stroke-dasharray="7 9"/>'
+               f'<circle cx="40" cy="75" r="9" fill="{g}"/>'
+               f'<circle cx="40" cy="75" r="3.2" fill="{cut}"/></g>')
     out.append(f'<text x="132" y="78" font-size="30" font-weight="700" letter-spacing="4" '
                f'fill="{c["ink"]}">TOLLGATE</text>')
     out.append(f'<text x="133" y="100" font-size="12.5" letter-spacing="2.2" '

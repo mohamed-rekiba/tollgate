@@ -123,13 +123,7 @@
 <circle r="6.5" fill="#8250df" stroke="#ffffff" stroke-width="2"><animate attributeName="fill" values="#8250df;#cf222e;#8250df;#1a7f37" keyTimes="0;0.2211;0.5474;0.7211" calcMode="discrete" dur="12.67s" repeatCount="indefinite"/></circle>
 <animateMotion path="M798.8,364.7 L871.8,322.6 L871.8,322.6 L863.7,317.9 L760.3,258.3 L648.2,323.0 L719.1,364.0 L798.8,364.7 L871.8,322.6 L871.8,322.6 L1028.5,232.1" keyPoints="0.0000;0.0000;0.1126;0.1126;0.1126;0.1251;0.2845;0.4575;0.5669;0.5669;0.6457;0.7582;0.7582;0.7582;1.0000;1.0000;1.0000" keyTimes="0.0000;0.0474;0.1184;0.2211;0.2211;0.2289;0.3296;0.4388;0.5079;0.5474;0.5474;0.6184;0.7211;0.7211;0.8737;0.9684;1.0000" calcMode="linear" dur="12.67s" repeatCount="indefinite"/>
 </g>
-<path d="M72,52 H60 V64" fill="none" stroke="#1f2328" stroke-width="2"/>
-<path d="M102,52 H114 V64" fill="none" stroke="#1f2328" stroke-width="2"/>
-<path d="M72,106 H60 V94" fill="none" stroke="#1f2328" stroke-width="2"/>
-<path d="M102,106 H114 V94" fill="none" stroke="#1f2328" stroke-width="2"/>
-<rect x="93" y="68" width="10" height="24" rx="1.5" fill="#9a6700"/>
-<line x1="93" y1="77" x2="71" y2="77" stroke="#9a6700" stroke-width="5" stroke-linecap="round"/>
-<line x1="91" y1="77" x2="71" y2="77" stroke="#ffffff" stroke-width="2" stroke-dasharray="4 4"/>
+<g transform="translate(60 52) scale(0.54)"><path d="M20 55 L40 75 L82 25" fill="none" stroke="#9a6700" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="M47 66.7 L82 25" fill="none" stroke="#ffffff" stroke-width="13" stroke-dasharray="7 9"/><circle cx="40" cy="75" r="9" fill="#9a6700"/><circle cx="40" cy="75" r="3.2" fill="#ffffff"/></g>
 <text x="132" y="78" font-size="30" font-weight="700" letter-spacing="4" fill="#1f2328">TOLLGATE</text>
 <text x="133" y="100" font-size="12.5" letter-spacing="2.2" fill="#59636e">GOVERNED BUILDS FOR CLAUDE CODE</text>
 <text x="60" y="212" font-size="46" font-weight="800" letter-spacing="-0.5" fill="#1f2328">AI writes the code.</text>
