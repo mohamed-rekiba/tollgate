@@ -111,3 +111,29 @@ def parse(text: str) -> Ticket:
         items=items,
         sections={k: "\n".join(v).strip() for k, v in sections.items()},
     )
+
+
+def main(argv=None) -> int:
+    """Check one ticket file. Print its id and items, or the error. Return 0 or 1."""
+    import argparse
+
+    ap = argparse.ArgumentParser(prog="python3 -m action.tickets", description="Check one ticket file.")
+    ap.add_argument("path")
+    args = ap.parse_args(argv)
+    try:
+        with open(args.path, encoding="utf-8") as f:
+            ticket = parse(f.read())
+    except (OSError, UnicodeDecodeError, TicketError) as err:
+        print(f"error: {err}")
+        return 1
+    print(f"id: {ticket.id}")
+    for item in ticket.items:
+        marks = "".join(f", {m}" for m, on in (("must", item.must), ("keeps behavior", item.keeps_behavior)) if on)
+        print(f"- [{item.id}{marks}] {item.text}")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
