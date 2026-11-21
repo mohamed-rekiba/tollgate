@@ -34,6 +34,10 @@ class PlanFormatTest(unittest.TestCase):
         self.assertEqual((p.id, p.tickets), ("retries", ["T-1"]))
         self.assertIn("loop", p.sections["Design"])
 
+    def test_reads_a_bracketed_ticket_list_and_leading_blank_lines(self):
+        p = pl.parse("\n\n" + PLAN.replace("tickets: T-1", "tickets: [T-1]"))
+        self.assertEqual(p.tickets, ["T-1"])
+
     def test_refuses_a_plan_with_a_missing_section(self):
         with self.assertRaisesRegex(pl.PlanError, "Seams"):
             pl.parse(PLAN.replace("## Seams\nPOST /deliver\n", ""))

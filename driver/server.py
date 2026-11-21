@@ -81,9 +81,14 @@ class GitHub(Server):
             failed = [j for j in jobs.get("jobs", []) if j.get("conclusion") == "failure"]
             if not failed:
                 return "no job failed"
-            log = subprocess.run(
-                ["gh", "api", f"repos/{self.repository}/actions/jobs/{failed[0]['id']}/logs"],
-                capture_output=True, text=True, check=False).stdout
+            log = ""
+            for _ in range(6):  # GitHub publishes a job's log a little after the job ends
+                log = subprocess.run(
+                    ["gh", "api", f"repos/{self.repository}/actions/jobs/{failed[0]['id']}/logs"],
+                    capture_output=True, text=True, check=False).stdout
+                if "cannot be frozen" in log or "##[error]" in log:
+                    break
+                self.sleep(10)
         except (GhError, OSError, KeyError) as err:
             return f"its log could not be read: {err}"
         for line in log.splitlines():
