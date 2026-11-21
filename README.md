@@ -25,6 +25,23 @@ The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.githu
 - **It improves with use.** `/tollgate:retro` shows a task's numbers and turns at most 3 lessons into tickets. A lesson can make a rule stricter, never looser.
 - **Little to install, nothing to run.** One workflow file that never changes, one settings file, Python's standard library, and no server.
 
+## The principles
+
+1. **Tests come first.** Before the AI writes any code, Tollgate writes tests for what you asked for and locks them. The AI cannot change them.
+2. **The AI never grades its own work.** The tests and fresh reviewers judge it.
+3. **Every try gets a score.** 70% or more passes. A failed must-have item always fails.
+4. **Each try builds on the best one.** When a try fails, the AI gets the reasons and tries again from its best try so far.
+5. **It knows when to stop.** After 3 tries, the AI asks for help: a second AI, or you.
+6. **Riskier changes get more checks.** You merge the riskiest ones yourself.
+7. **Mistakes become rules.** After each task, up to 3 lessons become stricter rules. Rules never get looser.
+8. **Code enforces the rules.** A rule that is only written in a prompt does not count.
+9. **Plain words.** Everything is written for people to read.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/principles-dark.svg">
+  <img alt="Tollgate's principles: tests come first, others judge each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks for help, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
+</picture>
+
 ## How it works
 
 <picture>

@@ -1,0 +1,161 @@
+{
+ "title": "Tollgate's principles",
+ "desc": "You ask. Tests are written first and locked, so the AI cannot change them. The AI builds, and the tests and separate reviewers judge it, never the AI itself. A score of 70% or more passes. A riskier change is merged by you. Below 70%, the AI tries again from its best try, and after 3 tries it asks a second AI or you for help. After each task, up to 3 lessons become stricter rules for the next task.",
+ "nodes": [
+  {
+   "id": "ask",
+   "text": "You ask\nIn plain words",
+   "col": 0,
+   "row": 0,
+   "kind": "you",
+   "shape": "start"
+  },
+  {
+   "id": "lock",
+   "text": "Tests come first\nWritten and locked.\nThe AI cannot change them.",
+   "col": 1,
+   "row": 0,
+   "kind": "server",
+   "icon": "lock",
+   "shape": "data"
+  },
+  {
+   "id": "build",
+   "text": "The AI builds\nFrom its best try",
+   "col": 2,
+   "row": 0,
+   "kind": "ai"
+  },
+  {
+   "id": "judge",
+   "text": "Others judge it\nThe tests and fresh\nreviewers, never the AI",
+   "col": 3,
+   "row": 0,
+   "kind": "check",
+   "icon": "test"
+  },
+  {
+   "id": "score",
+   "text": "Score 70%\nor more?",
+   "col": 3,
+   "row": 1,
+   "kind": "check",
+   "shape": "decision"
+  },
+  {
+   "id": "merge",
+   "text": "Merged\nRiskier changes:\nyou merge them",
+   "col": 3,
+   "row": 2,
+   "kind": "you",
+   "icon": "pull-request",
+   "shape": "end"
+  },
+  {
+   "id": "tries",
+   "text": "3 tries\nused?",
+   "col": 2,
+   "row": 1,
+   "kind": "check",
+   "shape": "decision"
+  },
+  {
+   "id": "help",
+   "text": "Ask for help\nA second AI, or you",
+   "col": 1,
+   "row": 1,
+   "kind": "advisor",
+   "shape": "wait"
+  },
+  {
+   "id": "learn",
+   "text": "Mistakes become rules\nUp to 3 lessons.\nRules never get looser.",
+   "col": 0,
+   "row": 1,
+   "kind": "check",
+   "icon": "retry",
+   "shape": "document"
+  }
+ ],
+ "edges": [
+  {
+   "from": "ask",
+   "to": "lock"
+  },
+  {
+   "from": "lock",
+   "to": "build"
+  },
+  {
+   "from": "build",
+   "to": "judge"
+  },
+  {
+   "from": "judge",
+   "to": "score"
+  },
+  {
+   "from": "score",
+   "to": "merge",
+   "label": "yes",
+   "tone": "pass"
+  },
+  {
+   "from": "score",
+   "to": "tries",
+   "label": "no",
+   "tone": "fail"
+  },
+  {
+   "from": "tries",
+   "to": "build",
+   "label": "no: try again"
+  },
+  {
+   "from": "tries",
+   "to": "help",
+   "label": "yes"
+  },
+  {
+   "from": "merge",
+   "to": "learn",
+   "label": "after the task",
+   "dashed": true,
+   "route": "hv"
+  },
+  {
+   "from": "learn",
+   "to": "ask",
+   "label": "next task",
+   "dashed": true
+  }
+ ],
+ "names": {
+  "server": "GITHUB",
+  "check": "CHECK"
+ },
+ "ticket": {
+  "path": [
+   [
+    "ask",
+    "lock"
+   ],
+   [
+    "lock",
+    "build"
+   ],
+   [
+    "build",
+    "judge"
+   ],
+   [
+    "judge",
+    "score"
+   ],
+   [
+    "score",
+    "merge"
+   ]
+  ]
+ }
+}
