@@ -3,10 +3,12 @@
 The manifest lives in the message of the freeze tag, as JSON.
 """
 
+import argparse
 import json
+import sys
 
 from action import junit
-from action.gitio import fingerprint, show_bytes
+from action.gitio import GitError, fingerprint, git, show_bytes
 from action.tickets import item_of_test
 
 TICKET_DIR = ".tollgate/tickets"
@@ -84,3 +86,34 @@ def loads(text: str) -> dict:
     if start < 0:
         raise FreezeError("the tag message holds no manifest")
     return json.loads(text[start : text.rfind("}") + 1])
+
+
+def lines(manifest: dict) -> list:
+    """Return the manifest as plain lines: ticket, commit, files, tests."""
+    return [
+        manifest["ticket"],
+        manifest["commit"],
+        *sorted(manifest["files"]),
+        *manifest["tests"],
+    ]
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="action.manifest", description="Print the freeze manifest of a tag.")
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--tag", required=True)
+    args = parser.parse_args(argv)
+    try:
+        text = git(args.repo, "for-each-ref", "--format=%(contents)", f"refs/tags/{args.tag}")
+        if not text.strip():
+            raise FreezeError(f"no tag {args.tag}")
+        out = lines(loads(text))
+    except (GitError, FreezeError, ValueError, KeyError) as err:
+        print(f"cannot read the manifest: {err}", file=sys.stderr)
+        return 1
+    print("\n".join(out))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
