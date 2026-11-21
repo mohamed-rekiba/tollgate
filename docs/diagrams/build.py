@@ -197,7 +197,15 @@ def icons_sheet(theme: str) -> str:
               "plan": "ai", "ticket": "ai", "retry": "ai", "workflow": "ai", "branch": "server",
               "pull-request": "server", "merge": "server", "home": "you", "folder": "you",
               "package": "you", "terminal": "you", "cost": "advisor", "warning": "advisor",
-              "clock": "advisor", "retro": "advisor"}
+              "clock": "advisor", "retro": "advisor",
+              # Architecture: data and compute green, network and devices blue, code purple,
+              # guards amber, signals orange.
+              "database": "server", "bucket": "server", "cache": "server", "queue": "server",
+              "container": "server", "cluster": "server", "function": "ai", "chip": "server",
+              "cloud": "you", "globe": "you", "load-balancer": "server", "firewall": "check",
+              "api": "ai", "users": "you", "browser": "you", "phone": "you", "laptop": "you",
+              "key": "check", "monitor": "check", "search": "check", "event": "advisor",
+              "bell": "advisor", "mail": "advisor", "settings": "ai", "code": "ai"}
     per_row, cw, ch, pad = 6, 128, 112, 24
     rows = -(-len(ICONS) // per_row)
     w, h = per_row * cw + 2 * pad, rows * ch + 2 * pad

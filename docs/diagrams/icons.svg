@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 496" width="816" height="496" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 944" width="816" height="944" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Tollgate's icons</title>
-<desc id="desc">Every icon in diagram/icons.py, with its name: person, ai, server, check, advisor, lock, gate, test, plan, ticket, branch, pull-request, merge, retro, retry, home, folder, package, workflow, cost, warning, clock, terminal.</desc>
-<rect width="816" height="496" fill="#ffffff"/>
+<desc id="desc">Every icon in diagram/icons.py, with its name: person, ai, server, check, advisor, lock, gate, test, plan, ticket, branch, pull-request, merge, retro, retry, home, folder, package, workflow, cost, warning, clock, terminal, database, bucket, cache, queue, container, cluster, function, chip, cloud, globe, load-balancer, firewall, api, users, browser, phone, laptop, key, monitor, search, event, bell, mail, settings, code.</desc>
+<rect width="816" height="944" fill="#ffffff"/>
 <rect x="30" y="30" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
 <g transform="translate(68.0,46.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
 <text x="88.0" y="110" text-anchor="middle" font-size="12" fill="#59636e">person</text>
@@ -71,4 +71,79 @@
 <rect x="542" y="366" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
 <g transform="translate(580.0,382.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h17v15h-17z"/><path d="M7 9l3 3l-3 3"/><path d="M12.5 15H17"/></g>
 <text x="600.0" y="446" text-anchor="middle" font-size="12" fill="#59636e">terminal</text>
+<rect x="670" y="366" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(708.0,382.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4.1 0 7.5 1.3 7.5 3s-3.4 3-7.5 3s-7.5-1.3-7.5-3s3.4-3 7.5-3z"/><path d="M4.5 7v10c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V7"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/></g>
+<text x="728.0" y="446" text-anchor="middle" font-size="12" fill="#59636e">database</text>
+<rect x="30" y="478" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(68.0,494.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5c0-1.4 3.4-2.5 7.5-2.5s7.5 1.1 7.5 2.5s-3.4 2.5-7.5 2.5s-7.5-1.1-7.5-2.5z"/><path d="M4.5 6.5l1.8 12c.2 1.4 2.7 2.5 5.7 2.5s5.5-1.1 5.7-2.5l1.8-12"/></g>
+<text x="88.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">bucket</text>
+<rect x="158" y="478" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(196.0,494.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h15v12h-15z"/><path d="M12.8 8.5l-2.6 4h3.6l-2.6 4"/><path d="M7.5 6V4M16.5 6V4M7.5 20v-2M16.5 20v-2"/></g>
+<text x="216.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">cache</text>
+<rect x="286" y="478" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(324.0,494.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h11M3.5 12h11M3.5 17h11"/><path d="M17.5 9l3 3l-3 3"/></g>
+<text x="344.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">queue</text>
+<rect x="414" y="478" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(452.0,494.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h17v11h-17z"/><path d="M7.5 8v11M12 8v11M16.5 8v11"/><path d="M3.5 8l2-3h13l2 3"/></g>
+<text x="472.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">container</text>
+<rect x="542" y="478" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(580.0,494.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M5.5 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18.5 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M11 6.8l-4.5 6.4M13 6.8l4.5 6.4M7.5 17h9"/></g>
+<text x="600.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">cluster</text>
+<rect x="670" y="478" width="116" height="100" rx="6" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.6"/>
+<g transform="translate(708.0,494.0) scale(1.6667)" fill="none" stroke="#8250df" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h2.2c.9 0 1.5.5 1.9 1.3L18 19.5"/><path d="M11.8 10.2L6 19.5"/></g>
+<text x="728.0" y="558" text-anchor="middle" font-size="12" fill="#59636e">function</text>
+<rect x="30" y="590" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(68.0,606.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10H7z"/><path d="M10 10h4v4h-4z"/><path d="M9.5 3.5V7M14.5 3.5V7M9.5 17v3.5M14.5 17v3.5M3.5 9.5H7M3.5 14.5H7M17 9.5h3.5M17 14.5h3.5"/></g>
+<text x="88.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">chip</text>
+<rect x="158" y="590" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(196.0,606.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.6A4.5 4.5 0 0 0 7 18.5z"/></g>
+<text x="216.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">cloud</text>
+<rect x="286" y="590" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(324.0,606.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.5 5.5 3.5 8.5s-1.1 6-3.5 8.5c-2.4-2.5-3.5-5.5-3.5-8.5s1.1-6 3.5-8.5z"/></g>
+<text x="344.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">globe</text>
+<rect x="414" y="590" width="116" height="100" rx="6" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.6"/>
+<g transform="translate(452.0,606.0) scale(1.6667)" fill="none" stroke="#1a7f37" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M12 7.5v5M5.5 17v-4.5h13V17M12 12.5V17"/><path d="M3.5 17h4v3.5h-4zM10 17h4v3.5h-4zM16.5 17h4v3.5h-4z"/></g>
+<text x="472.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">load-balancer</text>
+<rect x="542" y="590" width="116" height="100" rx="6" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.6"/>
+<g transform="translate(580.0,606.0) scale(1.6667)" fill="none" stroke="#9a6700" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5h17v14h-17z"/><path d="M3.5 9.7h17M3.5 14.3h17"/><path d="M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/></g>
+<text x="600.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">firewall</text>
+<rect x="670" y="590" width="116" height="100" rx="6" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.6"/>
+<g transform="translate(708.0,606.0) scale(1.6667)" fill="none" stroke="#8250df" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M9 8.5h6v7H9z"/><path d="M3.5 12H9M15 12h5.5"/><path d="M18 9.5l2.5 2.5l-2.5 2.5"/></g>
+<text x="728.0" y="670" text-anchor="middle" font-size="12" fill="#59636e">api</text>
+<rect x="30" y="702" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(68.0,718.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"/><path d="M3 19.5c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.3a3 3 0 0 1 0 5.4"/><path d="M18 13.8c1.8.9 3 2.9 3 5.7"/></g>
+<text x="88.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">users</text>
+<rect x="158" y="702" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(196.0,718.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5h17v14h-17z"/><path d="M3.5 9h17"/><path d="M6.5 7h.01M9 7h.01M11.5 7h.01"/></g>
+<text x="216.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">browser</text>
+<rect x="286" y="702" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(324.0,718.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3h9a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M11 18h2"/></g>
+<text x="344.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">phone</text>
+<rect x="414" y="702" width="116" height="100" rx="6" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.6"/>
+<g transform="translate(452.0,718.0) scale(1.6667)" fill="none" stroke="#0969da" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14v9.5H5z"/><path d="M2.5 19h19l-2-3.5h-15z"/></g>
+<text x="472.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">laptop</text>
+<rect x="542" y="702" width="116" height="100" rx="6" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.6"/>
+<g transform="translate(580.0,718.0) scale(1.6667)" fill="none" stroke="#9a6700" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M11 12h9.5"/><path d="M17.5 12v3M20.5 12v2.5"/></g>
+<text x="600.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">key</text>
+<rect x="670" y="702" width="116" height="100" rx="6" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.6"/>
+<g transform="translate(708.0,718.0) scale(1.6667)" fill="none" stroke="#9a6700" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6.5 9.5-6.5s9.5 6.5 9.5 6.5s-3.5 6.5-9.5 6.5s-9.5-6.5-9.5-6.5z"/><path d="M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"/></g>
+<text x="728.0" y="782" text-anchor="middle" font-size="12" fill="#59636e">monitor</text>
+<rect x="30" y="814" width="116" height="100" rx="6" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.6"/>
+<g transform="translate(68.0,830.0) scale(1.6667)" fill="none" stroke="#9a6700" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
+<text x="88.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">search</text>
+<rect x="158" y="814" width="116" height="100" rx="6" fill="#fff5ee" stroke="#bc4c00" stroke-opacity="0.6"/>
+<g transform="translate(196.0,830.0) scale(1.6667)" fill="none" stroke="#bc4c00" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5.5 13.5H12l-1 7.5l7.5-10.5H12z"/></g>
+<text x="216.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">event</text>
+<rect x="286" y="814" width="116" height="100" rx="6" fill="#fff5ee" stroke="#bc4c00" stroke-opacity="0.6"/>
+<g transform="translate(324.0,830.0) scale(1.6667)" fill="none" stroke="#bc4c00" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
+<text x="344.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">bell</text>
+<rect x="414" y="814" width="116" height="100" rx="6" fill="#fff5ee" stroke="#bc4c00" stroke-opacity="0.6"/>
+<g transform="translate(452.0,830.0) scale(1.6667)" fill="none" stroke="#bc4c00" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6h17v12h-17z"/><path d="M3.5 6.5l8.5 6.5l8.5-6.5"/></g>
+<text x="472.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">mail</text>
+<rect x="542" y="814" width="116" height="100" rx="6" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.6"/>
+<g transform="translate(580.0,830.0) scale(1.6667)" fill="none" stroke="#8250df" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21"/><path d="M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></g>
+<text x="600.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">settings</text>
+<rect x="670" y="814" width="116" height="100" rx="6" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.6"/>
+<g transform="translate(708.0,830.0) scale(1.6667)" fill="none" stroke="#8250df" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 8l-4 4l4 4"/><path d="M15.5 8l4 4l-4 4"/><path d="M13.5 5.5l-3 13"/></g>
+<text x="728.0" y="894" text-anchor="middle" font-size="12" fill="#59636e">code</text>
 </svg>
