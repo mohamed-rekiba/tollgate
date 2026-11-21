@@ -16,7 +16,7 @@ jobs:
       github.event_name == 'pull_request_target' ||
       (github.event.issue.pull_request &&
        (startsWith(github.event.comment.body, 'tollgate approve ') ||
-        github.event.comment.body == 'tollgate check'))
+        startsWith(github.event.comment.body, 'tollgate check')))
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read

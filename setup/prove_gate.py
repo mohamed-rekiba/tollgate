@@ -40,7 +40,7 @@ def _wait(probe, what: str, sleep, seconds: int):
 
 
 def prove(gh, repository: str, ticket: str, project: str = ".", git=_git, sleep=time.sleep,
-          seconds: int = WAIT_SECONDS) -> dict:
+          seconds: int = WAIT_SECONDS, keep_branch: bool = False) -> dict:
     branch = f"tg/{ticket}"
     tag = f"tg/freeze/{ticket}/1"
     gh.api("POST", f"repos/{repository}/actions/workflows/tollgate-freeze.yml/dispatches",
@@ -78,6 +78,8 @@ def prove(gh, repository: str, ticket: str, project: str = ".", git=_git, sleep=
     finally:
         gh.api("PATCH", f"repos/{repository}/pulls/{pr}", {"state": "closed"})
         try:
+            if keep_branch:
+                raise GhError(0, "keep the branch")
             gh.api("DELETE", f"repos/{repository}/git/refs/heads/{branch}")
         except GhError:
             pass
@@ -93,9 +95,11 @@ def main(argv=None, gh=None) -> int:
     parser.add_argument("repository", help="owner/name")
     parser.add_argument("--ticket", required=True)
     parser.add_argument("--project", default=".")
+    parser.add_argument("--keep-branch", action="store_true", help="do not delete the branch")
     args = parser.parse_args(argv)
     try:
-        result = prove(gh or Gh(), args.repository, args.ticket, args.project)
+        result = prove(gh or Gh(), args.repository, args.ticket, args.project,
+                       keep_branch=args.keep_branch)
     except (GhError, TimeoutError, subprocess.CalledProcessError, ValueError) as err:
         print(json.dumps({"proof": "failed", "reason": str(err)}))
         return 1
