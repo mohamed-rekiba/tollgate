@@ -1,23 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 1075 152" width="1075" height="152" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 982 142" width="982" height="142" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title id="title">The idea of Tollgate in four steps</title>
-<desc id="desc">Tests are written first and say what done means. They are locked on the server, where the AI cannot reach. The AI builds and may try again, but cannot move the goal. The tests decide, and only a pass lets the change in.</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker></defs>
-<rect x="-12" y="-12" width="1075" height="152" fill="#0d1117"/>
-<line x1="229.6" y1="64.0" x2="299.6" y2="64.0" stroke="#8b949e" stroke-width="1.6" marker-end="url(#arrow)"/>
-<line x1="475.6" y1="64.0" x2="545.6" y2="64.0" stroke="#8b949e" stroke-width="1.6" marker-end="url(#arrow)"/>
-<line x1="751.2" y1="64.0" x2="821.2" y2="64.0" stroke="#8b949e" stroke-width="1.6" marker-end="url(#arrow)"/>
-<rect x="24.0" y="33.5" width="205.6" height="61.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
-<text x="126.8" y="59.2" text-anchor="middle" fill="#e6edf3" font-weight="600">1. Write the tests</text>
-<text x="126.8" y="78.2" text-anchor="middle" fill="#e6edf3">They say what done means</text>
-<rect x="299.6" y="24.0" width="176.0" height="80.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
-<text x="387.6" y="49.7" text-anchor="middle" fill="#e6edf3" font-weight="600">2. Lock them</text>
-<text x="387.6" y="68.7" text-anchor="middle" fill="#e6edf3">On the server, where</text>
-<text x="387.6" y="87.7" text-anchor="middle" fill="#e6edf3">the AI cannot reach</text>
-<rect x="545.6" y="24.0" width="205.6" height="80.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
-<text x="648.4" y="49.7" text-anchor="middle" fill="#e6edf3" font-weight="600">3. The AI builds</text>
-<text x="648.4" y="68.7" text-anchor="middle" fill="#e6edf3">It can try again.</text>
-<text x="648.4" y="87.7" text-anchor="middle" fill="#e6edf3">It cannot move the goal.</text>
-<rect x="821.2" y="33.5" width="205.6" height="61.0" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.4"/>
-<text x="924.0" y="59.2" text-anchor="middle" fill="#e6edf3" font-weight="600">4. The tests decide</text>
-<text x="924.0" y="78.2" text-anchor="middle" fill="#e6edf3">Pass: the change goes in</text>
+<desc id="desc">Tests are written first and say what done means. They are locked on the server, where the AI cannot reach. The AI builds and may try again, but cannot move the goal. The tests decide, and only a pass goes in.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
+<rect x="-21.5" y="-21.5" width="981" height="141" rx="12" fill="#0d1117" stroke="#30363d"/>
+<path d="M198.6,49.0 L246.6,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M445.2,49.0 L493.2,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M691.8,49.0 L739.8,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="198.6" height="98.0" rx="10" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.55" stroke-width="1"/>
+<clipPath id="clip0"><rect x="0.0" y="0.0" width="198.6" height="98.0" rx="10"/></clipPath>
+<rect x="0.0" y="0.0" width="4" height="98.0" fill="#ab7df8" clip-path="url(#clip0)"/>
+<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#ab7df8">STEP 1 · AI</text>
+<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">Write the tests</text>
+<text x="22.0" y="63.0" font-size="13" fill="#9198a1">They say what done means</text>
+<rect x="246.6" y="0.0" width="198.6" height="98.0" rx="10" fill="#0c2114" stroke="#3fb950" stroke-opacity="0.55" stroke-width="1"/>
+<clipPath id="clip1"><rect x="246.6" y="0.0" width="198.6" height="98.0" rx="10"/></clipPath>
+<rect x="246.6" y="0.0" width="4" height="98.0" fill="#3fb950" clip-path="url(#clip1)"/>
+<text x="268.6" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#3fb950">STEP 2 · SERVER</text>
+<text x="268.6" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">Lock them</text>
+<text x="268.6" y="63.0" font-size="13" fill="#9198a1">On the server, out of</text>
+<text x="268.6" y="81.0" font-size="13" fill="#9198a1">the AI's reach</text>
+<rect x="493.2" y="0.0" width="198.6" height="98.0" rx="10" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.55" stroke-width="1"/>
+<clipPath id="clip2"><rect x="493.2" y="0.0" width="198.6" height="98.0" rx="10"/></clipPath>
+<rect x="493.2" y="0.0" width="4" height="98.0" fill="#ab7df8" clip-path="url(#clip2)"/>
+<text x="515.2" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#ab7df8">STEP 3 · AI</text>
+<text x="515.2" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The AI builds</text>
+<text x="515.2" y="63.0" font-size="13" fill="#9198a1">It can try again.</text>
+<text x="515.2" y="81.0" font-size="13" fill="#9198a1">It cannot move the goal.</text>
+<rect x="739.8" y="0.0" width="198.6" height="98.0" rx="10" fill="#0c2114" stroke="#3fb950" stroke-opacity="0.55" stroke-width="1"/>
+<clipPath id="clip3"><rect x="739.8" y="0.0" width="198.6" height="98.0" rx="10"/></clipPath>
+<rect x="739.8" y="0.0" width="4" height="98.0" fill="#3fb950" clip-path="url(#clip3)"/>
+<text x="761.8" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#3fb950">STEP 4 · SERVER</text>
+<text x="761.8" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The tests decide</text>
+<text x="761.8" y="63.0" font-size="13" fill="#9198a1">Only a pass goes in</text>
 </svg>

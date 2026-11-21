@@ -4,27 +4,35 @@
  "nodes": [
   {
    "id": "t1",
-   "text": "Tier 1\nA small fix\nLocked tests",
+   "text": "A small fix\nLocked tests",
    "col": 0,
-   "row": 0
+   "row": 0,
+   "kind": "ai",
+   "tag": "TIER 1"
   },
   {
    "id": "t2",
-   "text": "Tier 2\nA normal change\nLocked tests, a plan, a review",
+   "text": "A normal change\nAdds a plan and a review",
    "col": 1,
-   "row": 0
+   "row": 0,
+   "kind": "check",
+   "tag": "TIER 2"
   },
   {
    "id": "t3",
-   "text": "Tier 3\nLogin, payments, user data\nAll of tier 2, a server review",
+   "text": "Login, payments, user data\nAdds a server review",
    "col": 2,
-   "row": 0
+   "row": 0,
+   "kind": "server",
+   "tag": "TIER 3"
   },
   {
    "id": "t4",
-   "text": "Tier 4\nData, production, the locks\nAll of tier 3, a person approves",
+   "text": "Data, production, locks\nAdds a person's approval",
    "col": 3,
-   "row": 0
+   "row": 0,
+   "kind": "you",
+   "tag": "TIER 4"
   }
  ],
  "edges": [

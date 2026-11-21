@@ -1,55 +1,69 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI writes a plan, which other AIs check. The plan is cut into small tickets. For each ticket, tests are written and locked, the AI builds until they pass, and the server checks again and merges. You read the report. When the AI is stuck, the advisor decides.",
+ "desc": "You say what you want. The AI writes a plan, which fresh AIs check. The plan is cut into small tickets. For each ticket, tests are written and locked, the AI builds until they pass, and the server checks again and merges. You read the report. When the AI is stuck, the advisor decides.",
  "nodes": [
   {
    "id": "s1",
-   "text": "1. You say what you want",
+   "text": "You say what you want\nIn plain words",
    "col": 0,
-   "row": 0
+   "row": 0,
+   "kind": "you",
+   "step": 1
   },
   {
    "id": "s2",
-   "text": "2. The AI writes a plan\nOther AIs with fresh eyes check it",
+   "text": "The AI writes a plan\nFresh AIs check it",
    "col": 0,
-   "row": 1
+   "row": 1,
+   "kind": "ai",
+   "step": 2
   },
   {
    "id": "s3",
-   "text": "3. The plan is cut into small tickets",
+   "text": "The plan is cut into tickets\nEach one small",
    "col": 0,
-   "row": 2
+   "row": 2,
+   "kind": "ai",
+   "step": 3
   },
   {
    "id": "s4",
-   "text": "4. Tests are written and locked",
+   "text": "Tests are written and locked\nBefore any code",
    "col": 0,
-   "row": 3
+   "row": 3,
+   "kind": "server",
+   "step": 4
   },
   {
    "id": "s5",
-   "text": "5. The AI builds until\nthe locked tests pass",
+   "text": "The AI builds\nUntil the locked tests pass",
    "col": 0,
-   "row": 4
+   "row": 4,
+   "kind": "ai",
+   "step": 5
   },
   {
    "id": "s6",
-   "text": "6. The server checks again and merges",
+   "text": "The server checks and merges\nIt runs the tests again",
    "col": 0,
-   "row": 5
+   "row": 5,
+   "kind": "server",
+   "step": 6
   },
   {
    "id": "s7",
-   "text": "7. You read the report",
+   "text": "You read the report\nDone, and still to do",
    "col": 0,
-   "row": 6
+   "row": 6,
+   "kind": "you",
+   "step": 7
   },
   {
    "id": "adv",
-   "text": "The advisor decides\nA person, or a second AI",
+   "text": "The advisor decides\nA second AI, or you",
    "col": 1,
    "row": 4,
-   "shape": "note"
+   "kind": "advisor"
   }
  ],
  "edges": [

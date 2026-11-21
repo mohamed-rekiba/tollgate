@@ -1,22 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 890 209" width="890" height="209" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 665 204" width="665" height="204" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title id="title">The AI's room and the server</title>
-<desc id="desc">The AI writes code and runs tests in its own room, with no key to the server. The server locks the tests and runs them on every change. Tollgate carries the change to the server, and the server answers pass or fail.</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker></defs>
-<rect x="-12" y="-12" width="890" height="209" fill="#ffffff"/>
-<line x1="333.2" y1="73.5" x2="451.3" y2="73.5" stroke="#57606a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<rect x="353.2" y="62.5" width="78.1" height="20" rx="4" fill="#ffffff"/>
-<text x="392.2" y="77.5" text-anchor="middle" font-size="13" fill="#1f2328">the change</text>
-<path d="M646.6,123.0 Q412.6,223.2 178.6,123.0" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<rect x="366.7" y="162.1" width="91.7" height="20" rx="4" fill="#ffffff"/>
-<text x="412.6" y="177.1" text-anchor="middle" font-size="13" fill="#1f2328">pass or fail</text>
-<rect x="24.0" y="24.0" width="309.2" height="99.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="178.6" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">The AI's room</text>
-<text x="178.6" y="68.7" text-anchor="middle" fill="#1f2328">The AI writes code and runs the tests.</text>
-<text x="178.6" y="87.7" text-anchor="middle" fill="#1f2328">It has no key to the server.</text>
-<text x="178.6" y="106.7" text-anchor="middle" fill="#1f2328">It cannot touch the locks.</text>
-<rect x="451.3" y="24.0" width="390.6" height="99.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="646.6" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">The server</text>
-<text x="646.6" y="68.7" text-anchor="middle" fill="#1f2328">It locks the tests and runs them on every change.</text>
-<text x="646.6" y="87.7" text-anchor="middle" fill="#1f2328">Nobody can change a lock.</text>
-<text x="646.6" y="106.7" text-anchor="middle" fill="#1f2328">Only a pass lets a change in.</text>
+<desc id="desc">The AI writes code and runs tests in its own room, with no key to the server. The server locks the tests and runs them on every change. The change goes to the server, and the server answers pass or fail.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
+<rect x="-21.5" y="-21.5" width="664" height="203" rx="12" fill="#ffffff" stroke="#d1d9e0"/>
+<path d="M257.1,58.0 L364.1,58.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M492.7,116.0 L492.7,137.0 Q492.7,149.0 480.7,149.0 L140.6,149.0 Q128.6,149.0 128.6,137.0 L128.6,116.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="257.1" height="116.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip0"><rect x="0.0" y="0.0" width="257.1" height="116.0" rx="10"/></clipPath>
+<rect x="0.0" y="0.0" width="4" height="116.0" fill="#8250df" clip-path="url(#clip0)"/>
+<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">AI</text>
+<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">The AI's room</text>
+<text x="22.0" y="63.0" font-size="13" fill="#59636e">The AI writes code and runs tests.</text>
+<text x="22.0" y="81.0" font-size="13" fill="#59636e">It has no key to the server.</text>
+<text x="22.0" y="99.0" font-size="13" fill="#59636e">It cannot touch the locks.</text>
+<rect x="364.1" y="0.0" width="257.1" height="116.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip1"><rect x="364.1" y="0.0" width="257.1" height="116.0" rx="10"/></clipPath>
+<rect x="364.1" y="0.0" width="4" height="116.0" fill="#1a7f37" clip-path="url(#clip1)"/>
+<text x="386.1" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">SERVER</text>
+<text x="386.1" y="44.0" font-size="15" font-weight="600" fill="#1f2328">The server</text>
+<text x="386.1" y="63.0" font-size="13" fill="#59636e">It locks the tests and runs them.</text>
+<text x="386.1" y="81.0" font-size="13" fill="#59636e">Nobody can change a lock.</text>
+<text x="386.1" y="99.0" font-size="13" fill="#59636e">Only a pass goes in.</text>
+<rect x="271.1" y="47.0" width="79.0" height="22" rx="11.0" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="310.6" y="62.2" text-anchor="middle" font-size="12" font-weight="500" fill="#59636e">the change</text>
+<rect x="269.0" y="138.0" width="83.2" height="22" rx="11.0" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="310.6" y="153.2" text-anchor="middle" font-size="12" font-weight="500" fill="#59636e">pass or fail</text>
 </svg>

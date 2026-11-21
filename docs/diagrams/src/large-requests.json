@@ -4,21 +4,24 @@
  "nodes": [
   {
    "id": "a",
-   "text": "1. The base\nThe project can be built,\ntested, and run",
+   "text": "The base\nIt builds, tests, and runs",
    "col": 0,
-   "row": 0
+   "row": 0,
+   "tag": "PART 1"
   },
   {
    "id": "b",
-   "text": "2. The skeleton\nThe shared rules, and\none thin path that works",
+   "text": "The skeleton\nShared rules, one thin path",
    "col": 1,
-   "row": 0
+   "row": 0,
+   "tag": "PART 2"
   },
   {
    "id": "c",
-   "text": "3. The features\nOne at a time, each\nproven from end to end",
+   "text": "The features\nOne at a time, end to end",
    "col": 2,
-   "row": 0
+   "row": 0,
+   "tag": "PART 3"
   }
  ],
  "edges": [

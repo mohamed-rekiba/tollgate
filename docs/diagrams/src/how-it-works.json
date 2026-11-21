@@ -1,64 +1,70 @@
 {
  "title": "How Tollgate works, with its three feedback loops",
- "desc": "A request becomes a plan, which reviewers check until they find no problems. Tests are written and locked, then the AI builds. When the gate or reviewers find a problem, what failed goes back to the builder. When it is stuck, the advisor decides. After a merge, the retro turns lessons into stricter rules for the next plan.",
+ "desc": "You ask in plain words. The AI writes a plan, and fresh AIs check it until they find no problems. Tests are written and locked on the server, then the AI builds. When the gate fails, what failed goes back to the builder. When the builder is stuck, the advisor decides. After a merge, the retro turns lessons into stricter rules for the next plan.",
  "nodes": [
   {
    "id": "ask",
-   "text": "You ask in plain words",
-   "col": 1,
-   "row": 0
+   "text": "You ask\nIn plain words",
+   "col": 0,
+   "row": 0,
+   "kind": "you"
   },
   {
    "id": "plan",
-   "text": "A plan",
-   "col": 1,
-   "row": 1
+   "text": "The AI writes a plan\nSmall tickets, each with its tests",
+   "col": 0,
+   "row": 1,
+   "kind": "ai"
   },
   {
    "id": "rev",
-   "text": "Reviewers find\nproblems in it?",
-   "col": 1,
+   "text": "Reviewers check the plan\nFresh AIs look for problems",
+   "col": 0,
    "row": 2,
-   "shape": "decision"
+   "kind": "check"
   },
   {
    "id": "tests",
-   "text": "Tests written and locked first",
-   "col": 1,
-   "row": 3
+   "text": "Tests are locked\nOn the server, before the build",
+   "col": 0,
+   "row": 3,
+   "kind": "server"
   },
   {
    "id": "build",
-   "text": "The AI builds",
-   "col": 1,
-   "row": 4
+   "text": "The AI builds\nUntil the locked tests pass",
+   "col": 0,
+   "row": 4,
+   "kind": "ai"
   },
   {
    "id": "gate",
-   "text": "Gate and reviewers\npass?",
-   "col": 1,
+   "text": "The gate runs the tests\nAnd the reviewers read the change",
+   "col": 0,
    "row": 5,
-   "shape": "decision"
+   "kind": "check"
   },
   {
    "id": "merge",
-   "text": "Merge",
-   "col": 1,
-   "row": 6
+   "text": "Merge\nOnly a pass goes in",
+   "col": 0,
+   "row": 6,
+   "kind": "server"
   },
   {
    "id": "retro",
-   "text": "Retro: numbers and lessons",
-   "col": 1,
+   "text": "The retro\nNumbers and up to 3 lessons",
+   "col": 0,
    "row": 7,
-   "shape": "note"
+   "kind": "ai",
+   "tag": "RETRO · AI"
   },
   {
    "id": "adv",
-   "text": "The advisor decides\nan AI or you",
-   "col": 2,
+   "text": "The advisor decides\nA second AI, or you",
+   "col": 1,
    "row": 5,
-   "shape": "note"
+   "kind": "advisor"
   }
  ],
  "edges": [
@@ -73,13 +79,15 @@
   {
    "from": "rev",
    "to": "plan",
-   "label": "yes: fix it",
+   "label": "problems",
+   "tone": "fail",
    "loop": "right"
   },
   {
    "from": "rev",
    "to": "tests",
-   "label": "no"
+   "label": "clean",
+   "tone": "pass"
   },
   {
    "from": "tests",
@@ -92,13 +100,15 @@
   {
    "from": "gate",
    "to": "build",
-   "label": "no: what failed goes back",
+   "label": "what failed goes back",
+   "tone": "fail",
    "loop": "left"
   },
   {
    "from": "gate",
    "to": "merge",
-   "label": "yes"
+   "label": "pass",
+   "tone": "pass"
   },
   {
    "from": "merge",
@@ -107,10 +117,9 @@
   {
    "from": "retro",
    "to": "plan",
-   "label": "lessons make the rules stricter",
+   "label": "lessons tighten the rules",
    "loop": "left",
-   "dashed": true,
-   "reach": 230
+   "dashed": true
   },
   {
    "from": "gate",
@@ -122,7 +131,8 @@
    "from": "adv",
    "to": "build",
    "label": "retry",
-   "dashed": true
+   "dashed": true,
+   "route": "vh"
   }
  ]
 }

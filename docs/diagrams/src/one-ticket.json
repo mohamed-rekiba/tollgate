@@ -1,38 +1,41 @@
 {
  "title": "How one ticket is built",
- "desc": "The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, it tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
+ "desc": "The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
  "nodes": [
   {
    "id": "b",
-   "text": "The AI builds\none attempt",
+   "text": "The AI builds\nOne attempt",
    "col": 0,
-   "row": 0
+   "row": 0,
+   "kind": "ai"
   },
   {
    "id": "q",
-   "text": "Do the locked\ntests pass?",
+   "text": "Run the locked tests\nOn the AI's own machine",
    "col": 1,
    "row": 0,
-   "shape": "decision"
+   "kind": "check"
   },
   {
    "id": "s",
-   "text": "The change goes to the server\nThe server runs the tests again",
+   "text": "Send to the server\nIt runs the tests again",
    "col": 2,
-   "row": 0
+   "row": 0,
+   "kind": "server"
   },
   {
    "id": "t",
-   "text": "Try again\nwith what went wrong",
+   "text": "Try again\nWith what went wrong",
    "col": 1,
-   "row": 1
+   "row": 1,
+   "kind": "ai"
   },
   {
    "id": "a",
-   "text": "Ask the advisor",
+   "text": "Ask the advisor\nA second AI, or you",
    "col": 2,
    "row": 1,
-   "shape": "note"
+   "kind": "advisor"
   }
  ],
  "edges": [
@@ -43,21 +46,25 @@
   {
    "from": "q",
    "to": "s",
-   "label": "yes"
+   "label": "pass",
+   "tone": "pass"
   },
   {
    "from": "q",
    "to": "t",
-   "label": "no"
+   "label": "fail",
+   "tone": "fail"
   },
   {
    "from": "t",
-   "to": "b"
+   "to": "b",
+   "route": "hv"
   },
   {
    "from": "t",
    "to": "a",
-   "label": "after 3 tries, or stuck"
+   "label": "after 3 tries",
+   "dashed": true
   }
  ]
 }

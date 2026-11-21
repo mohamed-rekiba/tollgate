@@ -76,11 +76,19 @@ class TestDiagrams(unittest.TestCase):
         finally:
             sys.path.pop(0)
         for name, t in build.THEMES.items():
-            for fill in ("page", "box", "decision", "note"):
+            fills = [t["box"]] + [tint for _, tint in t["kinds"].values()]
+            for fill in fills:
                 with self.subTest(theme=name, fill=fill):
-                    self.assertGreaterEqual(contrast(t["text"], t[fill]), 4.5)
+                    self.assertGreaterEqual(contrast(t["text"], fill), 4.5)
+                    self.assertGreaterEqual(contrast(t["sub"], fill), 4.5)
+            for kind, (accent, tint) in t["kinds"].items():
+                with self.subTest(theme=name, kind=kind):
+                    self.assertGreaterEqual(contrast(accent, tint), 4.5)
+            for tone, color in t["tones"].items():
+                with self.subTest(theme=name, tone=tone):
+                    self.assertGreaterEqual(contrast(color, t["page"]), 4.5)
             self.assertGreaterEqual(contrast(t["edge"], t["page"]), 3.0, name)
-            self.assertGreaterEqual(contrast(t["label"], t["page"]), 4.5, name)
+            self.assertGreaterEqual(contrast(t["sub"], t["page"]), 4.5, name)
 
     def test_every_diagram_is_used(self):
         markdown = "".join(p.read_text(errors="ignore") for p in files("*.md"))

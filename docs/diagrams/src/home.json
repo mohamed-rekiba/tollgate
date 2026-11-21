@@ -4,27 +4,35 @@
  "nodes": [
   {
    "id": "h",
-   "text": "Home folder\nThe list of projects and the shared rules",
+   "text": "Home folder\nThe projects and shared rules",
    "col": 1,
-   "row": 0
+   "row": 0,
+   "kind": "you",
+   "tag": "HOME"
   },
   {
    "id": "a",
    "text": "Project A\nIts own rules and gate",
    "col": 0,
-   "row": 1
+   "row": 1,
+   "kind": "server",
+   "tag": "PROJECT"
   },
   {
    "id": "b",
    "text": "Project B\nIts own rules and gate",
    "col": 1,
-   "row": 1
+   "row": 1,
+   "kind": "server",
+   "tag": "PROJECT"
   },
   {
    "id": "c",
    "text": "Project C\nIts own rules and gate",
    "col": 2,
-   "row": 1
+   "row": 1,
+   "kind": "server",
+   "tag": "PROJECT"
   }
  ],
  "edges": [

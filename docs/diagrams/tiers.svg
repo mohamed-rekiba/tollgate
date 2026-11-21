@@ -1,25 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 1164 152" width="1164" height="152" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 1176 124" width="1176" height="124" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title id="title">The four tiers</title>
 <desc id="desc">Tier 1 is a small fix with locked tests. Tier 2 is a normal change, with locked tests, a plan, and a review. Tier 3 covers login, payments, and user data, and adds a review on the server. Tier 4 covers data, production, and the locks, and adds an approval by a person.</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker></defs>
-<rect x="-12" y="-12" width="1164" height="152" fill="#ffffff"/>
-<line x1="140.8" y1="64.0" x2="210.8" y2="64.0" stroke="#57606a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<line x1="460.8" y1="64.0" x2="530.8" y2="64.0" stroke="#57606a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<line x1="780.8" y1="64.0" x2="850.8" y2="64.0" stroke="#57606a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<rect x="24.0" y="24.0" width="116.8" height="80.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="82.4" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">Tier 1</text>
-<text x="82.4" y="68.7" text-anchor="middle" fill="#1f2328">A small fix</text>
-<text x="82.4" y="87.7" text-anchor="middle" fill="#1f2328">Locked tests</text>
-<rect x="210.8" y="24.0" width="250.0" height="80.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="335.8" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">Tier 2</text>
-<text x="335.8" y="68.7" text-anchor="middle" fill="#1f2328">A normal change</text>
-<text x="335.8" y="87.7" text-anchor="middle" fill="#1f2328">Locked tests, a plan, a review</text>
-<rect x="530.8" y="24.0" width="250.0" height="80.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="655.8" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">Tier 3</text>
-<text x="655.8" y="68.7" text-anchor="middle" fill="#1f2328">Login, payments, user data</text>
-<text x="655.8" y="87.7" text-anchor="middle" fill="#1f2328">All of tier 2, a server review</text>
-<rect x="850.8" y="24.0" width="264.8" height="80.0" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
-<text x="983.2" y="49.7" text-anchor="middle" fill="#1f2328" font-weight="600">Tier 4</text>
-<text x="983.2" y="68.7" text-anchor="middle" fill="#1f2328">Data, production, the locks</text>
-<text x="983.2" y="87.7" text-anchor="middle" fill="#1f2328">All of tier 3, a person approves</text>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
+<rect x="-21.5" y="-21.5" width="1175" height="123" rx="12" fill="#ffffff" stroke="#d1d9e0"/>
+<path d="M247.0,40.0 L295.0,40.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M542.0,40.0 L590.0,40.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M837.0,40.0 L885.0,40.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="247.0" height="80.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip0"><rect x="0.0" y="0.0" width="247.0" height="80.0" rx="10"/></clipPath>
+<rect x="0.0" y="0.0" width="4" height="80.0" fill="#8250df" clip-path="url(#clip0)"/>
+<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">TIER 1</text>
+<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">A small fix</text>
+<text x="22.0" y="63.0" font-size="13" fill="#59636e">Locked tests</text>
+<rect x="295.0" y="0.0" width="247.0" height="80.0" rx="10" fill="#fff9e5" stroke="#9a6700" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip1"><rect x="295.0" y="0.0" width="247.0" height="80.0" rx="10"/></clipPath>
+<rect x="295.0" y="0.0" width="4" height="80.0" fill="#9a6700" clip-path="url(#clip1)"/>
+<text x="317.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9a6700">TIER 2</text>
+<text x="317.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">A normal change</text>
+<text x="317.0" y="63.0" font-size="13" fill="#59636e">Adds a plan and a review</text>
+<rect x="590.0" y="0.0" width="247.0" height="80.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip2"><rect x="590.0" y="0.0" width="247.0" height="80.0" rx="10"/></clipPath>
+<rect x="590.0" y="0.0" width="4" height="80.0" fill="#1a7f37" clip-path="url(#clip2)"/>
+<text x="612.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">TIER 3</text>
+<text x="612.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">Login, payments, user data</text>
+<text x="612.0" y="63.0" font-size="13" fill="#59636e">Adds a server review</text>
+<rect x="885.0" y="0.0" width="247.0" height="80.0" rx="10" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
+<clipPath id="clip3"><rect x="885.0" y="0.0" width="247.0" height="80.0" rx="10"/></clipPath>
+<rect x="885.0" y="0.0" width="4" height="80.0" fill="#0969da" clip-path="url(#clip3)"/>
+<text x="907.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#0969da">TIER 4</text>
+<text x="907.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">Data, production, locks</text>
+<text x="907.0" y="63.0" font-size="13" fill="#59636e">Adds a person's approval</text>
 </svg>
