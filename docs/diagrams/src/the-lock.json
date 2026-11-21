@@ -1,0 +1,63 @@
+{
+ "title": "The idea of Tollgate in four steps",
+ "desc": "First the tests are written; they say what done means. Then they are locked on GitHub, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.",
+ "nodes": [
+  {
+   "id": "a",
+   "text": "Write the tests\nThey say what\ndone means",
+   "col": 0,
+   "row": 0,
+   "kind": "ai",
+   "icon": "test",
+   "step": 1,
+   "shape": "document"
+  },
+  {
+   "id": "b",
+   "text": "Lock them\nOn GitHub, out\nof the AI's reach",
+   "col": 1,
+   "row": 0,
+   "kind": "server",
+   "icon": "lock",
+   "step": 2,
+   "shape": "data"
+  },
+  {
+   "id": "c",
+   "text": "The AI builds\nIt may try again.\nThe goal stays put.",
+   "col": 2,
+   "row": 0,
+   "kind": "ai",
+   "icon": "ai",
+   "step": 3,
+   "shape": "step"
+  },
+  {
+   "id": "d",
+   "text": "The tests decide\nOnly a pass\ngoes in",
+   "col": 3,
+   "row": 0,
+   "kind": "check",
+   "icon": "gate",
+   "step": 4,
+   "shape": "end"
+  }
+ ],
+ "edges": [
+  {
+   "from": "a",
+   "to": "b"
+  },
+  {
+   "from": "b",
+   "to": "c"
+  },
+  {
+   "from": "c",
+   "to": "d"
+  }
+ ],
+ "names": {
+  "server": "GITHUB"
+ }
+}
