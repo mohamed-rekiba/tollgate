@@ -128,7 +128,8 @@ def main(argv=None, gh=None) -> int:
     if args.print_only:
         try:
             owner_type = owner_type_of(gh or Gh(), args.repository)
-        except GhError:
+        except (GhError, OSError):
+            # No access, or no gh command: print the stricter rules, which is safe.
             owner_type = "Organization"
         print(commands(args.repository, owner_type))
         return 0

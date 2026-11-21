@@ -133,6 +133,15 @@ class ApplyRulesetsTest(unittest.TestCase):
             self.assertEqual(apply_rulesets.main(["o/r", "--print"], gh=gh), 0)
         self.assertIn('"creation"', out.getvalue())
 
+    def test_print_works_without_the_gh_command(self):
+        import contextlib
+        import io
+        gh = FakeGh({("GET", "repos/o/r"): FileNotFoundError("gh")})
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(apply_rulesets.main(["o/r", "--print"], gh=gh), 0)
+        self.assertIn('"creation"', out.getvalue())
+
     def test_print_shows_both_requests(self):
         text = apply_rulesets.commands("o/r")
         self.assertEqual(text.count("gh api -X POST repos/o/r/rulesets"), 2)
