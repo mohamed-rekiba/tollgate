@@ -38,13 +38,6 @@ The ruleset on the main branch lets a repository admin merge a pull request that
 
 The four workflow files became one, `tollgate.yml`, that is the same for every version of Tollgate. The version is `"version"` in the settings on main: a full commit id, or `"self"` in the Tollgate repository, where main's own code runs the gate. Before this, each workflow held a pin, so every upgrade was a `.github/` change, and each one needed the admin bypass.
 
-These are the jobs of `tollgate.yml` and the order they run in. The picture is drawn from the file itself, so a test fails when the two differ.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/workflow-dark.svg">
-  <img alt="The jobs of the Tollgate workflow" src="diagrams/workflow.svg">
-</picture>
-
 ## Nothing can deadlock
 
 - A change under `.github/` is tier 4, not an automatic failure.

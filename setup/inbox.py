@@ -65,9 +65,6 @@ def main(argv=None, store=Store) -> int:
             print(f"answered question {args.n}")
             return 0
         found = inbox(projects(args.home, args.project), store)
-    except NotImplementedError:
-        print("inbox: UNFINISHED: the store cannot read questions yet.", file=sys.stderr)
-        return 2
     except (HomeError, StoreError, OSError) as err:
         print(f"inbox: {err}", file=sys.stderr)
         return 1

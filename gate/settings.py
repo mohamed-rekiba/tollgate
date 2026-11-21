@@ -17,6 +17,8 @@ BUILT_IN_HARNESS = [
     ".github/**",
     ".tollgate/settings.json",
     ".tollgate/lenses/**",
+    ".tollgate/checks/**",
+    "**/.pre-commit-config.yaml",
     ".tollgate/runner/**",
     "**/conftest.py",
     "**/pytest.ini",

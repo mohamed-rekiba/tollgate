@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gate import plan as pl
 from driver import report
 from driver.log import Log
+from gate import plan as pl
 
 PLAN = """---
 id: shop

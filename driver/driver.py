@@ -15,13 +15,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from driver import advisor, history, roles
+from driver.log import Log, read
 from gate import checks, gate, prepare, tickets
 from gate import manifest as mf
 from gate import settings as st
 from gate.gitio import changed_files
 from gate.tickets import item_of_test
-from driver import advisor, history, roles
-from driver.log import Log, read
 
 BUILDER_RULES = {3, 5}     # the builder can fix these
 SERVER_RULES = {4, 6}      # met on the server, after the pull request opens

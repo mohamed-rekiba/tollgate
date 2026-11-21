@@ -126,7 +126,13 @@ def check_commit(root, commit: str) -> list:
     folder = state_dir(project_root(root))
     record = read(folder / "passes" / f"{commit}.json", "tollgate-pass", signers)
     if not record or record.get("commit") != commit:
-        return [f"commit {commit[:12]} has no verified pass record. Only the gate passes a change."]
+        # A change made by hand has no ticket: an owner's approval vouches for it.
+        owners = keys_on_main(root, "owners")
+        approval = read(folder / "approvals" / f"{commit}.json", "tollgate-approval", owners)
+        if approval and approval.get("commit") == commit and not approval.get("ticket"):
+            return []
+        return [(f"commit {commit[:12]} has no verified pass record, and no approval of a "
+                 "change made by hand. Approve it with /tollgate:merge.")]
     tier = record.get("tier", 4)
     if not isinstance(tier, int) or tier >= 3:
         owners = keys_on_main(root, "owners")

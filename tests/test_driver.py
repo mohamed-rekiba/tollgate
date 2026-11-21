@@ -8,10 +8,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gate import tickets
 from driver import roles
 from driver.driver import Busy, TicketLock, score
 from driver.log import Log, LogBusy, read
+from gate import tickets
 from tests.fakes import FAKE_ROLE, TICKET
 
 

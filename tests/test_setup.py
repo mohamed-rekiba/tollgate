@@ -404,8 +404,9 @@ class MergeTest(Env):
         self.assertEqual(code, 0, out)
         sh(self.root, "git", "merge-base", "--is-ancestor", self.commit, "main")
 
-    def test_approve_refuses_a_key_not_in_owners_and_a_change_with_no_pass(self):
-        self.assertIn("no verified pass record",
+    def test_approve_refuses_a_ticket_with_no_pass_and_a_key_not_in_owners(self):
+        sh(self.root, "git", "branch", "tg/T-1", self.commit)
+        self.assertIn("Only the gate passes a ticket",
                       self.run_main("approve", self.commit, "--key", str(self.owner))[1])
         self.record_pass(self.root, self.commit, tier=4)
         other = self.tmp / "other"
@@ -414,12 +415,6 @@ class MergeTest(Env):
         self.assertEqual(code, 1)
         self.assertIn("not in owners", out)
         self.assertEqual(self.store.approvals(self.commit), [])
-
-    def test_the_real_store_is_unfinished(self):
-        code = merge.main(["--project", str(self.root), "merge", self.commit],
-                          store=type("S", (), {"passed": lambda s, c: (_ for _ in ()).throw(
-                              NotImplementedError)})())
-        self.assertEqual(code, 2)
 
 
 class FakeQuestions:
@@ -471,14 +466,13 @@ class HomeTest(Env):
             return stores[-1]
 
         result = sync_rules.sync(str(folder), store)
-        self.assertEqual(result[0]["result"], "ready change on the branch tollgate-sync")
-        self.assertEqual(stores[0].marked, [("tollgate-sync", "sync-rules")])
+        self.assertEqual(result[0]["result"],
+                         "the branch tollgate-sync waits for your approval: /tollgate:merge")
         shown = sh(folder / "projects/shop", "git", "show",
                    "tollgate-sync:.tollgate/lenses/style.md").stdout
         self.assertEqual(shown, "Short names.\n")
         self.assertEqual(sync_rules.sync(str(folder), store)[0]["result"],
                          "already a ready change on the branch tollgate-sync")
-        self.assertEqual(len(stores), 1)
 
     def test_a_home_needs_an_empty_folder(self):
         folder = self.tmp / "home"

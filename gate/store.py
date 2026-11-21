@@ -16,7 +16,7 @@ import json
 import os
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gate import checks, plantag, prepare, sign, state, tickets
@@ -37,7 +37,7 @@ class StoreError(RuntimeError):
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class Store:
@@ -303,7 +303,13 @@ class Store:
             raise StoreError(f"the project has no commit {commit!r}")
         found = self.passed(full)
         if not found:
-            raise StoreError(f"{full[:12]} has no verified pass record")
+            # A change made by hand has no ticket, so the gate cannot pass it. An owner
+            # vouches for it with a signed approval instead. An AI ticket always needs a pass.
+            mine = [a for a in self.approvals(full) if not a["ticket"]]
+            if not mine:
+                raise StoreError(f"{full[:12]} has no verified pass record, and no approval "
+                                 "of a change made by hand")
+            found = {"ticket": "", "tier": 4, "lock_sha256": ""}
         tier = found["tier"]
         if tier in (3, 4) and not any(a["ticket"] == found["ticket"] for a in self.approvals(full)):
             raise StoreError(f"{full[:12]} is tier {tier}, so it needs your signed approval")

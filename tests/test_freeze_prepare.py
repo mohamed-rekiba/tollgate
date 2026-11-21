@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 from gate import freeze, gate, prepare
-from gate import settings as st
 from gate import manifest as mf
+from gate import settings as st
 from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
 

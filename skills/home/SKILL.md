@@ -29,6 +29,6 @@ Done when `python3 -m setup.home list` shows the project.
 2. Run `python3 -m setup.sync_rules`. In each project, it puts the shared rules in `.tollgate/lenses/` on the local branch `tollgate-sync`, and the store marks the branch as a ready change.
 3. Show each line. Tell the user to merge each one with `/tollgate:merge` in that project. Nothing merges on its own.
 
-UNFINISHED: the sync branch does not go through the gate, so it has no pass record and cannot merge yet. If the script ends with 2, the store cannot mark ready changes yet: tell the user so.
+A sync branch is a change made by hand. The owner approves it and merges it with `/tollgate:merge`.
 
 The home never weakens a project. Each project keeps its own settings, and the gate reads them from the project's main branch.

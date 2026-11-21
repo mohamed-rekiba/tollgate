@@ -4,12 +4,10 @@
 
 The shared rules are the lens files in the home's rules/lenses/. Each project
 gets them in .tollgate/lenses/ on the branch tollgate-sync, made from main in a
-separate worktree, so your working folder does not change. The store then marks
-the branch as a ready change, and you merge it with /tollgate:merge. Tollgate
-can make a rule stricter. Only you make a rule looser, so nothing merges on its own.
-
-UNFINISHED: the branch does not go through the gate here, and a ready change
-merges only with a pass record. The store stream decides how a sync branch gets one.
+separate worktree, so your working folder does not change. It is a change made
+by hand, with no ticket: you approve it and merge it with /tollgate:merge.
+Tollgate can make a rule stricter. Only you make a rule looser, so nothing
+merges on its own.
 """
 
 import argparse
@@ -50,8 +48,7 @@ def sync_one(path: Path, lenses: list, store=Store) -> str:
             git(work, "branch", "-f", BRANCH, "HEAD")
         finally:
             git(path, "worktree", "remove", "--force", str(work))
-    store(str(path)).ready(BRANCH, TICKET)
-    return f"ready change on the branch {BRANCH}"
+    return f"the branch {BRANCH} waits for your approval: /tollgate:merge"
 
 
 def sync(home: str, store=Store) -> list:
@@ -69,10 +66,6 @@ def main(argv=None, store=Store) -> int:
     try:
         for line in sync(args.home, store):
             print(json.dumps(line))
-    except NotImplementedError:
-        print("sync_rules: UNFINISHED: the store cannot mark a ready change yet.",
-              file=sys.stderr)
-        return 2
     except subprocess.CalledProcessError as err:
         print(f"sync_rules: {err.stderr or err}", file=sys.stderr)
         return 1

@@ -11,10 +11,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gate import roadmap as rm
-from gate import settings as st
 from driver import retro
 from driver.log import read
+from gate import roadmap as rm
+from gate import settings as st
 from setup import base_suite, home, inbox, sync_rules
 from tests.fakes import Sample, driver_env, run_driver
 from tests.helpers import sh

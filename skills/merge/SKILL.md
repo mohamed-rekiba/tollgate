@@ -35,6 +35,6 @@ Done when the command prints `approved:`. If it says the key is not in `owners`,
 
 ## 4. Merge it
 
-Run `python3 -m setup.merge merge <commit>`. The store merges it into main with a merge commit, and pre-commit checks the pass record and the approval again. It ends with 2 and says UNFINISHED while the store cannot merge yet: tell the user so.
+Run `python3 -m setup.merge merge <commit>`. The store merges it into main with a merge commit, and pre-commit checks the pass record and the approval again.
 
 Done when it prints `merged:` and the merge commit. Tell the user the commit in one line.

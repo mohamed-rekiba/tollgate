@@ -290,6 +290,15 @@ class MergeTest(StoreCase):
         self.approve(commit)
         self.assertTrue(self.store.merge(commit))
 
+    def test_a_change_made_by_hand_merges_on_an_owner_approval(self):
+        commit = self.change()
+        with self.assertRaisesRegex(StoreError, "no approval of a change made by hand"):
+            self.store.merge(commit)
+        sign.write(state.path(str(self.repo.path), "approvals", f"{commit}.json"),
+                   {"commit": commit, "ticket": "", "approver": "owner",
+                    "at": "2026-11-22T00:00:00Z"}, "tollgate-approval", key=str(self.owner))
+        self.assertTrue(self.store.merge(commit))
+
     def test_refuses_a_pass_for_an_old_lock(self):
         self.ticket_branch()
         self.store.freeze("T-1")

@@ -112,8 +112,13 @@ def approve(project: str, commit: str, store, key: str | None = None, approver: 
     commit = full(project, commit)
     record = store.passed(commit)
     if not record:
-        raise MergeError(f"{commit[:12]} has no verified pass record. Only the gate passes a change.")
-    if not needs_approval(record):
+        # A change made by hand has no ticket, so the gate cannot pass it. Your approval
+        # vouches for it. An AI ticket always needs the gate's pass.
+        if git(project, "branch", "--contains", commit, "--list", "tg/*")[1]:
+            raise MergeError(f"{commit[:12]} is on a ticket branch and has no pass record. "
+                             "Only the gate passes a ticket.")
+        record = {"ticket": "", "tier": 4}
+    elif not needs_approval(record):
         raise MergeError(f"{commit[:12]} is tier {record.get('tier')}: it needs no approval")
     key_path = private_key(key)
     if key_path.resolve() == sign.machine_key().resolve():
@@ -177,9 +182,6 @@ def main(argv=None, store=None) -> int:
             print(f"approved: {approve(project, args.commit, store, args.key)}")
         else:
             print(f"merged: {merge(project, args.commit, store)}")
-    except NotImplementedError:
-        print("merge: UNFINISHED: the store cannot do this step yet.", file=sys.stderr)
-        return 2
     except (MergeError, StoreError, sign.SignError, OSError, ValueError) as err:
         print(f"merge: {err}", file=sys.stderr)
         return 1
