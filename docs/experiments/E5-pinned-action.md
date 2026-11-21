@@ -4,7 +4,7 @@
 
 ## What was run
 
-Branch `tg-lab/e5-action` added an action in the folder `lab-action/` at commit `e2f7f20`. A later commit changed the action so that it fails, and added a workflow that calls `mohamed-rekiba/tollgate/lab-action@e2f7f20`.
+Branch `tg-lab/e5-action` added an action in the folder `lab-action/` at commit `e2f7f20`. A later commit changed the action so that it fails, and added a workflow that calls `tollgate-ai/tollgate/lab-action@e2f7f20`.
 
 ## What happened
 

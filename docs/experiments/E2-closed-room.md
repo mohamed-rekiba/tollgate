@@ -25,7 +25,7 @@ The roles were fake roles with the same contract as Claude Code: read the prompt
 | --- | --- |
 | A role in the container writes to the copy, and the driver reads its answer and cost. | Passed. |
 | A push from inside, to the local server, fails. | Passed: the server's path is not in the container. |
-| A push from inside, to `https://github.com/mohamed-rekiba/tollgate.git`, fails. | Passed. The container reached GitHub, which asked for a user name: no credentials are inside. |
+| A push from inside, to `https://github.com/tollgate-ai/tollgate.git`, fails. | Passed. The container reached GitHub, which asked for a user name: no credentials are inside. |
 | A `GH_TOKEN` set for the driver does not reach the role. | Passed: the role saw no variable with `TOKEN` or `GH` in its name, and an empty home folder. |
 | Files written inside belong to the user who runs the driver. | Passed. |
 | The driver builds a ticket with `sandbox: container`, every role in the container: one failed attempt, one passed attempt, a pull request. | Passed. |

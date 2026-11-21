@@ -12,7 +12,7 @@ Run on 2026-11-21. The branch `tg-lab/e3-fake` added `.github/workflows/lab-e3-f
 
 So anyone who can push a branch can post a `tollgate gate` check that GitHub cannot tell from the real one. The order decides which shows.
 
-What is not shown here: whether the main ruleset's required check `tollgate gate` (app `github-actions`) accepts the fake. To find out, turn the rulesets on with `PYTHONPATH=. python3 -m setup.apply_rulesets mohamed-rekiba/tollgate`, push to `tg-lab/e3-fake` again, and try to merge #45.
+What is not shown here: whether the main ruleset's required check `tollgate gate` (app `github-actions`) accepts the fake. To find out, turn the rulesets on with `PYTHONPATH=. python3 -m setup.apply_rulesets tollgate-ai/tollgate`, push to `tg-lab/e3-fake` again, and try to merge #45.
 
 What would close the hole, all outside this repository's plan:
 

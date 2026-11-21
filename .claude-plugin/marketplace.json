@@ -1,6 +1,6 @@
 {
   "name": "tollgate-ai",
-  "owner": {"name": "Mohamed Rekiba"},
+  "owner": {"name": "tollgate-ai"},
   "plugins": [
     {
       "name": "tollgate",
