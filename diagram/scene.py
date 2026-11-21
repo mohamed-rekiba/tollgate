@@ -330,14 +330,16 @@ class Scene:
         ])
         return dur, times
 
-    def lift(self, name, dur, up, down):
-        """Lift the barrier of class `name` from time `up` to time `down`, in a loop of dur."""
+    def lift(self, name, dur, up, down, swing=0.5):
+        """Lift the barrier of class `name`: it starts rising at time `up`, is fully up
+        `swing` seconds later, and starts falling at time `down`, in a loop of `dur`."""
         up = max(up, 0.0)
-        a, b = 100 * up / dur, 100 * down / dur
+        pct = [100 * x / dur for x in (up, up + swing, down, min(down + swing, dur))]
+        turn = getattr(self, "turns", {}).get(name, 52)
         self.css.append(f".{name}{{transform-box:view-box;animation:{name} {dur:.2f}s ease-in-out "
-                        f"infinite}}@keyframes {name}{{0%,{max(a - 4, 0):.1f}%{{transform:rotate(0)}}"
-                        f"{a:.1f}%,{b:.1f}%{{transform:rotate({getattr(self, 'turns', {}).get(name, 52)}deg)}}"
-                        f"{min(b + 6, 100):.1f}%,100%{{transform:rotate(0)}}}}")
+                        f"infinite}}@keyframes {name}{{0%,{pct[0]:.1f}%{{transform:rotate(0)}}"
+                        f"{pct[1]:.1f}%,{pct[2]:.1f}%{{transform:rotate({turn}deg)}}"
+                        f"{pct[3]:.1f}%,100%{{transform:rotate(0)}}}}")
         self.reduced = getattr(self, "reduced", []) + [f".{name}"]
 
     # The page ------------------------------------------------------------------
@@ -456,7 +458,12 @@ def from_spec(spec: dict, theme: str) -> str:
         dur, times = s.ticket(speed=ticket.get("speed", 150))
         if "lift" in ticket:
             n = ticket["lift"]
-            if not 0 <= n < len(times):
-                raise ValueError(f"lift names leg {n}, but the ticket has {len(times)} legs")
-            s.lift(ticket.get("gate", "arm"), dur, times[n][0] - 0.75, times[n][1])
+            if not 1 <= n < len(times):
+                raise ValueError(f"lift names leg {n}; it must be 1 to {len(times) - 1}, a leg that "
+                                 f"starts where the one before it stopped at the gate")
+            # The barrier opens only after the change has reached it and waited a moment
+            # (the tests run), and it is fully up before the change moves on.
+            arrived, leaves = times[n - 1][1], times[n][0]
+            swing = min(0.5, max(0.1, (leaves - arrived) / 2))
+            s.lift(ticket.get("gate", "arm"), dur, leaves - swing - 0.05, times[n][1], swing)
     return s.render(spec["title"], spec["desc"])

@@ -3,13 +3,15 @@
 On the left, the name and the promise. On the right, on a fine grid: the AI's
 room, the gate with its barrier, and the main branch on GitHub. One
 change leaves the room, waits at the gate while the locked tests run, the
-barrier lifts, and it goes in. A red path shows what happens on a fail.
+barrier lifts only after the tests pass, and it goes in. Before that, a fail sends it
+back to the room on the red path.
 
 Drawn by build.py as hero.svg and hero-dark.svg. Plain SVG: real text, no
 script, no external file. Motion is CSS and SMIL, and stops under
 prefers-reduced-motion.
 """
 
+from itertools import pairwise
 from xml.sax.saxutils import escape
 
 W, H = 1200, 600
@@ -35,12 +37,12 @@ COLORS = {
 }
 
 TITLE = "Tollgate: AI writes the code, locked tests decide"
-DESC = ("A banner. On the left: Tollgate, a governed workflow for Claude Code. AI writes the "
+DESC = ("A banner. On the left: Tollgate, governed builds for Claude Code. AI writes the "
         "code; locked tests decide. Tests are written first and locked on GitHub, out of "
         "the AI's reach, and only a pass goes in. On the right, an isometric drawing: a change "
-        "leaves the AI's room, waits at the gate while the locked tests run, the barrier lifts, "
-        "and it goes into the main branch. A red path shows that what failed goes back to the "
-        "room.")
+        "leaves the AI's room and stops at the gate while the locked tests run. They fail, and "
+        "it goes back to the room on a red path. It comes again, the tests pass, the barrier "
+        "lifts, and it goes into the main branch.")
 
 
 def iso(x, y, z=0.0):
@@ -117,18 +119,19 @@ def room(c):
 def gate(c):
     stroke, top, left, right = c["gate"]
     out = []
-    out += prism(74, -22, 118, 22, 0, 70, (top, left, right), stroke)    # the booth
-    out += prism(68, -28, 124, 28, 70, 76, (top, left, right), stroke)   # its roof
+    out += prism(110, -22, 154, 22, 0, 70, (top, left, right), stroke)   # the booth, off the road
+    out += prism(104, -28, 160, 28, 70, 76, (top, left, right), stroke)  # its roof
     # A lock on the booth's front face.
-    lx, ly = iso(118, 0, 34)
+    lx, ly = iso(154, 0, 34)
     out.append(f'<rect x="{lx - 6:.1f}" y="{ly - 2:.1f}" width="12" height="10" rx="2" '
                f'fill="{stroke}"/>')
     out.append(f'<path d="M{lx - 3.5:.1f},{ly - 2:.1f} v-3.5 a3.5,3.5 0 0 1 7,0 v3.5" '
                f'fill="none" stroke="{stroke}" stroke-width="1.8"/>')
-    out += prism(-78, -6, -66, 6, 0, 30, (top, left, right), stroke)     # the far post
+    out += prism(-78, -6, -66, 6, 0, 22, (top, left, right), stroke)     # the far post
     # The barrier arm: from the booth across the path, striped. It lifts when the tests pass.
-    px, py = iso(74, 0, 42)
-    ex, ey = iso(-72, 0, 42)
+    # Low, resting on the far post, so it plainly blocks the road.
+    px, py = iso(110, 0, 24)
+    ex, ey = iso(-72, 0, 24)
     out.append(f'<g class="arm" style="transform-origin:{px:.1f}px {py:.1f}px">')
     out.append(f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="{stroke}" '
                f'stroke-width="8" stroke-linecap="round"/>')
@@ -136,7 +139,7 @@ def gate(c):
                f'stroke="{c["page"]}" stroke-width="4" stroke-dasharray="9 9"/>')
     out.append("</g>")
     out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="4.5" fill="{stroke}"/>')
-    out += label(175, 0, -10, "THE GATE", "locked tests decide", c, "start")
+    out += label(205, 0, -10, "THE GATE", "locked tests decide", c, "start")
     return out
 
 
@@ -156,17 +159,21 @@ def server(c):
     return out
 
 
+# Where the change stops before the barrier, while the locked tests run.
+WAIT_Y = 64
+
+
 def paths(c):
     stroke = c["ai"][0]
-    go = [iso(0, 172, 3), iso(0, 10, 3), iso(0, -168, 3)]
-    back = [iso(-12, 20, 3), iso(-165, 20, 3), iso(-165, 230, 3), iso(-60, 230, 3)]
+    go = [iso(0, 172, 3), iso(0, -168, 3)]
+    back = [iso(-12, WAIT_Y, 3), iso(-165, WAIT_Y, 3), iso(-165, 230, 3), iso(-60, 230, 3)]
     out = [
         (f'<polyline class="main" points="{pts(*go)}" fill="none" stroke="{stroke}" '
         f'stroke-linecap="round" stroke-linejoin="round"/>'),
         (f'<polyline class="side" points="{pts(*back)}" fill="none" stroke="{c["fail"]}" '
         f'stroke-linecap="round" stroke-linejoin="round" marker-end="url(#fail)"/>'),
     ]
-    mx, my = iso(-165, 125, 3)
+    mx, my = iso(-165, 150, 3)
     text = "what failed goes back"
     w = len(text) * 7.2 + 18
     out.append(f'<rect x="{mx - w / 2:.1f}" y="{my - 11:.1f}" width="{w:.1f}" height="22" rx="11" '
@@ -191,31 +198,73 @@ def callout(c):
         (f'<text x="{x + w / 2:.1f}" y="{y + 15:.1f}" text-anchor="middle" font-size="11" '
         f'font-weight="700" letter-spacing="1.4" fill="{c["page"]}">THE GATE · TICKET 12</text>'),
         (f'<text x="{x + 12:.1f}" y="{y + 42:.1f}" font-size="12" fill="{c["ink"]}">'
-        f'locked tests: 14 of 14 pass</text>'),
+        f'runs the 14 locked tests</text>'),
         (f'<text x="{x + 12:.1f}" y="{y + 62:.1f}" font-size="12" fill="{c["muted"]}">'
-        f'checked on GitHub, not by the AI</text>'),
+        f'on GitHub, not by the AI</text>'),
     ]
     return out
 
 
+def timeline():
+    """The change's trip: (points, color name, seconds to wait at the end) for each leg."""
+    room_exit, wait, main = (0, 172), (0, WAIT_Y), (0, -168)
+    fail = [(0, WAIT_Y), (-12, WAIT_Y), (-165, WAIT_Y), (-165, 230), (-60, 230)]
+    return [([room_exit, wait], "ai", 1.3),          # to the gate; the tests run
+            (fail, "fail", 0.5),                     # they fail: back to the room
+            ([room_exit, wait], "ai", 1.3),          # again; the tests run
+            ([wait, main], "main", 1.2)]             # they pass: the barrier is up
+
+
+SPEED = 120  # ground units a second
+
+
 def ticket(c, go):
-    """The change: it leaves the room, waits at the gate, then goes in."""
-    stroke = c["ai"][0]
-    path = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in go)
-    # 8 s: wait, move to the gate, wait for the tests, move to main, rest.
-    times = "0;0.06;0.25;0.42;0.6;1"
-    points = "0;0;0.476;0.476;1;1"
-    color = f"{stroke};{stroke};{c['main'][0]};{c['main'][0]}"
+    """The change: it fails at the gate once and goes back, then passes into main."""
+    del go
+    colors = {"ai": c["ai"][0], "fail": c["fail"], "main": c["main"][0]}
+    points, marks, fills, now, dist = [], [], [], 0.6, 0.0
+    marks.append((0.0, 0.0))
+    marks.append((now, 0.0))
+    legs = []
+    for ground, color, wait in timeline():
+        pts = [iso(x, y, 3) for x, y in ground]
+        if points:
+            dist += abs(pts[0][0] - points[-1][0]) + abs(pts[0][1] - points[-1][1])
+            marks.append((now, dist))  # a jump between legs takes no time
+        points += pts
+        fills.append((now, colors[color]))
+        begin = now
+        for (x0, y0), (x1, y1) in pairwise(ground):
+            step = abs(x1 - x0) + abs(y1 - y0)
+            a, b = iso(x0, y0, 3), iso(x1, y1, 3)
+            dist += abs(b[0] - a[0]) + abs(b[1] - a[1])
+            now += step / SPEED
+            marks.append((now, dist))
+        legs.append((begin, now))
+        now += wait
+        marks.append((now, dist))
+    dur, total = now + 0.4, dist
+    marks.append((dur, total))
+    path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
+    key_times = ";".join(f"{m[0] / dur:.4f}" for m in marks)
+    key_points = ";".join(f"{m[1] / total:.4f}" for m in marks)
+    fill = (f'<animate attributeName="fill" values="{";".join(f for _, f in fills)}" '
+            f'keyTimes="0;{";".join(f"{s / dur:.4f}" for s, _ in fills[1:])}" calcMode="discrete" '
+            f'dur="{dur:.2f}s" repeatCount="indefinite"/>')
+    # The barrier lifts while the change waits the second time, and stays up while it passes.
+    up = legs[2][1] + 0.5
+    down = legs[3][1]
+    lift = (f".arm{{transform-box:view-box;animation:lift {dur:.2f}s ease-in-out infinite}}"
+            f"@keyframes lift{{0%,{100 * up / dur:.1f}%{{transform:rotate(0)}}"
+            f"{100 * (up + 0.5) / dur:.1f}%,{100 * down / dur:.1f}%{{transform:rotate(60deg)}}"
+            f"{100 * (down + 0.5) / dur:.1f}%,100%{{transform:rotate(0)}}}}")
     return [
+        f"<style>{lift}</style>",
         '<g class="ticket">',
-        (f'<circle r="13" fill="{stroke}" opacity="0.2"><animate attributeName="fill" '
-        f'values="{color}" keyTimes="0;0.4;0.42;1" calcMode="discrete" dur="8s" '
-        f'repeatCount="indefinite"/></circle>'),
-        (f'<circle r="6.5" fill="{stroke}" stroke="{c["page"]}" stroke-width="2">'
-        f'<animate attributeName="fill" values="{color}" keyTimes="0;0.4;0.42;1" '
-        f'calcMode="discrete" dur="8s" repeatCount="indefinite"/></circle>'),
-        (f'<animateMotion path="{path}" keyPoints="{points}" keyTimes="{times}" calcMode="linear" '
-        f'dur="8s" repeatCount="indefinite"/>'),
+        f'<circle r="13" fill="{colors["ai"]}" opacity="0.2">{fill}</circle>',
+        f'<circle r="6.5" fill="{colors["ai"]}" stroke="{c["page"]}" stroke-width="2">{fill}</circle>',
+        (f'<animateMotion path="{path}" keyPoints="{key_points}" keyTimes="{key_times}" '
+         f'calcMode="linear" dur="{dur:.2f}s" repeatCount="indefinite"/>'),
         "</g>",
     ]
 
@@ -269,9 +318,6 @@ MOTION = (
     ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
     "@keyframes flow{to{stroke-dashoffset:-8}}"
     "@keyframes side{to{stroke-dashoffset:-12}}"
-    ".arm{transform-box:view-box;animation:lift 8s ease-in-out infinite}"
-    "@keyframes lift{0%,36%{transform:rotate(0)}44%,62%{transform:rotate(52deg)}"
-    "72%,100%{transform:rotate(0)}}"
     "@media (prefers-reduced-motion:reduce){.main,.side,.arm{animation:none}"
     ".ticket{display:none}}"
 )

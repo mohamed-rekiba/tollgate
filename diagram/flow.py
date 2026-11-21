@@ -171,27 +171,60 @@ def group_depths(spec):
     return depth
 
 
+def group_spans(spec):
+    """For each group: its depth and the columns and rows its nodes cover."""
+    where = {n["id"]: (n["col"], n["row"]) for n in spec["nodes"]}
+    out = []
+    for g, d in zip(spec.get("groups", []), group_depths(spec), strict=True):
+        cols = [where[n][0] for n in g["nodes"]]
+        rows = [where[n][1] for n in g["nodes"]]
+        out.append((d, min(cols), max(cols), min(rows), max(rows)))
+    return out
+
+
+def gaps(order, spans, base, before, after, labels):
+    """The gap after each column (or row) in `order`: room for the group borders
+    that end there and start next, and for labels on arrows that cross it."""
+    out = {}
+    for a, b in pairwise(order):
+        end = max((after(d) for d, lo, hi in spans if hi == a), default=0)
+        begin = max((before(d) for d, lo, hi in spans if lo == b), default=0)
+        need = end + begin + 16 if end or begin else 0
+        out[a] = max(base, need, labels.get(a, 0))
+    return out
+
+
 def layout(spec):
     nodes = spec["nodes"]
     boxes_w = [node_size(n)[0] for n in nodes if n.get("shape") != "decision"]
     width = max(MIN_W, *boxes_w) if boxes_w else MIN_W
     column = max(width, *(node_size(n)[0] for n in nodes))
     where = {n["id"]: (n["col"], n["row"]) for n in nodes}
-    gap_x, gap_y = GAP_X, GAP_Y
-    depth = max(group_depths(spec), default=-1)
-    if depth >= 0:
-        room = GROUP_PAD * (depth + 1)
-        gap_x = max(gap_x, 2 * room + 24)
-        gap_y = max(gap_y, 2 * room + GROUP_HEAD * (depth + 1) + 16)
+    # Labels on straight arrows need room in the gap they cross.
+    col_labels, row_labels = {}, {}
     for e in spec.get("edges", []):
         if not e.get("label") or e.get("loop"):
             continue
-        r1, r2 = where[e["from"]][1], where[e["to"]][1]
+        (c1, r1), (c2, r2) = where[e["from"]], where[e["to"]]
         lw, lh = label_size(e["label"])
         if r1 == r2:
-            gap_x = max(gap_x, lw + 28)
-        else:
-            gap_y = max(gap_y, lh + 30)
+            col_labels[min(c1, c2)] = max(col_labels.get(min(c1, c2), 0), lw + 28)
+        elif c1 == c2:
+            row_labels[min(r1, r2)] = max(row_labels.get(min(r1, r2), 0), lh + 44)
+    spans = group_spans(spec)
+    cols = sorted({n["col"] for n in nodes})
+    rows = sorted({n["row"] for n in nodes})
+    # Each gap gets only the room its own borders need: an inner border, then
+    # each border around it, each with its label above.
+    col_gap = gaps(cols, [(d, lo, hi) for d, lo, hi, _, _ in spans], GAP_X,
+                   lambda d: GROUP_PAD * (d + 1), lambda d: GROUP_PAD * (d + 1), col_labels)
+    row_gap = gaps(rows, [(d, lo, hi) for d, _, _, lo, hi in spans], GAP_Y,
+                   lambda d: (GROUP_PAD + GROUP_HEAD) * (d + 1), lambda d: GROUP_PAD * (d + 1),
+                   row_labels)
+    xs, x = {}, 0
+    for c in cols:
+        xs[c] = x
+        x += column + col_gap.get(c, 0)
     # A row is as tall as its boxes. A diamond keeps its own height and reaches
     # into the gaps above and below its row.
     heights, tall = {}, {}
@@ -205,29 +238,33 @@ def layout(spec):
         heights.setdefault(r, min(h, 80))
     over = {r: max(0, (tall.get(r, 0) - heights[r]) / 2) for r in heights}
     ys, y = {}, 0
-    order = sorted(heights)
-    for i, r in enumerate(order):
+    for i, r in enumerate(rows):
         y += over[r] if i == 0 else 0
         ys[r] = y
-        nxt = over[order[i + 1]] if i + 1 < len(order) else 0
-        y += heights[r] + over[r] + gap_y + nxt
+        nxt = over[rows[i + 1]] if i + 1 < len(rows) else 0
+        y += heights[r] + over[r] + row_gap.get(r, 0) + nxt
+    aws_rows = {n["row"] for n in nodes if n.get("aws")}
     boxes = {}
     for n in nodes:
-        cell_left = n["col"] * (column + gap_x)
         own = node_size(n)[0] if n.get("shape") == "decision" else width
-        left = cell_left + (column - own) / 2
+        left = xs[n["col"]] + (column - own) / 2
         top, bottom = ys[n["row"]], ys[n["row"]] + heights[n["row"]]
         if n.get("shape") == "decision":
             mid, half = (top + bottom) / 2, node_size(n)[1] / 2
             top, bottom = mid - half, mid + half
-        boxes[n["id"]] = {"l": left, "t": top, "r": left + own, "b": bottom,
-                          "x": left + own / 2, "y": (top + bottom) / 2,
-                          "cell": (left, top, left + own, bottom)}
+        bx = {"l": left, "t": top, "r": left + own, "b": bottom, "x": left + own / 2,
+              "y": (top + bottom) / 2, "row": n["row"], "col": n["col"],
+              "cell": (left, top, left + own, bottom)}
         if n.get("aws"):
-            # Arrows meet the icon, not the cell; the name sits under the icon.
-            x = left + own / 2
-            boxes[n["id"]].update(l=x - AWS_ICON / 2 - 4, r=x + AWS_ICON / 2 + 4, t=top,
-                                  b=top + AWS_ICON, y=top + AWS_ICON / 2)
+            # Arrows meet the icon at its sides and top, and leave from below its
+            # name, so no arrow crosses the words under an icon.
+            cx = left + own / 2
+            bx.update(l=cx - AWS_ICON / 2 - 4, r=cx + AWS_ICON / 2 + 4, y=top + AWS_ICON / 2,
+                      b=top + node_size(n)[1])
+        elif n["row"] in aws_rows and n.get("shape") != "decision":
+            # In a row with AWS icons, arrows run level with the icons.
+            bx["y"] = top + AWS_ICON / 2
+        boxes[n["id"]] = bx
     return boxes
 
 

@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from diagram import draw
+from diagram import aws, draw
 
 
 def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
@@ -47,7 +47,12 @@ def main(argv=None) -> int:
     b.add_argument("folder")
     b.add_argument("--check", action="store_true", help="change nothing; end with 1 if stale")
     args = parser.parse_args(argv)
-    stale = build(args.folder, args.check)
+    try:
+        stale = build(args.folder, args.check)
+    except (aws.Missing, ValueError, KeyError) as err:
+        # A person reads this: the message, not a traceback.
+        print(f"Cannot draw the diagrams: {err}", file=sys.stderr)
+        return 2
     for name in stale:
         print(("out of date: " if args.check else "drew ") + name)
     return 1 if args.check and stale else 0
