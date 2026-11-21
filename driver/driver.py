@@ -225,15 +225,18 @@ class Driver:
             git(self.copy, "clean", "-q", "-fd")
 
     def changed_github(self) -> list:
-        out = git(self.copy, "status", "--porcelain", "--", ".github")
-        return [line[3:] for line in out.splitlines()]
+        out = git(self.copy, "status", "--porcelain", "-z", "--untracked-files=all")
+        paths = [entry[3:] for entry in out.split("\0") if len(entry) > 3]
+        committed = changed_files(self.copy, self.base, "HEAD")
+        return sorted(p for p in {*paths, *committed} if p.startswith(".github/"))
 
     def commit(self, message) -> str:
         bad = self.changed_github()
-        if bad:
-            if git(self.copy, "ls-tree", "HEAD", ".github"):
-                git(self.copy, "checkout", "-q", "HEAD", "--", ".github")
-            git(self.copy, "clean", "-q", "-fd", "--", ".github")
+        for path in bad:
+            # Put back the main branch's copy, or remove the file if main has none.
+            git(self.copy, "rm", "-q", "-f", "--ignore-unmatch", "--", path)
+            if git(self.copy, "ls-tree", self.base, "--", path):
+                git(self.copy, "checkout", "-q", self.base, "--", path)
         git(self.copy, "add", "-A")
         git(self.copy, "commit", "-q", "--allow-empty", "-m", message)
         return git(self.copy, "rev-parse", "HEAD"), bad
@@ -268,6 +271,7 @@ class Driver:
 
     def freeze(self, st_: State):
         commit, bad = self.commit(f"{self.ticket_id}: ticket and locked tests")
+        bad = bad or self.changed_github()
         if bad:
             raise Stop(f"the test writer changed files under .github: {bad}")
         git(self.copy, "push", "-q", "-f", "origin", f"HEAD:refs/heads/{self.branch}")

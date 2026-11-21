@@ -19,10 +19,13 @@ def passing_results():
 
 def facts(**over):
     s = settings.parse('{"approvers": ["owner"]}')
-    m = {"ticket": "T-1", "commit": "c" * 40, "files": {"tests/test_t1.py": "x"}, "tests": TESTS}
+    m = {"ticket": "T-1", "commit": "c" * 40, "files": {"tests/test_t1.py": "x"}, "tests": TESTS,
+         "number": 1}
+    run = dict(GOOD_RUN, title="tollgate freeze T-1", manifest=m)
+    f = gate.Freeze(1, "c" * 40, m, run)
     f = gate.Facts(
         settings=s, branch="tg/T-1", head_sha=HEAD, changes={"src/retry.py": 20},
-        results=passing_results(), freeze=gate.Freeze(1, "c" * 40, m, dict(GOOD_RUN)),
+        results=passing_results(), freeze=f,
         pr_author="owner",
     )
     for k, v in over.items():
@@ -96,7 +99,10 @@ class GateRulesTest(unittest.TestCase):
 
     def test_rule4_review_by_someone_else_counts(self):
         review = {"kind": "review", "user": "teammate", "user_type": "User",
-                  "state": "APPROVED", "commit": HEAD, "body": ""}
+                  "state": "APPROVED", "commit": HEAD, "body": "", "association": "COLLABORATOR"}
+        outsider = dict(review, association="NONE")
+        self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[outsider],
+                                     review_passed=True)), [4])
         self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[review],
                                      review_passed=True)), [])
         own = dict(review, user="owner")
@@ -112,6 +118,7 @@ class GateRulesTest(unittest.TestCase):
     def test_rule4_replaced_test_needs_approval(self):
         f = facts()
         f.freeze.number = 2
+        f.freeze.manifest["number"] = 2
         self.assertEqual(rules(f), [4])
 
     def test_rule5_failed_check(self):
@@ -136,8 +143,8 @@ class GateRulesTest(unittest.TestCase):
 
 
 class FakeServer:
-    def __init__(self, run):
-        self._run = run
+    def __init__(self, run, manifest=None):
+        self._run = dict(run, title="tollgate freeze T-1", manifest=manifest)
 
     def run(self, run_id):
         return dict(self._run)
@@ -165,18 +172,19 @@ class GateCollectTest(unittest.TestCase):
         r.write(mf.ticket_path("T-1"), TICKET)
         r.write("tests/test_t1.py", "# locked tests\n")
         self.frozen = r.commit("ticket and tests")
-        m = {"ticket": "T-1", "commit": self.frozen, "run_id": 7, "tests": TESTS,
+        m = {"ticket": "T-1", "commit": self.frozen, "run_id": 7, "tests": TESTS, "number": 1,
              "files": {mf.ticket_path("T-1"): "", "tests/test_t1.py": ""}}
         from action.gitio import fingerprint, show_bytes
         for p in m["files"]:
             m["files"][p] = fingerprint(show_bytes(str(r.path), self.frozen, p))
         r.tag("tg/freeze/T-1/1", "Freeze of T-1\n\n" + mf.dumps(m), self.frozen)
+        self.manifest = m
         r.write("src/retry.py", "def retry():\n    return True\n")
         r.commit("build")
 
     def run_gate(self):
         f = gate.collect(str(self.repo.path), "main", "HEAD", "tg/T-1", passing_results(),
-                         FakeServer(GOOD_RUN), pr=1)
+                         FakeServer(GOOD_RUN, self.manifest), pr=1)
         return gate.evaluate(f)
 
     def test_unchanged_locked_tests_pass(self):

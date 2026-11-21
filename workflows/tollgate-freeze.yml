@@ -2,6 +2,8 @@
 # Started by hand on the main branch. Job "test" runs the tests of the change
 # with a read-only token. Job "lock" runs none of that code and creates the tag.
 name: tollgate freeze
+# The gate reads this title to confirm which ticket a run froze.
+run-name: tollgate freeze ${{ inputs.ticket }}
 on:
   workflow_dispatch:
     inputs:
@@ -72,3 +74,9 @@ jobs:
           git -c user.name="tollgate freeze" -c user.email="tollgate@users.noreply.github.com" \
             tag -a "$name" -F "$RUNNER_TEMP/tag.txt" "$COMMIT"
           git push origin "refs/tags/$name"
+      # The gate compares the tag with this copy, which only this run could upload.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tollgate-manifest
+          path: ${{ runner.temp }}/tag.txt
+          retention-days: 90

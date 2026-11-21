@@ -4,8 +4,12 @@ Only REST paths are used, so the same calls work from a laptop, a workflow, and
 a restricted session.
 """
 
+import io
 import json
 import subprocess
+import zipfile
+
+MANIFEST_ARTIFACT = "tollgate-manifest"
 
 
 class ServerError(RuntimeError):
@@ -28,13 +32,32 @@ class Server:
         return json.loads(text.replace("]\n[", ",").replace("][", ",")) if text else None
 
     def run(self, run_id) -> dict:
-        data = self._get(f"actions/runs/{run_id}")
+        """The facts of a run, with the manifest that its lock job recorded."""
+        data = self._get(f"actions/runs/{int(run_id)}")
         return {
             "path": data.get("path", ""),
             "head_branch": data.get("head_branch", ""),
             "event": data.get("event", ""),
             "conclusion": data.get("conclusion", ""),
+            "title": data.get("display_title", ""),
+            "manifest": self._recorded_manifest(int(run_id)),
         }
+
+    def _recorded_manifest(self, run_id: int):
+        """Read the artifact MANIFEST_ARTIFACT of the run. None when it is missing or expired."""
+        listing = self._get(f"actions/runs/{run_id}/artifacts?name={MANIFEST_ARTIFACT}") or {}
+        found = [a for a in listing.get("artifacts", [])
+                 if a.get("name") == MANIFEST_ARTIFACT and not a.get("expired")]
+        if not found:
+            return None
+        proc = subprocess.run(
+            ["gh", "api", f"repos/{self.repository}/actions/artifacts/{found[0]['id']}/zip"],
+            capture_output=True, check=False)
+        if proc.returncode != 0:
+            raise ServerError(f"artifact of run {run_id}: {proc.stderr.decode().strip()}")
+        with zipfile.ZipFile(io.BytesIO(proc.stdout)) as z:
+            from action import manifest as mf
+            return mf.loads(z.read("tag.txt").decode())
 
     def approvals(self, pr: int) -> list:
         out = []
@@ -43,6 +66,7 @@ class Server:
                 "kind": "review", "user": review["user"]["login"],
                 "user_type": review["user"]["type"], "state": review["state"],
                 "commit": review.get("commit_id", ""), "body": "",
+                "association": review.get("author_association", ""),
             })
         for comment in self._get(f"issues/{pr}/comments") or []:
             out.append({

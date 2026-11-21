@@ -26,9 +26,12 @@ def fingerprint(data: bytes) -> str:
 
 def changed_files(repo, base, head) -> dict:
     """Return {path: lines added plus removed} between the merge base and head."""
-    out = git(repo, "diff", "--numstat", "--no-renames", f"{base}...{head}")
+    out = git(repo, "diff", "--numstat", "-z", "--no-renames", f"{base}...{head}")
     files = {}
-    for line in out.splitlines():
-        added, removed, path = line.split("\t", 2)
+    # With -z, each entry is "added<TAB>removed<TAB>path<NUL>" and no path is quoted.
+    for entry in out.split("\0"):
+        if not entry.strip():
+            continue
+        added, removed, path = entry.lstrip("\n").split("\t", 2)
         files[path] = (0 if added == "-" else int(added)) + (0 if removed == "-" else int(removed))
     return files

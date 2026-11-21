@@ -6,6 +6,7 @@ from git and from the server. The command line joins the two.
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 
@@ -13,12 +14,14 @@ from action import manifest as mf
 from action import settings as st
 from action import tiers
 from action.checks import Results
-from action.gitio import GitError, changed_files, git
+from action.gitio import changed_files, git
 from action.paths import matches
 
 FREEZE_WORKFLOW = ".github/workflows/tollgate-freeze.yml"
 REVIEW_CHECK = "tollgate review"
 GATE_CHECK = "tollgate gate"
+TAG_NUMBER = re.compile(r"[1-9][0-9]{0,3}", re.ASCII)
+APPROVER_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 BRANCH_PREFIX = "tg/"
 
 
@@ -60,7 +63,8 @@ def approved(facts: Facts) -> bool:
         if a["user_type"] != "User":
             continue
         if (a["kind"] == "review" and a["state"] == "APPROVED"
-                and a["commit"] == facts.head_sha and a["user"] != facts.pr_author):
+                and a["commit"] == facts.head_sha and a["user"] != facts.pr_author
+                and (a.get("association") in APPROVER_ASSOCIATIONS or a["user"] in approvers)):
             return True
         if (a["kind"] == "comment" and a["user"] in approvers
                 and a["body"] == f"tollgate approve {facts.head_sha}"):
@@ -90,6 +94,8 @@ def evaluate(facts: Facts) -> tuple:
             fail(1, f"the freeze is for ticket {m.get('ticket')}, not {ticket}")
         if m.get("commit") != freeze.tag_commit:
             fail(1, "the freeze tag does not point at the commit its manifest names")
+        if m.get("number") != freeze.number:
+            fail(1, f"the freeze tag says {freeze.number}, its manifest says {m.get('number')}")
         run = freeze.run
         if run is None:
             fail(1, "the run that created the freeze could not be checked")
@@ -102,6 +108,10 @@ def evaluate(facts: Facts) -> tuple:
                 fail(1, f"the freeze was started by {run['event']}, not by hand")
             if run["conclusion"] != "success":
                 fail(1, "the freeze run did not succeed")
+            if run.get("title") != f"tollgate freeze {ticket}":
+                fail(1, f"the run {m.get('run_id')} froze another ticket")
+            if run.get("manifest") != m:
+                fail(1, "the manifest in the tag differs from the one its run recorded")
 
     # Rule 4 comes before rule 2, because rule 2 needs the tier.
     level, reason = tiers.tier(facts.settings, facts.changes, frozen)
@@ -152,7 +162,7 @@ def _freeze(repo, ticket: str) -> Freeze | None:
     numbered = []
     for ref in refs:
         tail = ref[len(prefix):]
-        if tail.isdigit():
+        if TAG_NUMBER.fullmatch(tail):
             numbered.append((int(tail), ref))
     if not numbered:
         return None
@@ -167,7 +177,7 @@ def _plan_tickets(repo, plan: str) -> set | None:
         return None
     prefix = f"refs/tags/{BRANCH_PREFIX}plan/{plan}/"
     refs = git(repo, "for-each-ref", "--format=%(refname)", prefix).split()
-    numbered = [(int(r[len(prefix):]), r) for r in refs if r[len(prefix):].isdigit()]
+    numbered = [(int(r[len(prefix):]), r) for r in refs if TAG_NUMBER.fullmatch(r[len(prefix):])]
     if not numbered:
         return None
     message = git(repo, "for-each-ref", "--format=%(contents)", max(numbered)[1])
@@ -223,7 +233,7 @@ def main(argv=None) -> int:
             server = Server(args.repository)
         facts = collect(args.repo, args.base, args.head, args.branch, results, server, args.pr)
         findings, level = evaluate(facts)
-    except (GitError, st.SettingsError, mf.FreezeError, OSError, ValueError) as err:
+    except Exception as err:  # noqa: BLE001 - any failure must post a failing check
         findings, level = [{"rule": 0, "file": "", "message": f"the gate could not run: {err}"}], 0
         _report(args, findings, level)
         return 2
