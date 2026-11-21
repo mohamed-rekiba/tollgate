@@ -1,6 +1,6 @@
 name: lab-e3
 # Experiment E3. The job name says which copy of this file ran.
-# A pull request that edits this file changes "from-main" to "from-branch".
+# A pull request that edits this file changes "from-branch" to "from-branch".
 on:
   pull_request:
     branches: [main]
@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   which:
-    name: e3 ${{ github.event_name }} from-main
+    name: e3 ${{ github.event_name }} from-branch
     runs-on: ubuntu-latest
     steps:
-      - run: echo "this copy of the workflow came from main"
+      - run: echo "this copy of the workflow came from the branch"
