@@ -417,6 +417,7 @@ jobs:
         startsWith(github.event.comment.body, 'tollgate check')))
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       pr: ${{ steps.pr.outputs.pr }}
@@ -425,9 +426,37 @@ jobs:
       ticket: ${{ steps.pr.outputs.ticket }}
       approved: ${{ steps.pr.outputs.approved }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: mohamed-rekiba/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
       - id: pr
         env:
           GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: ${{ steps.code.outputs.path }}
           PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.id }}
         run: |
           [[ "$PR" =~ ^[0-9]+$ ]] || exit 1
@@ -439,27 +468,13 @@ jobs:
           # ticket branch goes on. Any other name fails gate rule 1.
           [[ "$branch" =~ ^tg/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || branch="not-a-ticket-branch"
           sha="$(jq -r .head.sha <<<"$data")"
-          author="$(jq -r .user.login <<<"$data")"
-          # Approved: a person under "approvers" in the settings on main commented
-          # "tollgate approve <the head commit>", or approved the head commit in a
-          # review. The gate checks this again; here it only decides, for a change
-          # made by hand, whether its tests run with its own harness.
-          # Fails closed: if the settings cannot be read, nobody counts as approved.
-          approvers="$(gh api "repos/$GITHUB_REPOSITORY/contents/.tollgate/settings.json?ref=main" \
-            --jq '.content' | base64 -d | jq -c '.approvers // []')" || approvers='[]'
-          [[ "$approvers" == \[* ]] || approvers='[]'
-          comment="$(set -o pipefail; gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" | jq -s \
-            --argjson who "$approvers" --arg want "tollgate approve $sha" \
-            '[.[][] | select(.user.type == "User" and (.user.login as $u | $who | index($u))
-                             and ((.body // "") | gsub("^\\s+|\\s+$"; "")) == $want)] | length')" || comment=0
-          review="$(set -o pipefail; gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" | jq -s \
-            --argjson who "$approvers" --arg sha "$sha" --arg author "$author" \
-            '[.[][] | select(.state == "APPROVED" and .commit_id == $sha and .user.type == "User"
-                             and .user.login != $author
-                             and ((.user.login as $u | $who | index($u))
-                                  or (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))))] | length')" || review=0
+          # Approved: a person the settings on main accept approved this commit, by the
+          # same rule the gate applies. For a change made by hand, it decides whether
+          # its tests run with its own harness. Any error counts as not approved.
+          answer="$(python3 -P -m action.approval --repo main --repository "$GITHUB_REPOSITORY" \
+            --pr "$PR" --sha "$sha")" || answer=false
           approved=false
-          [[ "$comment" != 0 || "$review" != 0 ]] && approved=true
+          [[ "$answer" == true ]] && approved=true
           {
             echo "pr=$PR"
             echo "sha=$sha"
