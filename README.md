@@ -30,8 +30,8 @@ Tollgate does not ask the AI to behave. It makes these mistakes fail.
 9. **Plain words.** Everything is written for people to read.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/principles-dark.svg">
-  <img alt="Tollgate's principles: tests come first, others check each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks the advisor, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-rules-dark.svg">
+  <img alt="Tollgate's rules, numbered on the picture of how it works: 1 plan first, 2 tests first, 3 build from the best try, 4 the gate judges, 5 stop when stuck, 6 risk sets the checks, 7 mistakes become rules, 8 code enforces every rule, in plain words" src="docs/diagrams/how-it-works-rules.svg">
 </picture>
 
 [docs/principles.md](docs/principles.md) explains each principle: what it means, why it exists, how Tollgate does it, and where it stops.
