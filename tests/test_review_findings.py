@@ -8,7 +8,7 @@ from gate import freeze, gate, prepare, settings, tiers
 from gate import manifest as mf
 from gate.gitio import changed_files
 from tests.helpers import TICKET, Repo, settings_text
-from tests.test_freeze_prepare import results_file
+from tests.test_freeze_prepare import results_file, results_of
 from tests.test_gate import facts, rules
 
 
@@ -87,7 +87,9 @@ class GuardedPathsInTests(unittest.TestCase):
         commit = repo.commit()
         with tempfile.TemporaryDirectory() as d, self.assertRaisesRegex(
                 mf.FreezeError, "conftest.py is harness"):
-            freeze.message(str(repo.path), "T-1", commit, results_file(d), "1", "main")
+            freeze.record(str(repo.path), "T-1", commit, commit,
+                          settings.load_from_ref(str(repo.path), "main"),
+                          results_of(results_file(d)), 1)
 
     def test_a_frozen_harness_file_still_counts_for_the_tier(self):
         s = settings.parse('{"tiers": {"4": ["payments/**"]}}')

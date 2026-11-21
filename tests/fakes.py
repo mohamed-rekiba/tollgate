@@ -1,15 +1,14 @@
-"""A sample project on a local server, and a fake server that freezes locally."""
+"""A sample project with its own state folder and key, and the driver's server done
+with the real store. Only the AI roles are fake: see fake_role.py."""
 
 import json
-import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-from gate import checks, freeze, plantag, prepare
 from gate import manifest as mf
-from gate import settings as st
+from gate.store import Store, StoreError
 from tests.helpers import sh
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")
@@ -70,7 +69,8 @@ Other languages.
 """
 
 
-def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", extra=None, **stop):
+def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", extra=None,
+             signers=(), **stop):
     """With an image, every role runs in a container from that image, and the fake
     role is the copy of fake_role.py that the sample project holds."""
     py = sys.executable
@@ -81,6 +81,7 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", extr
         "checks": {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"}},
         "harness": ["run_tests.py"],
         "require_plan": False,
+        "signers": list(signers),
         "approvers": ["owner"],
         "sandbox": "container" if image else "none",
         "container_image": image,
@@ -115,6 +116,13 @@ class Sample:
         (p / ".gitignore").write_text(".tollgate/logs/\n.tollgate/work/\n.tollgate/run/\n"
                                       "report.xml\n__pycache__/\n")
         (p / ".tollgate").mkdir()
+        # The sample's own state folder and key, so a test never touches yours.
+        self.state, self.keys = root / "state", root / "keys"
+        self.keys.mkdir(mode=0o700)
+        sh(root, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "tollgate",
+           "-f", str(self.keys / "id_ed25519"))
+        pub = (self.keys / "id_ed25519.pub").read_text().strip()
+        settings_args.setdefault("signers", [pub])
         (p / ".tollgate/settings.json").write_text(json.dumps(settings(**settings_args)))
         sh(p, "git", "add", "-A")
         sh(p, "git", "commit", "-q", "-m", "sample")
@@ -133,105 +141,53 @@ class Sample:
 
 
 class LocalServer:
-    """The server side, done locally: the freeze runs the same code as the workflow."""
+    """What the driver asks of its server, done with the real store.
+
+    Only the steps the store does not have stay fake: pull requests and runs.
+    UNFINISHED: those go when the driver calls the store itself.
+    """
 
     def __init__(self, bare: Path):
         self.bare = bare
-        # A test sets this: a push lands on the plan branch after the plan tag.
-        self.plan_branch_moves = os.environ.get("TOLLGATE_FAKE_PLAN_MOVES") == "1"
+        self.store = Store(str(bare))
         self.prs = []
         self.merged = []
         self.freezes = 0
-        # Runs live next to the bare repository, as GitHub keeps them across driver restarts.
-        self.runs_file = Path(bare, "tollgate-runs.json")
-
-    @property
-    def runs(self) -> dict:
-        return json.loads(self.runs_file.read_text()) if self.runs_file.exists() else {}
 
     def freeze(self, ticket: str) -> str:
-        with tempfile.TemporaryDirectory() as d:
-            sh(d, "git", "clone", "-q", str(self.bare), ".")
-            sh(d, "git", "checkout", "-q", f"tg/{ticket}")
-            commit = sh(d, "git", "rev-parse", "HEAD").strip()
-            prepare.restore(d, "origin/main")
-            s = st.load_from_ref(d, "origin/main")
-            results = checks.run(s, d, ["tests"])
-            Path(d, "results.json").write_text(results.to_json())
-            run_id = str(len(self.runs) + 1)
-            name, message = freeze.message(d, ticket, commit, str(Path(d, "results.json")), run_id)
-            self._record(run_id, f"tollgate freeze {ticket}", ".github/workflows/tollgate.yml",
-                         mf.loads(message))
-            Path(d, "msg").write_text(message)
-            sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
-            sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
+        try:
+            path = self.store.freeze(ticket)
+        except StoreError as err:
+            raise mf.FreezeError(str(err)) from None
         self.freezes += 1
-        return name
-
-    def _record(self, run_id, title, path, manifest):
-        runs = self.runs
-        runs[run_id] = [title, path, manifest]
-        self.runs_file.write_text(json.dumps(runs))
-
-    def run(self, run_id):
-        title, path, manifest = self.runs[str(run_id)]
-        return dict(GOOD_RUN, title=title, path=path, manifest=manifest)
+        return path
 
     def lock_plan(self, task: str) -> str:
-        with tempfile.TemporaryDirectory() as d:
-            sh(d, "git", "clone", "-q", str(self.bare), ".")
-            sh(d, "git", "fetch", "-q", "origin", f"refs/heads/tg-plan/{task}")
-            commit = sh(d, "git", "rev-parse", "FETCH_HEAD").strip()
-            run_id = str(len(self.runs) + 1)
-            name, message = plantag.message(d, task, commit, run_id)
-            Path(d, "msg").write_text(message)
-            sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
-            sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
-            if self.plan_branch_moves:
-                sh(d, "git", "checkout", "-q", commit)
-                sh(d, "git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
-                   "--allow-empty", "-m", "a later push")
-                sh(d, "git", "push", "-q", "origin", f"HEAD:refs/heads/tg-plan/{task}")
-            # As the workflow does: the tag keeps the plan, so the branch goes,
-            # unless it moved after the tag.
-            now = sh(d, "git", "ls-remote", "origin", f"refs/heads/tg-plan/{task}").split()
-            if now and now[0] == commit:
-                sh(d, "git", "push", "-q", f"--force-with-lease=refs/heads/tg-plan/{task}:{commit}",
-                   "origin", f":refs/heads/tg-plan/{task}")
-        self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate.yml",
-                     mf.loads(message))
-        return name
-
-    # Questions to a person: kept in a file next to the bare repository.
-    @property
-    def _questions(self) -> Path:
-        return Path(self.bare, "tollgate-questions.json")
-
-    def _load(self) -> dict:
-        return json.loads(self._questions.read_text()) if self._questions.exists() else {}
+        return self.store.lock_plan(task)
 
     def ask(self, title, body):
-        q = self._load()
-        number = len(q) + 1
-        q[str(number)] = {"title": title, "body": body, "comments": [], "open": True}
-        self._questions.write_text(json.dumps(q))
-        return number
+        return self.store.ask(title, body)
 
     def answer(self, issue, body, user="owner", user_type="User"):
-        q = self._load()
-        q[str(issue)]["comments"].append({"user": user, "user_type": user_type, "body": body})
-        self._questions.write_text(json.dumps(q))
+        self.store.answer(int(issue), body)
 
     def issue_comments(self, issue):
-        return self._load()[str(issue)]["comments"]
+        """The answer as the one comment the advisor reads today."""
+        found = (self.store.question(int(issue)) or {}).get("answer")
+        if not found:
+            return []
+        return [{"user": "owner", "user_type": "User",
+                 "body": f"tollgate decide {found['decision']} {found['hint']}".strip()}]
 
     def close_question(self, issue):
-        q = self._load()
-        q[str(issue)]["open"] = False
-        self._questions.write_text(json.dumps(q))
+        self.store.close_question(int(issue))
 
     def open_questions(self) -> dict:
-        return {k: v for k, v in self._load().items() if v["open"]}
+        return self.store.open_questions()
+
+    # Fakes until the driver calls the store.
+    def run(self, run_id):
+        return dict(GOOD_RUN, title="", manifest=None)
 
     def pull(self, pr):
         return {"author": "owner", "head": ""}
@@ -255,6 +211,8 @@ def driver_env(sample: Sample) -> dict:
     env = dict(os.environ)
     env["HOME"] = str(sample.env_home)
     env["GIT_CONFIG_GLOBAL"] = str(sample.env_home / ".gitconfig")
+    env["TOLLGATE_STATE"] = str(sample.state)
+    env["TOLLGATE_KEYS"] = str(sample.keys)
     return env
 
 

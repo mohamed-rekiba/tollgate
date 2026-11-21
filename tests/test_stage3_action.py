@@ -1,4 +1,4 @@
-"""Tests for the plan format, the plan tag, and the review on the server."""
+"""Tests for the plan format, the plan lock, and the review on the server."""
 
 import unittest
 
@@ -54,17 +54,15 @@ class PlanFormatTest(unittest.TestCase):
         self.assertEqual(pl.check_tickets(p, lambda path: None), ["ticket T-1 has no file"])
 
 
-class PlanTagTest(unittest.TestCase):
-    def test_builds_the_tag_message(self):
+class PlanLockTest(unittest.TestCase):
+    def test_builds_the_plan_lock(self):
         repo = Repo()
         self.addCleanup(repo.close)
         repo.write(pl.plan_path("retries"), PLAN)
         repo.write(mf.ticket_path("T-1"), TICKET)
         commit = repo.commit()
-        name, text = plantag.message(str(repo.path), "retries", commit, "7")
-        self.assertEqual(name, "tg/plan/retries/1")
-        body = mf.loads(text)
-        self.assertEqual((body["tickets"], body["run_id"], body["number"]), (["T-1"], 7, 1))
+        body = plantag.record(str(repo.path), "retries", commit)
+        self.assertEqual((body["task"], body["commit"]), ("retries", commit))
         self.assertEqual(sorted(body["files"]), sorted([mf.ticket_path("T-1"), pl.plan_path("retries")]))
 
     def test_refuses_a_plan_whose_ticket_file_is_missing(self):
@@ -73,7 +71,7 @@ class PlanTagTest(unittest.TestCase):
         repo.write(pl.plan_path("retries"), PLAN)
         commit = repo.commit()
         with self.assertRaisesRegex(pl.PlanError, "T-1 has no file"):
-            plantag.message(str(repo.path), "retries", commit, "7")
+            plantag.record(str(repo.path), "retries", commit)
 
 
 class ServerReviewTest(unittest.TestCase):
