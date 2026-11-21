@@ -1,29 +1,149 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 665 204" width="665" height="204" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 620" width="1120" height="620" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The AI's room and the server</title>
-<desc id="desc">The AI writes code and runs tests in its own room, with no key to the server. The server locks the tests and runs them on every change. The change goes to the server, and the server answers pass or fail.</desc>
-<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
-<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
-<rect x="-22" y="-22" width="665" height="204" fill="#ffffff"/>
-<path class="main" d="M257.1,58.0 L364.1,58.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M492.7,116.0 L492.7,137.0 Q492.7,149.0 480.7,149.0 L140.6,149.0 Q128.6,149.0 128.6,137.0 L128.6,116.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<rect x="0.0" y="0.0" width="257.1" height="116.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip0"><rect x="0.0" y="0.0" width="257.1" height="116.0" rx="10"/></clipPath>
-<rect x="0.0" y="0.0" width="4" height="116.0" fill="#8250df" clip-path="url(#clip0)"/>
-<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">AI</text>
-<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">The AI's room</text>
-<text x="22.0" y="63.0" font-size="13" fill="#59636e">The AI writes code and runs tests.</text>
-<text x="22.0" y="81.0" font-size="13" fill="#59636e">It has no key to the server.</text>
-<text x="22.0" y="99.0" font-size="13" fill="#59636e">It cannot touch the locks.</text>
-<rect x="364.1" y="0.0" width="257.1" height="116.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip1"><rect x="364.1" y="0.0" width="257.1" height="116.0" rx="10"/></clipPath>
-<rect x="364.1" y="0.0" width="4" height="116.0" fill="#1a7f37" clip-path="url(#clip1)"/>
-<text x="386.1" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">SERVER</text>
-<text x="386.1" y="44.0" font-size="15" font-weight="600" fill="#1f2328">The server</text>
-<text x="386.1" y="63.0" font-size="13" fill="#59636e">It locks the tests and runs them.</text>
-<text x="386.1" y="81.0" font-size="13" fill="#59636e">Nobody can change a lock.</text>
-<text x="386.1" y="99.0" font-size="13" fill="#59636e">Only a pass goes in.</text>
-<rect x="271.1" y="47.0" width="79.0" height="22" rx="11.0" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
-<text x="310.6" y="62.2" text-anchor="middle" font-size="12" font-weight="500" fill="#59636e">the change</text>
-<rect x="269.0" y="138.0" width="83.2" height="22" rx="11.0" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
-<text x="310.6" y="153.2" text-anchor="middle" font-size="12" font-weight="500" fill="#59636e">pass or fail</text>
+<desc id="desc">An isometric scene in two parts with a wall between them. On the left, the AI's room: the AI writes code and runs tests there, with no key to the server. On the right, the server: it holds the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.</desc>
+<defs><radialGradient id="glow" cx="0.500" cy="0.581" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1120" height="620" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#8250df"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker></defs>
+<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.arm{transform-box:view-box;animation:arm 5.95s ease-in-out infinite}@keyframes arm{0%,26.8%{transform:rotate(0)}30.8%,69.8%{transform:rotate(80deg)}75.8%,100%{transform:rotate(0)}}@media (prefers-reduced-motion:reduce){.main,.side,.arm{animation:none}.ticket{display:none}}</style>
+<rect width="1120" height="620" fill="#ffffff"/>
+<g mask="url(#fade)">
+<line x1="560.0" y1="24.0" x2="-22.0" y2="360.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="560.0" y1="24.0" x2="1142.0" y2="360.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="580.8" y1="36.0" x2="-1.2" y2="372.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="539.2" y1="36.0" x2="1121.2" y2="372.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="601.6" y1="48.0" x2="19.6" y2="384.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="518.4" y1="48.0" x2="1100.4" y2="384.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="622.4" y1="60.0" x2="40.4" y2="396.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="497.6" y1="60.0" x2="1079.6" y2="396.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="643.1" y1="72.0" x2="61.2" y2="408.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="476.9" y1="72.0" x2="1058.8" y2="408.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="663.9" y1="84.0" x2="82.0" y2="420.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="456.1" y1="84.0" x2="1038.0" y2="420.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="684.7" y1="96.0" x2="102.8" y2="432.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="435.3" y1="96.0" x2="1017.2" y2="432.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="705.5" y1="108.0" x2="123.5" y2="444.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="414.5" y1="108.0" x2="996.5" y2="444.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="726.3" y1="120.0" x2="144.3" y2="456.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="393.7" y1="120.0" x2="975.7" y2="456.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="747.1" y1="132.0" x2="165.1" y2="468.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="372.9" y1="132.0" x2="954.9" y2="468.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="767.8" y1="144.0" x2="185.9" y2="480.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="352.2" y1="144.0" x2="934.1" y2="480.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="788.6" y1="156.0" x2="206.7" y2="492.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="331.4" y1="156.0" x2="913.3" y2="492.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="809.4" y1="168.0" x2="227.5" y2="504.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="310.6" y1="168.0" x2="892.5" y2="504.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="830.2" y1="180.0" x2="248.2" y2="516.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="289.8" y1="180.0" x2="871.8" y2="516.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="851.0" y1="192.0" x2="269.0" y2="528.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="269.0" y1="192.0" x2="851.0" y2="528.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="871.8" y1="204.0" x2="289.8" y2="540.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="248.2" y1="204.0" x2="830.2" y2="540.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="892.5" y1="216.0" x2="310.6" y2="552.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="227.5" y1="216.0" x2="809.4" y2="552.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="913.3" y1="228.0" x2="331.4" y2="564.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="206.7" y1="228.0" x2="788.6" y2="564.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="934.1" y1="240.0" x2="352.2" y2="576.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="185.9" y1="240.0" x2="767.8" y2="576.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="954.9" y1="252.0" x2="372.9" y2="588.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="165.1" y1="252.0" x2="747.1" y2="588.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="975.7" y1="264.0" x2="393.7" y2="600.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="144.3" y1="264.0" x2="726.3" y2="600.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="996.5" y1="276.0" x2="414.5" y2="612.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="123.5" y1="276.0" x2="705.5" y2="612.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1017.2" y1="288.0" x2="435.3" y2="624.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="102.8" y1="288.0" x2="684.7" y2="624.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1038.0" y1="300.0" x2="456.1" y2="636.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="82.0" y1="300.0" x2="663.9" y2="636.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1058.8" y1="312.0" x2="476.9" y2="648.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="61.2" y1="312.0" x2="643.1" y2="648.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1079.6" y1="324.0" x2="497.6" y2="660.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="40.4" y1="324.0" x2="622.4" y2="660.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1100.4" y1="336.0" x2="518.4" y2="672.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="19.6" y1="336.0" x2="601.6" y2="672.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1121.2" y1="348.0" x2="539.2" y2="684.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="-1.2" y1="348.0" x2="580.8" y2="684.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="1142.0" y1="360.0" x2="560.0" y2="696.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+<line x1="-22.0" y1="360.0" x2="560.0" y2="696.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
+</g>
+<polygon points="224.0,299.6 397.2,399.6 397.2,406.0 224.0,306.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="397.2,399.6 639.7,259.6 639.7,266.0 397.2,406.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="224.0,299.6 397.2,399.6 639.7,259.6 466.5,159.6" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="480.3,447.6 674.3,559.6 674.3,566.0 480.3,454.0" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="674.3,559.6 916.8,419.6 916.8,426.0 674.3,566.0" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="480.3,447.6 674.3,559.6 916.8,419.6 722.8,307.6" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polyline class="main" points="467.2,292.0 719.3,437.6" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-main)"/>
+<polyline class="side" points="690.2,454.4 438.1,308.8" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-side)"/>
+<polygon points="612.7,284.8 621.0,289.6 621.0,323.2 612.7,318.4" fill="#dde0e4" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="621.0,289.6 685.4,252.4 685.4,286.0 621.0,323.2" fill="#c7cbd0" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="612.7,284.8 621.0,289.6 685.4,252.4 677.1,247.6" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="709.6,337.6 754.0,363.2 754.0,409.6 709.6,384.0" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="754.0,363.2 798.3,337.6 798.3,384.0 754.0,409.6" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="709.6,337.6 754.0,363.2 798.3,337.6 754.0,312.0" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<rect x="723.8" y="369.8" width="16" height="13" rx="2" fill="#1a7f37"/>
+<path d="M727.3,369.8 v-4.5 a4.5,4.5 0 0 1 9,0 v4.5" fill="none" stroke="#1a7f37" stroke-width="2"/>
+<polygon points="677.8,448.8 733.2,480.8 733.2,500.0 677.8,468.0" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="733.2,480.8 788.6,448.8 788.6,468.0 733.2,500.0" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="677.8,448.8 733.2,480.8 788.6,448.8 733.2,416.8" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="687.5" cy="464.0" r="2.1" fill="#1a7f37"/>
+<circle cx="693.7" cy="467.6" r="2.1" fill="#1a7f37"/>
+<circle cx="699.9" cy="471.2" r="2.1" fill="#1a7f37"/>
+<line x1="709.6" y1="476.8" x2="727.7" y2="487.2" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
+<polygon points="677.8,426.4 733.2,458.4 733.2,477.6 677.8,445.6" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="733.2,458.4 788.6,426.4 788.6,445.6 733.2,477.6" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="677.8,426.4 733.2,458.4 788.6,426.4 733.2,394.4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="687.5" cy="441.6" r="2.1" fill="#1a7f37"/>
+<circle cx="693.7" cy="445.2" r="2.1" fill="#1a7f37"/>
+<circle cx="699.9" cy="448.8" r="2.1" fill="#1a7f37"/>
+<line x1="709.6" y1="454.4" x2="727.7" y2="464.8" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
+<polygon points="677.8,404.0 733.2,436.0 733.2,455.2 677.8,423.2" fill="#cfe7d6" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="733.2,436.0 788.6,404.0 788.6,423.2 733.2,455.2" fill="#b1d6bb" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="677.8,404.0 733.2,436.0 788.6,404.0 733.2,372.0" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<circle cx="687.5" cy="419.2" r="2.1" fill="#1a7f37"/>
+<circle cx="693.7" cy="422.8" r="2.1" fill="#1a7f37"/>
+<circle cx="699.9" cy="426.4" r="2.1" fill="#1a7f37"/>
+<line x1="709.6" y1="432.0" x2="727.7" y2="442.4" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
+<polygon points="352.2,280.0 428.4,324.0 428.4,328.0 352.2,284.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="428.4,324.0 504.6,280.0 504.6,284.0 428.4,328.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="352.2,280.0 428.4,324.0 504.6,280.0 428.4,236.0" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="400.9,248.3 428.4,264.2 428.4,295.8 400.9,280.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="428.4,264.2 455.8,248.3 455.8,280.0 428.4,295.8" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="400.9,248.3 428.4,264.2 455.8,248.3 428.4,232.5" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="352.2,209.2 428.4,253.2 428.4,324.0 352.2,280.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round" fill-opacity="0.3" stroke-dasharray="3 4"/>
+<polygon points="428.4,253.2 504.6,209.2 504.6,280.0 428.4,324.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round" fill-opacity="0.3" stroke-dasharray="3 4"/>
+<polygon points="352.2,209.2 428.4,253.2 504.6,209.2 428.4,165.2" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round" fill-opacity="0.3" stroke-dasharray="3 4"/>
+<polygon points="569.7,280.8 600.2,298.4 600.2,354.4 569.7,336.8" fill="#efe2c0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="600.2,298.4 630.7,280.8 630.7,336.8 600.2,354.4" fill="#e1cda0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="569.7,280.8 600.2,298.4 630.7,280.8 600.2,263.2" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="561.4,276.0 600.2,298.4 600.2,303.2 561.4,280.8" fill="#efe2c0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="600.2,298.4 639.0,276.0 639.0,280.8 600.2,303.2" fill="#e1cda0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="561.4,276.0 600.2,298.4 639.0,276.0 600.2,253.6" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<rect x="609.4" y="316.4" width="12" height="10" rx="2" fill="#9a6700"/>
+<path d="M611.9,316.4 v-3.5 a3.5,3.5 0 0 1 7,0 v3.5" fill="none" stroke="#9a6700" stroke-width="1.8"/>
+<polygon points="508.7,360.8 517.0,365.6 517.0,389.6 508.7,384.8" fill="#efe2c0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="517.0,365.6 525.4,360.8 525.4,384.8 517.0,389.6" fill="#e1cda0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="508.7,360.8 517.0,365.6 525.4,360.8 517.0,356.0" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<g class="arm" style="transform-origin:584.9px 312.0px"><line x1="584.9" y1="312.0" x2="517.0" y2="351.2" stroke="#9a6700" stroke-width="8" stroke-linecap="round"/><line x1="584.9" y1="312.0" x2="517.0" y2="351.2" stroke="#ffffff" stroke-width="4" stroke-dasharray="9 9"/></g>
+<circle cx="584.9" cy="312.0" r="4.5" fill="#9a6700"/>
+<polygon points="434.6,387.6 442.9,392.4 442.9,426.0 434.6,421.2" fill="#dde0e4" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="442.9,392.4 519.8,348.0 519.8,381.6 442.9,426.0" fill="#c7cbd0" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="434.6,387.6 442.9,392.4 519.8,348.0 511.5,343.2" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#1f2328">WHO HOLDS THE KEY</text>
+<text x="40" y="68" font-size="12" fill="#59636e">the AI builds in its room; only the server can let a change in</text>
+<rect x="622.9" y="395.6" width="82.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="663.9" y="409.6" text-anchor="middle" font-size="11" fill="#59636e">the change</text>
+<rect x="435.9" y="325.0" width="95.2" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="483.5" y="339.0" text-anchor="middle" font-size="11" fill="#59636e">pass or fail</text>
+<text x="310.6" y="152.0" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE AI'S ROOM</text>
+<text x="310.6" y="168.0" text-anchor="middle" font-size="12" fill="#59636e">writes code, runs tests</text>
+<text x="310.6" y="184.0" text-anchor="middle" font-size="12" fill="#59636e">no key to the server</text>
+<text x="754.0" y="296.0" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">LOCKED TESTS</text>
+<text x="754.0" y="312.0" text-anchor="middle" font-size="12" fill="#59636e">nobody can change them</text>
+<text x="719.3" y="532.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">MAIN</text>
+<text x="719.3" y="548.0" text-anchor="start" font-size="12" fill="#59636e">only a pass goes in</text>
+<text x="600.2" y="224.8" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE GATE</text>
+<text x="600.2" y="240.8" text-anchor="middle" font-size="12" fill="#59636e">runs the locked tests</text>
+<g class="ticket">
+<circle r="12" fill="#8250df" opacity="0.22"><animate attributeName="fill" values="#8250df;#1a7f37" keyTimes="0.0000;0.4087" calcMode="discrete" dur="5.95s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#8250df" stroke="#ffffff" stroke-width="2"><animate attributeName="fill" values="#8250df;#1a7f37" keyTimes="0.0000;0.4087" calcMode="discrete" dur="5.95s" repeatCount="indefinite"/></circle>
+<animateMotion path="M467.2,292.0 L555.8,343.2 L555.8,343.2 L719.3,437.6" keyPoints="0.0000;0.0000;0.3516;0.3516;0.3516;1.0000;1.0000;1.0000" keyTimes="0.0000;0.1008;0.2575;0.4087;0.4087;0.6976;0.7984;1.0000" calcMode="linear" dur="5.95s" repeatCount="indefinite"/>
+</g>
 </svg>

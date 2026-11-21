@@ -97,11 +97,13 @@ def render(project: str, task: str) -> str:
 
 
 # How each state looks in the picture: who acts, and the label over the title.
-LOOKS = {"merged": ("server", "MERGED"), "pull request open": ("check", "PULL REQUEST"),
-         "building": ("ai", "BUILDING"), "tests written": ("ai", "TESTS WRITTEN"),
-         "frozen": ("server", "TESTS LOCKED"), "started": ("ai", "STARTED"),
-         "waits for a person": ("advisor", "WAITS FOR YOU"), "parked": ("advisor", "PARKED"),
-         "stopped": ("advisor", "STOPPED"), "not started": ("neutral", "NOT STARTED")}
+LOOKS = {"merged": ("server", "MERGED", "merge"),
+         "pull request open": ("check", "PULL REQUEST", "pull-request"),
+         "building": ("ai", "BUILDING", "ai"), "tests written": ("ai", "TESTS WRITTEN", "test"),
+         "frozen": ("server", "TESTS LOCKED", "lock"), "started": ("ai", "STARTED", "ai"),
+         "waits for a person": ("advisor", "WAITS FOR YOU", "advisor"),
+         "parked": ("advisor", "PARKED", "warning"), "stopped": ("advisor", "STOPPED", "warning"),
+         "not started": ("neutral", "NOT STARTED", "ticket")}
 
 
 def _short(text: str, size: int = 40) -> str:
@@ -118,12 +120,12 @@ def picture(project: str, task: str) -> dict:
     order += [t for t in found if t not in order]
     nodes = [{"id": "plan", "text": f"The plan\n{len(order)} tickets", "col": 0, "row": 0,
               "kind": "server" if locked else "ai",
-              "tag": "PLAN · LOCKED" if locked else "PLAN · IN REVIEW"}]
+              "tag": "PLAN · LOCKED" if locked else "PLAN · IN REVIEW", "icon": "plan"}]
     counts = {}
     for i, tid in enumerate(order):
         r = found.get(tid) or {"state": "not started", "tier": None, "attempts": 0,
                                "cost_usd": 0, "pr": None, "reason": ""}
-        kind, tag = LOOKS.get(r["state"], ("neutral", r["state"].upper()))
+        kind, tag, mark = LOOKS.get(r["state"], ("neutral", r["state"].upper(), "ticket"))
         counts[r["state"]] = counts.get(r["state"], 0) + 1
         if r["pr"]:
             tag += f" #{r['pr']}"
@@ -135,12 +137,14 @@ def picture(project: str, task: str) -> dict:
         if r["reason"]:
             lines.append(_short(r["reason"]))
         nodes.append({"id": f"t{i}", "text": "\n".join(lines), "col": i % 3, "row": 1 + i // 3,
-                      "kind": kind, "tag": f"{i + 1} · {tag}"})
+                      "kind": kind, "icon": mark, "tag": f"{i + 1} · {tag}"})
     summary = ", ".join(f"{n} {state}" for state, n in counts.items()) or "no tickets yet"
     return {"title": f"Task {task}: where each ticket stands",
             "desc": f"The plan is {'locked' if locked else 'in review'}. "
                     f"{len(order)} tickets, in build order: {summary}.",
-            "nodes": nodes, "edges": []}
+            "nodes": nodes, "edges": [],
+            "groups": [{"label": "Tickets, in build order", "kind": "neutral", "icon": "ticket",
+                        "nodes": [n["id"] for n in nodes[1:]]}] if len(nodes) > 1 else []}
 
 
 def write(project: str, task: str) -> str:

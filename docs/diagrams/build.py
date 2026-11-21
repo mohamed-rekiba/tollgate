@@ -26,12 +26,16 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 
 import hero
+import scenes
 
 from driver.diagram import THEMES, draw
 
 __all__ = ["THEMES", "build", "workflow_spec"]
 
 # Who acts in each job of the workflow. A new job with no entry is neutral.
+JOB_ICONS = {"freeze-test": "test", "freeze-lock": "lock", "plan-lock": "lock", "task": "ai",
+             "plain": "terminal", "e2": "terminal", "find": "pull-request", "test": "test",
+             "review": "check", "gate": "gate"}
 JOB_KINDS = {"freeze-test": "check", "freeze-lock": "server", "plan-lock": "server",
              "task": "ai", "plain": "ai", "e2": "ai", "find": "server", "test": "check",
              "review": "check", "gate": "check"}
@@ -89,6 +93,12 @@ def about(text: str) -> list:
     return lines
 
 
+def _started_by_dispatch(job, jobs) -> bool:
+    """A job that waits for a dispatched job, such as freeze-lock after freeze-test."""
+    kinds = {j["name"]: j["kind"] for j in jobs}
+    return any(kinds.get(n) for n in job["needs"])
+
+
 def workflow_spec() -> dict:
     jobs = workflow_jobs((ROOT / ".github" / "workflows" / "tollgate.yml").read_text())
     needed = {n for j in jobs for n in j["needs"]}
@@ -120,6 +130,8 @@ def workflow_spec() -> dict:
                 "tag": tag}
         if JOB_KINDS.get(name):
             node["kind"] = JOB_KINDS[name]
+        if JOB_ICONS.get(name):
+            node["icon"] = JOB_ICONS[name]
         nodes.append(node)
     skip = implied(jobs)
     edges = []
@@ -138,12 +150,48 @@ def workflow_spec() -> dict:
                  f"{names}. An arrow means a job waits for the one before it. Each box says "
                  f"what starts the job and what it does."),
         "nodes": nodes, "edges": edges,
+        "groups": [g for g in (
+            {"label": "Started by Tollgate", "kind": "neutral", "icon": "workflow",
+             "nodes": [j["name"] for j in jobs if j["kind"] or _started_by_dispatch(j, jobs)]},
+            {"label": "On every pull request", "kind": "neutral", "icon": "pull-request",
+             "nodes": [j["name"] for j in jobs if not j["kind"] and j["name"] not in
+                       {n for x in jobs if x["kind"] for n in [x["name"]]}
+                       and not _started_by_dispatch(j, jobs)]},
+        ) if g["nodes"]],
     }
+
+
+def icons_sheet(theme: str) -> str:
+    """Every icon in driver/icons.py, large, with its name: a reference for writers."""
+    from xml.sax.saxutils import escape
+
+    from driver.diagram import MONO
+    from driver.icons import ICONS, icon
+    c = THEMES[theme]
+    per_row, cw, ch, pad = 6, 128, 112, 24
+    rows = -(-len(ICONS) // per_row)
+    w, h = per_row * cw + 2 * pad, rows * ch + 2 * pad
+    out = [(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" '
+           f'height="{h}" role="img" aria-labelledby="title desc" font-family="{MONO}">'),
+           "<title id=\"title\">Tollgate's icons</title>",
+           (f'<desc id="desc">Every icon in driver/icons.py, with its name: '
+           f'{escape(", ".join(ICONS))}.</desc>'),
+           f'<rect width="{w}" height="{h}" fill="{c["page"]}"/>']
+    for i, name in enumerate(ICONS):
+        x, y = pad + (i % per_row) * cw, pad + (i // per_row) * ch
+        out.append(f'<rect x="{x + 6}" y="{y + 6}" width="{cw - 12}" height="{ch - 12}" rx="6" '
+                   f'fill="{c["kinds"]["neutral"][1]}" stroke="{c["border"]}"/>')
+        out.append(icon(name, x + cw / 2 - 20, y + 22, 40, c["text"], 2))
+        out.append(f'<text x="{x + cw / 2}" y="{y + 86}" text-anchor="middle" font-size="12" '
+                   f'fill="{c["sub"]}">{escape(name)}</text>')
+    return "\n".join([*out, "</svg>"]) + "\n"
 
 
 GENERATED = {"workflow": workflow_spec}
 # Drawn by hand in code, not from a spec.
-ART = {"hero": hero.draw}
+ART = {"hero": hero.draw, "icons": icons_sheet, "how-it-works": scenes.how_it_works,
+       "who-holds-the-key": scenes.who_holds_the_key, "packaging": scenes.packaging,
+       "home": scenes.home}
 
 
 def specs() -> dict:

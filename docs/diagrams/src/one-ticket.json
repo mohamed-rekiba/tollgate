@@ -1,6 +1,6 @@
 {
  "title": "How one ticket is built",
- "desc": "The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
+ "desc": "The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to the server, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
  "nodes": [
   {
    "id": "b",
@@ -14,21 +14,24 @@
    "text": "Run the locked tests\nOn the AI's own machine",
    "col": 1,
    "row": 0,
-   "kind": "check"
+   "kind": "check",
+   "icon": "test"
   },
   {
    "id": "s",
    "text": "Send to the server\nIt runs the tests again",
    "col": 2,
    "row": 0,
-   "kind": "server"
+   "kind": "server",
+   "icon": "pull-request"
   },
   {
    "id": "t",
    "text": "Try again\nWith what went wrong",
    "col": 1,
    "row": 1,
-   "kind": "ai"
+   "kind": "ai",
+   "icon": "retry"
   },
   {
    "id": "a",

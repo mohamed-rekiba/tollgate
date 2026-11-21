@@ -1,6 +1,6 @@
 {
  "title": "The four tiers",
- "desc": "Tier 1 is a small fix with locked tests. Tier 2 is a normal change, with locked tests, a plan, and a review. Tier 3 covers login, payments, and user data, and adds a review on the server. Tier 4 covers data, production, and the locks, and adds an approval by a person.",
+ "desc": "Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tier 3, login, payments, or user data, adds a review on the server. Tier 4, data, production, or the locks themselves, adds a person's approval.",
  "nodes": [
   {
    "id": "t1",
@@ -8,30 +8,34 @@
    "col": 0,
    "row": 0,
    "kind": "ai",
+   "icon": "test",
    "tag": "TIER 1"
   },
   {
    "id": "t2",
-   "text": "A normal change\nAdds a plan and a review",
+   "text": "A normal change\n+ a plan and a review",
    "col": 1,
    "row": 0,
    "kind": "check",
+   "icon": "plan",
    "tag": "TIER 2"
   },
   {
    "id": "t3",
-   "text": "Login, payments, user data\nAdds a server review",
+   "text": "Login, payments, data\n+ a server review",
    "col": 2,
    "row": 0,
    "kind": "server",
+   "icon": "check",
    "tag": "TIER 3"
   },
   {
    "id": "t4",
-   "text": "Data, production, locks\nAdds a person's approval",
+   "text": "Production, the locks\n+ a person approves",
    "col": 3,
    "row": 0,
    "kind": "you",
+   "icon": "person",
    "tag": "TIER 4"
   }
  ],

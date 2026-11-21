@@ -1,4 +1,4 @@
-"""Draw a diagram as SVG, in a light and a dark theme. Stdlib only.
+"""Draw a diagram as SVG, in a light and a dark theme: the flat blueprint style.
 
     from driver.diagram import draw
     svg = draw(spec, "light")   # or "dark"
@@ -9,31 +9,41 @@ A spec is a dict, often read from JSON:
      "desc": "What it shows, in one or two sentences, for a screen reader.",
      "nodes": [{"id": "a", "text": "Title\\nOne line under it", "col": 0, "row": 0,
                 "kind": "you" | "ai" | "server" | "check" | "advisor",
-                "step": 1, "tag": "OWN LABEL"}],
+                "icon": "lock", "tag": "OWN LABEL", "step": 1,
+                "aws": "s3"}],
      "edges": [{"from": "a", "to": "b", "label": "optional",
                 "tone": "pass" | "fail", "dashed": true,
                 "loop": "left" | "right" | "above" | "below",
                 "route": "vhv" | "vh" | "hv"}],
-     "ticket": {"path": [["a", "b"], ["b", "c"]], "wait": {"c": 1.2}}}
+     "groups": [{"label": "The server", "nodes": ["a", "b"], "kind": "server",
+                 "icon": "lock", "aws": "vpc"}],
+     "ticket": {"path": [["a", "b"], ["b", "c"]], "wait": {"b": 1.2}}}
 
 The design:
-- Nodes sit on a grid. All boxes in one diagram share one width.
-- "kind" says who acts. It sets the color of the stripe and of the small label
-  over the title (YOU, AI, SERVER, CHECK, ADVISOR), so the meaning is in words
-  and in color. A box with no kind is neutral slate. "step" adds STEP n to that label. "tag" replaces the label.
+- A fine grid behind everything, monospace type, square tags.
+- Nodes sit on a grid of columns and rows. All boxes share one width.
+- "kind" says who acts. It sets the color, the icon, and the small label over
+  the title (YOU, AI, SERVER, CHECK, ADVISOR). "icon" picks another icon from
+  driver/icons.py. "step" adds STEP n. "tag" replaces the label. A box with
+  no kind is neutral slate.
+- "aws" draws the official AWS service icon with its name under it, the way
+  AWS diagrams do. The icons come from a local copy of the AWS package; see
+  driver/aws.py.
+- "groups" draw a border around nodes: a place, a boundary, or an AWS group
+  ("aws": "cloud", "region", "az", "vpc", "public subnet", "private subnet",
+  "security group", ...), in AWS's own color with its group icon. Groups may
+  nest; inner ones must hold a subset of the outer one's nodes.
 - Arrows are straight, or bend at right angles with round corners. "route"
   picks the bends for an arrow between two rows and two columns: "vhv" (the
   default) goes down, across, down; "vh" goes up or down, then across; "hv"
   goes across, then up or down.
-- "loop" draws an arrow that goes back, out to one side in its own lane, so
-  loops never cross each other's labels.
+- "loop" draws an arrow that goes back, out to one side in its own lane.
 - "tone" colors an arrow and its label: green for pass, red for fail.
-- "ticket" sends one dot along the arrows named in "path", in order, so a
-  reader sees a change travel. It waits a moment at each box ("wait" sets
-  longer stops), and takes the color of each arrow's tone as it goes.
-- Arrows are dotted, and the dots move the way the arrow points. "dashed" makes
-  a side path: longer dashes that move slower. With "reduce motion" set, the
-  arrows stay still.
+- Arrows are dotted, and the dots move the way the arrow points. "dashed"
+  makes a side path: longer dashes that move slower. With "reduce motion" set,
+  nothing moves.
+- "ticket" sends one dot along the arrows named in "path", in order. It waits
+  where an arrow meets a box, and takes each arrow's tone as it goes.
 
 The output is plain SVG: real text, a viewBox, role="img" with a title and a
 description named by aria-labelledby, no scripts, and no external files.
@@ -42,39 +52,45 @@ description named by aria-labelledby, no scripts, and no external files.
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
-FONT = ("-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, "
-        "sans-serif")
+from driver import aws
+from driver.icons import FOR_KIND, icon
 
-TITLE, SUB, EYEBROW, LABEL = 15, 13, 10.5, 12
-PAD_X, PAD_Y, STRIPE, RADIUS = 18, 14, 4, 10
-MIN_W, GAP_X, GAP_Y, MARGIN = 170, 48, 40, 22
+MONO = ("ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, "
+        "'Liberation Mono', monospace")
+
+TITLE, SUB, EYEBROW, LABEL = 14, 12, 10.5, 11
+ICON, PAD_X, PAD_Y, RADIUS = 18, 14, 12, 4
+AWS_ICON = 48
+MIN_W, GAP_X, GAP_Y, MARGIN = 180, 48, 40, 24
+GROUP_PAD, GROUP_HEAD = 16, 26
+KIND_NAMES = {"you": "YOU", "ai": "AI", "server": "SERVER", "check": "CHECK",
+              "advisor": "ADVISOR"}
+
 # Arrows are dotted, and the dots move the way the arrow points. A side path
 # has longer dashes and moves slower. Readers who ask for less motion get still
 # arrows. CSS only: no script, so it runs where SVG shows as an image.
 MOTION = (
-    ".main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}"
-    ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
-    "@keyframes flow{to{stroke-dashoffset:-8}}"
-    "@keyframes side{to{stroke-dashoffset:-12}}"
+    ".main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}"
+    ".side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}"
+    "@keyframes flow{to{stroke-dashoffset:-7}}"
+    "@keyframes side{to{stroke-dashoffset:-11}}"
     "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}"
 )
-KIND_NAMES = {"you": "YOU", "ai": "AI", "server": "SERVER", "check": "CHECK",
-              "advisor": "ADVISOR"}
 
 # Every pair passes WCAG 2.1: text 4.5 to 1 on its fill, lines 3 to 1 on the page.
 # tests/test_diagrams.py checks this.
 THEMES = {
     "light": {
-        "page": "#ffffff", "box": "#ffffff", "border": "#d1d9e0",
-        "text": "#1f2328", "sub": "#59636e", "edge": "#818b98", "shadow": 0.07,
+        "page": "#ffffff", "grid": "#eef1f4", "box": "#ffffff", "border": "#d1d9e0",
+        "text": "#1f2328", "sub": "#59636e", "edge": "#818b98",
         "kinds": {"you": ("#0969da", "#f3f8ff"), "ai": ("#8250df", "#f9f6ff"),
                   "server": ("#1a7f37", "#f2fbf4"), "check": ("#9a6700", "#fff9e5"),
                   "advisor": ("#bc4c00", "#fff5ee"), "neutral": ("#59636e", "#f6f8fa")},
         "tones": {"fail": "#cf222e", "pass": "#1a7f37"},
     },
     "dark": {
-        "page": "#0d1117", "box": "#151b23", "border": "#3d444d",
-        "text": "#f0f6fc", "sub": "#9198a1", "edge": "#656c76", "shadow": 0,
+        "page": "#0d1117", "grid": "#161b22", "box": "#151b23", "border": "#3d444d",
+        "text": "#f0f6fc", "sub": "#9198a1", "edge": "#656c76",
         "kinds": {"you": ("#4493f8", "#0d1d35"), "ai": ("#ab7df8", "#1b1430"),
                   "server": ("#3fb950", "#0c2114"), "check": ("#d29922", "#221a08"),
                   "advisor": ("#f0883e", "#271608"), "neutral": ("#9198a1", "#151b23")},
@@ -83,12 +99,9 @@ THEMES = {
 }
 
 
-def text_width(s, size, bold=False, caps=False):
-    """A close guess of how wide a line of the system sans font is."""
-    per = 0.6 if bold else 0.55
-    if caps:
-        return len(s) * (size * 0.68 + 0.9)
-    return sum(size * (0.3 if c in "il.,:'| " else per) for c in s)
+def text_width(s, size, spacing=0.0):
+    """Monospace: every character is 0.6 of the font size wide."""
+    return len(s) * (size * 0.6 + spacing)
 
 
 def eyebrow(node):
@@ -102,16 +115,29 @@ def eyebrow(node):
 
 def node_size(node):
     title, *sub = node["text"].split("\n")
-    widths = [text_width(title, TITLE, bold=True)] + [text_width(s, SUB) for s in sub]
-    if eyebrow(node):
-        widths.append(text_width(eyebrow(node), EYEBROW, caps=True))
-    w = max(widths) + 2 * PAD_X + STRIPE
-    h = 2 * PAD_Y + 18 + 18 * len(sub) + (16 if eyebrow(node) else 0)
+    if node.get("aws"):
+        w = max(text_width(title, TITLE - 1), *(text_width(s, SUB) for s in sub), AWS_ICON) + 16
+        return w, AWS_ICON + 12 + 17 * (1 + len(sub))
+    head = ICON + 8 + text_width(eyebrow(node), EYEBROW, 1.2)
+    w = max(head, text_width(title, TITLE), *(text_width(s, SUB) for s in sub)) + 2 * PAD_X
+    h = PAD_Y + ICON + 9 + 16 + 17 * len(sub) + PAD_Y + 2
     return w, h
 
 
 def label_size(label):
-    return text_width(label, LABEL) + 16, 22
+    return text_width(label, LABEL) + 14, 20
+
+
+def group_depths(spec):
+    """How many groups sit inside each group, at most, in a chain."""
+    groups = spec.get("groups", [])
+    sets = [set(g["nodes"]) for g in groups]
+    depth = [0] * len(groups)
+    for _ in groups:
+        for i, s in enumerate(sets):
+            inner = [depth[j] + 1 for j, o in enumerate(sets) if j != i and o < s]
+            depth[i] = max(inner, default=0)
+    return depth
 
 
 def layout(spec):
@@ -119,6 +145,11 @@ def layout(spec):
     width = max(MIN_W, *(node_size(n)[0] for n in nodes))
     where = {n["id"]: (n["col"], n["row"]) for n in nodes}
     gap_x, gap_y = GAP_X, GAP_Y
+    depth = max(group_depths(spec), default=-1)
+    if depth >= 0:
+        room = GROUP_PAD * (depth + 1)
+        gap_x = max(gap_x, 2 * room + 24)
+        gap_y = max(gap_y, 2 * room + GROUP_HEAD * (depth + 1) + 16)
     for e in spec.get("edges", []):
         if not e.get("label") or e.get("loop"):
             continue
@@ -138,9 +169,15 @@ def layout(spec):
     boxes = {}
     for n in nodes:
         left = n["col"] * (width + gap_x)
-        boxes[n["id"]] = {"l": left, "t": ys[n["row"]], "r": left + width,
-                          "b": ys[n["row"]] + heights[n["row"]],
-                          "x": left + width / 2, "y": ys[n["row"]] + heights[n["row"]] / 2}
+        top, bottom = ys[n["row"]], ys[n["row"]] + heights[n["row"]]
+        boxes[n["id"]] = {"l": left, "t": top, "r": left + width, "b": bottom,
+                          "x": left + width / 2, "y": (top + bottom) / 2,
+                          "cell": (left, top, left + width, bottom)}
+        if n.get("aws"):
+            # Arrows meet the icon, not the cell; the name sits under the icon.
+            x = left + width / 2
+            boxes[n["id"]].update(l=x - AWS_ICON / 2 - 4, r=x + AWS_ICON / 2 + 4, t=top,
+                                  b=top + AWS_ICON, y=top + AWS_ICON / 2)
     return boxes
 
 
@@ -184,7 +221,16 @@ def loop_lanes(spec, boxes):
                 lo, hi = sorted((cols[e["from"]], cols[e["to"]]))
                 near = [boxes[n] for n in cols if lo <= cols[n] <= hi]
                 base = min(b["t"] for b in near) if side == "above" else max(b["b"] for b in near)
+            # Start outside any group that holds either end, so the lane clears its border.
+            groups = spec.get("groups", [])
+            depths = group_depths(spec)
+            held = [d for g, d in zip(groups, depths, strict=True)
+                    if e["from"] in g["nodes"] or e["to"] in g["nodes"]]
+            if held:
+                offset += GROUP_PAD * (max(held) + 1) + (GROUP_HEAD if side == "above" else 0)
             lanes[id(e)] = base - offset if side in ("left", "above") else base + offset
+            if held:
+                offset -= GROUP_PAD * (max(held) + 1) + (GROUP_HEAD if side == "above" else 0)
     return lanes
 
 
@@ -280,13 +326,94 @@ def travel(spec, boxes, lanes, t):
     ]
 
 
+def draw_groups(spec, boxes, t, seen):
+    out = []
+    groups = spec.get("groups", [])
+    depth = group_depths(spec)
+    for i in sorted(range(len(groups)), key=lambda k: -depth[k]):
+        g = groups[i]
+        inside = [boxes[n]["cell"] for n in g["nodes"]]
+        pad = GROUP_PAD * (depth[i] + 1)
+        head = GROUP_HEAD * (depth[i] + 1)
+        l = min(c[0] for c in inside) - pad
+        top = min(c[1] for c in inside) - pad - head + 4
+        r = max(c[2] for c in inside) + pad
+        bottom = max(c[3] for c in inside) + pad
+        seen += [(l, top), (r, bottom)]
+        if g.get("aws"):
+            svg, color, dashed = aws.group(g["aws"], prefix=f"g{i}")
+            dash = ' stroke-dasharray="6 4"' if dashed else ""
+            out.append(f'<rect x="{l:.1f}" y="{top:.1f}" width="{r - l:.1f}" '
+                       f'height="{bottom - top:.1f}" fill="none" stroke="{color}" '
+                       f'stroke-width="1.6"{dash}/>')
+            out.append(aws.place(svg, l, top, 26))
+            out.append(f'<text x="{l + 34:.1f}" y="{top + 17:.1f}" font-size="12" '
+                       f'fill="{t["text"]}">{escape(g["label"])}</text>')
+            continue
+        accent = t["kinds"][g.get("kind", "neutral")][0]
+        out.append(f'<rect x="{l:.1f}" y="{top:.1f}" width="{r - l:.1f}" '
+                   f'height="{bottom - top:.1f}" rx="6" fill="none" stroke="{accent}" '
+                   f'stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" '
+                   f'stroke-linecap="round"/>')
+        name = g.get("icon") or FOR_KIND.get(g.get("kind"))
+        x = l + 12
+        if name:
+            out.append(icon(name, x, top + 8, 15, accent, 1.6))
+            x += 21
+        out.append(f'<text x="{x:.1f}" y="{top + 20:.1f}" font-size="{EYEBROW}" '
+                   f'font-weight="700" letter-spacing="1.2" fill="{accent}">'
+                   f'{escape(g["label"].upper())}</text>')
+    return out
+
+
+def draw_node(n, bx, t, i):
+    out = []
+    title, *sub = n["text"].split("\n")
+    if n.get("aws"):
+        x = bx["x"] - AWS_ICON / 2
+        out.append(aws.place(aws.service(n["aws"], prefix=f"n{i}"), x, bx["t"], AWS_ICON))
+        y = bx["t"] + AWS_ICON + 18
+        out.append(f'<text x="{bx["x"]:.1f}" y="{y:.1f}" text-anchor="middle" '
+                   f'font-size="{TITLE - 1}" font-weight="700" fill="{t["text"]}">'
+                   f'{escape(title)}</text>')
+        for j, s in enumerate(sub):
+            out.append(f'<text x="{bx["x"]:.1f}" y="{y + 17 * (j + 1):.1f}" '
+                       f'text-anchor="middle" font-size="{SUB}" fill="{t["sub"]}">'
+                       f'{escape(s)}</text>')
+        return out
+    accent, tint = t["kinds"][n.get("kind", "neutral")]
+    w, h = bx["r"] - bx["l"], bx["b"] - bx["t"]
+    out.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{w:.1f}" height="{h:.1f}" '
+               f'rx="{RADIUS}" fill="{tint}" stroke="{accent}" stroke-opacity="0.7" '
+               f'stroke-width="1.2"/>')
+    # Corner ticks, like marks on a drawing.
+    for cx, cy, dx, dy in ((bx["l"], bx["t"], 1, 1), (bx["r"], bx["b"], -1, -1)):
+        out.append(f'<path d="M{cx + 9 * dx:.1f},{cy - 4 * dy:.1f} H{cx - 4 * dx:.1f} '
+                   f'V{cy + 9 * dy:.1f}" fill="none" stroke="{accent}" stroke-width="1.2"/>')
+    x, y = bx["l"] + PAD_X, bx["t"] + PAD_Y
+    name = n.get("icon") or FOR_KIND.get(n.get("kind"), "ticket")
+    out.append(icon(name, x, y, ICON, accent))
+    brow = eyebrow(n)
+    if brow:
+        out.append(f'<text x="{x + ICON + 8:.1f}" y="{y + 13:.1f}" font-size="{EYEBROW}" '
+                   f'font-weight="700" letter-spacing="1.2" fill="{accent}">{escape(brow)}</text>')
+    y += ICON + 9
+    out.append(f'<text x="{x:.1f}" y="{y + 13:.1f}" font-size="{TITLE}" font-weight="700" '
+               f'fill="{t["text"]}">{escape(title)}</text>')
+    for j, s in enumerate(sub):
+        out.append(f'<text x="{x:.1f}" y="{y + 31 + 17 * j:.1f}" font-size="{SUB}" '
+                   f'fill="{t["sub"]}">{escape(s)}</text>')
+    return out
+
+
 def draw(spec, theme):
     t = THEMES[theme]
     boxes = layout(spec)
     lanes = loop_lanes(spec, boxes)
-    body, seen = [], []
+    seen = []
     for bx in boxes.values():
-        seen += [(bx["l"], bx["t"]), (bx["r"], bx["b"])]
+        seen += [bx["cell"][:2], bx["cell"][2:]]
+    groups = draw_groups(spec, boxes, t, seen)
 
     edges, labels = [], []
     for e in spec.get("edges", []):
@@ -294,50 +421,24 @@ def draw(spec, theme):
         seen += pts
         tone = e.get("tone")
         color = t["tones"].get(tone, t["edge"])
-        marker = f"arrow-{tone or 'plain'}"
         flow = "side" if e.get("dashed") else "main"
         edges.append(f'<path class="{flow}" d="{rounded(pts)}" fill="none" stroke="{color}" '
                      f'stroke-linecap="round" stroke-linejoin="round" '
-                     f'marker-end="url(#{marker})"/>')
+                     f'marker-end="url(#arrow-{tone or "plain"})"/>')
         if e.get("label"):
             w, h = label_size(e["label"])
             ink = t["tones"].get(tone, t["sub"])
             frame = t["tones"].get(tone, t["border"])
             seen += [(mid[0] - w / 2, mid[1] - h / 2), (mid[0] + w / 2, mid[1] + h / 2)]
-            labels.append(f'<rect x="{mid[0] - w / 2:.1f}" y="{mid[1] - h / 2:.1f}" width="{w:.1f}" '
-                          f'height="{h}" rx="{h / 2}" fill="{t["page"]}" stroke="{frame}" '
-                          f'stroke-width="1"/>')
-            labels.append(f'<text x="{mid[0]:.1f}" y="{mid[1] + 4.2:.1f}" text-anchor="middle" '
-                          f'font-size="{LABEL}" font-weight="500" fill="{ink}">'
-                          f'{escape(e["label"])}</text>')
+            labels.append(f'<rect x="{mid[0] - w / 2:.1f}" y="{mid[1] - h / 2:.1f}" '
+                          f'width="{w:.1f}" height="{h}" rx="3" fill="{t["page"]}" '
+                          f'stroke="{frame}" stroke-width="1"/>')
+            labels.append(f'<text x="{mid[0]:.1f}" y="{mid[1] + 3.8:.1f}" text-anchor="middle" '
+                          f'font-size="{LABEL}" fill="{ink}">{escape(e["label"])}</text>')
 
+    body = []
     for i, n in enumerate(spec["nodes"]):
-        bx = boxes[n["id"]]
-        accent, tint = t["kinds"][n.get("kind", "neutral")]
-        w, h = bx["r"] - bx["l"], bx["b"] - bx["t"]
-        shadow = ' filter="url(#shadow)"' if t["shadow"] else ""
-        body.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{w:.1f}" height="{h:.1f}" '
-                    f'rx="{RADIUS}" fill="{tint}" stroke="{accent}" '
-                    f'stroke-opacity="0.55" stroke-width="1"{shadow}/>')
-        body.append(f'<clipPath id="clip{i}"><rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" '
-                    f'width="{w:.1f}" height="{h:.1f}" rx="{RADIUS}"/></clipPath>')
-        body.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{STRIPE}" '
-                    f'height="{h:.1f}" fill="{accent}" clip-path="url(#clip{i})"/>')
-        x = bx["l"] + STRIPE + PAD_X
-        y = bx["t"] + PAD_Y
-        brow = eyebrow(n)
-        if brow:
-            body.append(f'<text x="{x:.1f}" y="{y + 10:.1f}" font-size="{EYEBROW}" '
-                        f'font-weight="700" letter-spacing="0.9" fill="{accent}">'
-                        f'{escape(brow)}</text>')
-            y += 16
-        title, *sub = n["text"].split("\n")
-        body.append(f'<text x="{x:.1f}" y="{y + 14:.1f}" font-size="{TITLE}" font-weight="600" '
-                    f'fill="{t["text"]}">{escape(title)}</text>')
-        for j, s in enumerate(sub):
-            body.append(f'<text x="{x:.1f}" y="{y + 33 + 18 * j:.1f}" font-size="{SUB}" '
-                        f'fill="{t["sub"]}">{escape(s)}</text>')
-
+        body += draw_node(n, boxes[n["id"]], t, i)
     ticket = travel(spec, boxes, lanes, t) if spec.get("ticket") else []
 
     x0 = min(p[0] for p in seen) - MARGIN
@@ -351,18 +452,19 @@ def draw(spec, theme):
                        f'markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" '
                        f'orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" '
                        f'fill="{color}"/></marker>')
-    shadow = (f'<filter id="shadow" x="-10%" y="-10%" width="120%" height="140%">'
-              f'<feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" '
-              f'flood-opacity="{t["shadow"]}"/></filter>') if t["shadow"] else ""
+    grid = (f'<pattern id="grid" x="{x0:.0f}" y="{y0:.0f}" width="24" height="24" '
+            f'patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" '
+            f'stroke="{t["grid"]}" stroke-width="1"/></pattern>')
     head = [
         (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0:.0f} {y0:.0f} {w:.0f} {h:.0f}" '
          f'width="{w:.0f}" height="{h:.0f}" role="img" aria-labelledby="title desc" '
-         f'font-family="{FONT}">'),
+         f'font-family="{MONO}">'),
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
-        f'<defs>{"".join(markers)}{shadow}</defs>',
+        f'<defs>{"".join(markers)}{grid}</defs>',
         f"<style>{MOTION}</style>",
         # A full square: no corner is see-through, whatever the page behind it.
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
+        f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="url(#grid)"/>',
     ]
-    return "\n".join(head + edges + body + labels + ticket + ["</svg>"]) + "\n"
+    return "\n".join(head + groups + edges + body + labels + ticket + ["</svg>"]) + "\n"

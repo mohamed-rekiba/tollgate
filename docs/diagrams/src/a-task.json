@@ -1,6 +1,6 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI writes a plan, which fresh AIs check. The plan is cut into small tickets. For each ticket, tests are written and locked, the AI builds until they pass, and the server checks again and merges. You read the report. When the AI is stuck, the advisor decides.",
+ "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and the server checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.",
  "nodes": [
   {
    "id": "s1",
@@ -8,6 +8,7 @@
    "col": 0,
    "row": 0,
    "kind": "you",
+   "icon": "person",
    "step": 1
   },
   {
@@ -16,22 +17,25 @@
    "col": 0,
    "row": 1,
    "kind": "ai",
+   "icon": "plan",
    "step": 2
   },
   {
    "id": "s3",
-   "text": "The plan is cut into tickets\nEach one small",
+   "text": "It cuts the plan into tickets\nEach one small",
    "col": 0,
    "row": 2,
    "kind": "ai",
+   "icon": "ticket",
    "step": 3
   },
   {
    "id": "s4",
-   "text": "Tests are written and locked\nBefore any code",
+   "text": "Tests are written, then locked\nBefore any code",
    "col": 0,
    "row": 3,
    "kind": "server",
+   "icon": "lock",
    "step": 4
   },
   {
@@ -40,6 +44,7 @@
    "col": 0,
    "row": 4,
    "kind": "ai",
+   "icon": "ai",
    "step": 5
   },
   {
@@ -48,6 +53,7 @@
    "col": 0,
    "row": 5,
    "kind": "server",
+   "icon": "merge",
    "step": 6
   },
   {
@@ -56,6 +62,7 @@
    "col": 0,
    "row": 6,
    "kind": "you",
+   "icon": "retro",
    "step": 7
   },
   {
@@ -92,10 +99,28 @@
    "to": "s7"
   },
   {
+   "from": "s6",
+   "to": "s4",
+   "label": "next ticket",
+   "loop": "left"
+  },
+  {
    "from": "s5",
    "to": "adv",
    "label": "stuck",
    "dashed": true
+  }
+ ],
+ "groups": [
+  {
+   "label": "For each ticket",
+   "nodes": [
+    "s4",
+    "s5",
+    "s6"
+   ],
+   "kind": "neutral",
+   "icon": "retry"
   }
  ]
 }

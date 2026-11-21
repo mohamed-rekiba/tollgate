@@ -1,48 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 892 256" width="892" height="256" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 892 270" width="892" height="270" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">How one ticket is built</title>
-<desc id="desc">The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.</desc>
-<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
-<rect x="-22" y="-22" width="892" height="256" fill="#0d1117"/>
-<path class="main" d="M202.0,40.0 L322.8,40.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M524.8,40.0 L645.6,40.0" fill="none" stroke="#3fb950" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
-<path class="main" d="M423.8,80.0 L423.8,132.0" fill="none" stroke="#f85149" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
-<path class="main" d="M322.8,172.0 L113.0,172.0 Q101.0,172.0 101.0,160.0 L101.0,80.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="side" d="M524.8,172.0 L645.6,172.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<rect x="0.0" y="0.0" width="202.0" height="80.0" rx="10" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip0"><rect x="0.0" y="0.0" width="202.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="0.0" width="4" height="80.0" fill="#ab7df8" clip-path="url(#clip0)"/>
-<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#ab7df8">AI</text>
-<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The AI builds</text>
-<text x="22.0" y="63.0" font-size="13" fill="#9198a1">One attempt</text>
-<rect x="322.8" y="0.0" width="202.0" height="80.0" rx="10" fill="#221a08" stroke="#d29922" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip1"><rect x="322.8" y="0.0" width="202.0" height="80.0" rx="10"/></clipPath>
-<rect x="322.8" y="0.0" width="4" height="80.0" fill="#d29922" clip-path="url(#clip1)"/>
-<text x="344.8" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#d29922">CHECK</text>
-<text x="344.8" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">Run the locked tests</text>
-<text x="344.8" y="63.0" font-size="13" fill="#9198a1">On the AI's own machine</text>
-<rect x="645.6" y="0.0" width="202.0" height="80.0" rx="10" fill="#0c2114" stroke="#3fb950" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip2"><rect x="645.6" y="0.0" width="202.0" height="80.0" rx="10"/></clipPath>
-<rect x="645.6" y="0.0" width="4" height="80.0" fill="#3fb950" clip-path="url(#clip2)"/>
-<text x="667.6" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#3fb950">SERVER</text>
-<text x="667.6" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">Send to the server</text>
-<text x="667.6" y="63.0" font-size="13" fill="#9198a1">It runs the tests again</text>
-<rect x="322.8" y="132.0" width="202.0" height="80.0" rx="10" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip3"><rect x="322.8" y="132.0" width="202.0" height="80.0" rx="10"/></clipPath>
-<rect x="322.8" y="132.0" width="4" height="80.0" fill="#ab7df8" clip-path="url(#clip3)"/>
-<text x="344.8" y="156.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#ab7df8">AI</text>
-<text x="344.8" y="176.0" font-size="15" font-weight="600" fill="#f0f6fc">Try again</text>
-<text x="344.8" y="195.0" font-size="13" fill="#9198a1">With what went wrong</text>
-<rect x="645.6" y="132.0" width="202.0" height="80.0" rx="10" fill="#271608" stroke="#f0883e" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip4"><rect x="645.6" y="132.0" width="202.0" height="80.0" rx="10"/></clipPath>
-<rect x="645.6" y="132.0" width="4" height="80.0" fill="#f0883e" clip-path="url(#clip4)"/>
-<text x="667.6" y="156.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#f0883e">ADVISOR</text>
-<text x="667.6" y="176.0" font-size="15" font-weight="600" fill="#f0f6fc">Ask the advisor</text>
-<text x="667.6" y="195.0" font-size="13" fill="#9198a1">A second AI, or you</text>
-<rect x="564.0" y="29.0" width="42.4" height="22" rx="11.0" fill="#0d1117" stroke="#3fb950" stroke-width="1"/>
-<text x="585.2" y="44.2" text-anchor="middle" font-size="12" font-weight="500" fill="#3fb950">pass</text>
-<rect x="405.6" y="95.0" width="36.4" height="22" rx="11.0" fill="#0d1117" stroke="#f85149" stroke-width="1"/>
-<text x="423.8" y="110.2" text-anchor="middle" font-size="12" font-weight="500" fill="#f85149">fail</text>
-<rect x="538.8" y="161.0" width="92.8" height="22" rx="11.0" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
-<text x="585.2" y="176.2" text-anchor="middle" font-size="12" font-weight="500" fill="#9198a1">after 3 tries</text>
+<desc id="desc">The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to the server, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-24" y="-24" width="892" height="270" fill="#0d1117"/>
+<rect x="-24" y="-24" width="892" height="270" fill="url(#grid)"/>
+<path class="main" d="M196.0,43.0 L323.8,43.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M519.8,43.0 L647.6,43.0" fill="none" stroke="#3fb950" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<path class="main" d="M421.8,86.0 L421.8,136.0" fill="none" stroke="#f85149" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="main" d="M323.8,179.0 L110.0,179.0 Q98.0,179.0 98.0,167.0 L98.0,86.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="side" d="M519.8,179.0 L647.6,179.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="196.0" height="86.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M187.0,90.0 H200.0 V77.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The AI builds</text>
+<text x="14.0" y="70.0" font-size="12" fill="#9198a1">One attempt</text>
+<rect x="323.8" y="0.0" width="196.0" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M332.8,-4.0 H319.8 V9.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<path d="M510.8,90.0 H523.8 V77.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
+<g transform="translate(337.8,12.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="363.8" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="337.8" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Run the locked tests</text>
+<text x="337.8" y="70.0" font-size="12" fill="#9198a1">On the AI's own machine</text>
+<rect x="647.6" y="0.0" width="196.0" height="86.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M656.6,-4.0 H643.6 V9.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<path d="M834.6,90.0 H847.6 V77.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
+<g transform="translate(661.6,12.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M18 16v-6a3 3 0 0 0-3-3h-4"/><path d="M13 4.5L10.5 7L13 9.5"/></g>
+<text x="687.6" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">SERVER</text>
+<text x="661.6" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Send to the server</text>
+<text x="661.6" y="70.0" font-size="12" fill="#9198a1">It runs the tests again</text>
+<rect x="323.8" y="136.0" width="196.0" height="86.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M332.8,132.0 H319.8 V145.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M510.8,226.0 H523.8 V213.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(337.8,148.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v5h5"/><path d="M4.8 9.5A7.5 7.5 0 1 1 6 16.2"/></g>
+<text x="363.8" y="161.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="337.8" y="188.0" font-size="14" font-weight="700" fill="#f0f6fc">Try again</text>
+<text x="337.8" y="206.0" font-size="12" fill="#9198a1">With what went wrong</text>
+<rect x="647.6" y="136.0" width="196.0" height="86.0" rx="4" fill="#271608" stroke="#f0883e" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M656.6,132.0 H643.6 V145.0" fill="none" stroke="#f0883e" stroke-width="1.2"/>
+<path d="M834.6,226.0 H847.6 V213.0" fill="none" stroke="#f0883e" stroke-width="1.2"/>
+<g transform="translate(661.6,148.0) scale(0.7500)" fill="none" stroke="#f0883e" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="687.6" y="161.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#f0883e">ADVISOR</text>
+<text x="661.6" y="188.0" font-size="14" font-weight="700" fill="#f0f6fc">Ask the advisor</text>
+<text x="661.6" y="206.0" font-size="12" fill="#9198a1">A second AI, or you</text>
+<rect x="563.5" y="33.0" width="40.4" height="20" rx="3" fill="#0d1117" stroke="#3fb950" stroke-width="1"/>
+<text x="583.7" y="46.8" text-anchor="middle" font-size="11" fill="#3fb950">pass</text>
+<rect x="401.6" y="101.0" width="40.4" height="20" rx="3" fill="#0d1117" stroke="#f85149" stroke-width="1"/>
+<text x="421.8" y="114.8" text-anchor="middle" font-size="11" fill="#f85149">fail</text>
+<rect x="533.8" y="169.0" width="99.8" height="20" rx="3" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="583.7" y="182.8" text-anchor="middle" font-size="11" fill="#9198a1">after 3 tries</text>
 </svg>

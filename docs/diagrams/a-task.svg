@@ -1,64 +1,79 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 669 844" width="669" height="844" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-149 -24 808 1094" width="808" height="1094" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">A task from start to finish</title>
-<desc id="desc">You say what you want. The AI writes a plan, which fresh AIs check. The plan is cut into small tickets. For each ticket, tests are written and locked, the AI builds until they pass, and the server checks again and merges. You read the report. When the AI is stuck, the advisor decides.</desc>
-<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
-<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
-<rect x="-22" y="-22" width="669" height="844" fill="#ffffff"/>
-<path class="main" d="M137.0,80.0 L137.0,120.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M137.0,200.0 L137.0,240.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M137.0,320.0 L137.0,360.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M137.0,440.0 L137.0,480.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M137.0,560.0 L137.0,600.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M137.0,680.0 L137.0,720.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="side" d="M274.0,520.0 L351.0,520.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<rect x="0.0" y="0.0" width="274.0" height="80.0" rx="10" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip0"><rect x="0.0" y="0.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="0.0" width="4" height="80.0" fill="#0969da" clip-path="url(#clip0)"/>
-<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#0969da">STEP 1 · YOU</text>
-<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#1f2328">You say what you want</text>
-<text x="22.0" y="63.0" font-size="13" fill="#59636e">In plain words</text>
-<rect x="0.0" y="120.0" width="274.0" height="80.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip1"><rect x="0.0" y="120.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="120.0" width="4" height="80.0" fill="#8250df" clip-path="url(#clip1)"/>
-<text x="22.0" y="144.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">STEP 2 · AI</text>
-<text x="22.0" y="164.0" font-size="15" font-weight="600" fill="#1f2328">The AI writes a plan</text>
-<text x="22.0" y="183.0" font-size="13" fill="#59636e">Fresh AIs check it</text>
-<rect x="0.0" y="240.0" width="274.0" height="80.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip2"><rect x="0.0" y="240.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="240.0" width="4" height="80.0" fill="#8250df" clip-path="url(#clip2)"/>
-<text x="22.0" y="264.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">STEP 3 · AI</text>
-<text x="22.0" y="284.0" font-size="15" font-weight="600" fill="#1f2328">The plan is cut into tickets</text>
-<text x="22.0" y="303.0" font-size="13" fill="#59636e">Each one small</text>
-<rect x="0.0" y="360.0" width="274.0" height="80.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip3"><rect x="0.0" y="360.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="360.0" width="4" height="80.0" fill="#1a7f37" clip-path="url(#clip3)"/>
-<text x="22.0" y="384.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">STEP 4 · SERVER</text>
-<text x="22.0" y="404.0" font-size="15" font-weight="600" fill="#1f2328">Tests are written and locked</text>
-<text x="22.0" y="423.0" font-size="13" fill="#59636e">Before any code</text>
-<rect x="0.0" y="480.0" width="274.0" height="80.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip4"><rect x="0.0" y="480.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="480.0" width="4" height="80.0" fill="#8250df" clip-path="url(#clip4)"/>
-<text x="22.0" y="504.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#8250df">STEP 5 · AI</text>
-<text x="22.0" y="524.0" font-size="15" font-weight="600" fill="#1f2328">The AI builds</text>
-<text x="22.0" y="543.0" font-size="13" fill="#59636e">Until the locked tests pass</text>
-<rect x="0.0" y="600.0" width="274.0" height="80.0" rx="10" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip5"><rect x="0.0" y="600.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="600.0" width="4" height="80.0" fill="#1a7f37" clip-path="url(#clip5)"/>
-<text x="22.0" y="624.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#1a7f37">STEP 6 · SERVER</text>
-<text x="22.0" y="644.0" font-size="15" font-weight="600" fill="#1f2328">The server checks and merges</text>
-<text x="22.0" y="663.0" font-size="13" fill="#59636e">It runs the tests again</text>
-<rect x="0.0" y="720.0" width="274.0" height="80.0" rx="10" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip6"><rect x="0.0" y="720.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="720.0" width="4" height="80.0" fill="#0969da" clip-path="url(#clip6)"/>
-<text x="22.0" y="744.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#0969da">STEP 7 · YOU</text>
-<text x="22.0" y="764.0" font-size="15" font-weight="600" fill="#1f2328">You read the report</text>
-<text x="22.0" y="783.0" font-size="13" fill="#59636e">Done, and still to do</text>
-<rect x="351.0" y="480.0" width="274.0" height="80.0" rx="10" fill="#fff5ee" stroke="#bc4c00" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
-<clipPath id="clip7"><rect x="351.0" y="480.0" width="274.0" height="80.0" rx="10"/></clipPath>
-<rect x="351.0" y="480.0" width="4" height="80.0" fill="#bc4c00" clip-path="url(#clip7)"/>
-<text x="373.0" y="504.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#bc4c00">ADVISOR</text>
-<text x="373.0" y="524.0" font-size="15" font-weight="600" fill="#1f2328">The advisor decides</text>
-<text x="373.0" y="543.0" font-size="13" fill="#59636e">A second AI, or you</text>
-<rect x="288.0" y="509.0" width="49.0" height="22" rx="11.0" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
-<text x="312.5" y="524.2" text-anchor="middle" font-size="12" font-weight="500" fill="#59636e">stuck</text>
+<desc id="desc">You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. Then, for each ticket in turn: the tests are locked, the AI builds until they pass, and the server checks again and merges. When the AI is stuck, the advisor decides. At the end, you read the report.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-149" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-149" y="-24" width="808" height="1094" fill="#ffffff"/>
+<rect x="-149" y="-24" width="808" height="1094" fill="url(#grid)"/>
+<rect x="-16.0" y="442.0" width="312.0" height="460.0" rx="6" fill="none" stroke="#59636e" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
+<g transform="translate(-4.0,450.0) scale(0.6250)" fill="none" stroke="#59636e" stroke-width="2.56" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v5h5"/><path d="M4.8 9.5A7.5 7.5 0 1 1 6 16.2"/></g>
+<text x="17.0" y="462.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#59636e">FOR EACH TICKET</text>
+<path class="main" d="M140.0,86.0 L140.0,160.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.0,246.0 L140.0,320.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.0,406.0 L140.0,480.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.0,566.0 L140.0,640.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.0,726.0 L140.0,800.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M140.0,886.0 L140.0,960.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M0.0,843.0 L-69.3,843.0 Q-81.3,843.0 -81.3,831.0 L-81.3,535.0 Q-81.3,523.0 -69.3,523.0 L0.0,523.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="side" d="M280.0,683.0 L355.0,683.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="280.0" height="86.0" rx="4" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#0969da" stroke-width="1.2"/>
+<path d="M271.0,90.0 H284.0 V77.0" fill="none" stroke="#0969da" stroke-width="1.2"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">STEP 1 · YOU</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">You say what you want</text>
+<text x="14.0" y="70.0" font-size="12" fill="#59636e">In plain words</text>
+<rect x="0.0" y="160.0" width="280.0" height="86.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,156.0 H-4.0 V169.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<path d="M271.0,250.0 H284.0 V237.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<g transform="translate(14.0,172.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="40.0" y="185.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">STEP 2 · AI</text>
+<text x="14.0" y="212.0" font-size="14" font-weight="700" fill="#1f2328">The AI writes a plan</text>
+<text x="14.0" y="230.0" font-size="12" fill="#59636e">Fresh AIs check it</text>
+<rect x="0.0" y="320.0" width="280.0" height="86.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,316.0 H-4.0 V329.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<path d="M271.0,410.0 H284.0 V397.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<g transform="translate(14.0,332.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>
+<text x="40.0" y="345.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">STEP 3 · AI</text>
+<text x="14.0" y="372.0" font-size="14" font-weight="700" fill="#1f2328">It cuts the plan into tickets</text>
+<text x="14.0" y="390.0" font-size="12" fill="#59636e">Each one small</text>
+<rect x="0.0" y="480.0" width="280.0" height="86.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,476.0 H-4.0 V489.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<path d="M271.0,570.0 H284.0 V557.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<g transform="translate(14.0,492.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="40.0" y="505.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 4 · SERVER</text>
+<text x="14.0" y="532.0" font-size="14" font-weight="700" fill="#1f2328">Tests are written, then locked</text>
+<text x="14.0" y="550.0" font-size="12" fill="#59636e">Before any code</text>
+<rect x="0.0" y="640.0" width="280.0" height="86.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,636.0 H-4.0 V649.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<path d="M271.0,730.0 H284.0 V717.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
+<g transform="translate(14.0,652.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
+<text x="40.0" y="665.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">STEP 5 · AI</text>
+<text x="14.0" y="692.0" font-size="14" font-weight="700" fill="#1f2328">The AI builds</text>
+<text x="14.0" y="710.0" font-size="12" fill="#59636e">Until the locked tests pass</text>
+<rect x="0.0" y="800.0" width="280.0" height="86.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,796.0 H-4.0 V809.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<path d="M271.0,890.0 H284.0 V877.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<g transform="translate(14.0,812.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="40.0" y="825.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STEP 6 · SERVER</text>
+<text x="14.0" y="852.0" font-size="14" font-weight="700" fill="#1f2328">The server checks and merges</text>
+<text x="14.0" y="870.0" font-size="12" fill="#59636e">It runs the tests again</text>
+<rect x="0.0" y="960.0" width="280.0" height="86.0" rx="4" fill="#f3f8ff" stroke="#0969da" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,956.0 H-4.0 V969.0" fill="none" stroke="#0969da" stroke-width="1.2"/>
+<path d="M271.0,1050.0 H284.0 V1037.0" fill="none" stroke="#0969da" stroke-width="1.2"/>
+<g transform="translate(14.0,972.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.5h16"/><path d="M7 17v-4M12 17V8M17 17v-6.5"/><path d="M5 9l5-4.5l4 3l5-4"/></g>
+<text x="40.0" y="985.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">STEP 7 · YOU</text>
+<text x="14.0" y="1012.0" font-size="14" font-weight="700" fill="#1f2328">You read the report</text>
+<text x="14.0" y="1030.0" font-size="12" fill="#59636e">Done, and still to do</text>
+<rect x="355.0" y="640.0" width="280.0" height="86.0" rx="4" fill="#fff5ee" stroke="#bc4c00" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M364.0,636.0 H351.0 V649.0" fill="none" stroke="#bc4c00" stroke-width="1.2"/>
+<path d="M626.0,730.0 H639.0 V717.0" fill="none" stroke="#bc4c00" stroke-width="1.2"/>
+<g transform="translate(369.0,652.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="395.0" y="665.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
+<text x="369.0" y="692.0" font-size="14" font-weight="700" fill="#1f2328">The advisor decides</text>
+<text x="369.0" y="710.0" font-size="12" fill="#59636e">A second AI, or you</text>
+<rect x="-124.6" y="673.0" width="86.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="-81.3" y="686.8" text-anchor="middle" font-size="11" fill="#59636e">next ticket</text>
+<rect x="294.0" y="673.0" width="47.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="317.5" y="686.8" text-anchor="middle" font-size="11" fill="#59636e">stuck</text>
 </svg>

@@ -7,6 +7,8 @@
    "text": "Experiments\nThe design holds",
    "col": 0,
    "row": 0,
+   "kind": "neutral",
+   "icon": "test",
    "tag": "STAGE 0"
   },
   {
@@ -14,6 +16,8 @@
    "text": "The lock\nYou protect a change by hand",
    "col": 0,
    "row": 1,
+   "kind": "neutral",
+   "icon": "lock",
    "tag": "STAGE 1"
   },
   {
@@ -21,6 +25,8 @@
    "text": "The loop\nTollgate builds one ticket",
    "col": 0,
    "row": 2,
+   "kind": "neutral",
+   "icon": "retry",
    "tag": "STAGE 2"
   },
   {
@@ -28,6 +34,8 @@
    "text": "The task\nYou give a task, read a report",
    "col": 0,
    "row": 3,
+   "kind": "neutral",
+   "icon": "plan",
    "tag": "STAGE 3"
   },
   {
@@ -35,6 +43,8 @@
    "text": "Scale\nLarge requests, many projects",
    "col": 0,
    "row": 4,
+   "kind": "neutral",
+   "icon": "home",
    "tag": "STAGE 4"
   }
  ],

@@ -1,37 +1,41 @@
 {
  "title": "The idea of Tollgate in four steps",
- "desc": "Tests are written first and say what done means. They are locked on the server, where the AI cannot reach. The AI builds and may try again, but cannot move the goal. The tests decide, and only a pass goes in.",
+ "desc": "First the tests are written; they say what done means. Then they are locked on the server, out of the AI's reach. The AI builds, and may try again, but cannot move the goal. The locked tests decide, and only a pass goes in.",
  "nodes": [
   {
    "id": "a",
-   "text": "Write the tests\nThey say what done means",
+   "text": "Write the tests\nThey say what\ndone means",
    "col": 0,
    "row": 0,
    "kind": "ai",
+   "icon": "test",
    "step": 1
   },
   {
    "id": "b",
-   "text": "Lock them\nOn the server, out of\nthe AI's reach",
+   "text": "Lock them\nOn the server, out\nof the AI's reach",
    "col": 1,
    "row": 0,
    "kind": "server",
+   "icon": "lock",
    "step": 2
   },
   {
    "id": "c",
-   "text": "The AI builds\nIt can try again.\nIt cannot move the goal.",
+   "text": "The AI builds\nIt may try again.\nThe goal stays put.",
    "col": 2,
    "row": 0,
    "kind": "ai",
+   "icon": "ai",
    "step": 3
   },
   {
    "id": "d",
-   "text": "The tests decide\nOnly a pass goes in",
+   "text": "The tests decide\nOnly a pass\ngoes in",
    "col": 3,
    "row": 0,
-   "kind": "server",
+   "kind": "check",
+   "icon": "gate",
    "step": 4
   }
  ],

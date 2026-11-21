@@ -1,27 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 771 124" width="771" height="124" role="img" aria-labelledby="title desc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 684 151" width="684" height="151" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">A large request in three parts</title>
-<desc id="desc">First the base: the project can be built, tested, and run. Then the skeleton: the shared rules and one thin path that works. Then the features, one at a time, each proven from end to end.</desc>
-<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
-<rect x="-22" y="-22" width="771" height="124" fill="#0d1117"/>
-<path class="main" d="M210.3,40.0 L258.3,40.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M468.6,40.0 L516.6,40.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<rect x="0.0" y="0.0" width="210.3" height="80.0" rx="10" fill="#151b23" stroke="#9198a1" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip0"><rect x="0.0" y="0.0" width="210.3" height="80.0" rx="10"/></clipPath>
-<rect x="0.0" y="0.0" width="4" height="80.0" fill="#9198a1" clip-path="url(#clip0)"/>
-<text x="22.0" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9198a1">PART 1</text>
-<text x="22.0" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The base</text>
-<text x="22.0" y="63.0" font-size="13" fill="#9198a1">It builds, tests, and runs</text>
-<rect x="258.3" y="0.0" width="210.3" height="80.0" rx="10" fill="#151b23" stroke="#9198a1" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip1"><rect x="258.3" y="0.0" width="210.3" height="80.0" rx="10"/></clipPath>
-<rect x="258.3" y="0.0" width="4" height="80.0" fill="#9198a1" clip-path="url(#clip1)"/>
-<text x="280.3" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9198a1">PART 2</text>
-<text x="280.3" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The skeleton</text>
-<text x="280.3" y="63.0" font-size="13" fill="#9198a1">Shared rules, one thin path</text>
-<rect x="516.6" y="0.0" width="210.3" height="80.0" rx="10" fill="#151b23" stroke="#9198a1" stroke-opacity="0.55" stroke-width="1"/>
-<clipPath id="clip2"><rect x="516.6" y="0.0" width="210.3" height="80.0" rx="10"/></clipPath>
-<rect x="516.6" y="0.0" width="4" height="80.0" fill="#9198a1" clip-path="url(#clip2)"/>
-<text x="538.6" y="24.0" font-size="10.5" font-weight="700" letter-spacing="0.9" fill="#9198a1">PART 3</text>
-<text x="538.6" y="44.0" font-size="15" font-weight="600" fill="#f0f6fc">The features</text>
-<text x="538.6" y="63.0" font-size="13" fill="#9198a1">One at a time, end to end</text>
+<desc id="desc">First the base: the project can be built, tested, and run. Then the skeleton: the shared rules, and one thin path that works from end to end. Then the features, one at a time, each proven from end to end.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-24" y="-24" width="684" height="151" fill="#0d1117"/>
+<rect x="-24" y="-24" width="684" height="151" fill="url(#grid)"/>
+<path class="main" d="M180.0,51.5 L228.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M408.0,51.5 L456.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<rect x="0.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<path d="M171.0,107.0 H184.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5l8-4.5"/><path d="M12 12v9"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">PART 1</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The base</text>
+<text x="14.0" y="70.0" font-size="12" fill="#9198a1">It builds, tests,</text>
+<text x="14.0" y="87.0" font-size="12" fill="#9198a1">and runs</text>
+<rect x="228.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M237.0,-4.0 H224.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<path d="M399.0,107.0 H412.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<g transform="translate(242.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z"/><path d="M10 8.5v7l6-3.5z"/></g>
+<text x="268.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">PART 2</text>
+<text x="242.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The skeleton</text>
+<text x="242.0" y="70.0" font-size="12" fill="#9198a1">Shared rules, one</text>
+<text x="242.0" y="87.0" font-size="12" fill="#9198a1">thin path that works</text>
+<rect x="456.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#151b23" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.2"/>
+<path d="M465.0,-4.0 H452.0 V9.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<path d="M627.0,107.0 H640.0 V94.0" fill="none" stroke="#9198a1" stroke-width="1.2"/>
+<g transform="translate(470.0,12.0) scale(0.7500)" fill="none" stroke="#9198a1" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>
+<text x="496.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">PART 3</text>
+<text x="470.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The features</text>
+<text x="470.0" y="70.0" font-size="12" fill="#9198a1">One at a time,</text>
+<text x="470.0" y="87.0" font-size="12" fill="#9198a1">end to end</text>
 </svg>
