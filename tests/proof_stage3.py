@@ -45,6 +45,9 @@ class TaskLoop(TaskCase):
                      "reported"):
             self.assertIn(step, [e["event"] for e in events])
         self.assertIn("tg/plan/demo/1", self.tags())
+        branches = subprocess.run(["git", "branch", "--list", "tg-plan/*"], cwd=self.sample.bare,
+                                  capture_output=True, text=True, check=True).stdout
+        self.assertEqual(branches.strip(), "", "the plan lock removes its branch; the tag keeps it")
         for tid in ("demo-1", "demo-2"):
             self.assertIn(f"tg/freeze/{tid}/1", self.tags())
             self.assertEqual(self.count(self.ticket_events(tid), "pr_opened"), 1)

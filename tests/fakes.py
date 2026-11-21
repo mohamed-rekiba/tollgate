@@ -184,6 +184,9 @@ class LocalServer:
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
             sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
+            # As the workflow does: the tag keeps the plan, so the branch goes.
+            sh(d, "git", "push", "-q", f"--force-with-lease=refs/heads/tg-plan/{task}:{commit}",
+               "origin", f":refs/heads/tg-plan/{task}")
         self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate.yml",
                      mf.loads(message))
         return name
