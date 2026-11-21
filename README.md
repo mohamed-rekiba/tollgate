@@ -22,9 +22,25 @@ It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change i
 
 ```mermaid
 flowchart LR
-  A["You ask<br/>in plain words"] --> B["A plan<br/>reviewed and locked"] --> C["Tests written<br/>and locked first"] --> D["The AI builds<br/>until they pass"] --> E["The gate checks<br/>on GitHub"] --> F["Merge"]
-  D -. "stuck" .-> G["The advisor decides<br/>an AI or you"]
+  A["You ask<br/>in plain words"] --> B["A plan"]
+  B --> R1{"Reviewers<br/>find problems?"}
+  R1 -- "yes: fix and review again" --> B
+  R1 -- "no" --> C["Tests written<br/>and locked first"]
+  C --> D["The AI builds"]
+  D --> E{"Gate and<br/>reviewers pass?"}
+  E -- "no: what failed goes back" --> D
+  E -- "yes" --> F["Merge"]
+  E -. "stuck" .-> G["The advisor decides<br/>an AI or you"]
+  G -. "retry" .-> D
+  F --> H["Retro<br/>numbers and lessons"]
+  H -. "lessons make the rules stricter" .-> B
 ```
+
+Three loops keep the work honest:
+
+1. **The build loop.** When the gate or a reviewer finds a problem, the findings and each failed check's output go back to the builder. It tries again from its best attempt, until it passes or a stop rule sends the ticket to the advisor.
+2. **The plan loop.** Reviewers read the plan before any code exists. The builder fixes, contests, or escalates each finding, for up to 4 rounds.
+3. **The learning loop.** After a task, `/tollgate:retro` turns at most 3 lessons into tickets: a new test, a check, a lens, or a stricter rule. The next tasks run under them.
 
 Each change gets a tier from 1 to 4 from the paths it touches. Tier 1 and 2 merge when the gate passes. Tier 3 adds a review by a model on GitHub. Tier 4 also needs your approval: a comment `tollgate approve <commit>`.
 
