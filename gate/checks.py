@@ -35,19 +35,17 @@ class Results:
         return cls([CheckResult(**c) for c in data["checks"]], data["tests"])
 
 
-# Secrets the project's own commands never need. Their code may be written by the AI.
-SECRET_NAMES = ("GH_TOKEN", "GITHUB_TOKEN", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN",
-                "ACTIONS_RUNTIME_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+# The project's own commands never need a secret. Their code may be written by the AI.
+SECRET_ENDINGS = ("_TOKEN", "_API_KEY", "_SECRET", "_PASSWORD")
+# Without these, the AI's code cannot reach your SSH agent or Tollgate's key and state.
+DROPPED = ("PYTHONPATH", "SSH_AUTH_SOCK", "TOLLGATE_KEYS", "TOLLGATE_STATE")
 
 
 def project_env() -> dict:
     """The environment for the project's own commands: without Tollgate's import path,
-    so Tollgate's modules cannot shadow the project's, and without any token."""
-    env = dict(os.environ)
-    env.pop("PYTHONPATH", None)
-    for name in SECRET_NAMES:
-        env.pop(name, None)
-    return env
+    so Tollgate's modules cannot shadow the project's, and without any secret."""
+    return {k: v for k, v in os.environ.items()
+            if k not in DROPPED and not k.upper().endswith(SECRET_ENDINGS)}
 
 
 def _tail(text: str, lines: int = 40) -> str:

@@ -1,295 +1,262 @@
-"""Tests for the gate: each rule has a case that passes and a case that fails."""
+"""Tests for the gate: each of the six checks has a case that passes and a case that fails.
 
+The lock and the plan lock are signed with gate.sign, in a state folder and a
+key folder in temporary folders.
+"""
+
+import json
+import os
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
-from gate import gate, settings
-from gate import manifest as mf
+from gate import gate, sign, state
 from gate.checks import CheckResult, Results
+from gate.gitio import fingerprint, show_bytes
+from gate.manifest import ticket_path
 from tests.helpers import TICKET, Repo, settings_text
 
-HEAD = "a" * 40
 TESTS = ["tests.test_t1::test_c1_retries", "tests.test_t1::test_c2_sent_once"]
-GOOD_RUN = {"path": gate.FREEZE_WORKFLOW, "head_branch": "main",
-            "event": "workflow_dispatch", "conclusion": "success"}
+TICKET_FILE = ticket_path("T-1")
 
 
 def passing_results():
     return Results([CheckResult("tests", True)], {t: {"status": "passed", "file": ""} for t in TESTS})
 
 
-def facts(**over):
-    s = settings.parse('{"approvers": ["owner"]}')
-    m = {"ticket": "T-1", "commit": "c" * 40, "files": {"tests/test_t1.py": "x"}, "tests": TESTS,
-         "number": 1}
-    run = dict(GOOD_RUN, title="tollgate freeze T-1", manifest=m)
-    f = gate.Freeze(1, "c" * 40, m, run)
-    f = gate.Facts(
-        settings=s, branch="tg/T-1", head_sha=HEAD, changes={"src/retry.py": 20},
-        results=passing_results(), freeze=f,
-        pr_author="owner",
-    )
-    for k, v in over.items():
-        setattr(f, k, v)
-    return f
+class GateCase(unittest.TestCase):
+    """A project with settings on main, a signed lock of T-1, a signed plan, and one try."""
 
-
-def rules(f):
-    return sorted({x["rule"] for x in gate.evaluate(f)[0]})
-
-
-class GateRulesTest(unittest.TestCase):
-    def test_a_clean_change_passes(self):
-        findings, level = gate.evaluate(facts())
-        self.assertEqual(findings, [])
-        self.assertEqual(level, 1)
-
-    def test_rule1_branch_must_name_a_ticket(self):
-        self.assertEqual(rules(facts(branch="feature/x")), [1])
-
-    def test_rule1_needs_a_freeze(self):
-        self.assertIn(1, rules(facts(freeze=None)))
-
-    def test_rule1_freeze_from_another_workflow_fails(self):
-        f = facts()
-        f.freeze.run["path"] = ".github/workflows/fake.yml"
-        self.assertEqual(rules(f), [1])
-
-    def test_rule1_freeze_run_on_a_branch_fails(self):
-        f = facts()
-        f.freeze.run["head_branch"] = "tg/T-1"
-        self.assertEqual(rules(f), [1])
-
-    def test_rule1_moved_tag_fails(self):
-        f = facts()
-        f.freeze.tag_commit = "d" * 40
-        self.assertEqual(rules(f), [1])
-
-    def test_rule1_unchecked_run_fails(self):
-        f = facts()
-        f.freeze.run = None
-        self.assertEqual(rules(f), [1])
-
-    def test_rule2_plan_required(self):
-        self.assertEqual(rules(facts(plan_required=True, changes={"src/a.py": 80})), [2])
-        plan = {"task": "retries", "tickets": ["T-1"], "number": 1, "run_id": 3}
-        run = {"path": gate.PLAN_WORKFLOW, "head_branch": "main", "event": "workflow_dispatch",
-               "conclusion": "success", "title": "tollgate plan retries", "manifest": plan}
-        ok = facts(plan_required=True, plan_tickets={"T-1"}, plan=plan, plan_run=dict(run),
-                   changes={"src/a.py": 80})
-        self.assertEqual(rules(ok), [])
-        for bad in (None, dict(run, title="tollgate plan other"), dict(run, head_branch="x"),
-                    dict(run, manifest={}), dict(run, path=".github/workflows/fake.yml")):
-            f = facts(plan_required=True, plan_tickets={"T-1"}, plan=plan, plan_run=bad,
-                      changes={"src/a.py": 80})
-            self.assertEqual(rules(f), [2], bad)
-        other = facts(plan_required=True, plan_tickets={"T-2"}, plan=plan, plan_run=dict(run),
-                      changes={"src/a.py": 80})
-        self.assertEqual(rules(other), [2])
-
-    def test_rule2_not_needed_for_tier_1(self):
-        self.assertEqual(rules(facts(plan_required=True)), [])
-
-    def test_rule3_changed_frozen_file(self):
-        self.assertEqual(rules(facts(frozen_now_changed=["tests/test_t1.py"])), [3])
-
-    def test_rule4_tier_4_needs_approval(self):
-        f = facts(changes={"pyproject.toml": 2}, review_passed=True)
-        self.assertEqual(rules(f), [4])
-        f.approvals = [{"kind": "comment", "user": "owner", "user_type": "User",
-                        "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}]
-        self.assertEqual(rules(f), [])
-
-    def test_rule4_approval_must_name_the_latest_commit_and_come_from_an_approver(self):
-        stale = {"kind": "comment", "user": "owner", "user_type": "User",
-                 "body": "tollgate approve " + "b" * 40, "state": "", "commit": ""}
-        stranger = {"kind": "comment", "user": "someone", "user_type": "User",
-                    "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        bot = {"kind": "comment", "user": "owner", "user_type": "Bot",
-               "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        f = facts(changes={"pyproject.toml": 2}, approvals=[stale, stranger, bot], review_passed=True)
-        self.assertEqual(rules(f), [4])
-
-    def test_rule4_review_by_someone_else_counts(self):
-        review = {"kind": "review", "user": "teammate", "user_type": "User",
-                  "state": "APPROVED", "commit": HEAD, "body": "", "association": "COLLABORATOR"}
-        outsider = dict(review, association="NONE")
-        self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[outsider],
-                                     review_passed=True)), [4])
-        self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[review],
-                                     review_passed=True)), [])
-        own = dict(review, user="owner")
-        self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[own],
-                                     review_passed=True)), [4])
-
-    def test_rule4_a_github_change_is_tier_4_and_a_person_can_approve_it(self):
-        f = facts(changes={".github/workflows/x.yml": 3})
-        self.assertEqual(rules(f), [4])
-        f.approvals = [{"kind": "comment", "user": "owner", "user_type": "User",
-                        "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}]
-        self.assertEqual(rules(f), [])
-
-    def test_rule6_tier_4_does_not_wait_for_a_broken_review(self):
-        approve = {"kind": "comment", "user": "owner", "user_type": "User",
-                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        for review in (None, False):
-            f = facts(changes={"pyproject.toml": 2}, approvals=[approve], review_passed=review)
-            self.assertEqual(rules(f), [], review)
-
-    def test_rule6_tier_3_passes_with_the_review_or_a_person(self):
-        s = settings.parse('{"tiers": {"3": ["src/auth/**"]}, "approvers": ["owner"]}')
-        approve = {"kind": "comment", "user": "owner", "user_type": "User",
-                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1})), [6])
-        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1},
-                                     review_passed=True)), [])
-        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1},
-                                     approvals=[approve])), [])
-
-    def test_a_change_by_hand_passes_with_a_person_s_approval(self):
-        approve = {"kind": "comment", "user": "owner", "user_type": "User",
-                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        f = facts(branch="not-a-ticket-branch", freeze=None,
-                  changes={".github/workflows/tollgate.yml": 9, "src/a.py": 3})
-        self.assertEqual(rules(f), [1])
-        f.approvals = [approve]
-        self.assertEqual(rules(f), [])
-
-    def test_a_change_by_hand_needs_an_approver_on_the_latest_commit(self):
-        stale = {"kind": "comment", "user": "owner", "user_type": "User",
-                 "body": "tollgate approve " + "b" * 40, "state": "", "commit": ""}
-        stranger = dict(stale, user="someone", body=f"tollgate approve {HEAD}")
-        f = facts(branch="not-a-ticket-branch", freeze=None, approvals=[stale, stranger])
-        self.assertEqual(rules(f), [1])
-
-    def test_a_ticket_branch_cannot_skip_its_freeze_with_an_approval(self):
-        approve = {"kind": "comment", "user": "owner", "user_type": "User",
-                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        f = facts(freeze=None, approvals=[approve])
-        self.assertEqual(rules(f), [1])
-
-    def test_a_change_by_hand_still_needs_its_checks_to_pass(self):
-        approve = {"kind": "comment", "user": "owner", "user_type": "User",
-                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
-        f = facts(branch="not-a-ticket-branch", freeze=None, approvals=[approve],
-                  results=Results([CheckResult("tests", False)], {}))
-        self.assertEqual(rules(f), [5])
-
-    def test_the_failure_says_how_to_approve(self):
-        f = facts(branch="not-a-ticket-branch", freeze=None)
-        _, text = gate.summary(*gate.evaluate(f))
-        self.assertIn(f"tollgate approve {HEAD}", text)
-
-    def test_free_paths_need_no_ticket(self):
-        f = facts(branch="docs/typo", freeze=None, changes={"docs/plan.md": 4, "README.md": 1})
-        self.assertEqual(gate.evaluate(f), ([], 1))
-
-    def test_a_free_change_still_runs_the_checks(self):
-        r = passing_results()
-        r.checks.append(CheckResult("style", False))
-        f = facts(branch="docs/typo", freeze=None, changes={"docs/plan.md": 4}, results=r)
-        self.assertEqual(rules(f), [5])
-
-    def test_a_free_path_mixed_with_code_needs_a_ticket(self):
-        f = facts(branch="docs/typo", freeze=None, changes={"docs/a.md": 1, "src/a.py": 1})
-        self.assertEqual(rules(f), [1])
-
-    def test_a_ticket_or_harness_file_is_never_free(self):
-        s = settings.parse('{"free": ["docs/**", "**/*.md", "pyproject.toml"]}')
-        for path in (".tollgate/tickets/T-9/ticket.md", "pyproject.toml"):
-            f = facts(settings=s, branch="docs/typo", freeze=None, changes={path: 1})
-            self.assertIn(1, rules(f), path)
-
-    def test_rule4_replaced_test_needs_approval(self):
-        f = facts()
-        f.freeze.number = 2
-        f.freeze.manifest["number"] = 2
-        self.assertEqual(rules(f), [4])
-
-    def test_rule5_failed_check(self):
-        r = passing_results()
-        r.checks.append(CheckResult("style", False))
-        self.assertEqual(rules(facts(results=r)), [5])
-
-    def test_rule5_locked_test_missing_skipped_or_failed(self):
-        for status in ("failed", "skipped"):
-            r = passing_results()
-            r.tests[TESTS[0]]["status"] = status
-            self.assertEqual(rules(facts(results=r)), [5], status)
-        r = passing_results()
-        del r.tests[TESTS[1]]
-        self.assertEqual(rules(facts(results=r)), [5])
-
-    def test_rule6_tier_3_needs_the_server_review(self):
-        s = settings.parse('{"tiers": {"3": ["src/auth/**"]}}')
-        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1})), [6])
-        ok = facts(settings=s, changes={"src/auth/a.py": 1}, review_passed=True)
-        self.assertEqual(rules(ok), [])
-
-
-class FakeServer:
-    def __init__(self, run, manifest=None):
-        self._run = dict(run, title="tollgate freeze T-1", manifest=manifest)
-
-    def run(self, run_id):
-        return dict(self._run)
-
-    def pull(self, pr):
-        return {"author": "owner", "head": ""}
-
-    def approvals(self, pr):
-        return []
-
-    def check_passed(self, sha, name):
-        return None
-
-
-class GateCollectTest(unittest.TestCase):
-    """The gate on a real git repository with a real freeze tag."""
+    plan_required = True
 
     def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        env = mock.patch.dict(os.environ, {"TOLLGATE_STATE": f"{tmp.name}/state",
+                                           "TOLLGATE_KEYS": f"{tmp.name}/keys"})
+        env.start()
+        self.addCleanup(env.stop)
+        self.key = sign.ensure_key()
         self.repo = Repo()
         self.addCleanup(self.repo.close)
+        self.project = str(self.repo.path)
         r = self.repo
-        r.write(".tollgate/settings.json", settings_text())
-        r.commit("settings")
+        r.write(".tollgate/settings.json", self.settings(signers=[self.key]))
+        self.base = r.commit("settings")
         r.git("checkout", "-q", "-b", "tg/T-1")
-        r.write(mf.ticket_path("T-1"), TICKET)
+        r.write(TICKET_FILE, TICKET)
         r.write("tests/test_t1.py", "# locked tests\n")
-        self.frozen = r.commit("ticket and tests")
-        m = {"ticket": "T-1", "commit": self.frozen, "run_id": 7, "tests": TESTS, "number": 1,
-             "files": {mf.ticket_path("T-1"): "", "tests/test_t1.py": ""}}
-        from gate.gitio import fingerprint, show_bytes
-        for p in m["files"]:
-            m["files"][p] = fingerprint(show_bytes(str(r.path), self.frozen, p))
-        r.tag("tg/freeze/T-1/1", "Freeze of T-1\n\n" + mf.dumps(m), self.frozen)
-        self.manifest = m
-        r.write("src/retry.py", "def retry():\n    return True\n")
-        r.commit("build")
+        self.lock_commit = r.commit("lock T-1")
+        self.lock = {"ticket": "T-1", "base_commit": self.base, "commit": self.lock_commit,
+                     "manifest": {"files": self.prints(self.lock_commit, TICKET_FILE,
+                                                       "tests/test_t1.py"),
+                                  "tests": TESTS, "keeps_behavior": []},
+                     "number": 1, "at": "2026-11-22T10:00:00Z"}
+        self.write_lock(self.lock)
+        self.plan = {"task": "retries", "commit": self.lock_commit,
+                     "files": self.prints(self.lock_commit, TICKET_FILE),
+                     "at": "2026-11-22T09:00:00Z"}
+        self.write_plan(self.plan)
+        self.build("def retry():\n    return True\n")
 
-    def run_gate(self):
-        f = gate.collect(str(self.repo.path), "main", "HEAD", "tg/T-1", passing_results(),
-                         FakeServer(GOOD_RUN, self.manifest), pr=1)
-        return gate.evaluate(f)
+    def settings(self, **extra):
+        base = json.loads(settings_text(require_plan=self.plan_required))
+        base.update(extra)
+        return json.dumps(base)
 
-    def test_unchanged_locked_tests_pass(self):
-        findings, level = self.run_gate()
-        self.assertEqual(findings, [])
-        self.assertEqual(level, 1)
+    def prints(self, commit, *paths):
+        return {p: fingerprint(show_bytes(self.project, commit, p)) for p in paths}
 
-    def test_a_weakened_locked_test_fails(self):
-        self.repo.write("tests/test_t1.py", "# weakened\n")
-        self.repo.commit("weaken")
-        findings, _ = self.run_gate()
-        self.assertIn(3, {f["rule"] for f in findings})
+    def write_lock(self, record, key=None):
+        sign.write(state.path(self.project, "locks", "T-1.json"), record, "tollgate-lock", key)
 
-    def test_the_highest_freeze_number_counts(self):
-        m = mf.loads(self.repo.git("for-each-ref", "--format=%(contents)", "refs/tags/tg/freeze/T-1/1"))
-        m["tests"] = ["tests.test_t1::test_c1_other"]
-        self.repo.tag("tg/freeze/T-1/2", mf.dumps(m), self.frozen)
-        findings, _ = self.run_gate()
-        messages = " ".join(f["message"] for f in findings)
-        self.assertIn("test_c1_other", messages)
-        self.assertIn("replaced", messages)
+    def write_plan(self, record, namespace="tollgate-plan"):
+        sign.write(state.path(self.project, "plans", "retries.json"), record, namespace)
+
+    def build(self, text, path="src/retry.py"):
+        self.repo.write(path, text)
+        self.repo.commit("try")
+
+    def facts(self, results=None, review=None):
+        return gate.collect(self.project, self.project, "main", "HEAD", "T-1",
+                            results or passing_results(), review)
+
+    def failed(self, facts=None):
+        return sorted({f["check"] for f in gate.evaluate(facts or self.facts())})
+
+
+class LockTest(GateCase):
+    def test_a_signed_lock_that_matches_passes(self):
+        self.assertEqual(gate.evaluate(self.facts()), [])
+
+    def test_a_lock_signed_by_a_key_main_does_not_list_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            other = Path(d, "other")
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)],
+                           check=True)
+            self.write_lock(self.lock, key=str(other))
+            # The try adds the other key to its own settings: the gate reads main's.
+            self.repo.write(".tollgate/settings.json", self.settings(
+                signers=[self.key, Path(f"{other}.pub").read_text().strip()]))
+            self.repo.commit("trust my key")
+            lock = [f for f in gate.evaluate(self.facts()) if f["check"] == "lock"]
+            self.assertIn("not signed by a key in signers", lock[0]["message"])
+
+    def test_a_lock_whose_manifest_differs_from_its_commit_fails(self):
+        self.lock["manifest"]["files"]["tests/test_t1.py"] = "sha256:" + "0" * 64
+        self.write_lock(self.lock)
+        self.assertIn("lock", self.failed())
+
+    def test_a_lock_commit_that_adds_code_fails(self):
+        self.repo.git("checkout", "-q", "main")
+        self.repo.git("checkout", "-q", "-b", "tg/T-2")
+        self.repo.write(TICKET_FILE, TICKET)
+        self.repo.write("tests/test_t1.py", "# locked tests\n")
+        self.repo.write("src/sneaky.py", "x = 1\n")
+        commit = self.repo.commit("lock with code")
+        self.write_lock(dict(self.lock, commit=commit))
+        self.build("def retry():\n    return True\n")
+        findings = gate.evaluate(self.facts())
+        self.assertEqual({f["check"] for f in findings}, {"lock"})
+        self.assertEqual([f["file"] for f in findings], ["src/sneaky.py"])
+
+    def test_a_missing_lock_fails(self):
+        state.path(self.project, "locks", "T-1.json").unlink()
+        self.assertIn("lock", self.failed())
+
+
+class PlanTest(GateCase):
+    def setUp(self):
+        super().setUp()
+        self.build("x = 1\n" * 80, "src/big.py")  # tier 2
+
+    def test_a_signed_plan_that_lists_the_ticket_passes(self):
+        self.assertEqual(self.failed(), [])
+
+    def test_a_plan_without_the_ticket_fails(self):
+        self.write_plan(dict(self.plan, files={}))
+        self.assertEqual(self.failed(), ["plan"])
+
+    def test_a_plan_signed_in_another_namespace_fails(self):
+        self.write_plan(self.plan, namespace="tollgate-lock")
+        self.assertEqual(self.failed(), ["plan"])
+
+    def test_a_ticket_changed_after_the_plan_fails(self):
+        self.write_plan(dict(self.plan, files={TICKET_FILE: "sha256:" + "0" * 64}))
+        self.assertEqual(self.failed(), ["plan"])
+
+
+class PlanTierOneTest(GateCase):
+    def test_tier_1_needs_no_plan(self):
+        state.path(self.project, "plans", "retries.json").unlink()
+        f = self.facts()
+        self.assertEqual(gate.tier_of(f)[0], 1)
+        self.assertEqual(gate.evaluate(f), [])
+
+
+class LockedFilesTest(GateCase):
+    def test_unchanged_locked_files_pass(self):
+        self.assertNotIn("locked_files", self.failed())
+
+    def test_a_weakened_locked_test_fails_and_the_builder_can_fix_it(self):
+        self.build("# weakened\n", "tests/test_t1.py")
+        findings = gate.evaluate(self.facts())
+        self.assertEqual([(f["check"], f["file"], f["fixable"]) for f in findings],
+                         [("locked_files", "tests/test_t1.py", True)])
+
+
+class TierTest(GateCase):
+    def test_a_small_change_is_tier_1_and_locked_files_do_not_count(self):
+        self.assertEqual(gate.tier_of(self.facts())[0], 1)
+
+    def test_a_harness_change_is_tier_4_and_needs_the_review(self):
+        self.build("[pytest]\n", "pytest.ini")
+        f = self.facts()
+        self.assertEqual(gate.tier_of(f)[0], 4)
+        self.assertIn("review", self.failed(f))
+
+
+class TestsTest(GateCase):
+    def test_passing_checks_and_locked_tests_pass(self):
+        self.assertNotIn("tests", self.failed())
+
+    def test_a_failed_check_fails_and_the_builder_can_fix_it(self):
+        r = passing_results()
+        r.checks.append(CheckResult("style", False))
+        findings = gate.evaluate(self.facts(r))
+        self.assertEqual([(f["check"], f["fixable"]) for f in findings], [("tests", True)])
+
+    def test_a_locked_test_failed_skipped_or_missing_fails(self):
+        for status in ("failed", "skipped", None):
+            r = passing_results()
+            if status:
+                r.tests[TESTS[0]]["status"] = status
+            else:
+                del r.tests[TESTS[0]]
+            self.assertEqual(self.failed(self.facts(r)), ["tests"], status)
+
+
+class ReviewTest(GateCase):
+    plan_required = False
+
+    def setUp(self):
+        super().setUp()
+        self.repo.git("checkout", "-q", "main")
+        self.repo.write(".tollgate/settings.json",
+                        self.settings(signers=[self.key], tiers={"3": ["src/auth/**"]}))
+        self.repo.commit("tier 3 rule")
+        self.repo.git("checkout", "-q", "tg/T-1")
+        self.build("x = 1\n", "src/auth/login.py")
+
+    def test_tier_3_passes_with_a_passed_review(self):
+        self.assertEqual(self.failed(self.facts(review=True)), [])
+
+    def test_tier_3_fails_without_a_passed_review(self):
+        for verdict in (None, False):
+            findings = gate.evaluate(self.facts(review=verdict))
+            self.assertEqual([(f["check"], f["fixable"]) for f in findings],
+                             [("review", False)], verdict)
+
+
+class PassRecordTest(GateCase):
+    def test_a_passed_try_gets_a_record_in_the_contract_format(self):
+        f = self.facts()
+        record = gate.pass_record(f, 85, at="2026-11-22T11:00:00Z")
+        self.assertEqual(sorted(record), ["at", "checks", "commit", "lock_sha256", "score",
+                                          "ticket", "tier"])
+        self.assertEqual(record["commit"], f.head_sha)
+        self.assertEqual((record["ticket"], record["tier"], record["score"]), ("T-1", 1, 85))
+        self.assertEqual(record["checks"], {name: True for name in gate.CHECKS})
+        lock_bytes = state.path(self.project, "locks", "T-1.json").read_bytes()
+        import hashlib
+        self.assertEqual(record["lock_sha256"], hashlib.sha256(lock_bytes).hexdigest())
+
+    def test_a_failed_try_or_a_low_score_gets_no_record(self):
+        with self.assertRaisesRegex(gate.GateError, "below 70"):
+            gate.pass_record(self.facts(), 69)
+        r = passing_results()
+        r.checks.append(CheckResult("style", False))
+        with self.assertRaisesRegex(gate.GateError, "finding"):
+            gate.pass_record(self.facts(r), 100)
+
+
+class CommandLineTest(GateCase):
+    def test_a_malformed_results_file_ends_with_2(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".json") as f:
+            f.write('{"unexpected": true}')
+            f.flush()
+            self.assertEqual(gate.main(["--ticket", "T-1", "--results", f.name]), 2)
+
+    def test_a_passing_try_ends_with_0(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".json") as f:
+            f.write(passing_results().to_json())
+            f.flush()
+            argv = ["--project", self.project, "--repo", self.project, "--ticket", "T-1",
+                    "--results", f.name]
+            with mock.patch("sys.stdout"):
+                self.assertEqual(gate.main(argv), 0)
 
 
 if __name__ == "__main__":

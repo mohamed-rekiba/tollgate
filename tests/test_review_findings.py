@@ -4,12 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gate import freeze, gate, prepare, settings, tiers
+from gate import freeze, prepare, settings, tiers
 from gate import manifest as mf
 from gate.gitio import changed_files
 from tests.helpers import TICKET, Repo, settings_text
 from tests.test_freeze_prepare import results_file
-from tests.test_gate import facts, rules
 
 
 class NonAsciiPaths(unittest.TestCase):
@@ -24,7 +23,7 @@ class NonAsciiPaths(unittest.TestCase):
         found = changed_files(str(repo.path), "main", "HEAD")
         self.assertIn(".github/workflows/é.yml", found)
         self.assertIn("tests/é/conftest.py", found)
-        self.assertIn(4, rules(facts(changes=found)))
+        self.assertEqual(tiers.tier(settings.parse("{}"), found)[0], 4)
 
 
 class FreePathsAndRenames(unittest.TestCase):
@@ -39,40 +38,6 @@ class FreePathsAndRenames(unittest.TestCase):
         repo.commit("move")
         found = changed_files(str(repo.path), "main", "HEAD")
         self.assertEqual(sorted(found), ["docs/x.py", "src/x.py"])
-        f = facts(branch="docs/move", freeze=None, changes=found)
-        self.assertIn(1, rules(f))
-
-
-class FreezeBoundToItsRun(unittest.TestCase):
-    def test_a_run_that_froze_another_ticket_fails(self):
-        f = facts()
-        f.freeze.run["title"] = "tollgate freeze T-2"
-        self.assertEqual(rules(f), [1])
-
-    def test_a_manifest_that_differs_from_the_run_record_fails(self):
-        f = facts()
-        f.freeze.run = dict(f.freeze.run, manifest=dict(f.freeze.manifest, tests=[]))
-        self.assertEqual(rules(f), [1])
-
-    def test_a_missing_run_record_fails(self):
-        f = facts()
-        f.freeze.run["manifest"] = None
-        self.assertEqual(rules(f), [1])
-
-
-class TagNumbers(unittest.TestCase):
-    def test_only_plain_ascii_numbers_count(self):
-        repo = Repo()
-        self.addCleanup(repo.close)
-        repo.commit("base")
-        for tail in ("1", "２", "02", "²"):
-            repo.tag(f"tg/freeze/T-1/{tail}", '{"ticket": "T-1"}')
-        self.assertEqual(gate._freeze(str(repo.path), "T-1").number, 1)
-
-    def test_a_tag_number_that_differs_from_its_manifest_fails(self):
-        f = facts()
-        f.freeze.manifest["number"] = 2
-        self.assertIn(1, rules(f))
 
 
 class GuardedPathsInTests(unittest.TestCase):
@@ -105,14 +70,6 @@ class GuardedPathsInTests(unittest.TestCase):
         frozen = repo.commit("frozen harness")
         prepare.restore(str(repo.path), "main", frozen, {"files": {"pytest.ini": ""}})
         self.assertEqual(Path(repo.path, "pytest.ini").read_text(), "[pytest]\n")
-
-
-class GateCrash(unittest.TestCase):
-    def test_a_malformed_results_file_ends_with_2(self):
-        with tempfile.NamedTemporaryFile("w", suffix=".json") as f:
-            f.write('{"unexpected": true}')
-            f.flush()
-            self.assertEqual(gate.main(["--branch", "tg/T-1", "--results", f.name]), 2)
 
 
 if __name__ == "__main__":
