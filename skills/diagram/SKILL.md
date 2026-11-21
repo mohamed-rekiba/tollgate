@@ -43,7 +43,7 @@ The format, with every option, is at the top of `$TG/diagram/flow.py`. In short:
   - `subprocess`: a box with double sides. A step that has its own diagram.
   - `wait`: a D. The flow waits, for a person or for time.
   - `manual`: a trapezoid. A person does it by hand.
-- `kind`: who acts: `you`, `ai`, `server`, `check`, `advisor`. It sets the color, the icon, and the small label over the title. Use the same kind for the same actor everywhere. No kind is neutral gray.
+- `kind`: who acts or drives the step: `you` (blue), `ai` (purple), `server` (green), `check` (amber), `advisor` (orange). It sets the color, the icon, and the small label over the title. Use the same kind for the same actor everywhere. Give every box the kind closest to its meaning: a diagram that is all gray reads as unfinished, and the test refuses it. Leave a box gray only when it is outside the story, like a legend.
 - `icon`: another icon by name. The sheet of icons is `$TG/docs/diagrams/icons.svg`. `step` adds STEP n; `tag` sets the small label.
 - `edges`: arrows. `label` says what travels or why. `tone` is `pass` (green) or `fail` (red), always with a label. `dashed` is a side path. `loop` (left, right, above, below) is an arrow that goes back. `route` (vhv, vh, hv) picks where it bends.
 - `groups`: a border around boxes that belong together, such as "For each ticket".

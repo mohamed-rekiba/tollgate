@@ -72,6 +72,17 @@ class TestDiagrams(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertNotRegex(words, r"tg/|\b[0-9a-f]{12,}\b|\.py\b|\.ya?ml\b")
 
+    def test_no_diagram_is_all_gray(self):
+        """Gray is for what is outside the story. A diagram needs color that means something."""
+        import json
+        for spec in (DIAGRAMS / "src").glob("*.json"):
+            data = json.loads(spec.read_text())
+            if data.get("type") == "scene":
+                continue
+            kinds = {n.get("kind", "neutral") for n in data["nodes"] if not n.get("aws")}
+            with self.subTest(diagram=spec.stem):
+                self.assertNotEqual(kinds, {"neutral"}, "give the boxes the kind that drives them")
+
     def test_light_and_dark_twins(self):
         for path in DIAGRAMS.glob("*.svg"):
             twin = (path.with_name(path.stem[:-5] + ".svg") if path.stem.endswith("-dark")

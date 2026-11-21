@@ -7,7 +7,7 @@
    "text": "The base\nIt builds, tests,\nand runs",
    "col": 0,
    "row": 0,
-   "kind": "neutral",
+   "kind": "server",
    "icon": "package",
    "tag": "PART 1"
   },
@@ -16,7 +16,7 @@
    "text": "The skeleton\nShared rules, one\nthin path that works",
    "col": 1,
    "row": 0,
-   "kind": "neutral",
+   "kind": "check",
    "icon": "workflow",
    "tag": "PART 2"
   },
@@ -25,7 +25,7 @@
    "text": "The features\nOne at a time,\nend to end",
    "col": 2,
    "row": 0,
-   "kind": "neutral",
+   "kind": "ai",
    "icon": "ticket",
    "tag": "PART 3"
   }

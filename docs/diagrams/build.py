@@ -179,6 +179,14 @@ def icons_sheet(theme: str) -> str:
 
     from diagram.icons import ICONS, icon
     c = THEMES[theme]
+    # Each icon in the color of its family: who acts in their own colors, then
+    # the work, the code, the places, and the signals.
+    family = {"person": "you", "ai": "ai", "server": "server", "check": "check",
+              "advisor": "advisor", "lock": "server", "gate": "check", "test": "check",
+              "plan": "ai", "ticket": "ai", "retry": "ai", "workflow": "ai", "branch": "server",
+              "pull-request": "server", "merge": "server", "home": "you", "folder": "you",
+              "package": "you", "terminal": "you", "cost": "advisor", "warning": "advisor",
+              "clock": "advisor", "retro": "advisor"}
     per_row, cw, ch, pad = 6, 128, 112, 24
     rows = -(-len(ICONS) // per_row)
     w, h = per_row * cw + 2 * pad, rows * ch + 2 * pad
@@ -190,9 +198,10 @@ def icons_sheet(theme: str) -> str:
            f'<rect width="{w}" height="{h}" fill="{c["page"]}"/>']
     for i, name in enumerate(ICONS):
         x, y = pad + (i % per_row) * cw, pad + (i // per_row) * ch
+        accent, tint = c["kinds"][family.get(name, "neutral")]
         out.append(f'<rect x="{x + 6}" y="{y + 6}" width="{cw - 12}" height="{ch - 12}" rx="6" '
-                   f'fill="{c["kinds"]["neutral"][1]}" stroke="{c["border"]}"/>')
-        out.append(icon(name, x + cw / 2 - 20, y + 22, 40, c["text"], 2))
+                   f'fill="{tint}" stroke="{accent}" stroke-opacity="0.6"/>')
+        out.append(icon(name, x + cw / 2 - 20, y + 22, 40, accent, 2))
         out.append(f'<text x="{x + cw / 2}" y="{y + 86}" text-anchor="middle" font-size="12" '
                    f'fill="{c["sub"]}">{escape(name)}</text>')
     return "\n".join([*out, "</svg>"]) + "\n"
