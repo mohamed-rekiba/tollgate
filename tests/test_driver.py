@@ -82,6 +82,16 @@ class RolesTest(unittest.TestCase):
         self.assertEqual(answer.data["decision"], "park")
         self.assertEqual(answer.cost_usd, 0.25)
 
+    def test_a_failing_role_shows_what_it_printed(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaisesRegex(roles.RoleError, "credit balance is too low"):
+                roles.run(f"{sys.executable} -c 'print(\"credit balance is too low\"); exit(1)'",
+                          "reviewer", {}, d, 1)
+            with self.assertRaisesRegex(roles.RoleError, "reported an error: bad key"):
+                roles.run(f"{sys.executable} -c 'import json; print(json.dumps("
+                          f"{{\"is_error\": True, \"result\": \"bad key\"}}))'",
+                          "reviewer", {}, d, 1)
+
     def test_a_role_past_its_time_fails(self):
         with tempfile.TemporaryDirectory() as d, self.assertRaisesRegex(roles.RoleError, "ran past"):
             roles.run(f"{sys.executable} -c 'import time; time.sleep(5)'", "builder", {}, d, 0.01)

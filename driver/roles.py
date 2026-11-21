@@ -88,11 +88,15 @@ def run(command: str, role: str, inputs: dict, workdir: str, minutes: float,
         raise RoleError(f"{role} ran past {minutes} minutes") from None
     seconds = time.monotonic() - started
     if proc.returncode != 0:
-        raise RoleError(f"{role} ended with {proc.returncode}: {proc.stderr.strip()[-500:]}")
+        # Claude Code reports some errors on standard output, as JSON.
+        said = (proc.stderr.strip() or proc.stdout.strip())[-500:] or "no output"
+        raise RoleError(f"{role} ended with {proc.returncode}: {said}")
     try:
         out = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        raise RoleError(f"{role} did not print JSON") from None
+        raise RoleError(f"{role} did not print JSON: {proc.stdout.strip()[-300:]}") from None
+    if out.get("is_error"):
+        raise RoleError(f"{role} reported an error: {str(out.get('result', ''))[-500:]}")
     text = out.get("result", "")
     return Answer(last_block(text), float(out.get("total_cost_usd") or 0), seconds, text)
 

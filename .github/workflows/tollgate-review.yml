@@ -71,7 +71,11 @@ jobs:
         run: echo "tier=$(cat "$RUNNER_TEMP/tier.txt")" >> "$GITHUB_OUTPUT"
       - name: Install Claude Code for tier 3 and 4
         if: steps.tier.outputs.tier >= 3
-        run: npm install -g @anthropic-ai/claude-code
+        # Newer npm skips install scripts unless they are allowed, and Claude Code
+        # needs its install script. The version check fails loudly if it broke.
+        run: |
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code
+          claude --version
       - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
         env:
           GH_TOKEN: ${{ github.token }}
