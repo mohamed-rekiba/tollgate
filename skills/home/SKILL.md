@@ -1,35 +1,34 @@
 ---
 name: home
-description: Create or manage a Tollgate home: one private repository that holds many projects as git submodules and the rules they share. Use when the user runs /tollgate:home, /tollgate:home add owner/name, or /tollgate:home sync.
+description: Create or manage a Tollgate home: one git repository on this machine that holds many projects as git submodules, and the rules they share. Use when the user runs /tollgate:home, /tollgate:home add, or /tollgate:home sync.
 ---
 
 # Manage a home
 
 `TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m <module>` from the home folder.
 
-Words: a **home** is a private repository with a list of projects. Each project is a git submodule: a link from the home to the project's own repository.
+Words: a **home** is a git repository with a list of projects. Each project is a git submodule: a link from the home to the project's own repository. The **shared rules** are the lens files in the home's `rules/lenses/`.
 
 ## `/tollgate:home`: create one
 
 1. Confirm the current folder is empty, apart from `.git`. If not, stop and say so.
-2. Ask the user for the GitHub repository of the home, as `owner/name`, if they want one. It must already exist and be private.
-3. Run `python3 -m setup.home init` with `--remote owner/name` if they gave one. It refuses a public repository.
-4. If there is a remote, push: `git push -u origin main`.
+2. Run `python3 -m setup.home init`.
 
 Done when `home.json` exists.
 
-## `/tollgate:home add owner/name`
+## `/tollgate:home add <project>`
 
-1. Run `python3 -m setup.home add owner/name`. It adds the project under `projects/<name>` and prints whether the project has Tollgate settings.
+1. Run `python3 -m setup.home add <project>`, where the project is a folder or a git address. It adds the project under `projects/<name>` and prints whether the project has Tollgate settings.
 2. If `has_settings` is false, offer to run `/tollgate:init` inside `projects/<name>`.
-3. Push the home.
 
 Done when `python3 -m setup.home list` shows the project.
 
 ## `/tollgate:home sync`
 
-1. Show the user the files in `rules/lenses/`. These are the shared rules.
-2. Run `python3 -m setup.sync_rules`. It opens one pull request in each project.
-3. List the pull requests. A person reviews and merges each one. Nothing merges on its own.
+1. Show the user the files in `rules/lenses/`.
+2. Run `python3 -m setup.sync_rules`. In each project, it puts the shared rules in `.tollgate/lenses/` on the local branch `tollgate-sync`, and the store marks the branch as a ready change.
+3. Show each line. Tell the user to merge each one with `/tollgate:merge` in that project. Nothing merges on its own.
 
-The home never weakens a project. Each project keeps its own settings, and GitHub reads them from the project.
+UNFINISHED: the sync branch does not go through the gate, so it has no pass record and cannot merge yet. If the script ends with 2, the store cannot mark ready changes yet: tell the user so.
+
+The home never weakens a project. Each project keeps its own settings, and the gate reads them from the project's main branch.

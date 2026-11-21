@@ -1,0 +1,40 @@
+---
+name: merge
+description: Merge a ready Tollgate change into main. It lists the changes that passed the gate, shows one, asks you to sign the approval with your SSH key for tier 3 and 4, and merges it. Use when the user runs /tollgate:merge or asks to merge, approve, or review what is ready.
+---
+
+# Merge a ready change
+
+`TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m setup.merge`, from the project folder.
+
+Words: a **ready change** is a commit that passed the gate and is not on main yet. Its **pass record** is the gate's signed result. A change of tier 3 or 4 also needs your **approval**: a record you sign with your own SSH key.
+
+## 1. List the ready changes
+
+Run `python3 -m setup.merge list`. Show each line: the commit, the ticket, the tier, the score, the branch, and whether it needs an approval. If the user named a change, go to step 2 with it. Otherwise ask which one, in one question.
+
+Done when the user has picked a change, or there is none.
+
+## 2. Show it
+
+Run `python3 -m setup.merge show <commit>`. Show the checks, the commits, and the files it changes. For tier 3 and 4, offer to show the diff: `git diff main...<commit>`.
+
+## 3. Approve it, for tier 3 and 4
+
+You never sign the approval. Only the user does, with a passphrase only they know.
+
+Ask the user to run this in their terminal, with the `!` prefix in this session or in a terminal of their own:
+
+```sh
+! PYTHONPATH="$TG" python3 -m setup.merge approve <commit>
+```
+
+Write out `$TG` as the full path in the line you give them. It signs with `ssh-keygen -Y sign -n tollgate-approval -f ~/.ssh/<key>`, and ssh-keygen asks for the passphrase. With a key other than the first in `~/.ssh/`, add `--key ~/.ssh/<key>`. The key must be in `owners` in the settings on main.
+
+Done when the command prints `approved:`. If it says the key is not in `owners`, tell the user to run `/tollgate:init --owner-key <the .pub file>` first.
+
+## 4. Merge it
+
+Run `python3 -m setup.merge merge <commit>`. The store merges it into main with a merge commit, and pre-commit checks the pass record and the approval again. It ends with 2 and says UNFINISHED while the store cannot merge yet: tell the user so.
+
+Done when it prints `merged:` and the merge commit. Tell the user the commit in one line.

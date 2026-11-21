@@ -1,6 +1,6 @@
 ---
 name: init
-description: Set up Tollgate in a project. It checks your rights on GitHub, writes the settings and the workflow, and protects the main branch and the tags. Use when the user runs /tollgate:init or asks to add Tollgate to a repository.
+description: Set up Tollgate in a project on this machine. It writes the settings, makes this machine's key, adds your SSH key as an owner, and installs the checks that run before each commit, merge, and push. Use when the user runs /tollgate:init or asks to add Tollgate to a repository.
 ---
 
 # Set up Tollgate in this project
@@ -9,46 +9,30 @@ You set up Tollgate in the git repository of the current folder. Each step ends 
 
 `TG` below is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m <module>`, from the project folder.
 
-Words: a **freeze** locks a ticket's tests before the build. The **harness** is every file that decides how tests run.
+Words: the **state folder** holds Tollgate's records outside the project, where no AI role can write. The **machine key** signs locks and pass records. An **owner** is a person whose SSH key may approve a tier 3 or 4 change. The **harness** is every file that decides how tests run.
 
-## 1. Find the repository and your rights
-
-1. Read `git remote get-url origin` and turn it into `owner/name`.
-2. Run `python3 -m setup.check_rights owner/name`. It prints one level.
-3. Tell the user the level and what it means, in one sentence:
-   - `admin`: Tollgate protects the main branch and the tags under `tg/`.
-   - `write`: the tests and the review run, but an admin must protect the main branch and the tags. Tollgate turns `auto_merge` off.
-   - `copy`: the organization allows only local actions. Tollgate's code is copied into the project, and in step 3 the version is `copy`.
-   - `none`: stop. The user needs write access.
-
-Done when the user has seen the level.
-
-## 2. Write the settings
+## 1. Write the settings
 
 1. Read the project: its language, its test command, how it installs what the tests need, and any lint or type check.
 2. Find a way for the test command to write a JUnit XML report. Most test tools have a flag for it, for example `pytest --junitxml=report.xml` or `go test` with `go-junit-report`.
-3. Ask the user, in one message, only what you cannot find: the paths that need a review (tier 3), the paths that need a person (tier 4), and who may approve with a comment.
-4. Write `.tollgate/settings.json`. Put the test command under `checks.tests` with its `report`. Set `require_plan` to `false`: plan tags are not built yet. With level `write`, set `auto_merge` to `false`.
-5. Run `python3 -m gate.settings .tollgate/settings.json`.
+3. Ask the user, in one message, only what you cannot find: the paths that need a review (tier 3), the paths that need a person (tier 4), and which SSH public key is theirs, if `~/.ssh/` holds more than one.
+4. Write `.tollgate/settings.json`. Put the test command under `checks.tests` with its `report`. Set `require_plan` to `false`: plan locks are not built yet.
 
-Done when that command prints the settings with no error. Show the user the file.
+Done when the file holds the checks and the tiers. Show the user the file.
 
-## 3. Write the workflows
+## 2. Run init
 
-1. Get the commit of Tollgate to use: `gh api repos/tollgate-ai/tollgate/commits/main --jq .sha`. Tell the user the commit.
-2. Run `python3 -m setup.write_workflows --version <commit>`. With level `copy`, run it with `--version copy` instead: it also copies Tollgate's code into `.tollgate/runner/`. It writes `.github/workflows/tollgate.yml`, which never changes, and sets `"version"` in the settings. A later upgrade changes only that line.
-3. On a new branch `tollgate-setup`, commit `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, push it, and open a pull request.
-4. Ask the user to merge it. The workflows run only from the main branch, so nothing after this step works before the merge.
+1. Confirm the current branch is `main`: `git branch --show-current`. If not, ask the user to switch to it.
+2. Run `python3 -m setup.init`, with `--owner-key <path to the .pub file>` if the user named a key. It checks that `claude` and `pre-commit` are installed, creates the state folder and the machine key, adds the machine key to `signers` and the user's key to `owners`, copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
+3. If it stops because a tool is missing, tell the user the install command: `pipx install pre-commit`, or `npm install -g @anthropic-ai/claude-code` for `claude`. Run it again after the install.
+4. If the project already has a `.pre-commit-config.yaml` that Tollgate did not write, init stops. Move each of its hooks into `checks` in the settings, with the user's consent, then run init with `--replace`.
 
-Done when `git fetch origin && git show origin/main:.github/workflows/tollgate.yml` prints the file.
+Done when init ends with 0 and its last line says pre-commit is installed.
 
-## 4. Protect the main branch and the tags
+## 3. Check it
 
-- With level `admin`, run `python3 -m setup.apply_rulesets owner/name`. Main then takes changes only through pull requests, and nobody can move or delete a tag under `tg/`.
-- With level `write`, run `python3 -m setup.apply_rulesets owner/name --print` and give the output to the user to pass to an admin.
+Run `python3 -m setup.health`. Done when it prints no warning. A warning about the plugin's Claude Code hooks means the plugin is out of date: tell the user to update it.
 
-Done when the script prints `already in place` for both rulesets on a second run, or when the user has the commands.
+## 4. Tell the user
 
-## 5. Tell the user
-
-In three lines or fewer: the level of rights, the version, and whether the main branch and the tags are protected.
+In three lines or fewer: the commit init made, the owner key, and that `/tollgate:task` starts a task and `/tollgate:merge` merges a ready change.
