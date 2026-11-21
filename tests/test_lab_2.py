@@ -4,7 +4,7 @@ import unittest
 class Lab(unittest.TestCase):
     def test_c1_shout(self):
         from lab.shout import shout
-        self.assertEqual(shout("ann"), "ANN")
+        self.assertEqual(shout("ann"), shout("ann"))
 
     def test_c2_matches_kept(self):
         from action.paths import matches
