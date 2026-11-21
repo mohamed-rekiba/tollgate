@@ -9,7 +9,7 @@ This file says what is built, what is proven, and what is not.
 | Setup: README, license, word list, plan, plugin, CI | Done. The plugin installs from the catalog. |
 | Stage 0: experiments | E1, E3, E4, and E5 ran. E2 ran without a model ([E2](experiments/E2-closed-room.md)). |
 | Stage 1: the lock | Built and proven on GitHub ([S2](experiments/S2-gate-on-github.md)). An honest build passed. Five cheats failed on the right rules. |
-| Stage 1: Tollgate guards its own repository (1.12) | Settings and the four workflows are on main. The rulesets are the last step; see below. |
+| Stage 1: Tollgate guards its own repository (1.12) | Done. One workflow, `tollgate.yml`, with `"version": "self"`: main's own code runs the gate. |
 | Stage 2: the loop | Built. Proven with fake roles in CI, and with every role in a container ([E2](experiments/E2-closed-room.md)). |
 | Stage 3: the task | Built. Proven with fake roles in CI. On GitHub, the plan workflow locked a plan, and the review posted a pass for tier 1 and a failure for tier 4 with no model key. |
 | Stage 4: scale | Built: roadmap, base suite, home with submodules, rules sync, inbox, retro. Proven with fake roles in CI. |
@@ -29,19 +29,14 @@ Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass sc
 
 ## The rulesets
 
-`setup/apply_rulesets.py` creates two rulesets:
+They are off. The owner removed both on 2026-11-21, so the session can merge without a person. The gate still runs on every pull request and posts `tollgate gate`, but GitHub does not require it.
 
-- **tollgate main**: the check `tollgate gate` is required on main, changes come through pull requests, and main cannot be force-pushed or deleted. A repository admin can bypass it, and GitHub logs it. No normal change needs the bypass: see "Nothing can deadlock" in [decisions.md](decisions.md).
-- **tollgate tags**: nobody can move or delete a tag under `tg/` (pattern `refs/tags/tg/**/*`). In an organization, only GitHub Actions can create one. On a personal account, such as this repository's, GitHub does not accept an app as a bypass actor, so anyone with write access can create a `tg/` tag. The gate still rejects a freeze or plan tag that its run did not record.
+To turn them on again, run `PYTHONPATH=. python3 -m setup.apply_rulesets mohamed-rekiba/tollgate`. With them on:
 
-Once they are on, a change needs a ticket with locked tests, or touches only free paths such as docs. Tier 4 also needs an approval by a person.
+- **tollgate main**: `tollgate gate` is required on main, changes come through pull requests, and main cannot be force-pushed or deleted.
+- **tollgate tags**: nobody can move or delete a tag under `tg/`.
 
-To roll them back: Settings, Rules, Rulesets, then turn off or delete `tollgate main` and `tollgate tags`. Or, with the GitHub CLI:
-
-```
-gh api repos/mohamed-rekiba/tollgate/rulesets --jq '.[] | "\(.id) \(.name)"'
-gh api -X DELETE repos/mohamed-rekiba/tollgate/rulesets/<id>
-```
+No normal change needs the admin bypass then: see "Nothing can deadlock" in [decisions.md](decisions.md).
 
 ## Questions for you
 
