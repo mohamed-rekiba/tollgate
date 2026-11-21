@@ -379,9 +379,10 @@ class Driver:
 
     def finish(self, st_: history.Ticket) -> int:
         # The driver's own gate passed on this commit. Nothing on GitHub checks a
-        # tier 3 or 4 change again, so a person merges those.
-        tier = history.replay(read(self.log_path)).tier or 0
-        if not self.settings["auto_merge"] or tier >= 3:
+        # tier 3 or 4 change again, so a person merges those, and any change
+        # whose tier the log does not show.
+        tier = history.replay(read(self.log_path)).tier
+        if not self.settings["auto_merge"] or tier is None or tier >= 3:
             self.log.add("waiting_for_merge", pr=st_.pr)
             return 0
         self.server.merge(st_.pr)

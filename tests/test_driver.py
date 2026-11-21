@@ -245,5 +245,8 @@ class FinishTest(unittest.TestCase):
         self.assertEqual(self.finish(3), ([], "waiting_for_merge"))
         self.assertEqual(self.finish(4), ([], "waiting_for_merge"))
 
+    def test_a_missing_tier_waits_for_a_person(self):
+        self.assertEqual(self.finish(None), ([], "waiting_for_merge"))
+
     def test_no_auto_merge_waits(self):
         self.assertEqual(self.finish(1, auto_merge=False), ([], "waiting_for_merge"))
