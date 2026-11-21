@@ -134,6 +134,18 @@ class PersonAdvisor(Case):
         self.assertEqual(list(server.open_questions()), ["2"])
 
 
+class StrongerBuilder(Case):
+    def test_a_stronger_decision_runs_the_stronger_builder(self):
+        role = f"{sys.executable} {FAKE_ROLE}"
+        self.start(builder="same", extra={"ai": {
+            "builder": f"{role} same", "reviewer": f"{role} ok",
+            "advisor": [f"{role} ok decision=stronger"], "stronger_builder": f"{role} pass1"}})
+        self.assertEqual(run_driver(self.sample).returncode, 0)
+        self.assertEqual(self.count("attempt_failed"), 2)
+        self.assertEqual(self.count("attempt_passed"), 1)
+        self.assertEqual(self.count("pr_opened"), 1)
+
+
 class Guards(Case):
     def test_a_blocking_change_finding_on_tier_2_fails_the_attempt(self):
         self.start(builder="pass2", reviewer="ok block=change",

@@ -140,6 +140,7 @@ class State:
     extra_attempts: int = 0
     ai_decisions: int = 0
     hint: str = ""
+    stronger: bool = False
 
     @classmethod
     def from_events(cls, events: list) -> "State":
@@ -167,6 +168,7 @@ class State:
                 if e["decision"] in ("retry", "stronger"):
                     s.extra_attempts += 1
                     s.hint = e.get("hint", "")
+                    s.stronger = s.stronger or e["decision"] == "stronger"
         return s
 
 
@@ -309,7 +311,11 @@ class Driver:
                   "failed": last[-1].get("failed", []) if last else []}
         self.log.add("attempt_started", attempt=n)
         try:
-            answer = self.role("builder", inputs, self.settings["stop"]["attempt_minutes"])
+            stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
+            answer = self.role("builder", inputs, self.settings["stop"]["attempt_minutes"],
+                               command=stronger or None)
+            if st_.stronger and not stronger:
+                self.log.add("no_stronger_builder", attempt=n)
         except roles.RoleError as err:
             if "ran past" in str(err):
                 raise Stop(f"attempt {n} ran for {self.settings['stop']['attempt_minutes']} "
@@ -417,6 +423,7 @@ class Driver:
                 if found["decision"] in ("retry", "stronger") and st_.frozen:
                     st_.extra_attempts += 1
                     st_.hint = found["hint"]
+                    st_.stronger = st_.stronger or found["decision"] == "stronger"
                     return True
                 self.log.add("parked", reason=f"a person chose {found['decision']}")
                 raise Parked(f"a person chose {found['decision']}")
@@ -433,13 +440,16 @@ class Driver:
             if decision in ("retry", "stronger") and st_.frozen:
                 st_.extra_attempts += 1
                 st_.hint = answer.data.get("hint", "")
+                st_.stronger = st_.stronger or decision == "stronger"
                 return True
             self.log.add("parked", reason=f"advisor chose {decision}")
             raise Parked(f"advisor chose {decision}")
         self.log.add("parked", reason=reason)
         raise Parked(reason)
 
-    def run(self) -> int:
+    def run(self, until: str | None = None) -> int:
+        """until="frozen" stops once the tests are frozen, for a roadmap's checklist."""
+        self.until = until
         lock = TicketLock(os.path.join(self.project, ".tollgate", "run", f"{self.ticket_id}.lock"))
         lock.acquire()
         try:
@@ -470,6 +480,8 @@ class Driver:
                 while not st_.frozen:
                     self.write_tests(st_)
                     self.freeze(st_)
+                if getattr(self, "until", None) == "frozen":
+                    return 0
                 while not st_.passed_commit:
                     self.stop_rules(st_, read(self.log_path))
                     self.attempt(st_)
