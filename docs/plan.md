@@ -325,7 +325,7 @@ Every feature combines these parts. A feature that needs a seventh is redesigned
 
 ### How it is packaged
 
-One repository, tollgate-ai/tollgate, holds both pieces, so they share one version and one manifest format. The plugin is the whole repository. Claude Code copies a plugin's folder on install and nothing outside it, so the Action folder stays inside the plugin.
+One repository, tollgate-ai/tollgate, holds both pieces, so they share one version and one manifest format. The plugin is the whole repository. Claude Code copies a plugin's folder on install and nothing outside it, so the `action/` folder, which holds the gate and the freeze, stays inside the plugin.
 
 | Piece | Holds | Runs |
 | --- | --- | --- |
