@@ -11,7 +11,7 @@ import sys
 import unittest
 
 from driver.log import read
-from tests.fakes import FAKE_ROLE, Sample, run_driver
+from tests.fakes import FAKE_ROLE, LocalServer, Sample, run_driver
 
 
 class Case(unittest.TestCase):
@@ -111,6 +111,27 @@ class StopRules(Case):
         other.write_text(json.dumps({"event": "x", "task": "demo", "cost_usd": 6}) + "\n")
         self.assertEqual(run_driver(self.sample).returncode, 3)
         self.assertIn("the task reached 5 USD", self.stopped()[0])
+
+
+class PersonAdvisor(Case):
+    def test_a_person_answers_on_the_server_and_the_driver_goes_on(self):
+        self.start(builder="same")
+        server = LocalServer(self.sample.bare)
+        self.assertEqual(run_driver(self.sample).returncode, 3)
+        self.assertEqual(list(server.open_questions()), ["1"])
+        self.assertIn("tollgate decide retry", server.open_questions()["1"]["body"])
+        # A user who is not an approver, and a bot, do not count.
+        server.answer(1, "tollgate decide retry", user="stranger")
+        server.answer(1, "tollgate decide retry", user="owner", user_type="Bot")
+        self.assertEqual(run_driver(self.sample).returncode, 3)
+        self.assertEqual(self.count("still_waiting"), 1)
+        server.answer(1, "tollgate decide retry look at shout\n\nfooter")
+        self.assertEqual(run_driver(self.sample).returncode, 3)
+        decided = [e for e in self.events() if e["event"] == "advisor_decided"]
+        self.assertEqual([(d["by"], d["decision"], d["hint"]) for d in decided],
+                         [("person", "retry", "look at shout")])
+        self.assertEqual(self.count("attempt_failed"), 3)
+        self.assertEqual(list(server.open_questions()), ["2"])
 
 
 class Guards(Case):

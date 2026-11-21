@@ -85,5 +85,44 @@ class GitHub(Server):
             return done[0]["conclusion"] if done else None
         return self._wait(probe, "the check tollgate gate")
 
+    def ask(self, title: str, body: str) -> int:
+        try:
+            self.gh.api("POST", f"repos/{self.repository}/labels",
+                        {"name": "tg-waiting", "color": "d4a72c",
+                         "description": "Tollgate waits for a decision by a person"})
+        except GhError:
+            pass  # the label exists
+        return self.gh.api("POST", f"repos/{self.repository}/issues",
+                           {"title": title, "body": body, "labels": ["tg-waiting"]})["number"]
+
+    def issue_comments(self, issue: int) -> list:
+        return [{"user": c["user"]["login"], "user_type": c["user"]["type"],
+                 "body": c.get("body", "")}
+                for c in self.gh.get(f"repos/{self.repository}/issues/{issue}/comments") or []]
+
+    def close_question(self, issue: int) -> None:
+        self.gh.api("PATCH", f"repos/{self.repository}/issues/{issue}",
+                    {"state": "closed", "labels": []})
+
+    def lock_plan(self, task: str) -> str:
+        """Start the plan workflow and wait for a new plan tag."""
+        prefix = f"refs/tags/tg/plan/{task}/"
+
+        def tags():
+            try:
+                refs = self.gh.get(f"repos/{self.repository}/git/matching-refs/tags/tg/plan/{task}")
+            except GhError:
+                return set()
+            return {r["ref"] for r in refs or [] if r["ref"].startswith(prefix)}
+        before = tags()
+        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate-plan.yml/"
+                    "dispatches", {"ref": "main", "inputs": {"task": task}})
+
+        def probe():
+            new = tags() - before
+            return max(new, key=lambda r: int(r.rsplit("/", 1)[1])).removeprefix("refs/tags/") \
+                if new else None
+        return self._wait(probe, f"a plan tag for {task}")
+
     def merge(self, pr: int) -> None:
         self.gh.api("PUT", f"repos/{self.repository}/pulls/{pr}/merge", {"merge_method": "squash"})

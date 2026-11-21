@@ -4,3 +4,5 @@ __pycache__/
 .tollgate/logs/
 .tollgate/work/
 .tollgate/run/
+.tollgate/reports/
+.tollgate/requests/

@@ -6,7 +6,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from action import checks, freeze, prepare
+from action import checks, freeze, plantag, prepare
 from action import manifest as mf
 from action import settings as st
 from tests.helpers import sh
@@ -80,6 +80,7 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", extr
         "checks": {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"}},
         "harness": ["run_tests.py"],
         "require_plan": False,
+        "approvers": ["owner"],
         "sandbox": "container" if image else "none",
         "container_image": image,
         "ai": {"builder": f"{role} {builder}",
@@ -156,18 +157,67 @@ class LocalServer:
             Path(d, "results.json").write_text(results.to_json())
             run_id = str(len(self.runs) + 1)
             name, message = freeze.message(d, ticket, commit, str(Path(d, "results.json")), run_id)
-            runs = self.runs
-            runs[run_id] = [ticket, mf.loads(message)]
-            self.runs_file.write_text(json.dumps(runs))
+            self._record(run_id, f"tollgate freeze {ticket}", ".github/workflows/tollgate-freeze.yml",
+                         mf.loads(message))
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
             sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
         self.freezes += 1
         return name
 
+    def _record(self, run_id, title, path, manifest):
+        runs = self.runs
+        runs[run_id] = [title, path, manifest]
+        self.runs_file.write_text(json.dumps(runs))
+
     def run(self, run_id):
-        ticket, manifest = self.runs[str(run_id)]
-        return dict(GOOD_RUN, title=f"tollgate freeze {ticket}", manifest=manifest)
+        title, path, manifest = self.runs[str(run_id)]
+        return dict(GOOD_RUN, title=title, path=path, manifest=manifest)
+
+    def lock_plan(self, task: str) -> str:
+        with tempfile.TemporaryDirectory() as d:
+            sh(d, "git", "clone", "-q", str(self.bare), ".")
+            sh(d, "git", "fetch", "-q", "origin", f"refs/heads/tg-plan/{task}")
+            commit = sh(d, "git", "rev-parse", "FETCH_HEAD").strip()
+            run_id = str(len(self.runs) + 1)
+            name, message = plantag.message(d, task, commit, run_id)
+            Path(d, "msg").write_text(message)
+            sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
+            sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
+        self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate-plan.yml",
+                     mf.loads(message))
+        return name
+
+    # Questions to a person: kept in a file next to the bare repository.
+    @property
+    def _questions(self) -> Path:
+        return Path(self.bare, "tollgate-questions.json")
+
+    def _load(self) -> dict:
+        return json.loads(self._questions.read_text()) if self._questions.exists() else {}
+
+    def ask(self, title, body):
+        q = self._load()
+        number = len(q) + 1
+        q[str(number)] = {"title": title, "body": body, "comments": [], "open": True}
+        self._questions.write_text(json.dumps(q))
+        return number
+
+    def answer(self, issue, body, user="owner", user_type="User"):
+        q = self._load()
+        q[str(issue)]["comments"].append({"user": user, "user_type": user_type, "body": body})
+        self._questions.write_text(json.dumps(q))
+
+    def issue_comments(self, issue):
+        return self._load()[str(issue)]["comments"]
+
+    def close_question(self, issue):
+        q = self._load()
+        q[str(issue)]["open"] = False
+        self._questions.write_text(json.dumps(q))
+
+    def open_questions(self) -> dict:
+        return {k: v for k, v in self._load().items() if v["open"]}
 
     def pull(self, pr):
         return {"author": "owner", "head": ""}
@@ -208,3 +258,16 @@ def run_driver(sample: Sample, ticket="T-1") -> subprocess.CompletedProcess:
     env["PYTHONPATH"] = str(root)
     return subprocess.run([sys.executable, "-c", code], cwd=root, env=env,
                           capture_output=True, text=True, timeout=300, check=False)
+
+
+def run_task(sample: Sample, task="demo", request="Add shout and whisper.") -> subprocess.CompletedProcess:
+    """Run the task loop as its own process with the local server."""
+    code = ("import sys; from driver.task import main; from tests.fakes import LocalServer; "
+            "from pathlib import Path; "
+            f"sys.exit(main(['--project', {str(sample.project)!r}, '--task', {task!r}, "
+            f"'--request', {request!r}], server=LocalServer(Path({str(sample.bare)!r}))))")
+    root = Path(__file__).resolve().parent.parent
+    env = driver_env(sample)
+    env["PYTHONPATH"] = str(root)
+    return subprocess.run([sys.executable, "-c", code], cwd=root, env=env,
+                          capture_output=True, text=True, timeout=600, check=False)
