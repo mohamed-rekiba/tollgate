@@ -35,7 +35,7 @@ jobs:
         run: |
           git fetch --no-tags origin "refs/heads/tg-plan/$TASK"
           echo "commit=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@7725500d7691ff129079438d98718a6201556c6b
         with:
           command: plantag
           args: >-
