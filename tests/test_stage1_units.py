@@ -184,6 +184,16 @@ class ChecksTest(unittest.TestCase):
             s = settings.parse('{"checks": {"env": {"run": "test -z \\"$PYTHONPATH\\""}}}')
             self.assertEqual(checks.run(s, d).failed_checks(), [])
 
+    def test_project_commands_see_no_token(self):
+        import os
+        for name in ("GH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"):
+            os.environ[name] = "secret"
+            self.addCleanup(os.environ.pop, name, None)
+        with tempfile.TemporaryDirectory() as d:
+            s = settings.parse(json.dumps({"checks": {"env": {
+                "run": 'test -z "$GH_TOKEN" && test -z "$CLAUDE_CODE_OAUTH_TOKEN"'}}}))
+            self.assertEqual(checks.run(s, d).failed_checks(), [])
+
     def test_a_check_past_its_time_limit_fails(self):
         with tempfile.TemporaryDirectory() as d:
             s = settings.parse('{"checks": {"slow": {"run": "sleep 5", "minutes": 0.01}}}')

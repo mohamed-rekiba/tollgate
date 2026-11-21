@@ -20,7 +20,7 @@ from action import plan as pl
 from action import settings as st
 from action import tickets as tk
 from driver import advisor, report, roles
-from driver.driver import Busy, Driver, Parked, TicketLock, git
+from driver.driver import Busy, Driver, Parked, TicketLock, git, push
 from driver.log import Log, read
 
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
@@ -146,7 +146,7 @@ class Task:
     def lock_plan(self):
         git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets")
         git(self.copy, "commit", "-q", "--allow-empty", "-m", f"plan {self.id}")
-        git(self.copy, "push", "-q", "-f", "origin", f"HEAD:refs/heads/tg-plan/{self.id}")
+        push(self.copy, "-q", "-f", "origin", f"HEAD:refs/heads/tg-plan/{self.id}")
         tag = self.server.lock_plan(self.id)
         self.log.add("plan_locked", tag=tag, commit=git(self.copy, "rev-parse", "HEAD"))
 

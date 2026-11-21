@@ -180,13 +180,42 @@ def status(project: str) -> str:
     return "\n".join(lines)
 
 
+def logs_from_branch(project: str, branch: str) -> str:
+    """Copy the project's plans and the logs and reports on `branch` into a new folder,
+    and return it. The driver on GitHub pushes its logs to that branch."""
+    import shutil
+    import subprocess
+    import tempfile
+    out = tempfile.mkdtemp(prefix="tollgate-status-")
+    plans = Path(project, ".tollgate", "plans")
+    if plans.exists():
+        shutil.copytree(plans, Path(out, ".tollgate", "plans"))
+    subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=project, check=False,
+                   capture_output=True)
+    ref = f"origin/{branch}"
+    files = subprocess.run(["git", "ls-tree", "-r", "--name-only", ref, ".tollgate"], cwd=project,
+                           capture_output=True, text=True, check=False).stdout.split()
+    for name in files:
+        if name.startswith((".tollgate/logs/", ".tollgate/reports/", ".tollgate/plans/")):
+            data = subprocess.run(["git", "show", f"{ref}:{name}"], cwd=project,
+                                  capture_output=True, check=False).stdout
+            target = Path(out, name)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+    return out
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="tollgate report", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--task")
     parser.add_argument("--brief", action="store_true", help="only done and still to do")
+    parser.add_argument("--logs-branch", help="read the logs from this branch, such as "
+                        "tollgate-logs, where the driver on GitHub keeps them")
     args = parser.parse_args(argv)
+    if args.logs_branch:
+        args.project = logs_from_branch(args.project, args.logs_branch)
     if args.brief:
         print(brief(args.project, args.task))
     elif args.task:

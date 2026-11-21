@@ -4,7 +4,9 @@
 # .tollgate/runner/, for an organization that allows only local actions), or a
 # full commit id of Tollgate.
 #
-# Started by hand (workflow_dispatch): a freeze or a plan lock.
+# Started by hand (workflow_dispatch): a freeze, a plan lock, a task run by the
+# driver on GitHub (task), the same request built by Claude Code alone (plain),
+# the gate for one pull request (check), or the closed-room check (e2).
 # On a pull request into main, or a comment "tollgate check" or "tollgate approve":
 # the tests, then the review, then the gate, which posts "tollgate gate".
 # A job that runs the change has a read-only token, no secrets, and no saved token.
@@ -17,13 +19,19 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: freeze or plan
+        description: What to run
         required: true
         type: choice
-        options: [freeze, plan]
+        options: [freeze, plan, task, plain, check, e2]
       id:
-        description: The ticket id (freeze) or task id (plan).
+        description: >-
+          The ticket id (freeze), task id (plan, task, plain), pull request number
+          (check), or a run name (e2).
         required: true
+      request:
+        description: The request in plain words (task, plain).
+        required: false
+        default: ""
   pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened]
@@ -222,10 +230,355 @@ jobs:
           name: tollgate-manifest
           path: ${{ runner.temp }}/tag.txt
           retention-days: 90
+  # The driver on GitHub: plan, freeze, build, and open pull requests. Each role
+  # runs in a container that gets only the model access. The driver pushes from
+  # outside it, with the token passed to each push alone.
+  task:
+    if: github.event_name == 'workflow_dispatch' && inputs.kind == 'task'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      checks: read
+    steps:
+      - name: Refuse a run outside main, a bad id, or no request
+        env:
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+          [[ "$KIND" == e2 || -n "$REQUEST" ]] || { echo "give a request"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: mohamed-rekiba/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - name: Build the builder's image
+        # Claude Code, git, and Python for the project's tests. No credentials go in.
+        run: |
+          mkdir -p "$RUNNER_TEMP/image"
+          cat > "$RUNNER_TEMP/image/Dockerfile" <<'DOCKERFILE'
+          FROM node:22-slim
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates \
+           && rm -rf /var/lib/apt/lists/* \
+           && pip3 install --no-cache-dir --break-system-packages pytest pyyaml ruff \
+           && npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
+          DOCKERFILE
+          docker build -q -t tollgate-builder:ci "$RUNNER_TEMP/image"
+      - name: Run the driver
+        env:
+          PYTHONPATH: ${{ steps.code.outputs.path }}
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+        run: |
+          printf '%s\n' "$REQUEST" > "$RUNNER_TEMP/request.md"
+          git config --global user.name "tollgate driver"
+          git config --global user.email "tollgate@users.noreply.github.com"
+          started=$(date +%s)
+          set +e
+          python3 -P -m driver.task --project main --task "$ID" \
+            --request-file "$RUNNER_TEMP/request.md" --repository "$GITHUB_REPOSITORY"
+          code=$?
+          echo "driver ended with $code after $(( ($(date +%s) - started) / 60 )) minutes"
+          python3 -P -m driver.report --project main --task "$ID" >/dev/null || true
+          python3 -P -m driver.report --project main --brief >> "$GITHUB_STEP_SUMMARY" || true
+          [ "$code" = 0 ] || [ "$code" = 3 ]
+      - name: Keep the logs on the branch tollgate-logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          src="$GITHUB_WORKSPACE/main/.tollgate"
+          dst="$RUNNER_TEMP/logs-branch"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          url="https://github.com/$GITHUB_REPOSITORY"
+          if git -c "http.extraheader=$auth" clone -q --depth 1 -b tollgate-logs "$url" "$dst" 2>/dev/null; then :; else
+            git init -q -b tollgate-logs "$dst"
+            git -C "$dst" remote add origin "$url"
+          fi
+          mkdir -p "$dst/.tollgate"
+          for part in logs reports plans; do
+            [ -d "$src/$part" ] && cp -r "$src/$part" "$dst/.tollgate/"
+          done
+          cd "$dst"
+          git add -A
+          git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+            commit -q -m "logs: $KIND $ID" || exit 0
+          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tollgate-${{ inputs.kind }}-${{ inputs.id }}
+          path: |
+            main/.tollgate/logs
+            main/.tollgate/reports
+          if-no-files-found: ignore
+  # The same request, built by Claude Code alone in the same container, for the
+  # comparison in docs/plan.md, "How we will know it works".
+  plain:
+    if: github.event_name == 'workflow_dispatch' && inputs.kind == 'plain'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Refuse a run outside main, a bad id, or no request
+        env:
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+          [[ "$KIND" == e2 || -n "$REQUEST" ]] || { echo "give a request"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Tollgate's code
+        id: code
+        run: |
+          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
+          if [[ "$v" == self ]]; then
+            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
+            echo "ref=$v" >> "$GITHUB_OUTPUT"
+          else
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
+            exit 1
+          fi
+      - if: steps.code.outputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: mohamed-rekiba/tollgate
+          ref: ${{ steps.code.outputs.ref }}
+          path: tollgate
+          persist-credentials: false
+      - name: Build the builder's image
+        # Claude Code, git, and Python for the project's tests. No credentials go in.
+        run: |
+          mkdir -p "$RUNNER_TEMP/image"
+          cat > "$RUNNER_TEMP/image/Dockerfile" <<'DOCKERFILE'
+          FROM node:22-slim
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates \
+           && rm -rf /var/lib/apt/lists/* \
+           && pip3 install --no-cache-dir --break-system-packages pytest pyyaml ruff \
+           && npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
+          DOCKERFILE
+          docker build -q -t tollgate-builder:ci "$RUNNER_TEMP/image"
+      - name: Build with Claude Code alone
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+        run: |
+          work="$RUNNER_TEMP/plain"
+          git clone -q main "$work"
+          git -C "$work" checkout -q -B "plain/$ID" origin/main
+          access=()
+          for name in ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN; do
+            [ -n "${!name}" ] && access+=(-e "$name")
+          done
+          started=$(date +%s)
+          printf 'Make this change in the repository in the current folder, and run its tests.\n\n%s\n' "$REQUEST" |
+            docker run --rm -i --user "$(id -u):$(id -g)" -v "$work:/work" -w /work \
+              "${access[@]}" -e HOME=/tmp tollgate-builder:ci \
+              claude -p --output-format json --allowedTools "Read,Grep,Glob,Write,Edit,Bash" \
+              > "$RUNNER_TEMP/plain.json" || true
+          minutes=$(( ($(date +%s) - started) / 60 ))
+          cd "$work"
+          if git status --porcelain | grep -q ' \.github/'; then echo "a change under .github"; exit 1; fi
+          git add -A
+          git -c user.name="tollgate plain" -c user.email="tollgate@users.noreply.github.com" \
+            commit -q -m "plain: $ID" || { echo "no change"; exit 1; }
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=$auth" push -q -f "https://github.com/$GITHUB_REPOSITORY" "HEAD:refs/heads/plain/$ID"
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls" -f title="plain: $ID (Claude Code alone)" \
+               -f head="plain/$ID" -f base=main -f body="The plain arm of the comparison for $ID." --jq .number)
+          gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/tollgate.yml/dispatches" \
+            -f ref=main -f inputs[kind]=check -f "inputs[id]=$pr"
+          mkdir -p "$GITHUB_WORKSPACE/main/.tollgate/logs"
+          jq --arg id "$ID" --arg pr "$pr" --argjson minutes "$minutes" \
+            '{id: $id, pr: ($pr|tonumber), minutes: $minutes, cost_usd: .total_cost_usd, turns: .num_turns, is_error: .is_error}' \
+            "$RUNNER_TEMP/plain.json" > "$GITHUB_WORKSPACE/main/.tollgate/logs/plain-$ID.json"
+          cat "$GITHUB_WORKSPACE/main/.tollgate/logs/plain-$ID.json" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the logs on the branch tollgate-logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          src="$GITHUB_WORKSPACE/main/.tollgate"
+          dst="$RUNNER_TEMP/logs-branch"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          url="https://github.com/$GITHUB_REPOSITORY"
+          if git -c "http.extraheader=$auth" clone -q --depth 1 -b tollgate-logs "$url" "$dst" 2>/dev/null; then :; else
+            git init -q -b tollgate-logs "$dst"
+            git -C "$dst" remote add origin "$url"
+          fi
+          mkdir -p "$dst/.tollgate"
+          for part in logs reports plans; do
+            [ -d "$src/$part" ] && cp -r "$src/$part" "$dst/.tollgate/"
+          done
+          cd "$dst"
+          git add -A
+          git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+            commit -q -m "logs: $KIND $ID" || exit 0
+          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tollgate-${{ inputs.kind }}-${{ inputs.id }}
+          path: |
+            main/.tollgate/logs
+            main/.tollgate/reports
+          if-no-files-found: ignore
+  # Experiment E2, the model half: Claude Code in the closed container.
+  e2:
+    if: github.event_name == 'workflow_dispatch' && inputs.kind == 'e2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse a run outside main, a bad id, or no request
+        env:
+          ID: ${{ inputs.id }}
+          REQUEST: ${{ inputs.request }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+          [[ "$KIND" == e2 || -n "$REQUEST" ]] || { echo "give a request"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build the builder's image
+        # Claude Code, git, and Python for the project's tests. No credentials go in.
+        run: |
+          mkdir -p "$RUNNER_TEMP/image"
+          cat > "$RUNNER_TEMP/image/Dockerfile" <<'DOCKERFILE'
+          FROM node:22-slim
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends git python3 python3-pip ca-certificates \
+           && rm -rf /var/lib/apt/lists/* \
+           && pip3 install --no-cache-dir --break-system-packages pytest pyyaml ruff \
+           && npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
+          DOCKERFILE
+          docker build -q -t tollgate-builder:ci "$RUNNER_TEMP/image"
+      - name: Run the closed room
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ID: ${{ inputs.id }}
+        run: |
+          work="$RUNNER_TEMP/room"
+          git clone -q main "$work"
+          git -C "$work" remote set-url origin "https://github.com/$GITHUB_REPOSITORY"
+          access=()
+          for name in ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN; do
+            [ -n "${!name}" ] && access+=(-e "$name")
+          done
+          run() { docker run --rm -i --user "$(id -u):$(id -g)" -v "$work:/work" -w /work "${access[@]}" -e HOME=/tmp tollgate-builder:ci "$@"; }
+          echo "Add the line 'e2 was here' to the end of README.md." |
+            run claude -p --output-format json --allowedTools "Read,Edit,Write" > "$RUNNER_TEMP/out.json" || true
+          parsed=$(jq -e 'has("result")' "$RUNNER_TEMP/out.json" >/dev/null 2>&1 && echo true || echo false)
+          cost=$(jq -r '.total_cost_usd // "none"' "$RUNNER_TEMP/out.json" 2>/dev/null || echo none)
+          changed=$(grep -q "e2 was here" "$work/README.md" && echo true || echo false)
+          pushed=$(run sh -c 'git -c user.name=x -c user.email=x@x commit -qam e2 && GIT_TERMINAL_PROMPT=0 git push -q origin HEAD:refs/heads/tg-lab/e2-escape' >/dev/null 2>&1 && echo true || echo false)
+          tokens=$(run sh -c 'env | grep -c -E "^(GH_TOKEN|GITHUB_TOKEN)="' || true)
+          mkdir -p "$GITHUB_WORKSPACE/main/.tollgate/logs"
+          jq -n --arg id "$ID" --argjson parsed "$parsed" --arg cost "$cost" --argjson changed "$changed" \
+            --argjson pushed "$pushed" --arg tokens "$tokens" \
+            '{id: $id, output_parsed: $parsed, cost_usd: $cost, file_changed: $changed, push_from_inside_succeeded: $pushed, github_tokens_inside: $tokens}' \
+            | tee "$GITHUB_WORKSPACE/main/.tollgate/logs/e2-$ID.json" >> "$GITHUB_STEP_SUMMARY"
+          [ "$parsed" = true ] && [ "$changed" = true ] && [ "$pushed" = false ]
+      - name: Keep the logs on the branch tollgate-logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+          KIND: ${{ inputs.kind }}
+        run: |
+          src="$GITHUB_WORKSPACE/main/.tollgate"
+          dst="$RUNNER_TEMP/logs-branch"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          url="https://github.com/$GITHUB_REPOSITORY"
+          if git -c "http.extraheader=$auth" clone -q --depth 1 -b tollgate-logs "$url" "$dst" 2>/dev/null; then :; else
+            git init -q -b tollgate-logs "$dst"
+            git -C "$dst" remote add origin "$url"
+          fi
+          mkdir -p "$dst/.tollgate"
+          for part in logs reports plans; do
+            [ -d "$src/$part" ] && cp -r "$src/$part" "$dst/.tollgate/"
+          done
+          cd "$dst"
+          git add -A
+          git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+            commit -q -m "logs: $KIND $ID" || exit 0
+          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tollgate-${{ inputs.kind }}-${{ inputs.id }}
+          path: |
+            main/.tollgate/logs
+            main/.tollgate/reports
+          if-no-files-found: ignore
   # A pull request: find it, and check its branch name.
   find:
     if: >-
       github.event_name == 'pull_request_target' ||
+      (github.event_name == 'workflow_dispatch' && inputs.kind == 'check') ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
        (startsWith(github.event.comment.body, 'tollgate approve ') ||
         startsWith(github.event.comment.body, 'tollgate check')))
@@ -241,8 +594,9 @@ jobs:
       - id: pr
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.id }}
         run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || exit 1
           data="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")"
           # Only a pull request into the main branch gets a gate result.
           if [[ "$(jq -r .base.ref <<<"$data")" != main ]]; then exit 0; fi
