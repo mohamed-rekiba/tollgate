@@ -41,7 +41,7 @@ def ticket_row(events: list) -> dict:
                   if e["event"] == "waiting_for_advisor" and e.get("issue")), None)
     return {"issue": issue,"ticket": events[0].get("ticket", "?") if events else "?", "state": state,
             "tier": tier, "attempts": len(attempts), "score": best if best >= 0 else None,
-            "cost_usd": cost_of(events), "pr": pr, "reason": reason,
+            "cost_usd": cost_of(events), "minutes": _minutes(events), "pr": pr, "reason": reason,
             "task": events[0].get("task", "") if events else ""}
 
 
@@ -78,11 +78,11 @@ def render(project: str, task: str) -> str:
              ""]
     if waiting:
         lines += [f"The task waits: {waiting[-1]['reason']}", ""]
-    lines += ["| Ticket | State | Tier | Attempts | Score | Cost USD | Pull request | Why |",
-              "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    lines += ["| Ticket | State | Tier | Attempts | Score | Cost USD | Minutes | Pull request | Why |",
+              "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in tickets:
         lines.append(f"| {r['ticket']} | {r['state']} | {r['tier'] or ''} | {r['attempts']} | "
-                     f"{'' if r['score'] is None else r['score']} | {r['cost_usd']} | "
+                     f"{'' if r['score'] is None else r['score']} | {r['cost_usd']} | {r['minutes']} | "
                      f"{'#' + str(r['pr']) if r['pr'] else ''} | {r['reason']} |")
     advisor_events = [e for e in all_events if e["event"] in ("waiting_for_advisor",
                                                               "advisor_decided")]
@@ -168,12 +168,12 @@ def status(project: str) -> str:
     found = rows(project)
     if not found:
         return "Tollgate: no tickets have run in this project yet."
-    lines = [brief(project), "", "Details", "", "| Task | Ticket | State | Tier | Attempts | Score | Cost USD | Pull request |",
-             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    lines = [brief(project), "", "Details", "", "| Task | Ticket | State | Tier | Attempts | Score | Cost USD | Minutes | Pull request |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in found:
         lines.append(f"| {r['task']} | {r['ticket']} | {r['state']} | {r['tier'] or ''} | "
                      f"{r['attempts']} | {'' if r['score'] is None else r['score']} | "
-                     f"{r['cost_usd']} | {'#' + str(r['pr']) if r['pr'] else ''} |")
+                     f"{r['cost_usd']} | {r['minutes']} | {'#' + str(r['pr']) if r['pr'] else ''} |")
     waiting = [r for r in found if r["state"] in ("waits for a person", "parked")]
     if waiting:
         lines += ["", "Waiting for a decision:"] + [f"- {r['ticket']}: {r['reason']}" for r in waiting]
