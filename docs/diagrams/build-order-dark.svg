@@ -2,11 +2,12 @@
 <title id="title">The build order in five stages</title>
 <desc id="desc">Stage 0, experiments: the design holds. Stage 1, the lock: you protect a change by hand. Stage 2, the loop: Tollgate builds one ticket. Stage 3, the task: you give a task and read a report. Stage 4, scale: large requests and many projects.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
+<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}}</style>
 <rect x="-22" y="-22" width="278" height="604" fill="#0d1117"/>
-<path d="M117.2,80.0 L117.2,120.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path d="M117.2,200.0 L117.2,240.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path d="M117.2,320.0 L117.2,360.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path d="M117.2,440.0 L117.2,480.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M117.2,80.0 L117.2,120.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M117.2,200.0 L117.2,240.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M117.2,320.0 L117.2,360.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M117.2,440.0 L117.2,480.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <rect x="0.0" y="0.0" width="234.4" height="80.0" rx="10" fill="#151b23" stroke="#9198a1" stroke-opacity="0.55" stroke-width="1"/>
 <clipPath id="clip0"><rect x="0.0" y="0.0" width="234.4" height="80.0" rx="10"/></clipPath>
 <rect x="0.0" y="0.0" width="4" height="80.0" fill="#9198a1" clip-path="url(#clip0)"/>

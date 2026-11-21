@@ -57,6 +57,10 @@ class TestDiagrams(unittest.TestCase):
                 self.assertIsNone(re.search(r"\son[a-z]+\s*=", text), "event attribute")
                 self.assertNotIn("prefers-color-scheme", text)
                 self.assertIsNone(re.search(r"(href|src)=\"(https?:|//)", text), "external file")
+                self.assertNotIn("@import", text)
+                self.assertIsNone(re.search(r"url\(\s*['\"]?(https?:|//)", text), "external file")
+                if "@keyframes" in text or "<animate" in text:
+                    self.assertIn("prefers-reduced-motion", text, "motion must stop on request")
 
     def test_light_and_dark_twins(self):
         for path in DIAGRAMS.glob("*.svg"):

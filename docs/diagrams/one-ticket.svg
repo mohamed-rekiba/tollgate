@@ -2,12 +2,13 @@
 <title id="title">How one ticket is built</title>
 <desc id="desc">The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
+<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}}</style>
 <rect x="-22" y="-22" width="892" height="256" fill="#ffffff"/>
-<path d="M202.0,40.0 L322.8,40.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path d="M524.8,40.0 L645.6,40.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
-<path d="M423.8,80.0 L423.8,132.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
-<path d="M322.8,172.0 L113.0,172.0 Q101.0,172.0 101.0,160.0 L101.0,80.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path d="M524.8,172.0 L645.6,172.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 5" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M202.0,40.0 L322.8,40.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M524.8,40.0 L645.6,40.0" fill="none" stroke="#1a7f37" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<path class="main" d="M423.8,80.0 L423.8,132.0" fill="none" stroke="#cf222e" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="main" d="M322.8,172.0 L113.0,172.0 Q101.0,172.0 101.0,160.0 L101.0,80.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="side" d="M524.8,172.0 L645.6,172.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <rect x="0.0" y="0.0" width="202.0" height="80.0" rx="10" fill="#f9f6ff" stroke="#8250df" stroke-opacity="0.55" stroke-width="1" filter="url(#shadow)"/>
 <clipPath id="clip0"><rect x="0.0" y="0.0" width="202.0" height="80.0" rx="10"/></clipPath>
 <rect x="0.0" y="0.0" width="4" height="80.0" fill="#8250df" clip-path="url(#clip0)"/>

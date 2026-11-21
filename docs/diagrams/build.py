@@ -27,6 +27,9 @@ The design:
 - "loop" draws an arrow that goes back, out to one side in its own lane, so
   loops never cross each other's labels.
 - "tone" colors an arrow and its label: green for pass, red for fail.
+- Arrows are dotted, and the dots move the way the arrow points. "dashed" makes
+  a side path: longer dashes that move slower. With "reduce motion" set, the
+  arrows stay still.
 
 The output is plain SVG: real text, a viewBox, role="img" with a title and a
 description named by aria-labelledby, no scripts, and no external files.
@@ -45,6 +48,16 @@ FONT = ("-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, 
 TITLE, SUB, EYEBROW, LABEL = 15, 13, 10.5, 12
 PAD_X, PAD_Y, STRIPE, RADIUS = 18, 14, 4, 10
 MIN_W, GAP_X, GAP_Y, MARGIN = 170, 48, 40, 22
+# Arrows are dotted, and the dots move the way the arrow points. A side path
+# has longer dashes and moves slower. Readers who ask for less motion get still
+# arrows. CSS only: no script, so it runs where SVG shows as an image.
+MOTION = (
+    ".main{stroke-width:3;stroke-dasharray:0 8;animation:flow 0.8s linear infinite}"
+    ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
+    "@keyframes flow{to{stroke-dashoffset:-8}}"
+    "@keyframes side{to{stroke-dashoffset:-12}}"
+    "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}}"
+)
 KIND_NAMES = {"you": "YOU", "ai": "AI", "server": "SERVER", "check": "CHECK",
               "advisor": "ADVISOR"}
 
@@ -229,9 +242,9 @@ def draw(spec, theme):
         tone = e.get("tone")
         color = t["tones"].get(tone, t["edge"])
         marker = f"arrow-{tone or 'plain'}"
-        dash = ' stroke-dasharray="5 5"' if e.get("dashed") else ""
-        edges.append(f'<path d="{rounded(pts)}" fill="none" stroke="{color}" stroke-width="1.6" '
-                     f'stroke-linecap="round" stroke-linejoin="round"{dash} '
+        flow = "side" if e.get("dashed") else "main"
+        edges.append(f'<path class="{flow}" d="{rounded(pts)}" fill="none" stroke="{color}" '
+                     f'stroke-linecap="round" stroke-linejoin="round" '
                      f'marker-end="url(#{marker})"/>')
         if e.get("label"):
             w, h = label_size(e["label"])
@@ -293,6 +306,7 @@ def draw(spec, theme):
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
         f'<defs>{"".join(markers)}{shadow}</defs>',
+        f"<style>{MOTION}</style>",
         # A full square: no corner is see-through, whatever the page behind it.
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
     ]

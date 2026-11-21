@@ -40,7 +40,8 @@ The test checks each of these on every SVG file in the repo.
 - Text is real `<text>`, never a path. Search and copy then work.
 - No `<script>`, no `<foreignObject>`, no event attributes, no external file. GitHub strips them, and they are a risk.
 - Text has a contrast of 4.5 to 1 or more on its fill, and lines 3 to 1 or more on the page, in both themes. The colors in `build.py` meet this. Do not change them without checking.
-- Do not rely on color alone. A colored arrow has a label, a side path is dashed, and each box names its actor.
+- Do not rely on color alone. A colored arrow has a label, a side path has long dashes and the main path has dots, and each box names its actor.
+- Motion shows direction only. The arrows are dotted and the dots move the way they point, by CSS in the SVG. Every animation stops under `prefers-reduced-motion`. No other motion.
 - Do not put `prefers-color-scheme` inside the SVG. Browsers ignore it when the SVG is an image. Use the two files and the `picture` element.
 
 ## When the generator cannot draw it
