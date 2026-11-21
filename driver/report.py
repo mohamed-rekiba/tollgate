@@ -37,7 +37,9 @@ def ticket_row(events: list) -> dict:
     reason = next((e.get("reason", "") for e in reversed(events)
                    if e["event"] in ("parked", "waiting_for_advisor", "stopped")), "")
     tier = next((e["tier"] for e in reversed(attempts) if "tier" in e), None)
-    return {"ticket": events[0].get("ticket", "?") if events else "?", "state": state,
+    issue = next((e["issue"] for e in reversed(events)
+                  if e["event"] == "waiting_for_advisor" and e.get("issue")), None)
+    return {"issue": issue,"ticket": events[0].get("ticket", "?") if events else "?", "state": state,
             "tier": tier, "attempts": len(attempts), "score": best if best >= 0 else None,
             "cost_usd": cost_of(events), "pr": pr, "reason": reason,
             "task": events[0].get("task", "") if events else ""}
@@ -69,7 +71,7 @@ def render(project: str, task: str) -> str:
     plan_cost = cost_of(task_events)
     total = round(plan_cost + sum(r["cost_usd"] for r in tickets), 4)
     waiting = [e for e in task_events if e["event"] == "task_waiting"]
-    lines = [f"# Report: task {task}", "",
+    lines = [f"# Report: task {task}", "", brief(project, task), "", "## Details", "",
              f"- Cost: {total} USD ({plan_cost} USD for the plan).",
              f"- Time: {_minutes(all_events)} minutes from the first event to the last.",
              f"- Plan: {'locked' if any(e['event'] == 'plan_locked' for e in task_events) else 'not locked'}.",
@@ -97,11 +99,76 @@ def write(project: str, task: str) -> str:
     return str(path)
 
 
+def _planned(project: str, task: str) -> list:
+    """The ticket ids the task's plan lists, in build order, or [] with no plan."""
+    from action import plan as pl
+    path = Path(project, pl.plan_path(task))
+    try:
+        return pl.parse(path.read_text()).tickets
+    except (OSError, pl.PlanError):
+        return []
+
+
+def _sentence(text: str) -> str:
+    text = (text or "").strip()
+    return (text[:1].upper() + text[1:] + ("" if text.endswith(".") else ".")) if text else ""
+
+
+def progress(project: str, task: str | None = None) -> tuple:
+    """Return (done, still_to_do): two lists of short sentences for a person."""
+    done, todo = [], []
+    tasks = [task] if task else sorted({r["task"] for r in rows(project) if r["task"]} | {
+        p.name[len("task-"):-len(".jsonl")] for p in logs_dir(project).glob("task-*.jsonl")})
+    for t in tasks:
+        task_events = read(str(logs_dir(project) / f"task-{t}.jsonl"))
+        kinds = [e["event"] for e in task_events]
+        if "plan_locked" in kinds:
+            done.append(f"Plan for {t}: approved and locked.")
+        elif task_events:
+            asked = next((e for e in reversed(task_events)
+                          if e["event"] == "waiting_for_advisor" and e.get("issue")), None)
+            if asked and not any(e["event"] == "advisor_decided" and e.get("issue") == asked["issue"]
+                                 for e in task_events):
+                todo.append(f"Plan for {t}: waits for your approval in issue #{asked['issue']}.")
+            else:
+                todo.append(f"Plan for {t}: being written and reviewed.")
+        seen = set()
+        for r in rows(project, t):
+            seen.add(r["ticket"])
+            name, pr = r["ticket"], f"pull request #{r['pr']}" if r["pr"] else ""
+            if r["state"] == "merged":
+                done.append(f"{name}: merged ({pr}).")
+            elif r["state"] == "pull request open":
+                need = " It needs your approval: tier 4." if r["tier"] == 4 else ""
+                todo.append(f"{name}: built, {pr} waits to merge.{need}")
+            elif r["state"] == "waits for a person":
+                where = f" in issue #{r['issue']}" if r["issue"] else ""
+                todo.append(f"{name}: waits for your decision{where}. {_sentence(r['reason'])}".strip())
+            elif r["state"] == "parked":
+                todo.append(f"{name}: parked. {_sentence(r['reason'])}".strip())
+            elif r["state"] == "building":
+                todo.append(f"{name}: being built, attempt {r['attempts'] + 1}.")
+            else:
+                todo.append(f"{name}: {r['state']}.")
+        for tid in _planned(project, t):
+            if tid not in seen:
+                todo.append(f"{tid}: not started.")
+    return done, todo
+
+
+def brief(project: str, task: str | None = None) -> str:
+    """Done and still to do, as two short lists a person reads in seconds."""
+    done, todo = progress(project, task)
+    lines = ["Done"] + [f"- {d}" for d in done or ["Nothing yet."]]
+    lines += ["", "Still to do"] + [f"- {t}" for t in todo or ["Nothing. Everything is done."]]
+    return "\n".join(lines)
+
+
 def status(project: str) -> str:
     found = rows(project)
     if not found:
         return "Tollgate: no tickets have run in this project yet."
-    lines = ["| Task | Ticket | State | Tier | Attempts | Score | Cost USD | Pull request |",
+    lines = [brief(project), "", "Details", "", "| Task | Ticket | State | Tier | Attempts | Score | Cost USD | Pull request |",
              "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in found:
         lines.append(f"| {r['task']} | {r['ticket']} | {r['state']} | {r['tier'] or ''} | "
@@ -118,8 +185,11 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--task")
+    parser.add_argument("--brief", action="store_true", help="only done and still to do")
     args = parser.parse_args(argv)
-    if args.task:
+    if args.brief:
+        print(brief(args.project, args.task))
+    elif args.task:
         print(write(args.project, args.task))
     else:
         print(status(args.project))
