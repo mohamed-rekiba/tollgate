@@ -338,7 +338,15 @@ jobs:
           git add -A
           git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
             commit -q -m "logs: $KIND $ID" || exit 0
-          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+          # Many runs push here at once. On a collision, take theirs and try again.
+          for try in 1 2 3 4 5; do
+            git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs && exit 0
+            sleep $(( try * 3 ))
+            git -c "http.extraheader=$auth" fetch -q origin tollgate-logs
+            git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+              rebase -q FETCH_HEAD || { git rebase --abort; exit 1; }
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -469,7 +477,15 @@ jobs:
           git add -A
           git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
             commit -q -m "logs: $KIND $ID" || exit 0
-          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+          # Many runs push here at once. On a collision, take theirs and try again.
+          for try in 1 2 3 4 5; do
+            git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs && exit 0
+            sleep $(( try * 3 ))
+            git -c "http.extraheader=$auth" fetch -q origin tollgate-logs
+            git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+              rebase -q FETCH_HEAD || { git rebase --abort; exit 1; }
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -565,7 +581,15 @@ jobs:
           git add -A
           git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
             commit -q -m "logs: $KIND $ID" || exit 0
-          git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs
+          # Many runs push here at once. On a collision, take theirs and try again.
+          for try in 1 2 3 4 5; do
+            git -c "http.extraheader=$auth" push -q origin HEAD:tollgate-logs && exit 0
+            sleep $(( try * 3 ))
+            git -c "http.extraheader=$auth" fetch -q origin tollgate-logs
+            git -c user.name="tollgate driver" -c user.email="tollgate@users.noreply.github.com" \
+              rebase -q FETCH_HEAD || { git rebase --abort; exit 1; }
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

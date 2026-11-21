@@ -15,7 +15,7 @@ Words: a **locked test** is a test file listed under `tests:` in the ticket. The
 ## Steps
 
 1. Read the ticket, the locked tests, and the files at the seams. Done when you can name the files you will change.
-2. If `findings` or `failed` is in the inputs, read them first. They come from the last attempt. Done when you know what to fix.
+2. If `findings`, `failed`, or `check_output` is in the inputs, read them first. They come from the last attempt. `check_output` holds the output of each check that failed. Done when you know what to fix.
 3. Write the change. Add your own smaller tests where they help. Done when the change does every item of the checklist.
 4. Run the project's checks. Done when they pass, or when you can say why a locked test is wrong.
 5. If you are sure a locked test is wrong, do not work around it. Say so in `locked_test_wrong`, with the test name and the evidence.

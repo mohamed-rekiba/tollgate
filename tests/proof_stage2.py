@@ -146,6 +146,20 @@ class StrongerBuilder(Case):
         self.assertEqual(self.count("pr_opened"), 1)
 
 
+class TestsCheckedBeforeTheFreeze(Case):
+    def test_a_style_failure_in_the_new_tests_goes_back_to_the_test_writer(self):
+        py = sys.executable
+        self.start(builder="pass2 tw_bad=1", extra={"checks": {
+            "tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+            "style": {"run": "! grep -q BADSTYLE tests/test_t1.py"}}})
+        self.assertEqual(run_driver(self.sample).returncode, 0)
+        rejected = [e for e in self.events() if e["event"] == "tests_rejected"]
+        self.assertEqual(len(rejected), 1)
+        self.assertIn("check style fails on the new tests", rejected[0]["findings"][0]["text"])
+        self.assertEqual(self.count("frozen"), 1)
+        self.assertEqual(self.count("pr_opened"), 1)
+
+
 class Guards(Case):
     def test_a_blocking_change_finding_on_tier_2_fails_the_attempt(self):
         self.start(builder="pass2", reviewer="ok block=change",

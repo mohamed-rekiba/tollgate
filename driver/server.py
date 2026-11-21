@@ -67,9 +67,30 @@ class GitHub(Server):
                         and run["status"] == "completed" and run["conclusion"] != "success"
                         and run["created_at"] >= time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                                time.gmtime(started - 5))):
-                    raise mf.FreezeError(f"the freeze run failed: {run['html_url']}")
+                    raise mf.FreezeError(f"the freeze run failed: {self._reason(run.get('id'))} "
+                                         f"({run['html_url']})")
             return None
         return self._wait(probe, f"a freeze tag for {ticket}")
+
+    def _reason(self, run_id) -> str:
+        """The line of a failed run's log that says why, or a short note when it has none."""
+        if not run_id:
+            return "the run has no id"
+        try:
+            jobs = self.gh.get(f"repos/{self.repository}/actions/runs/{run_id}/jobs")
+            failed = [j for j in jobs.get("jobs", []) if j.get("conclusion") == "failure"]
+            if not failed:
+                return "no job failed"
+            log = subprocess.run(
+                ["gh", "api", f"repos/{self.repository}/actions/jobs/{failed[0]['id']}/logs"],
+                capture_output=True, text=True, check=False).stdout
+        except (GhError, OSError, KeyError) as err:
+            return f"its log could not be read: {err}"
+        for line in log.splitlines():
+            for marker in ("cannot be frozen", "Error", "error:"):
+                if marker in line:
+                    return line.split(" ", 1)[-1].strip()[:500]
+        return f"job {failed[0].get('name')} failed"
 
     def open_pr(self, branch: str, title: str, body: str) -> int:
         existing = self.gh.get(f"repos/{self.repository}/pulls?state=open&head="

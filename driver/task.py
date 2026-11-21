@@ -62,7 +62,12 @@ class Task:
             return [str(err)]
         if plan.id != self.id:
             return [f"the plan names {plan.id}, not {self.id}"]
-        return pl.check_tickets(plan, self.read_copy)
+        used = [t for t in plan.tickets
+                if git(self.copy, "tag", "--list", f"tg/freeze/{t}/*") and not Path(
+                    self.logs, f"{t}.jsonl").exists()]
+        problems = [f"ticket id {t} is already used by an earlier freeze; pick a new id"
+                    for t in used]
+        return problems + pl.check_tickets(plan, self.read_copy)
 
     # Steps.
 

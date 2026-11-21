@@ -148,7 +148,8 @@ def main() -> int:
                               {"item": "C2", "file": "tests/test_t2.py",
                                "name": "test_c2_greet_kept"}]}, cost)
             return 0
-        Path("tests/test_t1.py").write_text(TESTS)
+        bad = opts.get("tw_bad") and not data.get("rejected")
+        Path("tests/test_t1.py").write_text(TESTS + ("# BADSTYLE\n" if bad else ""))
         answer({"tests": [{"item": "C1", "file": "tests/test_t1.py", "name": "test_c1_shout"},
                           {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"}]},
                cost)
