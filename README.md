@@ -9,7 +9,7 @@ Tollgate lets an AI build changes to your software, and keeps each change out of
 
 It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it, cuts it into small tickets, has the tests written and locked first, has the code built, checks it, and opens a pull request. A gate with no AI in it decides whether a change is ready for a pull request. On GitHub, the tests run again and a model reviews the riskier changes.
 
-The website: https://tollgate-ai.github.io/
+The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.github.io](https://github.com/tollgate-ai/tollgate-ai.github.io)).
 
 ## What you gain
 

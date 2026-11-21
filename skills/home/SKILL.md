@@ -1,6 +1,6 @@
 ---
 name: home
-description: Create or manage a Tollgate home - one private repository that holds many projects as git submodules and the rules they share. Use when the user runs /tollgate:home, /tollgate:home add <owner/name>, or /tollgate:home sync.
+description: Create or manage a Tollgate home - one private repository that holds many projects as git submodules and the rules they share. Use when the user runs /tollgate:home, /tollgate:home add owner/name, or /tollgate:home sync.
 ---
 
 # Manage a home

@@ -29,6 +29,12 @@ class PluginManifestTest(unittest.TestCase):
             self.assertIn("name:", head, skill)
             self.assertIn("description:", head, skill)
 
+    def test_no_skill_description_holds_angle_brackets(self):
+        # Claude Code warns on them, and claude.ai stores the description without them.
+        for skill in sorted((ROOT / "skills").glob("*/SKILL.md")):
+            head = skill.read_text().split("---")[1]
+            self.assertNotRegex(head, "[<>]", skill)
+
 
 if __name__ == "__main__":
     unittest.main()
