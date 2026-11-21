@@ -132,12 +132,18 @@ def gate(c):
     # Low, resting on the far post, so it plainly blocks the road.
     px, py = iso(110, 0, 24)
     ex, ey = iso(-72, 0, 24)
-    out.append(f'<g class="arm" style="transform-origin:{px:.1f}px {py:.1f}px">')
-    out.append(f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="{stroke}" '
-               f'stroke-width="8" stroke-linecap="round"/>')
-    out.append(f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
-               f'stroke="{c["page"]}" stroke-width="4" stroke-dasharray="9 9"/>')
-    out.append("</g>")
+    arm = (f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="{stroke}" '
+           f'stroke-width="8" stroke-linecap="round"/>'
+           f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
+           f'stroke="{c["page"]}" stroke-width="4" stroke-dasharray="9 9"/>')
+    tr = trip()
+    dur = tr["dur"]
+    keys = ";".join(f"{x / dur:.4f}" for x in tr["lift"])
+    shut, open_ = f"0 {px:.1f} {py:.1f}", f"60 {px:.1f} {py:.1f}"
+    out.append(f'<g class="moving-arm">{arm}<animateTransform attributeName="transform" '
+               f'type="rotate" values="{shut};{shut};{open_};{open_};{shut};{shut}" '
+               f'keyTimes="0;{keys};1" dur="{dur:.2f}s" repeatCount="indefinite"/></g>')
+    out.append(f'<g class="still-arm">{arm}</g>')
     out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="4.5" fill="{stroke}"/>')
     out += label(205, 0, -10, "THE GATE", "locked tests decide", c, "start")
     return out
@@ -218,48 +224,56 @@ def timeline():
 SPEED = 120  # ground units a second
 
 
-def ticket(c, go):
-    """The change: it fails at the gate once and goes back, then passes into main."""
-    del go
-    colors = {"ai": c["ai"][0], "fail": c["fail"], "main": c["main"][0]}
-    points, marks, fills, now, dist = [], [], [], 0.6, 0.0
-    marks.append((0.0, 0.0))
+def trip():
+    """The change's trip, worked out once: its path on the page, the moments it
+    is at each point, the moments its color changes, and when the barrier is up.
+
+    The ticket and the barrier both animate from this, on the same SVG clock, so
+    they cannot drift apart, even when a browser pauses an image out of view.
+    """
+    points, marks, fills, legs = [], [(0.0, 0.0)], [], []
+    now, dist = 0.6, 0.0
     marks.append((now, 0.0))
-    legs = []
     for ground, color, wait in timeline():
         pts = [iso(x, y, 3) for x, y in ground]
         if points:
             dist += abs(pts[0][0] - points[-1][0]) + abs(pts[0][1] - points[-1][1])
             marks.append((now, dist))  # a jump between legs takes no time
         points += pts
-        fills.append((now, colors[color]))
+        fills.append((now, color))
         begin = now
         for (x0, y0), (x1, y1) in pairwise(ground):
-            step = abs(x1 - x0) + abs(y1 - y0)
             a, b = iso(x0, y0, 3), iso(x1, y1, 3)
             dist += abs(b[0] - a[0]) + abs(b[1] - a[1])
-            now += step / SPEED
+            now += (abs(x1 - x0) + abs(y1 - y0)) / SPEED
             marks.append((now, dist))
         legs.append((begin, now))
         now += wait
         marks.append((now, dist))
-    dur, total = now + 0.4, dist
-    marks.append((dur, total))
-    path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
-    key_times = ";".join(f"{m[0] / dur:.4f}" for m in marks)
-    key_points = ";".join(f"{m[1] / total:.4f}" for m in marks)
-    fill = (f'<animate attributeName="fill" values="{";".join(f for _, f in fills)}" '
-            f'keyTimes="0;{";".join(f"{s / dur:.4f}" for s, _ in fills[1:])}" calcMode="discrete" '
-            f'dur="{dur:.2f}s" repeatCount="indefinite"/>')
-    # The barrier lifts while the change waits the second time, and stays up while it passes.
+    dur = now + 0.4
+    marks.append((dur, dist))
+    # The barrier starts up only after the change has stopped the second time
+    # and the tests have run, is fully up before it moves, and comes down after.
     up = legs[2][1] + 0.5
     down = legs[3][1]
-    lift = (f".arm{{transform-box:view-box;animation:lift {dur:.2f}s ease-in-out infinite}}"
-            f"@keyframes lift{{0%,{100 * up / dur:.1f}%{{transform:rotate(0)}}"
-            f"{100 * (up + 0.5) / dur:.1f}%,{100 * down / dur:.1f}%{{transform:rotate(60deg)}}"
-            f"{100 * (down + 0.5) / dur:.1f}%,100%{{transform:rotate(0)}}}}")
+    return {"points": points, "marks": marks, "fills": fills, "dur": dur, "total": dist,
+            "lift": (up, up + 0.5, down, min(down + 0.5, dur))}
+
+
+def ticket(c, go):
+    """The change: it fails at the gate once and goes back, then passes into main."""
+    del go
+    colors = {"ai": c["ai"][0], "fail": c["fail"], "main": c["main"][0]}
+    tr = trip()
+    dur = tr["dur"]
+    path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in tr["points"])
+    key_times = ";".join(f"{m[0] / dur:.4f}" for m in tr["marks"])
+    key_points = ";".join(f"{m[1] / tr['total']:.4f}" for m in tr["marks"])
+    fills = tr["fills"]
+    fill = (f'<animate attributeName="fill" values="{";".join(colors[f] for _, f in fills)}" '
+            f'keyTimes="0;{";".join(f"{s / dur:.4f}" for s, _ in fills[1:])}" calcMode="discrete" '
+            f'dur="{dur:.2f}s" repeatCount="indefinite"/>')
     return [
-        f"<style>{lift}</style>",
         '<g class="ticket">',
         f'<circle r="13" fill="{colors["ai"]}" opacity="0.2">{fill}</circle>',
         f'<circle r="6.5" fill="{colors["ai"]}" stroke="{c["page"]}" stroke-width="2">{fill}</circle>',
@@ -318,8 +332,9 @@ MOTION = (
     ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
     "@keyframes flow{to{stroke-dashoffset:-8}}"
     "@keyframes side{to{stroke-dashoffset:-12}}"
-    "@media (prefers-reduced-motion:reduce){.main,.side,.arm{animation:none}"
-    ".ticket{display:none}}"
+    ".still-arm{display:none}"
+    "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}"
+    ".ticket,.moving-arm{display:none}.still-arm{display:inline}}"
 )
 
 

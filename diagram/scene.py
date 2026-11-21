@@ -12,6 +12,7 @@ Ground units: x runs down and to the right on the page, y runs down and to the
 left, z runs up.
 """
 
+import re
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
@@ -155,12 +156,16 @@ class Scene:
             turn = 80
         self.prism(post[0] - 6, post[1] - 6, post[0] + 6, post[1] + 6, 0, 30, kind)
         (px, py), (ex, ey) = start, end
-        self.out.append(f'<g class="{arm_class}" style="transform-origin:{px:.1f}px {py:.1f}px">'
-                        f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
-                        f'stroke="{stroke}" stroke-width="8" stroke-linecap="round"/>'
-                        f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
-                        f'stroke="{self.c["page"]}" stroke-width="4" stroke-dasharray="9 9"/></g>')
+        arm = (f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
+               f'stroke="{stroke}" stroke-width="8" stroke-linecap="round"/>'
+               f'<line x1="{px:.1f}" y1="{py:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" '
+               f'stroke="{self.c["page"]}" stroke-width="4" stroke-dasharray="9 9"/>')
+        # The moving copy gets its rotation from lift(), on the same SVG clock as the
+        # ticket. The still copy shows instead for readers who ask for less motion.
+        self.out.append(f'<g class="moving-arm">{arm}<!--lift:{arm_class}--></g>'
+                        f'<g class="still-arm">{arm}</g>')
         self.out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="4.5" fill="{stroke}"/>')
+        self.pivots = getattr(self, "pivots", {}) | {arm_class: (px, py)}
         self.turns = getattr(self, "turns", {}) | {arm_class: turn}
 
     def server(self, x, y, kind="server", levels=3, size=90):
@@ -332,15 +337,19 @@ class Scene:
 
     def lift(self, name, dur, up, down, swing=0.5):
         """Lift the barrier of class `name`: it starts rising at time `up`, is fully up
-        `swing` seconds later, and starts falling at time `down`, in a loop of `dur`."""
+        `swing` seconds later, and starts falling at time `down`, in a loop of `dur`.
+
+        An SVG rotation, not CSS, so it runs on the same clock as the ticket: the
+        two stay in step even when a browser pauses an image that is out of view."""
         up = max(up, 0.0)
-        pct = [100 * x / dur for x in (up, up + swing, down, min(down + swing, dur))]
+        px, py = self.pivots[name]
         turn = getattr(self, "turns", {}).get(name, 52)
-        self.css.append(f".{name}{{transform-box:view-box;animation:{name} {dur:.2f}s ease-in-out "
-                        f"infinite}}@keyframes {name}{{0%,{pct[0]:.1f}%{{transform:rotate(0)}}"
-                        f"{pct[1]:.1f}%,{pct[2]:.1f}%{{transform:rotate({turn}deg)}}"
-                        f"{pct[3]:.1f}%,100%{{transform:rotate(0)}}}}")
-        self.reduced = getattr(self, "reduced", []) + [f".{name}"]
+        keys = ";".join(f"{x / dur:.4f}" for x in (up, up + swing, down, min(down + swing, dur)))
+        shut, open_ = f"0 {px:.1f} {py:.1f}", f"{turn} {px:.1f} {py:.1f}"
+        self.lifts = getattr(self, "lifts", {}) | {name: (
+            f'<animateTransform attributeName="transform" type="rotate" '
+            f'values="{shut};{shut};{open_};{open_};{shut};{shut}" keyTimes="0;{keys};1" '
+            f'dur="{dur:.2f}s" repeatCount="indefinite"/>')}
 
     # The page ------------------------------------------------------------------
     def grid(self, extent=420, step=30):
@@ -368,13 +377,15 @@ class Scene:
                            f'markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" '
                            f'orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" '
                            f'fill="{color}"/></marker>')
-        quiet = ",".join([".main", ".side", *getattr(self, "reduced", [])])
         style = (".main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}"
                  ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
                  "@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}"
-                 + "".join(self.css)
-                 + f"@media (prefers-reduced-motion:reduce){{{quiet}{{animation:none}}"
-                 ".ticket{display:none}}")
+                 ".still-arm{display:none}"
+                 "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}"
+                 ".ticket,.moving-arm{display:none}.still-arm{display:inline}}")
+        lifts = getattr(self, "lifts", {})
+        self.out = [re.sub(r"<!--lift:([\w-]+)-->", lambda m: lifts.get(m.group(1), ""), s)
+                    for s in self.out]
         head = [
             (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '
              f'width="{self.w}" height="{self.h}" role="img" aria-labelledby="title desc" '
