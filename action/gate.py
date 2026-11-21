@@ -18,6 +18,7 @@ from action.paths import matches
 
 FREEZE_WORKFLOW = ".github/workflows/tollgate-freeze.yml"
 REVIEW_CHECK = "tollgate review"
+GATE_CHECK = "tollgate gate"
 BRANCH_PREFIX = "tg/"
 
 
@@ -210,6 +211,8 @@ def main(argv=None) -> int:
     parser.add_argument("--results", required=True, help="results file from action.checks")
     parser.add_argument("--repository", help="owner/name, to ask the server")
     parser.add_argument("--pr", type=int)
+    parser.add_argument("--post", metavar="SHA",
+                        help="post the result as the check 'tollgate gate' on this commit")
     args = parser.parse_args(argv)
     try:
         with open(args.results) as f:
@@ -221,12 +224,31 @@ def main(argv=None) -> int:
         facts = collect(args.repo, args.base, args.head, args.branch, results, server, args.pr)
         findings, level = evaluate(facts)
     except (GitError, st.SettingsError, mf.FreezeError, OSError, ValueError) as err:
-        print(json.dumps({"rule": 0, "file": "", "message": f"the gate could not run: {err}"}))
+        findings, level = [{"rule": 0, "file": "", "message": f"the gate could not run: {err}"}], 0
+        _report(args, findings, level)
         return 2
+    _report(args, findings, level)
+    return 1 if findings else 0
+
+
+def summary(findings: list, level: int) -> tuple:
+    """Return (title, text) for a person to read."""
+    if not findings:
+        return f"Passed. Tier {level}.", f"Every gate rule passed. Tier {level}."
+    title = f"Failed: {len(findings)} finding(s). Tier {level}."
+    lines = [f"- Rule {f['rule']}: {f['message']}" + (f" (`{f['file']}`)" if f["file"] else "")
+             for f in findings]
+    return title, "\n".join(lines)
+
+
+def _report(args, findings: list, level: int) -> None:
     for finding in findings:
         print(json.dumps(finding))
     print(json.dumps({"tier": level, "passed": not findings}))
-    return 1 if findings else 0
+    if args.post and args.repository:
+        from action.server import Server
+        title, text = summary(findings, level)
+        Server(args.repository).post_check(args.post, GATE_CHECK, not findings, title, text)
 
 
 if __name__ == "__main__":

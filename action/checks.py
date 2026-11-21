@@ -1,5 +1,6 @@
 """Run the check commands of a project and collect their results."""
 
+import argparse
 import json
 import subprocess
 from dataclasses import asdict, dataclass, field
@@ -63,3 +64,31 @@ def run(settings: dict, workdir, only=None) -> Results:
             for test_id, test in junit.read(report).items():
                 results.tests[test_id] = {"status": test.status, "file": test.file}
     return results
+
+
+def main(argv=None) -> int:
+    from action import settings as st
+
+    parser = argparse.ArgumentParser(prog="tollgate checks", description=__doc__)
+    parser.add_argument("--repo", default=".")
+    parser.add_argument("--base", default="origin/main", help="read the settings from here")
+    parser.add_argument("--only", action="append", help="run only this check")
+    parser.add_argument("--setup", action="store_true", help="run the setup commands first")
+    parser.add_argument("--out", required=True)
+    args = parser.parse_args(argv)
+    settings = st.load_from_ref(args.repo, args.base)
+    if args.setup:
+        for command in settings["setup"]:
+            subprocess.run(command, shell=True, cwd=args.repo, check=True)
+    results = run(settings, args.repo, args.only)
+    with open(args.out, "w") as f:
+        f.write(results.to_json())
+    for check in results.checks:
+        print(f"{check.name}: {'passed' if check.passed else 'failed'}")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())

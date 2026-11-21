@@ -19,4 +19,10 @@ jobs:
       - name: Style
         run: pipx run ruff check .
       - name: Tests
-        run: python -m unittest discover -s tests -t . -v
+        run: |
+          pip install pyyaml
+          python -m unittest discover -s tests -t . -v
+      - name: Workflow templates
+        run: |
+          pip install actionlint-py shellcheck-py
+          tests/lint_workflows.sh
