@@ -45,7 +45,8 @@ DEFAULTS = {
     "harness": [],
     "tiers": {"3": [], "4": []},
     "tier1": {"max_files": 3, "max_lines": 50},
-    "ai": {"builder": "claude -p", "reviewer": "claude -p", "advisor": ["person"]},
+    "ai": {"builder": "claude -p", "reviewer": "claude -p", "advisor": ["person"],
+           "stronger_builder": ""},
     "sandbox": "container",
     "container_image": "",
     "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10.0, "task_usd": 60.0},
@@ -54,6 +55,9 @@ DEFAULTS = {
     "auto_merge": False,
     "check_minutes": 20,
     "approvers": [],
+    # The base suite: one command for each of the five things a base must prove.
+    "base": {"checks_run": "", "parallel_tests": "", "env_up_down": "",
+             "bad_setting_stops": "", "one_log_line": ""},
 }
 
 CHECK_KEYS = {"run", "report", "minutes"}

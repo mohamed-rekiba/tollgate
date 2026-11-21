@@ -45,12 +45,12 @@ class TaskLoop(TaskCase):
                      "reported"):
             self.assertIn(step, [e["event"] for e in events])
         self.assertIn("tg/plan/demo/1", self.tags())
-        for tid in ("T-1", "T-2"):
+        for tid in ("demo-1", "demo-2"):
             self.assertIn(f"tg/freeze/{tid}/1", self.tags())
             self.assertEqual(self.count(self.ticket_events(tid), "pr_opened"), 1)
         report = (self.sample.project / ".tollgate/reports/demo.md").read_text()
-        self.assertIn("| T-1 | pull request open | 1 | 2 | 100 |", report)
-        self.assertIn("| T-2 | pull request open |", report)
+        self.assertIn("| demo-1 | pull request open | 1 | 2 | 100 |", report)
+        self.assertIn("| demo-2 | pull request open |", report)
         self.assertIn("Plan: locked.", report)
 
     def test_the_gate_checks_the_plan_tag_run(self):
@@ -58,7 +58,7 @@ class TaskLoop(TaskCase):
         self.start(builder="pass1", extra={**PLAN_ON, "tier1": {"max_files": 1, "max_lines": 1}})
         result = run_task(self.sample)
         self.assertEqual(result.returncode, 0, result.stderr)
-        passed = [e for e in self.ticket_events("T-1") if e["event"] == "attempt_passed"]
+        passed = [e for e in self.ticket_events("demo-1") if e["event"] == "attempt_passed"]
         self.assertEqual(passed[0]["tier"], 2)
 
     def test_a_plan_finding_is_fixed_and_the_next_round_is_clean(self):
@@ -90,7 +90,7 @@ class TaskLoop(TaskCase):
     def test_the_task_cost_limit_stops_the_tickets(self):
         self.start(builder="same cost=2", reviewer="ok cost=2", task_usd=20)
         self.assertEqual(run_task(self.sample).returncode, 3)
-        reasons = [e["reason"] for tid in ("T-1", "T-2") for e in self.ticket_events(tid)
+        reasons = [e["reason"] for tid in ("demo-1", "demo-2") for e in self.ticket_events(tid)
                    if e["event"] == "stopped"]
         self.assertTrue(any("the task reached 20 USD" in r for r in reasons), reasons)
         report = (self.sample.project / ".tollgate/reports/demo.md").read_text()
@@ -99,12 +99,12 @@ class TaskLoop(TaskCase):
     def test_a_finished_task_started_again_repeats_nothing(self):
         self.start(builder="pass1")
         self.assertEqual(run_task(self.sample).returncode, 0)
-        before = {tid: len(self.ticket_events(tid)) for tid in ("T-1", "T-2")}
+        before = {tid: len(self.ticket_events(tid)) for tid in ("demo-1", "demo-2")}
         self.assertEqual(run_task(self.sample).returncode, 0)
         events = self.task_events()
         self.assertEqual(self.count(events, "plan_written"), 1)
         self.assertEqual(self.count(events, "plan_locked"), 1)
-        self.assertEqual({tid: len(self.ticket_events(tid)) for tid in ("T-1", "T-2")}, before)
+        self.assertEqual({tid: len(self.ticket_events(tid)) for tid in ("demo-1", "demo-2")}, before)
 
 
 

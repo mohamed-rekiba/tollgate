@@ -26,6 +26,8 @@ jobs:
         run: python -m unittest tests.proof_stage2 -v
       - name: Stage 3 proof
         run: python -m unittest tests.proof_stage3 -v
+      - name: Stage 4 proof
+        run: python -m unittest tests.proof_stage4 -v
       - name: Workflow templates
         run: |
           pip install actionlint-py shellcheck-py

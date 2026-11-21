@@ -6,3 +6,4 @@ __pycache__/
 .tollgate/run/
 .tollgate/reports/
 .tollgate/requests/
+.tollgate/lessons/

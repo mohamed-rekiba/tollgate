@@ -54,7 +54,7 @@ class T(unittest.TestCase):
 
 PLAN = """---
 id: {task}
-tickets: T-1, T-2
+tickets: {task}-1, {task}-2
 ---
 ## Task
 {request}
@@ -69,12 +69,12 @@ app.py
 app.shout, app.whisper
 
 ## Tickets
-- T-1: shout returns the greeting in capitals.
-- T-2: whisper returns the greeting in small letters.
+- {task}-1: shout returns the greeting in capitals.
+- {task}-2: whisper returns the greeting in small letters.
 """
 
 TICKET_T1 = """---
-id: T-1
+id: {task}-1
 plan: {task}
 seams: app.shout
 tests: tests/test_t1.py
@@ -95,7 +95,7 @@ Other languages.
 """
 
 TICKET_T2 = """---
-id: T-2
+id: {task}-2
 plan: {task}
 seams: app.whisper
 tests: tests/test_t2.py
@@ -142,7 +142,7 @@ def main() -> int:
     data = inputs(prompt)
     if first == "# Role: test writer":
         Path("tests").mkdir(exist_ok=True)
-        if data.get("ticket_id") == "T-2":
+        if data.get("ticket_id", "").endswith("-2"):
             Path("tests/test_t2.py").write_text(TESTS_T2)
             answer({"tests": [{"item": "C1", "file": "tests/test_t2.py", "name": "test_c1_whisper"},
                               {"item": "C2", "file": "tests/test_t2.py",
@@ -157,10 +157,11 @@ def main() -> int:
         Path(".tollgate/plans").mkdir(parents=True, exist_ok=True)
         Path(f".tollgate/plans/{task}.md").write_text(PLAN.format(task=task,
                                                                   request=data["request"]))
-        for tid, text in (("T-1", TICKET_T1), ("T-2", TICKET_T2)):
+        for tid, text in ((f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)):
             Path(f".tollgate/tickets/{tid}").mkdir(parents=True, exist_ok=True)
             Path(f".tollgate/tickets/{tid}/ticket.md").write_text(text.format(task=task))
-        answer({"plan": f".tollgate/plans/{task}.md", "tickets": ["T-1", "T-2"]}, cost)
+        answer({"plan": f".tollgate/plans/{task}.md", "tickets": [f"{task}-1", f"{task}-2"]},
+               cost)
     elif first == "# Role: builder" and data.get("mode") == "answer":
         answer({"answers": [{"finding": i, "action": opts.get("answer", "fix"), "evidence": "x"}
                             for i, _ in enumerate(data.get("findings", []))]}, cost)
