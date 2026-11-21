@@ -6,19 +6,10 @@
 
 import argparse
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
-from driver.driver import cost_of
+from driver import history
 from driver.log import read
-
-STATES = {
-    "merged": "merged", "waiting_for_merge": "pull request open", "pr_opened": "pull request open",
-    "parked": "parked", "waiting_for_advisor": "waits for a person", "still_waiting":
-    "waits for a person", "stopped": "stopped", "attempt_passed": "building",
-    "attempt_failed": "building", "attempt_started": "building", "frozen": "frozen",
-    "tests_reviewed": "tests written", "tests_written": "tests written", "started": "started",
-}
 
 
 def logs_dir(project: str) -> Path:
@@ -26,23 +17,13 @@ def logs_dir(project: str) -> Path:
 
 
 def ticket_row(events: list) -> dict:
-    state = "not started"
-    for e in reversed(events):
-        if e["event"] in STATES:
-            state = STATES[e["event"]]
-            break
-    attempts = [e for e in events if e["event"] in ("attempt_failed", "attempt_passed")]
-    best = max((e.get("score", -1) for e in attempts), default=-1)
-    pr = next((e["pr"] for e in reversed(events) if e["event"] == "pr_opened"), None)
-    reason = next((e.get("reason", "") for e in reversed(events)
-                   if e["event"] in ("parked", "waiting_for_advisor", "stopped")), "")
-    tier = next((e["tier"] for e in reversed(attempts) if "tier" in e), None)
-    issue = next((e["issue"] for e in reversed(events)
-                  if e["event"] == "waiting_for_advisor" and e.get("issue")), None)
-    return {"issue": issue,"ticket": events[0].get("ticket", "?") if events else "?", "state": state,
-            "tier": tier, "attempts": len(attempts), "score": best if best >= 0 else None,
-            "cost_usd": cost_of(events), "minutes": _minutes(events), "pr": pr, "reason": reason,
-            "task": events[0].get("task", "") if events else ""}
+    t = history.replay(events)
+    question = history.open_question(events)
+    return {"issue": question["issue"] if question else None, "ticket": t.ticket or "?",
+            "state": t.state, "tier": t.tier, "attempts": t.attempts,
+            "score": t.best_score if t.best_score >= 0 else None,
+            "cost_usd": history.cost(events), "minutes": history.minutes(events),
+            "pr": t.pr or None, "reason": t.reason, "task": t.task}
 
 
 def rows(project: str, task: str | None = None) -> list:
@@ -56,19 +37,13 @@ def rows(project: str, task: str | None = None) -> list:
     return out
 
 
-def _minutes(events: list) -> int:
-    stamps = [datetime.strptime(e["at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-              for e in events if "at" in e]
-    return round((max(stamps) - min(stamps)).total_seconds() / 60) if stamps else 0
-
-
 def render(project: str, task: str) -> str:
     task_events = read(str(logs_dir(project) / f"task-{task}.jsonl"))
     tickets = rows(project, task)
     all_events = task_events + [e for p in logs_dir(project).glob("*.jsonl")
                                 if not p.name.startswith("task-")
                                 for e in read(str(p)) if e.get("task") == task]
-    plan_cost = cost_of(task_events)
+    plan_cost = history.cost(task_events)
     total = round(plan_cost + sum(r["cost_usd"] for r in tickets), 4)
     waiting = [e for e in task_events if e["event"] == "task_waiting"]
     pic = ('<picture>\n'
@@ -77,7 +52,7 @@ def render(project: str, task: str) -> str:
            '</picture>')
     lines = [f"# Report: task {task}", "", brief(project, task), "", pic, "", "## Details", "",
              f"- Cost: {total} USD ({plan_cost} USD for the plan).",
-             f"- Time: {_minutes(all_events)} minutes from the first event to the last.",
+             f"- Time: {history.minutes(all_events)} minutes from the first event to the last.",
              f"- Plan: {'locked' if any(e['event'] == 'plan_locked' for e in task_events) else 'not locked'}.",
              ""]
     if waiting:
@@ -220,10 +195,8 @@ def progress(project: str, task: str | None = None) -> tuple:
         if "plan_locked" in kinds:
             done.append(f"Plan for {t}: approved and locked.")
         elif task_events:
-            asked = next((e for e in reversed(task_events)
-                          if e["event"] == "waiting_for_advisor" and e.get("issue")), None)
-            if asked and not any(e["event"] == "advisor_decided" and e.get("issue") == asked["issue"]
-                                 for e in task_events):
+            asked = history.open_question(task_events)
+            if asked:
                 todo.append(f"Plan for {t}: waits for your approval in issue #{asked['issue']}.")
             else:
                 todo.append(f"Plan for {t}: being written and reviewed.")
