@@ -225,6 +225,23 @@ jobs:
           git -C main -c user.name="tollgate plan" -c user.email="tollgate@users.noreply.github.com" \
             tag -a "$name" -F "$RUNNER_TEMP/tag.txt" "$COMMIT"
           git -C main push origin "refs/tags/$name"
+      - name: Remove the plan branch
+        # The tag keeps the plan. Remove the branch only if it still points at the
+        # tagged commit, so a newer push to it is never lost.
+        env:
+          ID: ${{ inputs.id }}
+          COMMIT: ${{ steps.head.outputs.commit }}
+        run: |
+          # The id was checked against a strict pattern in the first step.
+          now="$(git -C main ls-remote origin "refs/heads/tg-plan/$ID" | cut -f1)"
+          if [[ -z "$now" ]]; then
+            echo "The plan branch is already gone."
+          elif [[ "$now" != "$COMMIT" ]]; then
+            echo "The plan branch moved after the tag, so it stays."
+          else
+            git -C main push origin --force-with-lease="refs/heads/tg-plan/$ID:$COMMIT" \
+              ":refs/heads/tg-plan/$ID"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: tollgate-manifest

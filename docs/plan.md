@@ -689,7 +689,7 @@ One file, `.github/workflows/tollgate.yml`, holds every job. It reads `"version"
 | Jobs | Start when | What they do |
 | --- | --- | --- |
 | Freeze | The driver starts the workflow by hand on main, with `kind: freeze` and the ticket id. | A job with a read-only token and no secrets runs the tests at the head of `tg/<ticket id>`, with the harness from main. A second job runs none of that code, writes the manifest with its own run id, creates the freeze tag, and saves the manifest as an artifact. |
-| Plan | By hand on main, with `kind: plan` and the task id. | One job reads the plan and its tickets on `tg-plan/<task id>` as files and creates the plan tag. |
+| Plan | By hand on main, with `kind: plan` and the task id. | One job reads the plan and its tickets on `tg-plan/<task id>` as files, creates the plan tag, and removes the branch; the tag keeps the plan. |
 | Test, review, gate | `pull_request_target` into main, or a comment `tollgate check` or `tollgate approve <sha>`. | The test job runs the change with a read-only token and no secrets. The review job reads the change as text and holds the model access. The gate runs last, after both, so it reads their results, and posts `tollgate gate`. |
 
 A workflow on `pull_request` would run the copy from the pull request, so a change could rewrite its own gate. Experiment E3 showed this. That is why the gate and the review use `pull_request_target`.
