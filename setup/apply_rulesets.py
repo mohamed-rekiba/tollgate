@@ -78,9 +78,18 @@ def _same(have: dict, want: dict) -> bool:
     return all(_covers(have.get(k), want[k]) for k in keys)
 
 
+def owner_type_of(gh, repository: str) -> str:
+    """"User" only when GitHub says so. Anything else counts as an organization, so
+    the stricter rules are asked for: GitHub rejects them if they do not fit,
+    which is safer than a weaker ruleset made in silence."""
+    data = gh.get(f"repos/{repository}") or {}
+    owner = data.get("owner") or {} if isinstance(data, dict) else {}
+    return "User" if owner.get("type") == "User" else "Organization"
+
+
 def apply(gh, repository: str) -> list:
     """Create or update both rulesets. Return what it did for each."""
-    owner_type = (gh.get(f"repos/{repository}").get("owner") or {}).get("type", "User")
+    owner_type = owner_type_of(gh, repository)
     existing = {r["name"]: r["id"] for r in gh.get(f"repos/{repository}/rulesets") or []}
     done = []
     for rule in wanted(owner_type):
@@ -116,7 +125,11 @@ def main(argv=None, gh=None) -> int:
                         help="print the requests for an admin and change nothing")
     args = parser.parse_args(argv)
     if args.print_only:
-        print(commands(args.repository))
+        try:
+            owner_type = owner_type_of(gh or Gh(), args.repository)
+        except GhError:
+            owner_type = "Organization"
+        print(commands(args.repository, owner_type))
         return 0
     try:
         for line in apply(gh or Gh(), args.repository):
