@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from gate import state
+from gate.store import StoreError
 from driver import history
 from tests.driver_fakes import FAKE_ROLE, FakeStore, Refusing, Sample, driver, gate_api
 
@@ -69,6 +70,15 @@ class MergeTest(LoopCase):
         self.assertEqual(s.events()[-1], "waiting_for_merge")
         self.assertEqual(self.tries(s)[-1]["tier"], 3)
         self.assertEqual(store.merged, [])
+
+    def test_a_merge_the_store_refuses_leaves_a_ready_change(self):
+        s = self.sample(auto_merge=True)
+        store = FakeStore(s.project)
+        store.merge = lambda commit: (_ for _ in ()).throw(StoreError("the main worktree has changes"))
+        d, _ = driver(s, store=store)
+        self.assertEqual(d.run(), 0)
+        self.assertEqual(s.events()[-1], "waiting_for_merge")
+        self.assertIn("the main worktree has changes", s.log()[-1]["reason"])
 
     def test_no_auto_merge_waits_for_you(self):
         s = self.sample(auto_merge=False)

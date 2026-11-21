@@ -383,7 +383,13 @@ class Driver:
         if not self.settings["auto_merge"] or tier is None or tier >= 3:
             self.log.add("waiting_for_merge", branch=self.branch, commit=st_.ready, tier=tier)
             return 0
-        merge = self.store.merge(st_.ready)
+        try:
+            merge = self.store.merge(st_.ready)
+        except StoreError as err:
+            # The change stays ready; you merge it once the reason is gone.
+            self.log.add("waiting_for_merge", branch=self.branch, commit=st_.ready, tier=tier,
+                         reason=f"the store did not merge: {err}")
+            return 0
         self.log.add("merged", commit=st_.ready, merge=merge)
         roles.remove_copy(self.project, self.ticket_id)
         return 0
