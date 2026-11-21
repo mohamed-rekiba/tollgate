@@ -1,0 +1,472 @@
+{
+ "type": "scene",
+ "title": "How Tollgate works, with its three feedback loops",
+ "desc": "An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own room. At the gate, the tests run: on a fail, what failed goes back to the builder; when it is stuck, the advisor decides; on a pass, the barrier lifts and the change goes into main. The retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails once, then passes.",
+ "size": [
+  1180,
+  720
+ ],
+ "origin": [
+  470,
+  400
+ ],
+ "scale": 0.9,
+ "grid": 520,
+ "caption": [
+  "How Tollgate works",
+  "three loops: check the plan, build until the tests pass, learn"
+ ],
+ "lanes": [
+  {
+   "path": [
+    [
+     -30,
+     40
+    ],
+    [
+     -110,
+     40
+    ],
+    [
+     -110,
+     170
+    ],
+    [
+     -32,
+     170
+    ]
+   ],
+   "label": "problems found",
+   "tone": "fail"
+  },
+  {
+   "path": [
+    [
+     110,
+     -220
+    ],
+    [
+     110,
+     -360
+    ],
+    [
+     0,
+     -360
+    ],
+    [
+     0,
+     -274
+    ]
+   ],
+   "label": "failed: back to the AI",
+   "at": 0.66,
+   "tone": "fail"
+  },
+  {
+   "path": [
+    [
+     370,
+     -174
+    ],
+    [
+     370,
+     170
+    ],
+    [
+     34,
+     170
+    ]
+   ],
+   "label": "lessons tighten the rules",
+   "at": 0.72,
+   "side": true
+  },
+  {
+   "path": [
+    [
+     205,
+     -205
+    ],
+    [
+     205,
+     -84
+    ]
+   ],
+   "label": "stuck",
+   "side": true
+  },
+  {
+   "path": [
+    [
+     172,
+     -60
+    ],
+    [
+     100,
+     -60
+    ],
+    [
+     100,
+     -186
+    ],
+    [
+     54,
+     -186
+    ]
+   ],
+   "label": "try again",
+   "at": 0.35,
+   "side": true
+  },
+  {
+   "path": [
+    [
+     0,
+     258
+    ],
+    [
+     0,
+     214
+    ]
+   ]
+  },
+  {
+   "path": [
+    [
+     0,
+     128
+    ],
+    [
+     0,
+     64
+    ]
+   ]
+  },
+  {
+   "path": [
+    [
+     0,
+     18
+    ],
+    [
+     0,
+     -56
+    ]
+   ],
+   "label": "no problems",
+   "tone": "pass"
+  },
+  {
+   "path": [
+    [
+     0,
+     -124
+    ],
+    [
+     0,
+     -166
+    ]
+   ]
+  },
+  {
+   "path": [
+    [
+     54,
+     -220
+    ],
+    [
+     323,
+     -220
+    ]
+   ]
+  }
+ ],
+ "objects": [
+  {
+   "type": "server",
+   "at": [
+    370,
+    -220
+   ]
+  },
+  {
+   "type": "room",
+   "at": [
+    0,
+    -220
+   ],
+   "size": 104
+  },
+  {
+   "type": "gate",
+   "at": [
+    190,
+    -282
+   ],
+   "arm_to": -160,
+   "axis": "y"
+  },
+  {
+   "type": "vault",
+   "at": [
+    0,
+    -90
+   ]
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    205,
+    -60
+   ],
+   "kind": "advisor",
+   "icon": "advisor"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    0,
+    40
+   ],
+   "kind": "check",
+   "icon": "check"
+  },
+  {
+   "type": "board",
+   "at": [
+    470,
+    40
+   ]
+  },
+  {
+   "type": "papers",
+   "at": [
+    0,
+    170
+   ]
+  },
+  {
+   "type": "laptop",
+   "at": [
+    0,
+    300
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    470,
+    -150,
+    0
+   ],
+   "head": "Main branch",
+   "sub": "only changes that pass",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    0,
+    -300,
+    165
+   ],
+   "head": "The AI builds",
+   "sub": "in its own copy",
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    250,
+    -330,
+    40
+   ],
+   "head": "The gate",
+   "sub": "opens when the tests pass",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    240,
+    -20,
+    -18
+   ],
+   "head": "When stuck",
+   "sub": "a second AI, or you, decides",
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    -90,
+    -125,
+    24
+   ],
+   "head": "Tests written and locked",
+   "sub": "before any code",
+   "anchor": "end"
+  },
+  {
+   "at": [
+    -150,
+    40,
+    40
+   ],
+   "head": "Review",
+   "sub": "fresh AIs check the plan",
+   "anchor": "end"
+  },
+  {
+   "at": [
+    -150,
+    190,
+    20
+   ],
+   "head": "The plan",
+   "sub": "small tickets",
+   "anchor": "end"
+  },
+  {
+   "at": [
+    -60,
+    330,
+    0
+   ],
+   "head": "You ask",
+   "sub": "in plain words",
+   "anchor": "end"
+  },
+  {
+   "at": [
+    540,
+    40,
+    70
+   ],
+   "head": "Look back",
+   "sub": "at most 3 lessons",
+   "anchor": "start"
+  }
+ ],
+ "ticket": {
+  "legs": [
+   {
+    "path": [
+     [
+      0,
+      258
+     ],
+     [
+      0,
+      214
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      128
+     ],
+     [
+      0,
+      64
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      18
+     ],
+     [
+      0,
+      -56
+     ]
+    ],
+    "tone": "pass"
+   },
+   {
+    "path": [
+     [
+      0,
+      -124
+     ],
+     [
+      0,
+      -166
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      54,
+      -220
+     ],
+     [
+      110,
+      -220
+     ]
+    ],
+    "wait": 0.9
+   },
+   {
+    "path": [
+     [
+      110,
+      -220
+     ],
+     [
+      110,
+      -360
+     ],
+     [
+      0,
+      -360
+     ],
+     [
+      0,
+      -274
+     ]
+    ],
+    "tone": "fail",
+    "wait": 0.5
+   },
+   {
+    "path": [
+     [
+      0,
+      -274
+     ],
+     [
+      0,
+      -220
+     ],
+     [
+      54,
+      -220
+     ],
+     [
+      110,
+      -220
+     ]
+    ],
+    "wait": 0.9
+   },
+   {
+    "path": [
+     [
+      110,
+      -220
+     ],
+     [
+      323,
+      -220
+     ]
+    ],
+    "tone": "pass",
+    "wait": 0.6
+   }
+  ],
+  "lift": 7
+ }
+}

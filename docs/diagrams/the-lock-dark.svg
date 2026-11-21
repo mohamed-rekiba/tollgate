@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 995 167" width="995" height="167" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">The idea of Tollgate in four steps</title>
+<desc id="desc">First the tests are written; they say what done means. Then they are locked on GitHub, where the AI cannot change them. The AI builds, and may try again, but cannot move the goal. The locked tests decide: only a change that passes them is merged.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-24" y="-24" width="995" height="167" fill="#0d1117"/>
+<rect x="-24" y="-24" width="995" height="167" fill="url(#grid)"/>
+<path class="main" d="M200.8,59.5 L248.8,59.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M449.6,59.5 L497.6,59.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M698.4,59.5 L746.4,59.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path d="M0.0,0.0 H200.8 V111.0 C150.6,103.0 120.5,127.0 0.0,115.0 Z" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">STEP 1 · AI</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Write the tests</text>
+<text x="14.0" y="70.0" font-size="12" fill="#9198a1">They say what</text>
+<text x="14.0" y="87.0" font-size="12" fill="#9198a1">done means</text>
+<path d="M248.8,8.0 A100.4,8 0 0 1 449.6,8.0 V111.0 A100.4,8 0 0 1 248.8,111.0 Z" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/><path d="M248.8,8.0 A100.4,8 0 0 0 449.6,8.0" fill="none" stroke="#3fb950" stroke-width="1.3"/>
+<g transform="translate(262.8,24.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="288.8" y="37.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">STEP 2 · GITHUB</text>
+<text x="262.8" y="64.0" font-size="14" font-weight="700" fill="#f0f6fc">Lock them</text>
+<text x="262.8" y="82.0" font-size="12" fill="#9198a1">On GitHub, where the</text>
+<text x="262.8" y="99.0" font-size="12" fill="#9198a1">AI cannot change them</text>
+<rect x="497.6" y="0.0" width="200.8" height="119.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M506.6,-4.0 H493.6 V9.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<path d="M689.4,123.0 H702.4 V110.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
+<g transform="translate(511.6,12.0) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
+<text x="537.6" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">STEP 3 · AI</text>
+<text x="511.6" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">The AI builds</text>
+<text x="511.6" y="70.0" font-size="12" fill="#9198a1">It can try again.</text>
+<text x="511.6" y="87.0" font-size="12" fill="#9198a1">The tests stay the same.</text>
+<rect x="746.4" y="0.0" width="200.8" height="119.0" rx="59.5" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(781.3,21.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
+<text x="807.3" y="34.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">STEP 4 · CHECK</text>
+<text x="846.8" y="61.0" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">The tests decide</text>
+<text x="846.8" y="79.0" text-anchor="middle" font-size="12" fill="#9198a1">Only a change that</text>
+<text x="846.8" y="96.0" text-anchor="middle" font-size="12" fill="#9198a1">passes is merged</text>
+</svg>
