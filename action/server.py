@@ -56,6 +56,20 @@ class Server:
         data = self._get(f"pulls/{pr}")
         return {"author": data["user"]["login"], "head": data["head"]["sha"]}
 
+    def post_check(self, sha: str, name: str, passed: bool, title: str, text: str) -> None:
+        """Create a finished check run on a commit."""
+        body = {
+            "name": name, "head_sha": sha, "status": "completed",
+            "conclusion": "success" if passed else "failure",
+            "output": {"title": title[:250], "summary": text[:60000] or title},
+        }
+        proc = subprocess.run(
+            ["gh", "api", "-X", "POST", f"repos/{self.repository}/check-runs", "--input", "-"],
+            input=json.dumps(body), capture_output=True, text=True, check=False,
+        )
+        if proc.returncode != 0:
+            raise ServerError(f"POST check-runs: {proc.stderr.strip()}")
+
     def check_passed(self, sha: str, name: str):
         """Return True or False for the newest check run of that name, or None if absent."""
         data = self._get(f"commits/{sha}/check-runs")
