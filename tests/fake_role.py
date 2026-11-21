@@ -87,6 +87,12 @@ def main() -> int:
             i for i, text in enumerate(lines, 1) if '"""' in text)
         answer({"verdict": "pass", "findings": [],
                 "items": [{"item": "C3", "passed": True, "file": "app.py", "line": line}]}, cost)
+    elif first == "# Role: reviewer" and ("# Lens: change" in prompt or "# Lens: security" in prompt):
+        lens = "security" if "# Lens: security" in prompt else "change"
+        block = opts.get("block") == lens
+        answer({"verdict": "fail" if block else "pass", "findings": [
+            {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]
+            if block else []}, cost)
     elif first == "# Role: advisor":
         answer({"decision": opts.get("decision", "park"), "hint": "try harder", "reason": "test"},
                cost)

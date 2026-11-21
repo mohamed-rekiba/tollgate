@@ -71,8 +71,20 @@ class GateRulesTest(unittest.TestCase):
 
     def test_rule2_plan_required(self):
         self.assertEqual(rules(facts(plan_required=True, changes={"src/a.py": 80})), [2])
-        ok = facts(plan_required=True, plan_tickets={"T-1"}, changes={"src/a.py": 80})
+        plan = {"task": "retries", "tickets": ["T-1"], "number": 1, "run_id": 3}
+        run = {"path": gate.PLAN_WORKFLOW, "head_branch": "main", "event": "workflow_dispatch",
+               "conclusion": "success", "title": "tollgate plan retries", "manifest": plan}
+        ok = facts(plan_required=True, plan_tickets={"T-1"}, plan=plan, plan_run=dict(run),
+                   changes={"src/a.py": 80})
         self.assertEqual(rules(ok), [])
+        for bad in (None, dict(run, title="tollgate plan other"), dict(run, head_branch="x"),
+                    dict(run, manifest={}), dict(run, path=".github/workflows/fake.yml")):
+            f = facts(plan_required=True, plan_tickets={"T-1"}, plan=plan, plan_run=bad,
+                      changes={"src/a.py": 80})
+            self.assertEqual(rules(f), [2], bad)
+        other = facts(plan_required=True, plan_tickets={"T-2"}, plan=plan, plan_run=dict(run),
+                      changes={"src/a.py": 80})
+        self.assertEqual(rules(other), [2])
 
     def test_rule2_not_needed_for_tier_1(self):
         self.assertEqual(rules(facts(plan_required=True)), [])

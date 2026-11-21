@@ -28,6 +28,7 @@ BUILDER_RULES = {3, 5}     # the builder can fix these
 SERVER_RULES = {4, 6}      # met on the server, after the pull request opens
 MAX_REJECTIONS = 2
 MAX_AI_DECISIONS = 2
+LENS_TIERS = ((2, "change"), (3, "security"))  # step 7: lens and the lowest tier it runs for
 
 
 class Busy(RuntimeError):
@@ -352,6 +353,13 @@ class Driver:
                   if facts.freeze and t in facts.freeze.manifest["tests"]}
         value, passed = score(self.ticket, locked, review.data.get("items", []), self.copy)
         blocking = [f for f in review.data.get("findings", []) if f.get("level") == "blocking"]
+        for lens in [name for level, name in LENS_TIERS if tier >= level]:
+            more = self.role("reviewer", {"ticket": self.ticket_text, "tier": tier,
+                             "diff": git(self.copy, "diff", f"{st_.frozen}...HEAD")[:60000]},
+                             self.settings["stop"]["attempt_minutes"], lens=lens)
+            cost += self.spend(more)
+            blocking += [dict(f, lens=lens) for f in more.data.get("findings", [])
+                         if f.get("level") == "blocking"]
         fields.update(cost_usd=cost, score=value, items=passed)
         if blocking or value < self.settings["pass_score"]:
             self.log.add("attempt_failed", findings=blocking or [
