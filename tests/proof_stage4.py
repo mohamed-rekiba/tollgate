@@ -168,14 +168,14 @@ class RoadmapTest(unittest.TestCase):
         with self.assertRaisesRegex(rm.RoadmapError, "no section: Skeleton"):
             rm.parse(ROADMAP.replace("## Skeleton\n", ""))
 
-    def run_roadmap(self, base):
+    def run_roadmap(self, base, roadmap=ROADMAP):
         sample = Sample(builder="pass1",
                         advisor=(f"{sys.executable} {Path(__file__).parent / 'fake_role.py'} ok",),
                         extra={"base": base})
         self.addCleanup(sample.close)
         p = sample.project
         Path(p, rm.roadmap_path("orders")).parent.mkdir(parents=True)
-        Path(p, rm.roadmap_path("orders")).write_text(ROADMAP)
+        Path(p, rm.roadmap_path("orders")).write_text(roadmap)
         Path(p, ".tollgate/tickets/orders-done").mkdir(parents=True)
         Path(p, ".tollgate/tickets/orders-done/ticket.md").write_text(CHECKLIST)
         code = ("import sys; from driver.roadmap import main; from tests.fakes import LocalServer; "
@@ -199,6 +199,15 @@ class RoadmapTest(unittest.TestCase):
         for tag in ("tg/freeze/orders-done/1", "tg/plan/orders-base/1", "tg/plan/orders-more/1"):
             self.assertIn(tag, tags)
 
+    def test_a_roadmap_with_only_a_base_checks_it_after_the_last_task(self):
+        only_base = ROADMAP.replace("- orders-more: Add shout and whisper again, as a second task.\n",
+                                    "")
+        _, result, events = self.run_roadmap({name: "true" for name in base_suite.NAMES},
+                                             only_base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([e["event"] for e in events],
+                         ["checklist_frozen", "task_done", "base_passed", "roadmap_done"])
+
     def test_a_base_with_a_gap_stops_the_roadmap_before_the_skeleton(self):
         base = {name: "true" for name in base_suite.NAMES}
         base["one_log_line"] = ""
@@ -211,6 +220,19 @@ class RoadmapTest(unittest.TestCase):
 
 
 class BaseCheckTest(unittest.TestCase):
+    def test_a_base_suite_that_cannot_start_stops_the_roadmap_with_a_reason(self):
+        from unittest import mock
+
+        from driver import roadmap as dr
+        from driver.log import Log
+        with tempfile.TemporaryDirectory() as d:
+            log_path = os.path.join(d, "roadmap.jsonl")
+            with mock.patch.object(dr.st, "load_from_ref", return_value={"base": {}}), \
+                    mock.patch.object(dr.base_suite, "run", side_effect=OSError("no folder")), \
+                    Log(log_path, roadmap="r") as log:
+                self.assertEqual(dr.check_base(d, log), 1)
+            self.assertIn("could not run: no folder", read(log_path)[-1]["reason"])
+
     def test_settings_that_cannot_be_read_stop_the_roadmap_with_a_reason(self):
         from driver import roadmap as dr
         from driver.log import Log
