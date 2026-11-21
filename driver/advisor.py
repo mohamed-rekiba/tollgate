@@ -11,6 +11,7 @@ answer when it starts again, so a question never blocks other tickets.
 
 import re
 
+from driver import history
 from driver.log import read
 
 DECIDE = re.compile(r"^tollgate decide ([a-z_]+)\b[ \t]*(.*)$")
@@ -35,23 +36,14 @@ def first_decision(comments: list, approvers: list) -> dict | None:
 
 def pending(log_path: str) -> dict | None:
     """The open question in this log, or None: {"issue", "reason"}."""
-    events = read(log_path)
-    answered = {e.get("issue") for e in events
-                if e["event"] == "advisor_decided" and e.get("by") == "person"}
-    for e in reversed(events):
-        if e["event"] == "waiting_for_advisor" and e.get("issue"):
-            return None if e["issue"] in answered else {"issue": e["issue"], "reason": e["reason"]}
-    return None
+    return history.open_question(read(log_path))
 
 
 def ask_person(server, log, log_path: str, subject: str, reason: str, options: list,
                approvers: list) -> dict:
     """Return the person's decision, or raise Waiting after opening the question."""
-    events = read(log_path)
-    asked = [e for e in events if e["event"] == "waiting_for_advisor" and e.get("issue")]
-    answered = {e.get("issue") for e in events
-                if e["event"] == "advisor_decided" and e.get("by") == "person"}
-    open_issue = next((e["issue"] for e in reversed(asked) if e["issue"] not in answered), None)
+    question = history.open_question(read(log_path))
+    open_issue = question["issue"] if question else None
     if open_issue:
         found = first_decision(server.issue_comments(open_issue), approvers)
         if found and found["decision"] in options:
