@@ -154,6 +154,13 @@ class GateRulesTest(unittest.TestCase):
         f.approvals = [approve]
         self.assertEqual(rules(f), [])
 
+    def test_a_change_by_hand_needs_an_approver_on_the_latest_commit(self):
+        stale = {"kind": "comment", "user": "owner", "user_type": "User",
+                 "body": "tollgate approve " + "b" * 40, "state": "", "commit": ""}
+        stranger = dict(stale, user="someone", body=f"tollgate approve {HEAD}")
+        f = facts(branch="not-a-ticket-branch", freeze=None, approvals=[stale, stranger])
+        self.assertEqual(rules(f), [1])
+
     def test_a_ticket_branch_cannot_skip_its_freeze_with_an_approval(self):
         approve = {"kind": "comment", "user": "owner", "user_type": "User",
                    "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}

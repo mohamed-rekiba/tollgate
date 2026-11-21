@@ -652,18 +652,20 @@ jobs:
           # "tollgate approve <the head commit>", or approved the head commit in a
           # review. The gate checks this again; here it only decides, for a change
           # made by hand, whether its tests run with its own harness.
+          # Fails closed: if the settings cannot be read, nobody counts as approved.
           approvers="$(gh api "repos/$GITHUB_REPOSITORY/contents/.tollgate/settings.json?ref=main" \
-            --jq '.content' | base64 -d | jq -c '.approvers // []')"
-          comment="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" | jq -s \
+            --jq '.content' | base64 -d | jq -c '.approvers // []')" || approvers='[]'
+          [[ "$approvers" == \[* ]] || approvers='[]'
+          comment="$(set -o pipefail; gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" | jq -s \
             --argjson who "$approvers" --arg want "tollgate approve $sha" \
             '[.[][] | select(.user.type == "User" and (.user.login as $u | $who | index($u))
-                             and ((.body // "") | gsub("^\\s+|\\s+$"; "")) == $want)] | length')"
-          review="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" | jq -s \
+                             and ((.body // "") | gsub("^\\s+|\\s+$"; "")) == $want)] | length')" || comment=0
+          review="$(set -o pipefail; gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" | jq -s \
             --argjson who "$approvers" --arg sha "$sha" --arg author "$author" \
             '[.[][] | select(.state == "APPROVED" and .commit_id == $sha and .user.type == "User"
                              and .user.login != $author
                              and ((.user.login as $u | $who | index($u))
-                                  or (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))))] | length')"
+                                  or (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))))] | length')" || review=0
           approved=false
           [[ "$comment" != 0 || "$review" != 0 ]] && approved=true
           {
