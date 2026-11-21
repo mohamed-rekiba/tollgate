@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.tollgate/logs/
+.tollgate/work/
+.tollgate/run/
+.tollgate/reports/
+.tollgate/requests/
+.tollgate/lessons/
+*.tar.gz
+*.whl
+site/node_modules/
+site/dist/
