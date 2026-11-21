@@ -1,6 +1,7 @@
 """Tests for the freeze command, the restore step, and the workflow templates."""
 
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -130,9 +131,16 @@ class WorkflowTemplatesTest(unittest.TestCase):
 
     def test_this_repository_runs_the_template_as_it_is(self):
         # Tollgate guards itself with this file, so the installed copy must match.
-        installed = ROOT / ".github/workflows/tollgate.yml"
-        if installed.exists():
-            self.assertEqual(installed.read_text(), self.FILE.read_text(),
+        # It compares the copy the commit holds. On GitHub, the test job puts main's
+        # harness back on disk before the tests run, so for a change to the workflow
+        # the file on disk is main's copy, not the one this commit installs.
+        path = ".github/workflows/tollgate.yml"
+        proc = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{path}"],
+                              capture_output=True, text=True, check=False)
+        installed = proc.stdout if proc.returncode == 0 else (
+            (ROOT / path).read_text() if (ROOT / path).exists() else None)
+        if installed is not None:
+            self.assertEqual(installed, self.FILE.read_text(),
                              "run: python3 -m setup.write_workflows --version self")
 
     def test_no_broad_permissions_and_no_pin_in_the_file(self):
