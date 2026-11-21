@@ -13,7 +13,6 @@ import argparse
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from action import checks, gate, prepare, tickets
@@ -21,7 +20,7 @@ from action import manifest as mf
 from action import settings as st
 from action.gitio import changed_files
 from action.tickets import item_of_test
-from driver import advisor, roles
+from driver import advisor, history, roles
 from driver.log import Log, read
 
 BUILDER_RULES = {3, 5}     # the builder can fix these
@@ -126,51 +125,6 @@ def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
 
 # The driver.
 
-@dataclass
-class State:
-    tests_done: bool = False
-    frozen: str = ""
-    rejections: int = 0
-    attempts: int = 0
-    best_commit: str = ""
-    best_score: int = -1
-    last_failed: tuple = ()
-    passed_commit: str = ""
-    pr: int = 0
-    extra_attempts: int = 0
-    ai_decisions: int = 0
-    hint: str = ""
-    stronger: bool = False
-
-    @classmethod
-    def from_events(cls, events: list) -> "State":
-        s = cls()
-        for e in events:
-            kind = e["event"]
-            if kind == "tests_reviewed":
-                s.tests_done = True
-            elif kind == "tests_rejected":
-                s.rejections += 1
-            elif kind == "frozen":
-                s.frozen = e["tag"]
-                s.best_commit = s.best_commit or e["commit"]
-            elif kind in ("attempt_failed", "attempt_passed"):
-                s.attempts = e["attempt"]
-                s.last_failed = tuple(map(tuple, e.get("failed_key", [[], []])))
-                if e.get("score", -1) > s.best_score:
-                    s.best_score, s.best_commit = e["score"], e["commit"]
-                if kind == "attempt_passed":
-                    s.passed_commit = e["commit"]
-            elif kind == "pr_opened":
-                s.pr = e["pr"]
-            elif kind == "advisor_decided":
-                s.ai_decisions += 1 if e.get("by") == "ai" else 0
-                if e["decision"] in ("retry", "stronger"):
-                    s.extra_attempts += 1
-                    s.hint = e.get("hint", "")
-                    s.stronger = s.stronger or e["decision"] == "stronger"
-        return s
-
 
 NETWORK = {"fetch", "push", "pull", "clone", "ls-remote"}
 
@@ -196,14 +150,10 @@ def push(cwd, *args) -> str:
     return git(cwd, "push", *args)
 
 
-def cost_of(events: list) -> float:
-    return round(sum(float(e.get("cost_usd") or 0) for e in events), 4)
-
-
 def task_cost(logs_dir: str, task: str) -> float:
     total = 0.0
     for path in Path(logs_dir).glob("*.jsonl"):
-        total += cost_of([e for e in read(str(path)) if e.get("task") == task])
+        total += history.cost([e for e in read(str(path)) if e.get("task") == task])
     return round(total, 4)
 
 
@@ -265,7 +215,7 @@ class Driver:
 
     # Steps.
 
-    def write_tests(self, st_: State):
+    def write_tests(self, st_: history.Ticket):
         rejected = []
         while not st_.tests_done:
             answer = self.role("test_writer", {"ticket": self.ticket_text, "ticket_id":
@@ -300,7 +250,7 @@ class Driver:
                 raise Stop(f"the tests were rejected {st_.rejections} times")
             rejected = findings
 
-    def freeze(self, st_: State):
+    def freeze(self, st_: history.Ticket):
         commit, bad = self.commit(f"{self.ticket_id}: ticket and locked tests")
         bad = bad or self.changed_github()
         if bad:
@@ -320,16 +270,16 @@ class Driver:
         st_.frozen = tag
         st_.best_commit = st_.best_commit or commit
 
-    def stop_rules(self, st_: State, events: list):
+    def stop_rules(self, st_: history.Ticket, events: list):
         s = self.settings["stop"]
         if st_.attempts >= s["attempts"] + st_.extra_attempts:
             raise Stop(f"the ticket used {st_.attempts} attempts")
-        if cost_of(events) >= s["ticket_usd"]:
-            raise Stop(f"the ticket cost {cost_of(events)} USD")
+        if history.cost(events) >= s["ticket_usd"]:
+            raise Stop(f"the ticket cost {history.cost(events)} USD")
         if task_cost(self.logs, self.ticket.plan) >= s["task_usd"]:
             raise Stop(f"the task reached {s['task_usd']} USD")
 
-    def attempt(self, st_: State):
+    def attempt(self, st_: history.Ticket):
         n = st_.attempts + 1
         git(self.copy, "reset", "-q", "--hard", st_.best_commit)
         git(self.copy, "clean", "-q", "-fd")
@@ -408,7 +358,7 @@ class Driver:
         self.log.add("attempt_passed", **fields)
         st_.attempts, st_.passed_commit = n, commit
 
-    def open_pr(self, st_: State):
+    def open_pr(self, st_: history.Ticket):
         git(self.copy, "reset", "-q", "--hard", st_.passed_commit)
         if self.changed_github() or any(p.startswith(".github/") for p in changed_files(
                 self.copy, self.base, "HEAD")):
@@ -422,12 +372,12 @@ class Driver:
         if not self.settings["auto_merge"]:
             notes.append("auto_merge is off: a person merges this.")
         body = (f"Ticket {self.ticket_id}. Tier {passed['tier']}. Score {passed['score']}. "
-                f"Attempts {passed['attempt']}. Cost {cost_of(events)} USD.\n\n"
+                f"Attempts {passed['attempt']}. Cost {history.cost(events)} USD.\n\n"
                 + "\n".join(notes))
         st_.pr = self.server.open_pr(self.branch, f"{self.ticket_id}: {self.ticket.id}", body)
         self.log.add("pr_opened", pr=st_.pr, commit=st_.passed_commit)
 
-    def finish(self, st_: State) -> int:
+    def finish(self, st_: history.Ticket) -> int:
         if not self.settings["auto_merge"]:
             self.log.add("waiting_for_merge", pr=st_.pr)
             return 0
@@ -439,7 +389,7 @@ class Driver:
         roles.remove_copy(self.project, self.ticket_id)
         return 0
 
-    def ask_advisor(self, st_: State, reason: str, person_only: bool = False) -> bool:
+    def ask_advisor(self, st_: history.Ticket, reason: str, person_only: bool = False) -> bool:
         """Return True to go on with one more attempt."""
         chain = ["person"] if person_only else self.settings["ai"]["advisor"]
         for entry in chain:
@@ -483,7 +433,7 @@ class Driver:
         lock = TicketLock(os.path.join(self.project, ".tollgate", "run", f"{self.ticket_id}.lock"))
         lock.acquire()
         try:
-            st_ = State.from_events(read(self.log_path))
+            st_ = history.replay(read(self.log_path))
             with Log(self.log_path, ticket=self.ticket_id, task=self.ticket.plan) as self.log:
                 self.copy = roles.make_copy(self.project, self.ticket_id)
                 git(self.copy, "fetch", "-q", "origin", "--tags", "--force")
@@ -504,7 +454,7 @@ class Driver:
         finally:
             lock.release()
 
-    def _loop(self, st_: State) -> int:
+    def _loop(self, st_: history.Ticket) -> int:
         while True:
             try:
                 while not st_.frozen:
