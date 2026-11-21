@@ -29,7 +29,11 @@ def check_base(project: str, log, ref: str = "origin/main") -> int:
         log.add("roadmap_waiting", reason=f"cannot read the settings on {ref} for the base "
                                           f"suite: {err}")
         return 1
-    results = base_suite.run(settings, project)
+    try:
+        results = base_suite.run(settings, project)
+    except OSError as err:
+        log.add("roadmap_waiting", reason=f"the base suite could not run: {err}")
+        return 1
     failed = [r for r in results if not r["passed"]]
     if failed:
         log.add("roadmap_waiting", reason="the base is not ready: " + "; ".join(

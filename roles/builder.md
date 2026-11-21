@@ -38,7 +38,7 @@ You write the plan for a task, not code. The inputs hold `request`, in the asker
    ```
    ---
    id: <task_id>
-   tickets: inbox-json, inbox-json-docs
+   tickets: order-totals, order-totals-tax
    ---
    ## Task
    The request, in the asker's words.
@@ -47,14 +47,14 @@ You write the plan for a task, not code. The inputs hold `request`, in the asker
    The approach, in a few sentences.
 
    ## Files
-   setup/inbox.py
+   app/orders.py
 
    ## Seams
-   python3 -m setup.inbox --json
+   app.orders.total
 
    ## Tickets
-   - inbox-json: print the questions as one JSON list.
-   - inbox-json-docs: describe --json in the skill.
+   - order-totals: total an order from its lines.
+   - order-totals-tax: add the tax for the order's country to the total.
    ```
 
    Done when each ticket in the header has one line in Tickets.
