@@ -21,7 +21,7 @@ from action import manifest as mf
 from action import settings as st
 from action.gitio import changed_files
 from action.tickets import item_of_test
-from driver import roles
+from driver import advisor, roles
 from driver.log import Log, read
 
 BUILDER_RULES = {3, 5}     # the builder can fix these
@@ -163,7 +163,7 @@ class State:
             elif kind == "pr_opened":
                 s.pr = e["pr"]
             elif kind == "advisor_decided":
-                s.ai_decisions += 1 if e.get("by") != "person" else 0
+                s.ai_decisions += 1 if e.get("by") == "ai" else 0
                 if e["decision"] in ("retry", "stronger"):
                     s.extra_attempts += 1
                     s.hint = e.get("hint", "")
@@ -403,12 +403,23 @@ class Driver:
         roles.remove_copy(self.project, self.ticket_id)
         return 0
 
-    def ask_advisor(self, st_: State, reason: str) -> bool:
+    def ask_advisor(self, st_: State, reason: str, person_only: bool = False) -> bool:
         """Return True to go on with one more attempt."""
-        for entry in self.settings["ai"]["advisor"]:
+        chain = ["person"] if person_only else self.settings["ai"]["advisor"]
+        for entry in chain:
             if entry == "person":
-                self.log.add("waiting_for_advisor", reason=reason, by="person")
-                raise Parked(reason)
+                try:
+                    found = advisor.ask_person(
+                        self.server, self.log, self.log_path, f"ticket {self.ticket_id}", reason,
+                        ["retry", "stronger", "split", "park"], self.settings["approvers"])
+                except advisor.Waiting as waiting:
+                    raise Parked(str(waiting)) from None
+                if found["decision"] in ("retry", "stronger") and st_.frozen:
+                    st_.extra_attempts += 1
+                    st_.hint = found["hint"]
+                    return True
+                self.log.add("parked", reason=f"a person chose {found['decision']}")
+                raise Parked(f"a person chose {found['decision']}")
             if st_.ai_decisions >= MAX_AI_DECISIONS:
                 continue
             events = read(self.log_path)
@@ -443,6 +454,10 @@ class Driver:
                     Path(self.copy, mf.ticket_path(self.ticket_id)).write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
                 self.log.add("started", attempts_done=st_.attempts)
+                question = advisor.pending(self.log_path)
+                if question:
+                    # Read the answer before doing anything else.
+                    self.ask_advisor(st_, question["reason"], person_only=True)
                 return self._loop(st_)
         except Parked:
             return 3

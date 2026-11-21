@@ -27,3 +27,32 @@ End with one block:
 ```json
 {"changed": ["src/app.py"], "locked_test_wrong": null, "notes": "one line"}
 ```
+
+## When `mode` is `plan`
+
+You write the plan for a task, not code. The inputs hold `request`, in the asker's words, and `task_id`.
+
+1. Read the project until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
+2. Write `.tollgate/plans/<task_id>.md` with the header `id` and `tickets`, and the sections Task, Design, Files, Seams, and Tickets. Done when each ticket in the header has one line in Tickets.
+3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Done when each ticket names its seams and its test files.
+4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
+
+End with:
+
+```json
+{"plan": ".tollgate/plans/<task_id>.md", "tickets": ["T-1"], "notes": "one line"}
+```
+
+## When `mode` is `answer`
+
+The inputs hold `findings` from the plan reviewers. Answer each one:
+
+- `fix`: the finding is right. Change the plan or the tickets.
+- `contest`: the finding is wrong. Give evidence the reviewer could read: a file and a line, or a quote from the request.
+- `escalate`: you cannot settle it. The advisor decides.
+
+End with:
+
+```json
+{"answers": [{"finding": 0, "action": "fix", "evidence": "one line"}]}
+```
