@@ -61,9 +61,21 @@ def wanted(owner_type: str = "Organization") -> list:
     return [branch, tags]
 
 
+def _covers(have, want) -> bool:
+    """True when `have` holds everything in `want`. GitHub adds default fields when it
+    reads a ruleset back, such as allowed_merge_methods, so equality is too strict."""
+    if isinstance(want, dict):
+        return isinstance(have, dict) and all(k in have and _covers(have[k], v)
+                                              for k, v in want.items())
+    if isinstance(want, list):
+        return (isinstance(have, list) and len(have) == len(want)
+                and all(_covers(h, w) for h, w in zip(have, want, strict=True)))
+    return have == want
+
+
 def _same(have: dict, want: dict) -> bool:
     keys = ("target", "enforcement", "conditions", "rules", "bypass_actors")
-    return all(have.get(k) == want[k] for k in keys)
+    return all(_covers(have.get(k), want[k]) for k in keys)
 
 
 def apply(gh, repository: str) -> list:

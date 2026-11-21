@@ -84,6 +84,14 @@ class ApplyRulesetsTest(unittest.TestCase):
         self.assertEqual(apply_rulesets.apply(gh, "o/r"),
                          ["tollgate main: already in place", "tollgate tags: already in place"])
 
+    def test_fields_github_adds_do_not_count_as_a_change(self):
+        gh = FakeGh()
+        apply_rulesets.apply(gh, "o/r")
+        rules = gh.rulesets[1]["rules"]
+        rules[2] = dict(rules[2], parameters={**rules[2]["parameters"],
+                                              "allowed_merge_methods": ["squash"]})
+        self.assertEqual(apply_rulesets.apply(gh, "o/r")[0], "tollgate main: already in place")
+
     def test_updates_a_changed_ruleset(self):
         gh = FakeGh()
         apply_rulesets.apply(gh, "o/r")
