@@ -61,11 +61,16 @@ def candidates(tickets: list) -> list:
     return [c for _, c in scored[:MAX_LESSONS]]
 
 
+def numbers_table(nums: dict) -> str:
+    lines = ["| Number | Value |", "| --- | --- |"]
+    lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
+    return "\n".join(lines) + "\n"
+
+
 def write(project: str, task: str) -> str:
     nums, tickets = numbers(project, task)
     cands = candidates(tickets)
-    lines = [f"# Retro: task {task}", "", "| Number | Value |", "| --- | --- |"]
-    lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
+    lines = [f"# Retro: task {task}", ""] + numbers_table(nums).splitlines()
     lines += ["", f"## Candidates for lessons (at most {MAX_LESSONS})", ""]
     lines += [f"- {c['ticket']}: a {c['kind']}. Evidence: {c['evidence']}" for c in cands] or [
         "- None. No ticket stopped, had a test rejected, or needed a second attempt."]
@@ -80,8 +85,13 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--task", required=True)
+    parser.add_argument("--print", action="store_true", dest="print_table",
+                        help="also print the numbers table to standard output")
     args = parser.parse_args(argv)
-    print(write(args.project, args.task))
+    path = write(args.project, args.task)
+    print(path)
+    if args.print_table:
+        print(numbers_table(numbers(args.project, args.task)[0]), end="")
     return 0
 
 
