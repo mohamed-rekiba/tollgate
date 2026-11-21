@@ -44,7 +44,7 @@ def plan_path(task_id: str) -> str:
 
 
 def parse(text: str) -> Plan:
-    lines = text.splitlines()
+    lines = text.strip().splitlines()
     if not lines or lines[0].strip() != "---":
         raise PlanError("a plan starts with a --- line")
     try:
@@ -62,7 +62,9 @@ def parse(text: str) -> Plan:
         header[key] = value.strip()
     if not ID.match(header.get("id", "")):
         raise PlanError("the plan header needs a valid id")
-    tickets = [t.strip() for t in header.get("tickets", "").split(",") if t.strip()]
+    # A list written as [a, b] is read like a, b: a common way to write a list.
+    listed = header.get("tickets", "").strip().removeprefix("[").removesuffix("]")
+    tickets = [t.strip().strip("'\"") for t in listed.split(",") if t.strip()]
     if not tickets:
         raise PlanError("the plan lists no tickets")
     if len(set(tickets)) != len(tickets):

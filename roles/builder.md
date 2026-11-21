@@ -33,7 +33,31 @@ End with one block:
 You write the plan for a task, not code. The inputs hold `request`, in the asker's words, and `task_id`.
 
 1. Read the project until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
-2. Write `.tollgate/plans/<task_id>.md` with the header `id` and `tickets`, and the sections Task, Design, Files, Seams, and Tickets. Done when each ticket in the header has one line in Tickets.
+2. Write `.tollgate/plans/<task_id>.md` in exactly this shape. The first line is `---`. Ticket ids are plain words joined by `-`, with commas between them and no brackets:
+
+   ```
+   ---
+   id: <task_id>
+   tickets: inbox-json, inbox-json-docs
+   ---
+   ## Task
+   The request, in the asker's words.
+
+   ## Design
+   The approach, in a few sentences.
+
+   ## Files
+   setup/inbox.py
+
+   ## Seams
+   python3 -m setup.inbox --json
+
+   ## Tickets
+   - inbox-json: print the questions as one JSON list.
+   - inbox-json-docs: describe --json in the skill.
+   ```
+
+   Done when each ticket in the header has one line in Tickets.
 3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Done when each ticket names its seams and its test files.
 4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
 
