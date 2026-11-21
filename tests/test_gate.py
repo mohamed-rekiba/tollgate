@@ -145,6 +145,33 @@ class GateRulesTest(unittest.TestCase):
         self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1},
                                      approvals=[approve])), [])
 
+    def test_a_change_by_hand_passes_with_a_person_s_approval(self):
+        approve = {"kind": "comment", "user": "owner", "user_type": "User",
+                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
+        f = facts(branch="not-a-ticket-branch", freeze=None,
+                  changes={".github/workflows/tollgate.yml": 9, "src/a.py": 3})
+        self.assertEqual(rules(f), [1])
+        f.approvals = [approve]
+        self.assertEqual(rules(f), [])
+
+    def test_a_ticket_branch_cannot_skip_its_freeze_with_an_approval(self):
+        approve = {"kind": "comment", "user": "owner", "user_type": "User",
+                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
+        f = facts(freeze=None, approvals=[approve])
+        self.assertEqual(rules(f), [1])
+
+    def test_a_change_by_hand_still_needs_its_checks_to_pass(self):
+        approve = {"kind": "comment", "user": "owner", "user_type": "User",
+                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
+        f = facts(branch="not-a-ticket-branch", freeze=None, approvals=[approve],
+                  results=Results([CheckResult("tests", False)], {}))
+        self.assertEqual(rules(f), [5])
+
+    def test_the_failure_says_how_to_approve(self):
+        f = facts(branch="not-a-ticket-branch", freeze=None)
+        _, text = gate.summary(*gate.evaluate(f))
+        self.assertIn(f"tollgate approve {HEAD}", text)
+
     def test_free_paths_need_no_ticket(self):
         f = facts(branch="docs/typo", freeze=None, changes={"docs/plan.md": 4, "README.md": 1})
         self.assertEqual(gate.evaluate(f), ([], 1))

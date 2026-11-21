@@ -631,6 +631,7 @@ jobs:
       sha: ${{ steps.pr.outputs.sha }}
       branch: ${{ steps.pr.outputs.branch }}
       ticket: ${{ steps.pr.outputs.ticket }}
+      approved: ${{ steps.pr.outputs.approved }}
     steps:
       - id: pr
         env:
@@ -645,11 +646,32 @@ jobs:
           # A branch name is text from the author of the change. Only a plain
           # ticket branch goes on. Any other name fails gate rule 1.
           [[ "$branch" =~ ^tg/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || branch="not-a-ticket-branch"
+          sha="$(jq -r .head.sha <<<"$data")"
+          author="$(jq -r .user.login <<<"$data")"
+          # Approved: a person under "approvers" in the settings on main commented
+          # "tollgate approve <the head commit>", or approved the head commit in a
+          # review. The gate checks this again; here it only decides, for a change
+          # made by hand, whether its tests run with its own harness.
+          approvers="$(gh api "repos/$GITHUB_REPOSITORY/contents/.tollgate/settings.json?ref=main" \
+            --jq '.content' | base64 -d | jq -c '.approvers // []')"
+          comment="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" | jq -s \
+            --argjson who "$approvers" --arg want "tollgate approve $sha" \
+            '[.[][] | select(.user.type == "User" and (.user.login as $u | $who | index($u))
+                             and ((.body // "") | gsub("^\\s+|\\s+$"; "")) == $want)] | length')"
+          review="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" | jq -s \
+            --argjson who "$approvers" --arg sha "$sha" --arg author "$author" \
+            '[.[][] | select(.state == "APPROVED" and .commit_id == $sha and .user.type == "User"
+                             and .user.login != $author
+                             and ((.user.login as $u | $who | index($u))
+                                  or (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))))] | length')"
+          approved=false
+          [[ "$comment" != 0 || "$review" != 0 ]] && approved=true
           {
             echo "pr=$PR"
-            echo "sha=$(jq -r .head.sha <<<"$data")"
+            echo "sha=$sha"
             echo "branch=$branch"
             echo "ticket=${branch#tg/}"
+            echo "approved=$approved"
           } >> "$GITHUB_OUTPUT"
   # Run the change's tests with a read-only token and no secrets.
   test:
@@ -694,10 +716,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Put back the harness from main and the locked files
+        # A change made by hand and approved by a person runs with its own harness:
+        # the person vouches for it. Any other change runs with main's harness, so
+        # it cannot rewrite the tests that judge it.
         env:
           PYTHONPATH: ${{ steps.code.outputs.path }}
           TICKET: ${{ needs.find.outputs.ticket }}
-        run: python3 -P -m action.prepare --repo change --base origin/main --ticket "$TICKET"
+          BRANCH: ${{ needs.find.outputs.branch }}
+          APPROVED: ${{ needs.find.outputs.approved }}
+        run: |
+          if [[ "$BRANCH" == not-a-ticket-branch && "$APPROVED" == true ]]; then
+            echo "Approved by a person: the change's own harness stays."
+          else
+            python3 -P -m action.prepare --repo change --base origin/main --ticket "$TICKET"
+          fi
       - name: Run the checks
         env:
           PYTHONPATH: ${{ steps.code.outputs.path }}

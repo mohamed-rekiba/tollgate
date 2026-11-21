@@ -95,11 +95,19 @@ def evaluate(facts: Facts) -> tuple:
     free = bool(facts.changes) and all(
         matches(p, facts.settings["free"]) and not matches(p, guarded) for p in facts.changes)
 
+    # A change on any branch that is not a ticket branch was made by a person, not
+    # by the driver. It has no ticket and no locked tests, so instead it needs an
+    # approval by a person, which also covers tier 4. A ticket branch can never
+    # take this path: its locked tests always apply.
+    by_hand = ticket is None and not free
+
     # Rule 1: ticket and freeze.
     if free:
         pass
-    elif ticket is None:
-        fail(1, f"the branch {facts.branch} is not named tg/<ticket id>")
+    elif by_hand:
+        if not approved(facts):
+            fail(1, f"this change is not on a ticket branch, so it needs an approval by a "
+                    f"person on {facts.head_sha}")
     elif freeze is None:
         fail(1, f"no freeze exists for ticket {ticket}")
     else:
@@ -130,12 +138,12 @@ def evaluate(facts: Facts) -> tuple:
     # Rule 4 comes before rule 2, because rule 2 needs the tier.
     level, reason = tiers.tier(facts.settings, facts.changes, frozen)
     needs_person = level == 4 or (freeze is not None and freeze.number > 1)
-    if needs_person and not approved(facts):
+    if needs_person and not by_hand and not approved(facts):
         why = f"tier 4 ({reason})" if level == 4 else "a locked test was replaced"
         fail(4, f"{why}: needs an approval by a person on {facts.head_sha}")
 
     # Rule 2: plan.
-    if facts.plan_required and level >= 2 and not free:
+    if facts.plan_required and level >= 2 and not free and not by_hand:
         if facts.plan_tickets is None:
             fail(2, "no approved plan exists for this ticket")
         elif ticket not in facts.plan_tickets:
@@ -275,6 +283,11 @@ def summary(findings: list, level: int) -> tuple:
     title = f"Failed: {len(findings)} finding(s). Tier {level}."
     lines = [f"- Rule {f['rule']}: {f['message']}" + (f" (`{f['file']}`)" if f["file"] else "")
              for f in findings]
+    sha = next((m.split(" on ")[-1] for m in (f["message"] for f in findings)
+                if "needs an approval by a person on " in m), "")
+    if sha:
+        lines += ["", "To approve, a person listed under `approvers` comments on the pull request:",
+                  "", f"    tollgate approve {sha}"]
     return title, "\n".join(lines)
 
 
