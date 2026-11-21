@@ -15,6 +15,7 @@ GITHUB_ACTIONS_APP = 15368
 ADMIN_ROLE = 5  # the repository role "admin"
 BRANCH_RULESET = "tollgate main"
 TAG_RULESET = "tollgate tags"
+TAG_PATTERN = "refs/tags/tg/**/*"
 
 
 def wanted(owner_type: str = "Organization") -> list:
@@ -47,7 +48,9 @@ def wanted(owner_type: str = "Organization") -> list:
     # tag that its run did not record (rule 1 and rule 2).
     tags = {
         "name": TAG_RULESET, "target": "tag", "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/tags/tg/**"], "exclude": []}},
+        # GitHub matches with fnmatch and FNM_PATHNAME: a trailing ** covers one
+        # level only, so tg/** would miss tg/freeze/<ticket>/<n>. **/* covers all.
+        "conditions": {"ref_name": {"include": [TAG_PATTERN], "exclude": []}},
         "rules": [{"type": "update"}, {"type": "deletion"}],
         "bypass_actors": [],
     }

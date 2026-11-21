@@ -90,6 +90,17 @@ class ApplyRulesetsTest(unittest.TestCase):
         gh.rulesets[1] = dict(gh.rulesets[1], enforcement="disabled")
         self.assertIn("tollgate main: updated", apply_rulesets.apply(gh, "o/r"))
 
+    def test_the_tag_pattern_reaches_every_level_under_tg(self):
+        # GitHub uses fnmatch with FNM_PATHNAME; this mimics it for the tag names Tollgate makes.
+        import re
+        pattern = apply_rulesets.wanted("User")[1]["conditions"]["ref_name"]["include"][0]
+        self.assertEqual(pattern, "refs/tags/tg/**/*")
+        rx = re.compile("^" + re.escape(pattern).replace(r"\*\*/", "(?:[^/]+/)*")
+                        .replace(r"\*", "[^/]*") + "$")
+        for tag in ("refs/tags/tg/freeze/T-1/1", "refs/tags/tg/plan/retries/12"):
+            self.assertTrue(rx.match(tag), tag)
+        self.assertFalse(rx.match("refs/tags/v1.0"))
+
     def test_a_personal_repository_gets_no_creation_rule_or_app_bypass(self):
         tags = apply_rulesets.wanted("User")[1]
         self.assertEqual([r["type"] for r in tags["rules"]], ["update", "deletion"])
