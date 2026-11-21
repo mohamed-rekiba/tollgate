@@ -1,0 +1,12 @@
+[
+ ["e310-01", "Add a command line to action/tickets.py: python3 -m action.tickets <path> checks one ticket file and prints its id and items, or the error, and ends with 0 or 1. Add tests."],
+ ["e310-02", "Add a command line to action/plan.py: python3 -m action.plan <path> checks one plan file and prints its id and tickets, or the error, and ends with 0 or 1. Add tests."],
+ ["e310-03", "Add a command line to action/roadmap.py: python3 -m action.roadmap <path> checks one roadmap file and prints its tasks in build order with their stage, or the error, and ends with 0 or 1. Add tests."],
+ ["e310-04", "In setup/base_suite.py, add --only <name> to run one of the five base checks. An unknown name ends with 1 and names the five valid ones. Add tests."],
+ ["e310-05", "In setup/inbox.py, add --json to print the questions as one JSON list instead of text lines. Add tests."],
+ ["e310-06", "In setup/home.py, make 'list' also print whether each project has .tollgate/settings.json, as a third column 'settings' or 'no settings'. Add tests."],
+ ["e310-07", "In setup/sync_rules.py, add --check: list the projects whose .tollgate/lenses differ from the home's rules/lenses, without committing or pushing anything, and end with 1 if any differ. Add tests."],
+ ["e310-08", "In driver/retro.py, add --print to print the numbers table to standard output as well as writing the lessons file. Add tests."],
+ ["e310-09", "In setup/check_rights.py, add --human to print one plain sentence about the level instead of JSON, for example 'admin: you can set rulesets.' Add tests."],
+ ["e310-10", "Add a command line to action/manifest.py: python3 -m action.manifest --repo <path> --tag <tag> prints the freeze manifest of that tag as plain lines: ticket, commit, each locked file, and each locked test. Add tests."]
+]

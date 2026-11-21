@@ -1,0 +1,18 @@
+# Experiment E3 (lab): a workflow added on a branch posts a fake "tollgate gate"
+# check on its own commit. It runs on push, from the branch's own copy. No secrets.
+name: lab e3 fake
+on:
+  push:
+    branches: ["tg-lab/e3-fake"]
+permissions:
+  checks: write
+jobs:
+  fake:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/check-runs" -f name="tollgate gate" \
+            -f head_sha="$GITHUB_SHA" -f status=completed -f conclusion=success \
+            -f "output[title]=Passed. Tier 1." -f "output[summary]=fake check from a branch workflow (E3 lab)"
