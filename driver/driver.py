@@ -301,7 +301,7 @@ class Driver:
             rejected = findings
 
     def freeze(self, st_: State):
-        commit, bad = self.commit(f"{self.ticket_id}: ticket and locked tests")
+        commit, bad = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
         bad = bad or self.changed_github()
         if bad:
             raise Stop(f"the test writer changed files under .github: {bad}")
@@ -351,7 +351,7 @@ class Driver:
                            "minutes") from None
             raise
         cost = self.spend(answer)
-        commit, bad = self.commit(f"{self.ticket_id}: attempt {n}")
+        commit, bad = self.commit(f"feat({self.ticket_id}): attempt {n}")
         results = self.checks()
         facts = gate.collect(self.copy, self.base, "HEAD", self.branch, results, self.server)
         findings, tier = gate.evaluate(facts)

@@ -6,14 +6,14 @@ Tollgate keeps a change written by an AI out of the main branch until tests that
 
 ### Work
 
-**task**: What a person asks for, in their own words.
-_Avoid_: request, job, story
+**task**: What a person asks for, and the work Tollgate does for it. The person's own words for it are the request.
+_Avoid_: user story, epic
 
 **plan**: The design for a task. It names every file that changes, every seam, and every ticket.
-_Avoid_: spec, design doc
+_Avoid_: design doc, PRD
 
 **ticket**: One small part of a plan, sized for one AI session. It has an id.
-_Avoid_: issue, story, work item
+_Avoid_: user story, work item
 
 **checklist**: The list on a ticket that says what done means. Each line is an item.
 _Avoid_: acceptance criteria, requirements
@@ -22,10 +22,10 @@ _Avoid_: acceptance criteria, requirements
 _Avoid_: required item, critical item
 
 **seam**: A public point where a test observes behavior: a web address, a command, the name and inputs of a function.
-_Avoid_: boundary, interface, API
+_Avoid_: boundary, touchpoint
 
 **attempt**: One builder session, then one run of the gate.
-_Avoid_: try, iteration, round
+_Avoid_: iteration
 
 **score**: The share of checklist items that passed, as a percentage.
 _Avoid_: rating, grade
@@ -45,10 +45,10 @@ _Avoid_: tester, QA
 _Avoid_: critic, judge, goldfish
 
 **lens**: A file that tells a reviewer what to look for.
-_Avoid_: rubric, standard, persona
+_Avoid_: rubric
 
 **finding**: One problem that a reviewer or a check reports: blocking, major, or minor.
-_Avoid_: issue, comment, defect
+_Avoid_: defect, nit
 
 **advisor**: Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder.
 _Avoid_: approver, human in the loop, escalation
@@ -56,7 +56,7 @@ _Avoid_: approver, human in the loop, escalation
 ### Proof
 
 **checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets.
-_Avoid_: CI, linters, validators
+_Avoid_: linters, validators
 
 **harness**: The files that decide how tests run: test settings, shared test helpers, dependency lists, the server workflows.
 _Avoid_: test config, test infrastructure
@@ -76,25 +76,28 @@ _Avoid_: risk level, severity
 ### Parts
 
 **driver**: The Tollgate script that runs the steps of a ticket in order.
-_Avoid_: orchestrator, runner, harness
+_Avoid_: orchestrator, runner
 
 **log**: A file on the person's machine. The driver adds one line for each event.
-_Avoid_: journal, history, record
+_Avoid_: journal
 
 **report**: The file that the driver writes from the logs when a task ends.
-_Avoid_: summary, retro
+_Avoid_: summary
+
+**retro**: The look back at a finished task: its numbers, and at most 3 lessons, each written as a ticket.
+_Avoid_: postmortem, retrospective
 
 **skill**: A set of instructions that Claude Code follows when a person types its name.
-_Avoid_: command, slash command
+_Avoid_: slash command
 
 **plugin**: The package that adds Tollgate to Claude Code.
 _Avoid_: extension, add-on
 
-**Action**: The code that GitHub runs for the freeze and the gate. A project pins one commit of it.
-_Avoid_: workflow, CI job
+**workflow**: The one GitHub workflow, `tollgate.yml`, that runs the freeze, the plan lock, the tests, the review, and the gate. It reads which version of Tollgate to run from the settings on main.
+_Avoid_: Action, pipeline
 
 **home**: An optional git repository that holds many projects as submodules.
 _Avoid_: ops repo, workspace, portfolio
 
-**server**: GitHub.
-_Avoid_: remote, CI
+**GitHub**: Where the locked tests, the workflow, the gate, and the main branch live. The AI has no key to it.
+_Avoid_: the server, remote

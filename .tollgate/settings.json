@@ -10,6 +10,9 @@
     },
     "style": {
       "run": "pipx run ruff check ."
+    },
+    "writing": {
+      "run": "python3 setup/check_writing.py"
     }
   },
   "harness": [
