@@ -133,3 +133,15 @@ Two attempts failed the same way when the names of the failed checks and the ids
 The gate's rules 1 to 3 prove that an AI change was built against tests locked before the build. A change a person makes by hand has no ticket and no locked tests, so it always failed rule 1, and a change to the harness always failed rule 5: the test job puts main's harness back, so a new workflow was tested against the old one. The only way through was to merge around a red gate.
 
 Now a change on a branch that is not a ticket branch passes rules 1 and 2 with an approval by a person under `approvers`: a comment `tollgate approve <the head commit>`, or an approving review. The same approval meets rule 4, and the test job then keeps the change's own harness. The checks still run and must pass. A ticket branch cannot take this path. The gate's failure message prints the comment to write.
+
+## The gate runs only in the driver
+
+The owner removed the gate from the workflow on 2026-11-21. Every pull request made by hand failed it until a person commented an approval, and the owner chose to drop that step for every project.
+
+- The driver still runs the gate on your machine after each attempt, so a ticket's pull request opens only after rules 1 to 5 pass there.
+- On GitHub, the test job runs the checks with main's harness and the locked files, and fails when a check fails. The review runs for tier 3 and 4. Neither one blocks a merge.
+- No ruleset requires a check. The branch ruleset keeps pull requests, no force-push, and no deletion. The tag ruleset is unchanged.
+- With `auto_merge` on, the driver merges only tier 1 and 2. A person merges tier 3 and 4.
+- `/tollgate:init` no longer proves the gate with a pull request: no check on GitHub rejects anything.
+
+What this gives up: nothing on GitHub stops a change that skips the driver, such as a change pushed by hand, a weakened test, or a change to the workflow, from merging.

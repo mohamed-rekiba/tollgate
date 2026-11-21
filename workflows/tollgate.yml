@@ -6,9 +6,9 @@
 #
 # Started by hand or by /tollgate:task (workflow_dispatch): a freeze, a plan
 # lock, a task run by the driver on GitHub (task), a roadmap run by the driver
-# on GitHub (roadmap), or the gate for one pull request (check).
+# on GitHub (roadmap), or the tests and the review for one pull request (check).
 # On a pull request into main, or a comment "tollgate check" or "tollgate approve":
-# the tests, then the review, then the gate, which posts "tollgate gate".
+# the tests and the review.
 # A job that runs the change has a read-only token, no secrets, and no saved token.
 name: tollgate
 run-name: >-
@@ -528,10 +528,14 @@ jobs:
         env:
           PYTHONPATH: ${{ steps.code.outputs.path }}
         run: python3 -P -m action.checks --repo change --base origin/main --setup --out "$RUNNER_TEMP/results.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: results
-          path: ${{ runner.temp }}/results.json
+      - name: Fail when a check failed
+        run: |
+          python3 - "$RUNNER_TEMP/results.json" <<'PY'
+          import json, sys
+          failed = [c["name"] for c in json.load(open(sys.argv[1]))["checks"] if not c["passed"]]
+          print("Failed checks: " + (", ".join(failed) if failed else "none"))
+          sys.exit(1 if failed else 0)
+          PY
   # The review reads the change as text. It holds the model access.
   review:
     needs: find
@@ -600,67 +604,3 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: python3 -P -m action.review --repo main --base origin/main --head "$SHA" --branch "$BRANCH" --repository "$GITHUB_REPOSITORY" --post "$SHA"
-  # The gate runs after the tests and the review, so it reads their results.
-  gate:
-    needs: [find, test, review]
-    if: always() && needs.find.result == 'success' && needs.find.outputs.pr != ''
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-      actions: read
-      checks: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          path: main
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Get Tollgate's code
-        id: code
-        run: |
-          v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
-          if [[ "$v" == self ]]; then
-            echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
-          elif [[ "$v" == copy ]]; then
-            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
-          elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
-            echo "ref=$v" >> "$GITHUB_OUTPUT"
-          else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
-            exit 1
-          fi
-      - if: steps.code.outputs.ref != ''
-        uses: actions/checkout@v4
-        with:
-          repository: mohamed-rekiba/tollgate
-          ref: ${{ steps.code.outputs.ref }}
-          path: tollgate
-          persist-credentials: false
-      - name: Fetch the change as data
-        env:
-          PR: ${{ needs.find.outputs.pr }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git -C main -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
-            fetch --no-tags origin "refs/pull/$PR/head"
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: results
-          path: ${{ runner.temp }}/in
-      - name: Mark missing results as a failed check
-        run: |
-          f="$RUNNER_TEMP/in/results.json"
-          mkdir -p "$RUNNER_TEMP/in"
-          test -f "$f" || echo '{"checks":[{"name":"checks","passed":false,"timed_out":false,"output":"the test job did not finish"}],"tests":{}}' > "$f"
-      - name: Gate
-        env:
-          PYTHONPATH: ${{ steps.code.outputs.path }}
-          SHA: ${{ needs.find.outputs.sha }}
-          BRANCH: ${{ needs.find.outputs.branch }}
-          PR: ${{ needs.find.outputs.pr }}
-          GH_TOKEN: ${{ github.token }}
-        run: python3 -P -m action.gate --repo main --base origin/main --head "$SHA" --branch "$BRANCH" --results "$RUNNER_TEMP/in/results.json" --repository "$GITHUB_REPOSITORY" --pr "$PR" --post "$SHA"

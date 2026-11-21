@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from setup import apply_rulesets, check_rights, prove_gate, write_workflows
+from setup import apply_rulesets, check_rights, write_workflows
 from setup.gh import GhError
 
 SHA = "1" * 40
@@ -141,55 +141,6 @@ class ApplyRulesetsTest(unittest.TestCase):
     def test_print_shows_both_requests(self):
         text = apply_rulesets.commands("o/r")
         self.assertEqual(text.count("gh api -X POST repos/o/r/rulesets"), 2)
-        self.assertIn('"context": "tollgate gate"', text)
+        self.assertNotIn("required_status_checks", text)
 
 
-class ProveGateTest(unittest.TestCase):
-    def setUp(self):
-        manifest = {"files": {".tollgate/tickets/P/ticket.md": "x", "tests/test_p.py": "y"}}
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        Path(self.tmp.name, "tests").mkdir()
-        Path(self.tmp.name, "tests/test_p.py").write_text("x = 1")
-        self.tag_calls = 0
-
-        def tag_ref():
-            self.tag_calls += 1
-            if self.tag_calls <= 2:
-                raise GhError(404, "not yet")
-            return {"object": {"sha": "t"}}
-
-        self.gh = FakeGh({
-            ("GET", "repos/o/r/git/ref/tags/"): tag_ref,
-            ("GET", "repos/o/r/git/tags/t"): {"message": "Freeze\n\n" + json.dumps(manifest)},
-            ("POST", "repos/o/r/pulls"): {"number": 9},
-        })
-        self.git_calls = []
-
-    def git(self, project, *args):
-        self.git_calls.append(args)
-        return "abc"
-
-    def answer_check(self, conclusion, summary):
-        self.gh.answers[("GET", "repos/o/r/commits/abc/check-runs")] = {"check_runs": [
-            {"status": "completed", "conclusion": conclusion, "output": {"summary": summary}}]}
-
-    def prove(self):
-        return prove_gate.prove(self.gh, "o/r", "P", self.tmp.name, git=self.git,
-                                sleep=lambda s: None, seconds=60)
-
-    def test_passes_when_the_gate_fails_on_rule_3(self):
-        self.answer_check("failure", "- Rule 3: a locked file changed")
-        result = self.prove()
-        self.assertEqual(result["proof"], "passed")
-        self.assertEqual(result["locked_file"], "tests/test_p.py")
-        self.assertEqual(Path(self.tmp.name, "tests/test_p.py").read_text(), "x = 1\n")
-        self.assertIn(("PATCH", "repos/o/r/pulls/9", {"state": "closed"}), self.gh.calls)
-
-    def test_fails_when_the_gate_passes(self):
-        self.answer_check("success", "Every gate rule passed.")
-        self.assertEqual(self.prove()["proof"], "failed")
-
-
-if __name__ == "__main__":
-    unittest.main()

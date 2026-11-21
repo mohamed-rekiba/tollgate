@@ -137,7 +137,7 @@ An approval by a person is one of two things. On a team, it is a normal review b
 
 ### The gate
 
-The gate uses no AI, so it gives the same answer every time. The same code runs on your machine and on the server. The run on the server is the one that counts.
+The gate uses no AI, so it gives the same answer every time. The driver runs it on your machine after each attempt. It does not run on the server: the owner removed it from the workflow on 2026-11-21, so no check on the server blocks a merge. On the server, the test job runs the checks again with main's harness and the locked files, and fails when a check fails. The review runs for tier 3 and 4. A tier 3 or 4 change waits for a person to merge it.
 
 A change passes when all six rules hold:
 
@@ -150,7 +150,7 @@ A change passes when all six rules hold:
 
 A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. A change made by hand, on a branch that is not a ticket branch, needs an approval by a person in place of a ticket, as described under rule 4: rules 1 and 2 then pass, rule 4 is met by the same approval, the checks still run, and they run with the change's own harness, because the person vouches for it. A ticket branch can never take this path: its locked tests always apply. When the gate fails for want of an approval, it prints the exact comment to write. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
 
-On the server, the gate itself comes from the Action, the harness comes from the main branch, and the locked tests come from the freeze. A change cannot bring its own.
+On the server, the test job's code comes from the main branch, the harness comes from the main branch, and the locked tests come from the freeze. A change cannot bring its own.
 
 ### What the gate proves
 
@@ -291,7 +291,7 @@ The repository is its own catalog: a file at `.claude-plugin/marketplace.json` l
 
 | You type in Claude Code | What happens |
 | --- | --- |
-| `/tollgate:init` | Sets up one project. It checks your rights on the server, reads the project, asks you what it cannot find, writes the settings, and sets up the server. It ends with a proof: a test pull request that edits a locked test must be rejected. |
+| `/tollgate:init` | Sets up one project. It checks your rights on the server, reads the project, asks you what it cannot find, writes the settings, and sets up the server. |
 | `/tollgate:task Add retries to webhook delivery` | Starts a task. The driver runs in the background, so you can close Claude Code. |
 | `/tollgate:status` | Shows tasks, tickets, and cost. |
 | `/tollgate:retro` | Shows the numbers for a finished task and opens tickets for lessons. |
@@ -447,7 +447,6 @@ Every task here adds tests in `tests/`. "Done when" names the tests that matter 
 | 1.6 | `action/freeze.py` and `workflows/tollgate-freeze.yml` | In the lab, the workflow refuses a ticket whose test already passes, and creates the tag for a ticket whose tests all fail. | 1.2, E1, E3 |
 | 1.7 | `workflows/tollgate-gate.yml` and `action/action.yml` | In the lab, a pull request runs the gate from the pinned Action with the harness from the main branch. | 1.5, E3, E5 |
 | 1.8 | `setup/check_rights.py`, `setup/write_workflows.py`, `setup/apply_rulesets.py` | Each script can run twice with the same result, and each ends by checking what it did. `check_rights.py` reports one of the three levels. | 1.6, 1.7 |
-| 1.9 | `setup/prove_gate.py` | It opens a pull request that edits a locked test, confirms that the gate fails, and closes the pull request. | 1.8 |
 | 1.10 | `skills/init/SKILL.md` | On a sample project in the lab, `/tollgate:init` ends with the proof passing and tells you which level of rights you have. | 1.9 |
 | 1.11 | `tests/proof_stage1.py`: the stage proof | The five pull requests from the build order fail the gate. A push of a freeze tag from a laptop is rejected. | 1.10 |
 | 1.12 | Tollgate guards its own repository | `/tollgate:init` has run on mohamed-rekiba/tollgate, and the gate is a required check there. | 1.11 |
@@ -528,7 +527,6 @@ tollgate/
     check_rights.py
     write_workflows.py
     apply_rulesets.py
-    prove_gate.py
     add_submodule.py
   driver/
     driver.py              the loop, one entry point
@@ -690,7 +688,7 @@ One file, `.github/workflows/tollgate.yml`, holds every job. It reads `"version"
 | --- | --- | --- |
 | Freeze | The driver starts the workflow by hand on main, with `kind: freeze` and the ticket id. | A job with a read-only token and no secrets runs the tests at the head of `tg/<ticket id>`, with the harness from main. A second job runs none of that code, writes the manifest with its own run id, creates the freeze tag, and saves the manifest as an artifact. |
 | Plan | By hand on main, with `kind: plan` and the task id. | One job reads the plan and its tickets on `tg-plan/<task id>` as files, creates the plan tag, and removes the branch; the tag keeps the plan. |
-| Test, review, gate | `pull_request_target` into main, or a comment `tollgate check` or `tollgate approve <sha>`. | The test job runs the change with a read-only token and no secrets. The review job reads the change as text and holds the model access. The gate runs last, after both, so it reads their results, and posts `tollgate gate`. |
+| Test, review | `pull_request_target` into main, or a comment `tollgate check` or `tollgate approve <sha>`. | The test job runs the change with a read-only token and no secrets, and fails when a check fails. The review job reads the change as text and holds the model access. |
 
 A workflow on `pull_request` would run the copy from the pull request, so a change could rewrite its own gate. Experiment E3 showed this. That is why the gate and the review use `pull_request_target`.
 
@@ -704,8 +702,8 @@ Tollgate works with the rights you have. `/tollgate:init` checks them first and 
 
 | Your rights | What you get |
 | --- | --- |
-| Admin of the repository | Full protection. One ruleset makes the gate required on the main branch, and for tier 3 and 4 the review. A second ruleset stops anyone from changing a tag under `tg/`. |
-| Write access only | The freeze and the gate still run on every pull request and show pass or fail. Nothing forces a merge to wait, and a changed lock is detected, not prevented: a moved tag no longer matches its manifest, and a tag from any other run fails the check of the run. Tollgate turns `auto_merge` off. Each pull request says that the gate is not enforced. The skill prints the two ruleset commands for an admin to run. |
+| Admin of the repository | One ruleset makes main take changes only through pull requests, with no force-push or deletion. A second ruleset stops anyone from changing a tag under `tg/`. |
+| Write access only | The freeze, the tests, and the review still run on every pull request. A moved tag is not prevented. Tollgate turns `auto_merge` off. The skill prints the two ruleset commands for an admin to run. |
 | The organization blocks outside Actions | The skill copies the Action into the project. The copy counts as harness, so a change to it is tier 4. |
 
 Tollgate asks for nothing at the level of the organization: no App, no extra account, no organization setting.

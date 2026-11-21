@@ -217,3 +217,33 @@ class ScoreTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FinishTest(unittest.TestCase):
+    """After the pull request opens: merge a low tier, leave a high tier for a person."""
+
+    def finish(self, tier, auto_merge=True):
+        from types import SimpleNamespace
+
+        from driver.driver import Driver
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "T-1.jsonl")
+            merged = []
+            with Log(path, ticket="T-1") as log:
+                log.add("attempt_passed", attempt=1, commit="c1", tier=tier)
+                me = SimpleNamespace(settings={"auto_merge": auto_merge}, log_path=path, log=log,
+                                     server=SimpleNamespace(merge=merged.append), project=d,
+                                     ticket_id="T-1")
+                self.assertEqual(Driver.finish(me, SimpleNamespace(pr=7)), 0)
+            return merged, [e["event"] for e in read(path)][-1]
+
+    def test_tier_1_and_2_merge(self):
+        self.assertEqual(self.finish(1), ([7], "merged"))
+        self.assertEqual(self.finish(2), ([7], "merged"))
+
+    def test_tier_3_and_4_wait_for_a_person(self):
+        self.assertEqual(self.finish(3), ([], "waiting_for_merge"))
+        self.assertEqual(self.finish(4), ([], "waiting_for_merge"))
+
+    def test_no_auto_merge_waits(self):
+        self.assertEqual(self.finish(1, auto_merge=False), ([], "waiting_for_merge"))

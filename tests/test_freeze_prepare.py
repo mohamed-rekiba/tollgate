@@ -164,8 +164,10 @@ class WorkflowTemplatesTest(unittest.TestCase):
                 if "actions/checkout" in step.get("uses", ""):
                     self.assertEqual(step["with"]["persist-credentials"], False, name)
 
-    def test_the_gate_runs_after_the_tests_and_the_review(self):
-        self.assertEqual(self.jobs()["gate"]["needs"], ["find", "test", "review"])
+    def test_there_is_no_gate_job_and_a_failed_check_fails_the_test_job(self):
+        self.assertNotIn("gate", self.jobs())
+        steps = [s.get("name") for s in self.jobs()["test"]["steps"]]
+        self.assertEqual(steps[-1], "Fail when a check failed")
 
     def test_the_change_is_never_where_the_code_runs_from(self):
         for name, job in self.jobs().items():
