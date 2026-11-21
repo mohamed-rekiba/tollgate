@@ -1,7 +1,7 @@
 """What the driver asks of the server.
 
-The driver needs six things: start a freeze and wait for its tag, read a run,
-open a pull request, wait for the gate, merge, and the facts the gate reads.
+The driver needs five things: start a freeze and wait for its tag, read a run,
+open a pull request, merge, and the facts its gate reads.
 GitHub gives them through the REST API. Tests pass a fake with the same methods.
 """
 
@@ -109,21 +109,13 @@ class GitHub(Server):
         return number
 
     def start_check(self, pr: int) -> None:
-        """On GitHub Actions, start the gate for a pull request by hand. A pull request
+        """On GitHub Actions, start the tests and the review for a pull request by hand. A pull request
         or comment made with the workflow's own token starts no other workflow, but a
         workflow_dispatch does. On a person's machine, GitHub starts it on its own."""
         if os.environ.get("GITHUB_ACTIONS") != "true":
             return
         self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate.yml/dispatches",
                     {"ref": "main", "inputs": {"kind": "check", "id": str(pr)}})
-
-    def wait_gate(self, sha: str) -> str:
-        def probe():
-            runs = self.gh.get(f"repos/{self.repository}/commits/{sha}/check-runs"
-                               "?check_name=tollgate%20gate")
-            done = [r for r in runs.get("check_runs", []) if r["status"] == "completed"]
-            return done[0]["conclusion"] if done else None
-        return self._wait(probe, "the check tollgate gate")
 
     def ask(self, title: str, body: str) -> int:
         try:

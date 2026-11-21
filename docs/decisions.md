@@ -128,6 +128,18 @@ Two attempts failed the same way when the names of the failed checks and the ids
 - E3, a fake check with the gate's name: [experiments/scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md). Tollgate's own defense is that the driver never sends a change under `.github/`. A person who adds such a file can still fake the check. If GitHub counts the fake check as passed, the fallback is a second required check that a pull request cannot add: the review workflow, which then also runs for tier 1 and 2.
 - E4, a driver that outlives a closed session: [experiments/scripts/e4_long_run.md](experiments/scripts/e4_long_run.md).
 
+## The gate runs only in the driver
+
+The owner removed the gate from the workflow on 2026-11-21. Every pull request made by hand failed it until a person commented an approval, and the owner chose to drop that step for every project.
+
+- The driver still runs the gate on your machine after each attempt, so a ticket's pull request opens only after rules 1 to 5 pass there.
+- On GitHub, the test job runs the checks with main's harness and the locked files, and fails when a check fails. The review runs for tier 3 and 4. Neither one blocks a merge.
+- No ruleset requires a check. The branch ruleset keeps pull requests, no force-push, and no deletion. The tag ruleset is unchanged.
+- With `auto_merge` on, the driver merges only tier 1 and 2. A person merges tier 3 and 4.
+- `/tollgate:init` no longer proves the gate with a pull request: no check on GitHub rejects anything.
+
+What this gives up: nothing on GitHub stops a change that skips the driver, such as a change pushed by hand, a weakened test, or a change to the workflow, from merging.
+
 ## A change made by hand needs a person, not a ticket
 
 The gate's rules 1 to 3 prove that an AI change was built against tests locked before the build. A change a person makes by hand has no ticket and no locked tests, so it always failed rule 1, and a change to the harness always failed rule 5: the test job puts main's harness back, so a new workflow was tested against the old one. The only way through was to merge around a red gate.

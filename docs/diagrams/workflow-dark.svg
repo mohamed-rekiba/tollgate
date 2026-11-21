@@ -1,21 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -62 951 600" width="951" height="600" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -62 645 600" width="645" height="600" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The jobs of the Tollgate workflow</title>
-<desc id="desc">The jobs of the Tollgate workflow, drawn from the workflow file itself (freeze-test, freeze-lock, plan-lock, task, find, test, review, gate). An arrow means a job waits for the one before it. Each box says what starts the job and what it does.</desc>
+<desc id="desc">The jobs of the Tollgate workflow, drawn from the workflow file itself (freeze-test, freeze-lock, plan-lock, task, find, test, review). An arrow means a job waits for the one before it. Each box says what starts the job and what it does.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-40" y="-62" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
-<rect x="-40" y="-62" width="951" height="600" fill="#0d1117"/>
-<rect x="-40" y="-62" width="951" height="600" fill="url(#grid)"/>
+<rect x="-40" y="-62" width="645" height="600" fill="#0d1117"/>
+<rect x="-40" y="-62" width="645" height="600" fill="url(#grid)"/>
 <rect x="-16.0" y="-38.0" width="596.8" height="266.0" rx="6" fill="none" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
 <g transform="translate(-4.0,-30.0) scale(0.6250)" fill="none" stroke="#9198a1" stroke-width="2.56" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z"/><path d="M10 8.5v7l6-3.5z"/></g>
 <text x="17.0" y="-18.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">RUN BY TOLLGATE</text>
-<rect x="-16.0" y="248.0" width="903.2" height="266.0" rx="6" fill="none" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
+<rect x="-16.0" y="248.0" width="596.8" height="266.0" rx="6" fill="none" stroke="#9198a1" stroke-opacity="0.7" stroke-width="1.3" stroke-dasharray="2 4" stroke-linecap="round"/>
 <g transform="translate(-4.0,256.0) scale(0.6250)" fill="none" stroke="#9198a1" stroke-width="2.56" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M18 16v-6a3 3 0 0 0-3-3h-4"/><path d="M13 4.5L10.5 7L13 9.5"/></g>
 <text x="17.0" y="268.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9198a1">ON EVERY PULL REQUEST</text>
 <path class="main" d="M258.4,43.0 L306.4,43.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path class="main" d="M258.4,329.0 L306.4,329.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path class="main" d="M129.2,372.0 L129.2,382.0 Q129.2,392.0 139.2,392.0 L425.6,392.0 Q435.6,392.0 435.6,402.0 L435.6,412.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M564.8,329.0 L612.8,329.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
-<path class="main" d="M564.8,455.0 L730.0,455.0 Q742.0,455.0 742.0,443.0 L742.0,372.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <rect x="0.0" y="0.0" width="258.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
 <path d="M249.4,90.0 H262.4 V77.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
@@ -65,11 +63,4 @@
 <text x="346.4" y="437.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
 <text x="320.4" y="464.0" font-size="14" font-weight="700" fill="#f0f6fc">Review the change</text>
 <text x="320.4" y="482.0" font-size="12" fill="#9198a1">an AI reads it and cannot edit</text>
-<rect x="612.8" y="286.0" width="258.4" height="86.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<path d="M621.8,282.0 H608.8 V295.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
-<path d="M862.2,376.0 H875.2 V363.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
-<g transform="translate(626.8,298.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
-<text x="652.8" y="311.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
-<text x="626.8" y="338.0" font-size="14" font-weight="700" fill="#f0f6fc">Decide: pass or fail</text>
-<text x="626.8" y="356.0" font-size="12" fill="#9198a1">from the tests and the review</text>
 </svg>

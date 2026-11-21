@@ -7,7 +7,7 @@
 
 Tollgate lets an AI build changes to your software, and keeps each change out of your main branch until it passes tests the AI cannot touch.
 
-It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it, cuts it into small tickets, has the tests written and locked first, has the code built, checks it, and opens a pull request. A gate with no AI in it decides whether that pull request may merge.
+It is a plugin for Claude Code, plus one GitHub workflow. You ask for a change in plain words. Tollgate plans it, cuts it into small tickets, has the tests written and locked first, has the code built, checks it, and opens a pull request. A gate with no AI in it decides whether a change is ready for a pull request. On GitHub, the tests run again and a model reviews the riskier changes.
 
 ## What you gain
 
@@ -36,7 +36,7 @@ Three loops keep the work honest:
 2. **The plan loop.** Reviewers read the plan before any code exists. The builder fixes, contests, or escalates each finding, for up to 4 rounds.
 3. **The learning loop.** After a task, `/tollgate:retro` turns at most 3 lessons into tickets: a new test, a check, a lens, or a stricter rule. The next tasks run under them.
 
-Each change gets a tier from 1 to 4 from the paths it touches. Tier 1 and 2 merge when the gate passes. Tier 3 adds a review by a model on GitHub. Tier 4 also needs your approval: a comment `tollgate approve <commit>`.
+Each change gets a tier from 1 to 4 from the paths it touches. With `auto_merge` on, Tollgate merges a tier 1 or 2 change itself. A tier 3 or 4 change waits for you to merge it, after a model reviews it on GitHub.
 
 Every rule above is enforced by code. A rule that only a prompt states is not counted. [docs/plan.md](docs/plan.md) explains each part.
 
@@ -55,7 +55,7 @@ Then, inside your project:
 /tollgate:init
 ```
 
-`init` checks your rights on GitHub, writes `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, and proves the gate by showing it reject a changed test.
+`init` checks your rights on GitHub, writes `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, and protects the main branch and the tags.
 
 For runs on GitHub with no machine of your own, add the repository secret `CLAUDE_CODE_OAUTH_TOKEN`, from `claude setup-token`, or `ANTHROPIC_API_KEY`.
 
@@ -83,7 +83,7 @@ Use Tollgate where an AI writes most of each change and the change must be right
 
 Built and working:
 
-- the gate and the freeze,
+- the driver's gate and the freeze,
 - the driver, running on your machine or on GitHub,
 - the plan, review, and advisor steps,
 - many projects in one home.
