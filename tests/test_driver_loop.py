@@ -8,9 +8,9 @@ import sys
 import unittest
 from pathlib import Path
 
+from driver import history
 from gate import state
 from gate.store import StoreError
-from driver import history
 from tests.driver_fakes import FAKE_ROLE, FakeStore, Refusing, Sample, driver, gate_api
 
 
@@ -146,7 +146,7 @@ class StopTest(LoopCase):
         self.assertIn("ran past", s.log()[-1]["reason"])
 
     def test_the_ticket_cost_parks_with_no_question(self):
-        s = self.sample(builder=f"pass2 cost=1", reviewer="ok cost=1", stop={"ticket_usd": 3})
+        s = self.sample(builder="pass2 cost=1", reviewer="ok cost=1", stop={"ticket_usd": 3})
         d, store = driver(s)
         self.assertEqual(d.run(), 3)
         self.assertEqual(s.events()[-1], "parked")

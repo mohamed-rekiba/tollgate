@@ -17,14 +17,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+from driver import advisor, report, roles
+from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
+from driver.log import Log, read
 from gate import plan as pl
 from gate import settings as st
 from gate import state
 from gate import tickets as tk
 from gate.store import Store, StoreError
-from driver import advisor, report, roles
-from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
-from driver.log import Log, read
 
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
 MAX_ROUNDS = 4

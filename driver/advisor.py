@@ -12,10 +12,10 @@ when it starts again, so a question never blocks other tickets.
 import json
 import re
 
-from gate import state
-from gate.store import StoreError
 from driver import history
 from driver.log import read
+from gate import state
+from gate.store import StoreError
 
 DECIDE = re.compile(r"^(?:tollgate decide )?([a-z_]+)\b[ \t]*(.*)$")
 

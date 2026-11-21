@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from gate import state
 from driver import roles
+from gate import state
 from tests.driver_fakes import FAKE_ROLE
 
 

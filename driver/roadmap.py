@@ -13,13 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from driver.driver import BASE, Busy, Driver, run_lock
+from driver.log import Log, read
+from driver.task import Task
 from gate import roadmap as rm
 from gate import settings as st
 from gate import state
 from gate.store import Store
-from driver.driver import BASE, Busy, Driver, run_lock
-from driver.log import Log, read
-from driver.task import Task
 from setup import base_suite
 
 

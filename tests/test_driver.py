@@ -9,9 +9,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gate import tickets
 from driver.driver import Busy, TicketLock, score
 from driver.log import Log, LogBusy, read
+from gate import tickets
 from tests.fakes import TICKET
 
 

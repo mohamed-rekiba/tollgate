@@ -10,9 +10,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from gate import state
 from driver import history
 from driver.log import read
+from gate import state
 
 
 def logs_dir(project: str) -> Path:

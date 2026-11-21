@@ -10,9 +10,9 @@ a ticket. Tollgate can make a rule stricter. Only a person makes a rule looser.
 import argparse
 import sys
 
-from gate import state
 from driver.log import read
 from driver.report import logs_dir, ticket_row
+from gate import state
 
 MAX_LESSONS = 3
 

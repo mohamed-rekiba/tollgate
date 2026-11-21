@@ -37,7 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gate import state  # noqa: E402
+from gate import state
 
 EDITS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 READ_ONLY = {"reviewer", "advisor"}

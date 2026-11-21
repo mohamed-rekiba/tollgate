@@ -28,6 +28,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from driver import advisor, history, roles, stop
+from driver.log import Log, read
 from gate import checks, prepare, state, tickets
 from gate import gate as gatelib
 from gate import manifest as mf
@@ -35,8 +37,6 @@ from gate import review as reviewlib
 from gate import settings as st
 from gate.store import Store, StoreError
 from gate.tickets import item_of_test
-from driver import advisor, history, roles, stop
-from driver.log import Log, read
 
 MAX_REJECTIONS = 2
 MAX_AI_DECISIONS = 2
