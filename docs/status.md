@@ -1,50 +1,51 @@
 # Status
 
-This file says what is built, what is tested, and what is not. It changes with each task.
+This file says what is built, what is proven, and what is not.
 
 ## What is built
 
 | Part | State |
 | --- | --- |
-| Setup: README, license, word list, plan, plugin shell, CI | Done. The plugin installs from the catalog. |
-| Stage 0: experiments | E1 (without rulesets), E3, E4 (in part), and E5 ran. E2 and the ruleset part of E1 wait for the owner. See [experiments/](experiments/). |
-| Stage 1: the lock (1.1 to 1.11) | Built and unit tested. An independent review found eight ways around the lock; all are fixed, each with a test. The composite action ran on a GitHub runner ([S1](experiments/S1-action-on-a-runner.md)). The freeze and gate workflows have not run on GitHub yet. |
-| Stage 1: Tollgate guards its own repository (1.12) | Not done. Owner task 3 below. |
-| Stage 2: the loop (2.1 to 2.8) | Built. The stage proof passes with fake roles against a local server, in CI. The container sandbox and the driver's GitHub client have not run. |
-| Stage 2: one real ticket (2.9) | Not done. Owner task 5 below. |
-| Stages 3 and 4 | Not built. They wait for task 2.9: its cost and time decide the defaults for a whole task. |
+| Setup: README, license, word list, plan, plugin, CI | Done. The plugin installs from the catalog. |
+| Stage 0: experiments | E1, E3, E4, and E5 ran. E2 ran without a model ([E2](experiments/E2-closed-room.md)). |
+| Stage 1: the lock | Built and proven on GitHub ([S2](experiments/S2-gate-on-github.md)). An honest build passed. Five cheats failed on the right rules. |
+| Stage 1: Tollgate guards its own repository (1.12) | Settings and the four workflows are on main. The rulesets are the last step; see below. |
+| Stage 2: the loop | Built. Proven with fake roles in CI, and with every role in a container ([E2](experiments/E2-closed-room.md)). |
+| Stage 3: the task | Built. Proven with fake roles in CI. On GitHub, the plan workflow locked a plan, and the review posted a pass for tier 1 and a failure for tier 4 with no model key. |
+| Stage 4: scale | Built: roadmap, base suite, home with submodules, rules sync, inbox, retro. Proven with fake roles in CI. |
 
-The `copy` level of rights (an organization that allows only local actions) is not built. `/tollgate:init` stops there and says so.
+Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass score of 70) is provisional. No ticket has run with a real model yet.
 
-## Why the work stopped here
+## What is not proven, and why
 
-The session that built stages 1 and 2 could push branches and open and merge pull requests, but it could not start a workflow by hand, create a ruleset, push a tag, or run a container. Every step that is left needs one of those. Each owner task below says which.
+| Item | Why not | What proves it |
+| --- | --- | --- |
+| A ticket built by a real model (2.9), and the experiment on 10 to 15 real tickets (3.10) | This session has no model key, and must not use its own model access as Tollgate's builder. | Set `ANTHROPIC_API_KEY`, then run `/tollgate:task` on a lab project. `/tollgate:retro` gives the numbers. |
+| The model half of E2: Claude Code inside the container | The same: no model key. | [scripts/e2_closed_room.sh](experiments/scripts/e2_closed_room.sh) |
+| A model review on the server, for tier 3 and 4 | This repository has no `ANTHROPIC_API_KEY` secret. | Add the secret, then comment `tollgate check` on a tier 3 pull request. |
+| A forged freeze tag pushed from a laptop, and a tag push rejected by the ruleset | This session cannot create tags, and a forged tag through the REST API was refused as undermining oversight. | Unit tests cover the gate's side (`tests/test_review_findings.py`). With the rulesets on, `git tag tg/freeze/x/1 && git push origin tg/freeze/x/1` must be rejected. |
+| E3: a fake check named `tollgate gate` from a workflow added in a pull request | It needs a workflow pushed on a branch, which is the attack itself. | [scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md) |
+| The `copy` level of rights | Not built. It is for organizations that allow only local actions. | |
 
-## Owner tasks, in order
+## The rulesets
 
-1. **Review the pull requests that guard the lock.** Read them first, in this order: #7 (eight fixes from an independent review), #4 (the freeze and gate workflows), #3 (the gate rules), #5 (rulesets and the gate proof).
-2. **Run the stage 1 proof on a lab repository.** Create an empty repository where you are admin, then:
+`setup/apply_rulesets.py` creates two rulesets:
 
-   ```
-   PYTHONPATH=. python3 tests/proof_stage1.py <you>/<lab-repo> --ref <commit of main>
-   ```
+- **tollgate main**: the check `tollgate gate` is required on main, changes come through pull requests, and main cannot be force-pushed or deleted. A repository admin can bypass it for one pull request, and GitHub logs it. That is the only way a change under `.github/` can merge.
+- **tollgate tags**: nobody but GitHub Actions can create a tag under `tg/`, and nobody can move or delete one.
 
-   Every line must end with `"holds": true`. It also answers E1's open question: whether the tag ruleset lets the freeze workflow create a tag and rejects one from your laptop.
-3. **Guard this repository (1.12).** Run `/tollgate:init` here. Until then, nothing forces a merge to wait for the gate.
-4. **Run E2 and E3.** E2: [scripts/e2_closed_room.sh](experiments/scripts/e2_closed_room.sh), on a machine with Docker or Podman. E3: [scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md). The gate posts its result as the check `tollgate gate`. If a workflow added in a pull request can post a check with that name and GitHub counts it, add the review workflow as a second required check for every tier.
-5. **Run one real ticket (2.9).** On the lab repository from task 2, write one ticket, set `ai.builder` and `ai.reviewer` to `claude -p`, and run:
+Once they are on, every change to this repository needs a ticket with locked tests, or the admin bypass.
 
-   ```
-   PYTHONPATH=<tollgate> python3 -m driver.driver --project . --ticket <id>
-   ```
+To roll them back: Settings, Rules, Rulesets, then turn off or delete `tollgate main` and `tollgate tags`. Or, with the GitHub CLI:
 
-   Write a note in `docs/experiments/` with the cost, the time, the attempts, and whether the pull request merged through the gate.
-6. **Clean up the lab branches** listed in [experiments/lab-cleanup.md](experiments/lab-cleanup.md).
-7. **Rename the plan document** in Claude from "Lockkeeper plan" to "Tollgate plan". The session could not change its title.
+```
+gh api repos/mohamed-rekiba/tollgate/rulesets --jq '.[] | "\(.id) \(.name)"'
+gh api -X DELETE repos/mohamed-rekiba/tollgate/rulesets/<id>
+```
 
-## Deviations from the plan
+## Questions for you
 
-- From stage 2 on, the plan wants each task built from a ticket frozen by hand. The freeze needs a workflow started by hand on this repository, which the session could not do, so stage 2 was built with ordinary tests and pull requests.
-- The workflow templates are named `tollgate-freeze.yml` and `tollgate-gate.yml`, the same as the files they become in a project. The review workflow (`tollgate-review.yml`) comes with stage 3.
-- The gate posts its result as a check run named `tollgate gate`, so an approval comment (`tollgate approve <sha>`) or `tollgate check` can run it again on the latest commit.
-- The `stronger` decision of an AI advisor runs one more attempt with the same builder: the settings have no key for a stronger model yet.
+These need a person. The session leaves them open on purpose.
+
+- Approve or close any pull request that waits on the label `tg-waiting` or on `tollgate approve <sha>`. Only you can give that approval.
+- Delete the lab branches and tags in [experiments/lab-cleanup.md](experiments/lab-cleanup.md).

@@ -10,7 +10,7 @@ Written instructions do not stop these mistakes, because the AI can ignore them.
 
 ## Status
 
-Tollgate is not usable yet. The repository holds the plan, the experiments, and the first stages of the code. [docs/status.md](docs/status.md) lists what is built, what is tested, and what is not.
+Stages 1 to 4 are built. The lock is proven on GitHub, and the loop, the task, and scale are proven with fake roles. No ticket has run with a real model yet, so every default is provisional. [docs/status.md](docs/status.md) lists what is built, what is proven, and what is not.
 
 ## How to start
 
