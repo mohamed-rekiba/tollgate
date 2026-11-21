@@ -2,7 +2,7 @@
 <title id="title">The four tiers</title>
 <desc id="desc">Tier 1 is a small fix with locked tests. Tier 2 is a normal change, with locked tests, a plan, and a review. Tier 3 covers login, payments, and user data, and adds a review on the server. Tier 4 covers data, production, and the locks, and adds an approval by a person.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<rect x="-21.5" y="-21.5" width="1175" height="123" rx="12" fill="#0d1117" stroke="#30363d"/>
+<rect x="-22" y="-22" width="1176" height="124" fill="#0d1117"/>
 <path d="M247.0,40.0 L295.0,40.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M542.0,40.0 L590.0,40.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M837.0,40.0 L885.0,40.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>

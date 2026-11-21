@@ -2,7 +2,7 @@
 <title id="title">A task from start to finish</title>
 <desc id="desc">You say what you want. The AI writes a plan, which fresh AIs check. The plan is cut into small tickets. For each ticket, tests are written and locked, the AI builds until they pass, and the server checks again and merges. You read the report. When the AI is stuck, the advisor decides.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<rect x="-21.5" y="-21.5" width="668" height="843" rx="12" fill="#0d1117" stroke="#30363d"/>
+<rect x="-22" y="-22" width="669" height="844" fill="#0d1117"/>
 <path d="M137.0,80.0 L137.0,120.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M137.0,200.0 L137.0,240.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M137.0,320.0 L137.0,360.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>

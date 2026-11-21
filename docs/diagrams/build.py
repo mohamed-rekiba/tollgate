@@ -19,7 +19,7 @@ The design:
 - Nodes sit on a grid. All boxes in one diagram share one width.
 - "kind" says who acts. It sets the color of the stripe and of the small label
   over the title (YOU, AI, SERVER, CHECK, ADVISOR), so the meaning is in words
-  and in color. "step" adds STEP n to that label. "tag" replaces the label.
+  and in color. A box with no kind is neutral slate. "step" adds STEP n to that label. "tag" replaces the label.
 - Arrows are straight, or bend at right angles with round corners. "route"
   picks the bends for an arrow between two rows and two columns: "vhv" (the
   default) goes down, across, down; "vh" goes up or down, then across; "hv"
@@ -52,19 +52,19 @@ KIND_NAMES = {"you": "YOU", "ai": "AI", "server": "SERVER", "check": "CHECK",
 # tests/test_diagrams.py checks this.
 THEMES = {
     "light": {
-        "page": "#ffffff", "frame": "#d1d9e0", "box": "#ffffff", "border": "#d1d9e0",
+        "page": "#ffffff", "box": "#ffffff", "border": "#d1d9e0",
         "text": "#1f2328", "sub": "#59636e", "edge": "#818b98", "shadow": 0.07,
         "kinds": {"you": ("#0969da", "#f3f8ff"), "ai": ("#8250df", "#f9f6ff"),
                   "server": ("#1a7f37", "#f2fbf4"), "check": ("#9a6700", "#fff9e5"),
-                  "advisor": ("#bc4c00", "#fff5ee")},
+                  "advisor": ("#bc4c00", "#fff5ee"), "neutral": ("#59636e", "#f6f8fa")},
         "tones": {"fail": "#cf222e", "pass": "#1a7f37"},
     },
     "dark": {
-        "page": "#0d1117", "frame": "#30363d", "box": "#151b23", "border": "#3d444d",
+        "page": "#0d1117", "box": "#151b23", "border": "#3d444d",
         "text": "#f0f6fc", "sub": "#9198a1", "edge": "#656c76", "shadow": 0,
         "kinds": {"you": ("#4493f8", "#0d1d35"), "ai": ("#ab7df8", "#1b1430"),
                   "server": ("#3fb950", "#0c2114"), "check": ("#d29922", "#221a08"),
-                  "advisor": ("#f0883e", "#271608")},
+                  "advisor": ("#f0883e", "#271608"), "neutral": ("#9198a1", "#151b23")},
         "tones": {"fail": "#f85149", "pass": "#3fb950"},
     },
 }
@@ -247,24 +247,22 @@ def draw(spec, theme):
 
     for i, n in enumerate(spec["nodes"]):
         bx = boxes[n["id"]]
-        kind = n.get("kind")
-        accent, tint = t["kinds"].get(kind, (None, t["box"]))
+        accent, tint = t["kinds"][n.get("kind", "neutral")]
         w, h = bx["r"] - bx["l"], bx["b"] - bx["t"]
         shadow = ' filter="url(#shadow)"' if t["shadow"] else ""
         body.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{w:.1f}" height="{h:.1f}" '
-                    f'rx="{RADIUS}" fill="{tint}" stroke="{accent or t["border"]}" '
-                    f'stroke-opacity="{0.55 if accent else 1}" stroke-width="1"{shadow}/>')
-        if accent:
-            body.append(f'<clipPath id="clip{i}"><rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" '
-                        f'width="{w:.1f}" height="{h:.1f}" rx="{RADIUS}"/></clipPath>')
-            body.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{STRIPE}" '
-                        f'height="{h:.1f}" fill="{accent}" clip-path="url(#clip{i})"/>')
+                    f'rx="{RADIUS}" fill="{tint}" stroke="{accent}" '
+                    f'stroke-opacity="0.55" stroke-width="1"{shadow}/>')
+        body.append(f'<clipPath id="clip{i}"><rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" '
+                    f'width="{w:.1f}" height="{h:.1f}" rx="{RADIUS}"/></clipPath>')
+        body.append(f'<rect x="{bx["l"]:.1f}" y="{bx["t"]:.1f}" width="{STRIPE}" '
+                    f'height="{h:.1f}" fill="{accent}" clip-path="url(#clip{i})"/>')
         x = bx["l"] + STRIPE + PAD_X
         y = bx["t"] + PAD_Y
         brow = eyebrow(n)
         if brow:
             body.append(f'<text x="{x:.1f}" y="{y + 10:.1f}" font-size="{EYEBROW}" '
-                        f'font-weight="700" letter-spacing="0.9" fill="{accent or t["sub"]}">'
+                        f'font-weight="700" letter-spacing="0.9" fill="{accent}">'
                         f'{escape(brow)}</text>')
             y += 16
         title, *sub = n["text"].split("\n")
@@ -295,8 +293,8 @@ def draw(spec, theme):
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
         f'<defs>{"".join(markers)}{shadow}</defs>',
-        (f'<rect x="{x0 + 0.5:.1f}" y="{y0 + 0.5:.1f}" width="{w - 1:.0f}" height="{h - 1:.0f}" '
-         f'rx="12" fill="{t["page"]}" stroke="{t["frame"]}"/>'),
+        # A full square: no corner is see-through, whatever the page behind it.
+        f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
     ]
     return "\n".join(head + edges + body + labels + ["</svg>"]) + "\n"
 

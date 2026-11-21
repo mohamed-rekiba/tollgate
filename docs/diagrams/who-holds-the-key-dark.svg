@@ -2,7 +2,7 @@
 <title id="title">The AI's room and the server</title>
 <desc id="desc">The AI writes code and runs tests in its own room, with no key to the server. The server locks the tests and runs them on every change. The change goes to the server, and the server answers pass or fail.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<rect x="-21.5" y="-21.5" width="664" height="203" rx="12" fill="#0d1117" stroke="#30363d"/>
+<rect x="-22" y="-22" width="665" height="204" fill="#0d1117"/>
 <path d="M257.1,58.0 L364.1,58.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M492.7,116.0 L492.7,137.0 Q492.7,149.0 480.7,149.0 L140.6,149.0 Q128.6,149.0 128.6,137.0 L128.6,116.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <rect x="0.0" y="0.0" width="257.1" height="116.0" rx="10" fill="#1b1430" stroke="#ab7df8" stroke-opacity="0.55" stroke-width="1"/>

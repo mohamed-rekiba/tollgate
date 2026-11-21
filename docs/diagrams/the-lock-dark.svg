@@ -2,7 +2,7 @@
 <title id="title">The idea of Tollgate in four steps</title>
 <desc id="desc">Tests are written first and say what done means. They are locked on the server, where the AI cannot reach. The AI builds and may try again, but cannot move the goal. The tests decide, and only a pass goes in.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<rect x="-21.5" y="-21.5" width="981" height="141" rx="12" fill="#0d1117" stroke="#30363d"/>
+<rect x="-22" y="-22" width="982" height="142" fill="#0d1117"/>
 <path d="M198.6,49.0 L246.6,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M445.2,49.0 L493.2,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M691.8,49.0 L739.8,49.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>

@@ -2,7 +2,7 @@
 <title id="title">How one ticket is built</title>
 <desc id="desc">The AI builds one attempt. If the locked tests pass, the change goes to the server, which runs the tests again. If not, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1.6" flood-color="#1f2328" flood-opacity="0.07"/></filter></defs>
-<rect x="-21.5" y="-21.5" width="891" height="255" rx="12" fill="#ffffff" stroke="#d1d9e0"/>
+<rect x="-22" y="-22" width="892" height="256" fill="#ffffff"/>
 <path d="M202.0,40.0 L322.8,40.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path d="M524.8,40.0 L645.6,40.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
 <path d="M423.8,80.0 L423.8,132.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
