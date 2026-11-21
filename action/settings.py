@@ -111,3 +111,25 @@ def load_from_ref(repo: str, ref: str) -> dict:
     if result.returncode != 0:
         raise SettingsError(f"{PATH} not found at {ref}")
     return parse(result.stdout)
+
+
+def main(argv=None) -> int:
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(prog="tollgate settings",
+                                     description="Check a settings file and print it in full.")
+    parser.add_argument("path", nargs="?", default=PATH)
+    args = parser.parse_args(argv)
+    try:
+        with open(args.path) as f:
+            found = parse(f.read())
+    except (OSError, SettingsError, ValueError) as err:
+        print(f"{args.path}: {err}", file=sys.stderr)
+        return 1
+    print(json.dumps(found, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
