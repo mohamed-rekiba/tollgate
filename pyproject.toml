@@ -1,0 +1,10 @@
+[project]
+name = "tollgate"
+version = "0.1.0"
+description = "Keeps a change written by an AI out of the main branch until tests locked before the build pass on GitHub."
+requires-python = ">=3.11"
+license = "Apache-2.0"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
