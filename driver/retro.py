@@ -61,17 +61,24 @@ def candidates(tickets: list) -> list:
     return [c for _, c in scored[:MAX_LESSONS]]
 
 
-def write(project: str, task: str) -> str:
+def numbers_table(nums: dict) -> list:
+    lines = ["| Number | Value |", "| --- | --- |"]
+    return lines + [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
+
+
+def write(project: str, task: str, show: bool = False) -> str:
     nums, tickets = numbers(project, task)
     cands = candidates(tickets)
-    lines = [f"# Retro: task {task}", "", "| Number | Value |", "| --- | --- |"]
-    lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
+    table = numbers_table(nums)
+    lines = [f"# Retro: task {task}", ""] + table
     lines += ["", f"## Candidates for lessons (at most {MAX_LESSONS})", ""]
     lines += [f"- {c['ticket']}: a {c['kind']}. Evidence: {c['evidence']}" for c in cands] or [
         "- None. No ticket stopped, had a test rejected, or needed a second attempt."]
     path = Path(project, ".tollgate", "lessons", f"{task}.md")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
+    if show:
+        print("\n".join(table))
     return str(path)
 
 
@@ -80,8 +87,10 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--task", required=True)
+    parser.add_argument("--print", dest="show", action="store_true",
+                        help="also print the numbers table to standard output")
     args = parser.parse_args(argv)
-    print(write(args.project, args.task))
+    print(write(args.project, args.task, args.show))
     return 0
 
 
