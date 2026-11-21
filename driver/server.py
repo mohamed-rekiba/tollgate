@@ -5,6 +5,7 @@ open a pull request, wait for the gate, merge, and the facts the gate reads.
 GitHub gives them through the REST API. Tests pass a fake with the same methods.
 """
 
+import os
 import subprocess
 import time
 from urllib.parse import quote
@@ -74,9 +75,21 @@ class GitHub(Server):
         existing = self.gh.get(f"repos/{self.repository}/pulls?state=open&head="
                                f"{quote(self.repository.split('/')[0])}:{quote(branch)}")
         if existing:
-            return existing[0]["number"]
-        return self.gh.api("POST", f"repos/{self.repository}/pulls",
-                           {"title": title, "head": branch, "base": "main", "body": body})["number"]
+            number = existing[0]["number"]
+        else:
+            number = self.gh.api("POST", f"repos/{self.repository}/pulls", {
+                "title": title, "head": branch, "base": "main", "body": body})["number"]
+        self.start_check(number)
+        return number
+
+    def start_check(self, pr: int) -> None:
+        """On GitHub Actions, start the gate for a pull request by hand. A pull request
+        or comment made with the workflow's own token starts no other workflow, but a
+        workflow_dispatch does. On a person's machine, GitHub starts it on its own."""
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            return
+        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate.yml/dispatches",
+                    {"ref": "main", "inputs": {"kind": "check", "id": str(pr)}})
 
     def wait_gate(self, sha: str) -> str:
         def probe():

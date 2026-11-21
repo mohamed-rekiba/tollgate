@@ -35,5 +35,17 @@
   "approvers": [
     "mohamed-rekiba"
   ],
-  "version": "self"
+  "version": "self",
+  "container_image": "tollgate-builder:ci",
+  "ai": {
+    "advisor": [
+      "claude -p"
+    ]
+  },
+  "stop": {
+    "attempts": 3,
+    "attempt_minutes": 30,
+    "ticket_usd": 5.0,
+    "task_usd": 60.0
+  }
 }

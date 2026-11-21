@@ -121,6 +121,46 @@ class RolesTest(unittest.TestCase):
             self.assertFalse(Path(path).exists())
 
 
+class PushTest(unittest.TestCase):
+    def test_on_github_the_token_goes_to_the_push_command_only(self):
+        from unittest import mock
+
+        from driver import driver as drv
+        calls = []
+        env = {"GITHUB_ACTIONS": "true", "GH_TOKEN": "abc"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(
+                drv, "git", lambda cwd, *a: calls.append(a) or ""):
+            drv.push(".", "origin", "HEAD:refs/heads/x")
+        self.assertTrue(calls[0][1].startswith("http.extraheader=AUTHORIZATION: basic "))
+        self.assertEqual(calls[0][2:], ("push", "origin", "HEAD:refs/heads/x"))
+        calls.clear()
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}), mock.patch.object(
+                drv, "git", lambda cwd, *a: calls.append(a) or ""):
+            drv.push(".", "origin", "x")
+        self.assertEqual(calls[0], ("push", "origin", "x"))
+
+    def test_on_github_opening_a_pull_request_starts_the_gate(self):
+        from unittest import mock
+
+        from driver.server import GitHub
+        made = []
+
+        class Gh:
+            def get(self, path):
+                return []
+
+            def api(self, method, path, body=None):
+                made.append((method, path, body))
+                return {"number": 41}
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
+            self.assertEqual(GitHub("o/r", gh=Gh()).open_pr("tg/T-1", "t", "b"), 41)
+        self.assertEqual(made[-1][2], {"ref": "main", "inputs": {"kind": "check", "id": "41"}})
+        made.clear()
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}):
+            GitHub("o/r", gh=Gh()).open_pr("tg/T-1", "t", "b")
+        self.assertEqual(len(made), 1)
+
+
 class LockTest(unittest.TestCase):
     def test_a_live_holder_refuses_and_a_dead_one_is_taken_over(self):
         with tempfile.TemporaryDirectory() as d:

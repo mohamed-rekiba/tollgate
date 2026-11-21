@@ -177,6 +177,17 @@ def git(cwd, *args) -> str:
                           text=True).stdout.strip()
 
 
+def push(cwd, *args) -> str:
+    """git push, with the GitHub token from the environment on GitHub Actions. The token
+    goes only to this one command, never into a saved config the checks could read."""
+    token = os.environ.get("GH_TOKEN") if os.environ.get("GITHUB_ACTIONS") == "true" else ""
+    if not token:
+        return git(cwd, "push", *args)
+    import base64
+    basic = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return git(cwd, "-c", f"http.extraheader=AUTHORIZATION: basic {basic}", "push", *args)
+
+
 def cost_of(events: list) -> float:
     return round(sum(float(e.get("cost_usd") or 0) for e in events), 4)
 
@@ -277,7 +288,7 @@ class Driver:
         bad = bad or self.changed_github()
         if bad:
             raise Stop(f"the test writer changed files under .github: {bad}")
-        git(self.copy, "push", "-q", "-f", "origin", f"HEAD:refs/heads/{self.branch}")
+        push(self.copy, "-q", "-f", "origin", f"HEAD:refs/heads/{self.branch}")
         try:
             tag = self.server.freeze(self.ticket_id)
         except mf.FreezeError as err:
@@ -383,7 +394,7 @@ class Driver:
         if self.changed_github() or any(p.startswith(".github/") for p in changed_files(
                 self.copy, self.base, "HEAD")):
             raise Stop("the change touches .github; the driver does not push it")
-        git(self.copy, "push", "-q", "-f", "origin", f"HEAD:refs/heads/{self.branch}")
+        push(self.copy, "-q", "-f", "origin", f"HEAD:refs/heads/{self.branch}")
         events = read(self.log_path)
         passed = [e for e in events if e["event"] == "attempt_passed"][-1]
         notes = []
