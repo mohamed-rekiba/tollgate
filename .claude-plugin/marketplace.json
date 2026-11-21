@@ -1,0 +1,11 @@
+{
+  "name": "mohamed-rekiba",
+  "owner": {"name": "Mohamed Rekiba"},
+  "plugins": [
+    {
+      "name": "tollgate",
+      "source": "./",
+      "description": "Keeps a change written by an AI out of the main branch until tests locked before the build pass on GitHub."
+    }
+  ]
+}
