@@ -123,21 +123,29 @@ class RolesTest(unittest.TestCase):
 
 class PushTest(unittest.TestCase):
     def test_on_github_the_token_goes_to_the_push_command_only(self):
+        import subprocess as sp
         from unittest import mock
 
         from driver import driver as drv
         calls = []
+
+        def fake_run(args, **kw):
+            calls.append(args)
+            return sp.CompletedProcess(args, 0, "", "")
         env = {"GITHUB_ACTIONS": "true", "GH_TOKEN": "abc"}
-        with mock.patch.dict(os.environ, env), mock.patch.object(
-                drv, "git", lambda cwd, *a: calls.append(a) or ""):
+        with mock.patch.dict(os.environ, env), mock.patch.object(drv.subprocess, "run", fake_run):
             drv.push(".", "origin", "HEAD:refs/heads/x")
-        self.assertTrue(calls[0][1].startswith("http.extraheader=AUTHORIZATION: basic "))
-        self.assertEqual(calls[0][2:], ("push", "origin", "HEAD:refs/heads/x"))
+            drv.git(".", "fetch", "-q", "origin")
+            drv.git(".", "status")
+        self.assertTrue(calls[0][2].startswith("http.extraheader=AUTHORIZATION: basic "))
+        self.assertEqual(calls[0][3:], ["push", "origin", "HEAD:refs/heads/x"])
+        self.assertEqual(calls[1][3], "fetch")
+        self.assertEqual(calls[2], ["git", "status"])
         calls.clear()
         with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}), mock.patch.object(
-                drv, "git", lambda cwd, *a: calls.append(a) or ""):
+                drv.subprocess, "run", fake_run):
             drv.push(".", "origin", "x")
-        self.assertEqual(calls[0], ("push", "origin", "x"))
+        self.assertEqual(calls[0], ["git", "push", "origin", "x"])
 
     def test_on_github_opening_a_pull_request_starts_the_gate(self):
         from unittest import mock
