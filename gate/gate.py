@@ -1,58 +1,64 @@
-"""The gate: six rules that decide whether a change may merge. It uses no AI.
+"""The gate: six checks that decide whether a try passes. It uses no AI.
 
-`evaluate` checks facts and has no side effects. `collect` gathers the facts
-from git and from the server. The command line joins the two.
+The driver runs it on your machine after each try. `collect` gathers the facts
+from git and the state folder. `evaluate` checks them and has no side effects.
+`pass_record` builds the record the store signs when a try passes.
+
+The six checks:
+
+    lock          the ticket's lock verifies, matches its commit, and adds only tests and the ticket
+    plan          a verified plan lock lists the ticket (tier 1 needs none)
+    locked_files  every locked file has its fingerprint at the try
+    tier          the tier, from the files the try changes
+    tests         every check passes and every locked test ran and passed
+    review        tier 3 and 4 need a passed review
+
+Approvals are not checked here: the store checks them at merge.
 """
 
 import argparse
+import hashlib
 import json
-import re
 import sys
+import time
 from dataclasses import dataclass, field
 
-from gate import manifest as mf
 from gate import settings as st
-from gate import tiers
+from gate import sign, state, tiers
 from gate.checks import Results
-from gate.gitio import changed_files, git
-from gate.paths import matches
+from gate.gitio import GitError, changed_files, fingerprint, git, show_bytes
+from gate.manifest import ticket_path
 
-WORKFLOW = ".github/workflows/tollgate.yml"
-FREEZE_WORKFLOWS = {WORKFLOW}
-PLAN_WORKFLOWS = {WORKFLOW}
-FREEZE_WORKFLOW = WORKFLOW
-PLAN_WORKFLOW = WORKFLOW
-REVIEW_CHECK = "tollgate review"
-GATE_CHECK = "tollgate gate"
-TAG_NUMBER = re.compile(r"[1-9][0-9]{0,3}", re.ASCII)
-APPROVER_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 BRANCH_PREFIX = "tg/"
+CHECKS = ("lock", "plan", "locked_files", "tier", "tests", "review")
+# Findings of these checks are the builder's to fix in a next try.
+FIXABLE = {"locked_files", "tests"}
+# Today's rule numbers, for people who read a finding.
+RULES = {"lock": 1, "plan": 2, "locked_files": 3, "tier": 4, "tests": 5, "review": 6}
 
 
-@dataclass
-class Freeze:
-    number: int
-    tag_commit: str
-    manifest: dict
-    run: dict | None = None  # path, head_branch, event, conclusion
+class GateError(ValueError):
+    """The gate refuses a step. The message says why."""
 
 
 @dataclass
 class Facts:
-    settings: dict
-    branch: str
+    settings: dict             # from main, never from the try
+    ticket: str
     head_sha: str
-    changes: dict
+    changes: dict              # path -> lines changed, from main to the try
     results: Results
-    freeze: Freeze | None = None
-    frozen_now_changed: list = field(default_factory=list)
-    plan_required: bool = False
-    plan_tickets: set | None = None
-    plan: dict | None = None
-    plan_run: dict | None = None
-    pr_author: str = ""
-    approvals: list = field(default_factory=list)
-    review_passed: bool | None = None
+    lock: dict | None = None   # the verified lock record
+    lock_error: str = ""       # why there is no verified lock
+    lock_sha256: str = ""      # of the lock record's exact bytes
+    lock_files_differ: list = field(default_factory=list)  # locked files that differ at the lock commit
+    lock_commit_files: list = field(default_factory=list)  # files the lock commit changed
+    lock_in_history: bool = True   # the lock commit is an ancestor of the try
+    locked_now_changed: list = field(default_factory=list)  # locked files that differ at the try
+    plan_task: str = ""
+    plan: dict | None = None   # the verified plan lock
+    plan_error: str = ""
+    review_passed: bool | None = None  # the review verdict the driver hands in
 
 
 def ticket_of(branch: str) -> str | None:
@@ -63,242 +69,225 @@ def ticket_of(branch: str) -> str | None:
     return None
 
 
-def approved(facts: Facts) -> bool:
-    approvers = set(facts.settings["approvers"])
-    for a in facts.approvals:
-        if a["user_type"] != "User":
-            continue
-        if (a["kind"] == "review" and a["state"] == "APPROVED"
-                and a["commit"] == facts.head_sha and a["user"] != facts.pr_author
-                and (a.get("association") in APPROVER_ASSOCIATIONS or a["user"] in approvers)):
-            return True
-        if (a["kind"] == "comment" and a["user"] in approvers
-                and a["body"] == f"tollgate approve {facts.head_sha}"):
-            return True
-    return False
+def locked_files(facts: Facts) -> set:
+    return set(facts.lock["manifest"]["files"]) if facts.lock else set()
 
 
-def evaluate(facts: Facts) -> tuple:
-    """Return (findings, tier). An empty list of findings means the change passes."""
+def tier_of(facts: Facts) -> tuple:
+    """Return (tier, reason)."""
+    return tiers.tier(facts.settings, facts.changes, locked_files(facts))
+
+
+def evaluate(facts: Facts) -> list:
+    """Return the findings. An empty list means the try passes.
+
+    Each finding is {check, rule, file, message, fixable}. fixable is true when
+    the builder can fix it in a next try.
+    """
     findings = []
 
-    def fail(rule, message, file=""):
-        findings.append({"rule": rule, "file": file, "message": message})
+    def fail(check, message, file=""):
+        findings.append({"check": check, "rule": RULES[check], "file": file,
+                         "message": message, "fixable": check in FIXABLE})
 
-    ticket = ticket_of(facts.branch)
-    freeze = facts.freeze
-    frozen = set(freeze.manifest["files"]) if freeze else set()
+    ticket = facts.ticket
+    lock = facts.lock
 
-    # A change that touches only free paths, such as docs, needs no ticket.
-    guarded = (facts.settings["harness"] + facts.settings["tiers"]["3"]
-               + facts.settings["tiers"]["4"] + [".tollgate/**"])
-    free = bool(facts.changes) and all(
-        matches(p, facts.settings["free"]) and not matches(p, guarded) for p in facts.changes)
-
-    # A change on any branch that is not a ticket branch was made by a person, not
-    # by the driver. It has no ticket and no locked tests, so instead it needs an
-    # approval by a person, which also covers tier 4. A ticket branch can never
-    # take this path: its locked tests always apply.
-    by_hand = ticket is None and not free
-
-    # Rule 1: ticket and freeze.
-    if free:
-        pass
-    elif by_hand:
-        if not approved(facts):
-            fail(1, f"this change is not on a ticket branch, so it needs an approval by a "
-                    f"person on {facts.head_sha}")
-    elif freeze is None:
-        fail(1, f"no freeze exists for ticket {ticket}")
+    # Lock.
+    if lock is None:
+        fail("lock", facts.lock_error or f"ticket {ticket} has no lock")
     else:
-        m = freeze.manifest
-        if m.get("ticket") != ticket:
-            fail(1, f"the freeze is for ticket {m.get('ticket')}, not {ticket}")
-        if m.get("commit") != freeze.tag_commit:
-            fail(1, "the freeze tag does not point at the commit its manifest names")
-        if m.get("number") != freeze.number:
-            fail(1, f"the freeze tag says {freeze.number}, its manifest says {m.get('number')}")
-        run = freeze.run
-        if run is None:
-            fail(1, "the run that created the freeze could not be checked")
-        else:
-            if run["path"] not in FREEZE_WORKFLOWS:
-                fail(1, f"the freeze came from {run['path']}, not {WORKFLOW}")
-            if run["head_branch"] != "main":
-                fail(1, f"the freeze ran on {run['head_branch']}, not main")
-            if run["event"] != "workflow_dispatch":
-                fail(1, f"the freeze was started by {run['event']}, not by hand")
-            if run["conclusion"] != "success":
-                fail(1, "the freeze run did not succeed")
-            if run.get("title") != f"tollgate freeze {ticket}":
-                fail(1, f"the run {m.get('run_id')} froze another ticket")
-            if run.get("manifest") != m:
-                fail(1, "the manifest in the tag differs from the one its run recorded")
+        if facts.lock_error:
+            fail("lock", facts.lock_error)
+        if lock.get("ticket") != ticket:
+            fail("lock", f"the lock is for ticket {lock.get('ticket')}, not {ticket}")
+        if not facts.lock_in_history:
+            fail("lock", f"the try is not built on the lock commit {lock.get('commit')}")
+        for path in facts.lock_files_differ:
+            fail("lock", "differs from the lock at the lock commit", path)
+        allowed = set(lock["manifest"]["files"])
+        if ticket_path(ticket) not in allowed:
+            fail("lock", "the lock does not hold the ticket file", ticket_path(ticket))
+        for path in facts.lock_commit_files:
+            if path not in allowed:
+                fail("lock", "the lock commit changed a file that is not a test or the ticket",
+                     path)
 
-    # Rule 4 comes before rule 2, because rule 2 needs the tier.
-    level, reason = tiers.tier(facts.settings, facts.changes, frozen)
-    needs_person = level == 4 or (freeze is not None and freeze.number > 1)
-    if needs_person and not by_hand and not approved(facts):
-        why = f"tier 4 ({reason})" if level == 4 else "a locked test was replaced"
-        fail(4, f"{why}: needs an approval by a person on {facts.head_sha}")
+    level, reason = tier_of(facts)
 
-    # Rule 2: plan.
-    if facts.plan_required and level >= 2 and not free and not by_hand:
-        if facts.plan_tickets is None:
-            fail(2, "no approved plan exists for this ticket")
-        elif ticket not in facts.plan_tickets:
-            fail(2, f"the approved plan does not list ticket {ticket}")
-        else:
-            task = (facts.plan or {}).get("task", "")
-            run = facts.plan_run
-            if run is None:
-                fail(2, "the run that locked the plan could not be checked")
-            elif (run.get("path") not in PLAN_WORKFLOWS or run.get("head_branch") != "main"
-                  or run.get("event") != "workflow_dispatch" or run.get("conclusion") != "success"
-                  or run.get("title") != f"tollgate plan {task}"):
-                fail(2, f"the plan tag of {task} did not come from a plan run on main")
-            elif run.get("manifest") != facts.plan:
-                fail(2, "the plan tag differs from the one its run recorded")
+    # Plan.
+    if facts.settings["require_plan"] and level >= 2:
+        plan = facts.plan
+        if plan is None:
+            fail("plan", facts.plan_error or f"no approved plan lists ticket {ticket}")
+        elif plan.get("task") != facts.plan_task:
+            fail("plan", f"the plan lock is for {plan.get('task')}, not {facts.plan_task}")
+        elif ticket_path(ticket) not in plan.get("files", {}):
+            fail("plan", f"the approved plan does not list ticket {ticket}")
+        elif lock and plan["files"][ticket_path(ticket)] != \
+                lock["manifest"]["files"].get(ticket_path(ticket)):
+            fail("plan", "the ticket differs from the one in the approved plan",
+                 ticket_path(ticket))
 
-    # Rule 3: locked files.
-    for path in facts.frozen_now_changed:
-        fail(3, "differs from the freeze", path)
+    # Locked files.
+    for path in facts.locked_now_changed:
+        fail("locked_files", "differs from the lock", path)
 
-    # Rule 5: checks and locked tests.
+    # Tier: it only sets the tier, which the review check and the store use.
+
+    # Tests and checks.
     for check in facts.results.checks:
         if not check.passed:
-            fail(5, f"check {check.name} failed" + (" (time limit)" if check.timed_out else ""))
-    if freeze:
-        for test_id in freeze.manifest["tests"]:
+            fail("tests", f"check {check.name} failed" + (" (time limit)" if check.timed_out else ""))
+    if lock:
+        for test_id in lock["manifest"]["tests"]:
             got = facts.results.tests.get(test_id)
             if got is None:
-                fail(5, f"locked test did not run: {test_id}")
+                fail("tests", f"locked test did not run: {test_id}")
             elif got["status"] == "skipped":
-                fail(5, f"locked test was skipped: {test_id}")
+                fail("tests", f"locked test was skipped: {test_id}")
             elif got["status"] != "passed":
-                fail(5, f"locked test failed: {test_id}")
+                fail("tests", f"locked test failed: {test_id}")
 
-    # Rule 6: review on the server.
-    if level == 3 and facts.review_passed is not True and not approved(facts):
-        state = "did not run" if facts.review_passed is None else "failed"
-        fail(6, f"tier 3 needs the server review or an approval by a person; the review {state}")
+    # Review.
+    if level >= 3 and facts.review_passed is not True:
+        state_ = "did not run" if facts.review_passed is None else "failed"
+        fail("review", f"tier {level} ({reason}) needs a passed review; the review {state_}")
 
-    return findings, level
-
-
-def _freeze(repo, ticket: str) -> Freeze | None:
-    prefix = f"refs/tags/{BRANCH_PREFIX}freeze/{ticket}/"
-    refs = git(repo, "for-each-ref", "--format=%(refname)", prefix).split()
-    numbered = []
-    for ref in refs:
-        tail = ref[len(prefix):]
-        if TAG_NUMBER.fullmatch(tail):
-            numbered.append((int(tail), ref))
-    if not numbered:
-        return None
-    number, ref = max(numbered)
-    message = git(repo, "for-each-ref", "--format=%(contents)", ref)
-    commit = git(repo, "rev-parse", f"{ref}^{{commit}}").strip()
-    return Freeze(number, commit, mf.loads(message))
+    return findings
 
 
-def _plan(repo, plan: str) -> dict | None:
-    """The message of the plan tag with the highest number, or None."""
-    if not plan:
-        return None
-    prefix = f"refs/tags/{BRANCH_PREFIX}plan/{plan}/"
-    refs = git(repo, "for-each-ref", "--format=%(refname)", prefix).split()
-    numbered = [(int(r[len(prefix):]), r) for r in refs if TAG_NUMBER.fullmatch(r[len(prefix):])]
-    if not numbered:
-        return None
-    number, ref = max(numbered)
-    found = mf.loads(git(repo, "for-each-ref", "--format=%(contents)", ref))
-    return found if found.get("number") == number and found.get("task") == plan else None
-
-def collect(repo, base: str, head: str, branch: str, results: Results,
-            server=None, pr: int | None = None) -> Facts:
-    """Gather the facts. `base` names the main branch, for example origin/main."""
-    settings = st.load_from_ref(repo, base)
-    head_sha = git(repo, "rev-parse", head).strip()
-    facts = Facts(settings, branch, head_sha, changed_files(repo, base, head), results)
-    ticket = ticket_of(branch)
-    if ticket:
-        facts.freeze = _freeze(repo, ticket)
-    if facts.freeze:
-        facts.frozen_now_changed = mf.changed(facts.freeze.manifest, repo, head)
-        run_id = facts.freeze.manifest.get("run_id")
-        if server is not None and run_id:
-            facts.freeze.run = server.run(run_id)
-    facts.plan_required = bool(settings["require_plan"])
-    if facts.plan_required and facts.freeze:
-        from gate.gitio import show_bytes
-        from gate.tickets import parse
-        data = show_bytes(repo, facts.freeze.tag_commit, mf.ticket_path(ticket))
-        plan = parse(data.decode()).plan if data else ""
-        facts.plan = _plan(repo, plan)
-        if facts.plan:
-            facts.plan_tickets = set(facts.plan.get("tickets", []))
-            if server is not None and facts.plan.get("run_id"):
-                facts.plan_run = server.run(facts.plan["run_id"])
-    if server is not None and pr is not None:
-        facts.pr_author = server.pull(pr)["author"]
-        facts.approvals = server.approvals(pr)
-        facts.review_passed = server.check_passed(head_sha, REVIEW_CHECK)
-    return facts
+def checks_of(findings: list) -> dict:
+    """{check: passed} for each of the six checks."""
+    failed = {f["check"] for f in findings}
+    return {name: name not in failed for name in CHECKS}
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="tollgate gate", description=__doc__)
-    parser.add_argument("--repo", default=".")
-    parser.add_argument("--base", default="origin/main")
-    parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--branch", required=True)
-    parser.add_argument("--results", required=True, help="results file from gate.checks")
-    parser.add_argument("--repository", help="owner/name, to ask the server")
-    parser.add_argument("--pr", type=int)
-    parser.add_argument("--post", metavar="SHA",
-                        help="post the result as the check 'tollgate gate' on this commit")
-    args = parser.parse_args(argv)
+def pass_record(facts: Facts, score: int, at: str | None = None) -> dict:
+    """Build the pass record of a try. The store signs and writes it.
+
+    Refuse a try with any finding or a score below pass_score: a failed try
+    never gets a pass record.
+    """
+    findings = evaluate(facts)
+    if findings:
+        raise GateError(f"the try has {len(findings)} finding(s): {findings[0]['message']}")
+    if score < facts.settings["pass_score"]:
+        raise GateError(f"score {score} is below {facts.settings['pass_score']}")
+    return {
+        "commit": facts.head_sha,
+        "ticket": facts.ticket,
+        "tier": tier_of(facts)[0],
+        "lock_sha256": facts.lock_sha256,
+        "checks": checks_of(findings),
+        "score": score,
+        "at": at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def _read(project: str, kind: str, name: str, namespace: str, signers: list) -> tuple:
+    """Return (record, sha256 of its bytes, error)."""
+    path = state.path(project, kind, f"{name}.json")
     try:
-        with open(args.results) as f:
-            results = Results.from_json(f.read())
-        server = None
-        if args.repository:
-            from gate.server import Server
-            server = Server(args.repository)
-        facts = collect(args.repo, args.base, args.head, args.branch, results, server, args.pr)
-        findings, level = evaluate(facts)
-    except Exception as err:  # noqa: BLE001 - any failure must post a failing check
-        findings, level = [{"rule": 0, "file": "", "message": f"the gate could not run: {err}"}], 0
-        _report(args, findings, level)
-        return 2
-    _report(args, findings, level)
-    return 1 if findings else 0
+        record = sign.read(path, namespace, signers)
+    except (sign.SignError, ValueError) as err:
+        return None, "", str(err)
+    return record, hashlib.sha256(path.read_bytes()).hexdigest(), ""
+
+
+def _differ(repo, ref: str, files: dict) -> list:
+    out = []
+    for path, print_ in sorted(files.items()):
+        data = show_bytes(repo, ref, path)
+        if data is None or fingerprint(data) != print_:
+            out.append(path)
+    return out
+
+
+def collect(project: str, repo, base: str, head: str, ticket: str, results: Results,
+            review_passed: bool | None = None) -> Facts:
+    """Gather the facts.
+
+    project names the state folder. repo is the copy that holds the try.
+    base names the main branch: the settings, and so the signers, come from there.
+    """
+    settings = st.load_from_ref(repo, base)
+    signers = settings["signers"]
+    head_sha = git(repo, "rev-parse", head).strip()
+    facts = Facts(settings, ticket, head_sha, changed_files(repo, base, head), results,
+                  review_passed=review_passed)
+    lock, digest, error = _read(project, "locks", ticket, "tollgate-lock", signers)
+    if lock is None:
+        facts.lock_error = f"the lock of ticket {ticket} does not verify: {error}"
+        return facts
+    facts.lock, facts.lock_sha256 = lock, digest
+    files = lock["manifest"]["files"]
+    commit = lock["commit"]
+    try:
+        git(repo, "merge-base", "--is-ancestor", commit, head_sha)
+    except GitError:
+        facts.lock_in_history = False
+    facts.lock_files_differ = _differ(repo, commit, files)
+    try:
+        facts.lock_commit_files = sorted(changed_files(repo, lock["base_commit"], commit))
+    except GitError as err:
+        facts.lock_error = f"the lock commit cannot be compared to its base: {err}"
+    facts.locked_now_changed = _differ(repo, head_sha, files)
+
+    data = show_bytes(repo, commit, ticket_path(ticket))
+    if data is not None:
+        from gate.tickets import parse
+        try:
+            facts.plan_task = parse(data.decode()).plan
+        except ValueError as err:
+            facts.plan_error = f"the ticket cannot be read: {err}"
+    if facts.plan_task:
+        plan, _, error = _read(project, "plans", facts.plan_task, "tollgate-plan", signers)
+        facts.plan = plan
+        if plan is None:
+            facts.plan_error = f"the plan lock of {facts.plan_task} does not verify: {error}"
+    elif not facts.plan_error:
+        facts.plan_error = "the ticket names no plan"
+    return facts
 
 
 def summary(findings: list, level: int) -> tuple:
     """Return (title, text) for a person to read."""
     if not findings:
-        return f"Passed. Tier {level}.", f"Every gate rule passed. Tier {level}."
+        return f"Passed. Tier {level}.", f"Every gate check passed. Tier {level}."
     title = f"Failed: {len(findings)} finding(s). Tier {level}."
     lines = [f"- Rule {f['rule']}: {f['message']}" + (f" (`{f['file']}`)" if f["file"] else "")
              for f in findings]
-    sha = next((m.split(" on ")[-1] for m in (f["message"] for f in findings)
-                if "needs an approval by a person on " in m), "")
-    if sha:
-        lines += ["", "To approve, a person listed under `approvers` comments on the pull request:",
-                  "", f"    tollgate approve {sha}"]
     return title, "\n".join(lines)
 
 
-def _report(args, findings: list, level: int) -> None:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="tollgate gate", description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--project", default=".", help="the project, which names the state folder")
+    parser.add_argument("--repo", default=".", help="the copy that holds the try")
+    parser.add_argument("--base", default="main")
+    parser.add_argument("--head", default="HEAD")
+    parser.add_argument("--ticket", required=True)
+    parser.add_argument("--results", required=True, help="results file from gate.checks")
+    parser.add_argument("--review", choices=("passed", "failed"),
+                        help="the review verdict, for tier 3 and 4")
+    args = parser.parse_args(argv)
+    review = {"passed": True, "failed": False}.get(args.review)
+    try:
+        with open(args.results) as f:
+            results = Results.from_json(f.read())
+        facts = collect(args.project, args.repo, args.base, args.head, args.ticket, results,
+                        review)
+        findings, level = evaluate(facts), tier_of(facts)[0]
+    except Exception as err:  # noqa: BLE001 - any failure must fail the try
+        print(json.dumps({"check": "", "rule": 0, "file": "", "fixable": False,
+                          "message": f"the gate could not run: {err}"}))
+        return 2
     for finding in findings:
         print(json.dumps(finding))
     print(json.dumps({"tier": level, "passed": not findings}))
-    if args.post and args.repository:
-        from gate.server import Server
-        title, text = summary(findings, level)
-        Server(args.repository).post_check(args.post, GATE_CHECK, not findings, title, text)
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":
