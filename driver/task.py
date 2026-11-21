@@ -150,7 +150,7 @@ class Task:
 
     def lock_plan(self):
         git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets")
-        git(self.copy, "commit", "-q", "--allow-empty", "-m", f"plan {self.id}")
+        git(self.copy, "commit", "-q", "--allow-empty", "-m", f"docs({self.id}): the plan")
         push(self.copy, "-q", "-f", "origin", f"HEAD:refs/heads/tg-plan/{self.id}")
         tag = self.server.lock_plan(self.id)
         self.log.add("plan_locked", tag=tag, commit=git(self.copy, "rev-parse", "HEAD"))

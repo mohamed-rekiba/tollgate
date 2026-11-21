@@ -68,6 +68,8 @@ For runs on GitHub with no machine of your own, add the repository secret `CLAUD
 | `/tollgate:inbox` | Lists what waits for your decision, across projects. |
 | `/tollgate:retro` | Shows a finished task's numbers and lessons. |
 | `/tollgate:home` | Keeps many projects in one private repository. |
+| `/tollgate:docs` | Writes a README, docs, comments, commits, and pull requests by the writing rules, and adds a check for them. |
+| `/tollgate:diagram` | Draws a diagram as an SVG file, in light and dark. |
 
 A question for you arrives as a GitHub issue with the label `tg-waiting`. You answer with a comment that starts `tollgate decide`, followed by your choice.
 
