@@ -1,5 +1,7 @@
 """Tests for the setup scripts, with a fake GitHub client."""
 
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -56,6 +58,32 @@ class CheckRightsTest(unittest.TestCase):
         gh = FakeGh({("GET", "repos/o/r/actions"): GhError(403, "no"),
                      ("GET", "repos/o/r"): {"permissions": {"push": True}}})
         self.assertEqual(check_rights.level(gh, "o/r")["level"], "write")
+
+    def main_output(self, argv, gh):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = check_rights.main(argv, gh=gh)
+        return code, out.getvalue()
+
+    def test_human_prints_one_sentence(self):
+        gh = FakeGh({("GET", "repos/o/r"): {"permissions": {"admin": True}}})
+        code, text = self.main_output(["o/r", "--human"], gh)
+        self.assertEqual((code, text), (0, "admin: you can set rulesets.\n"))
+
+    def test_default_is_still_json(self):
+        gh = FakeGh({("GET", "repos/o/r"): {"permissions": {"admin": True}}})
+        code, text = self.main_output(["o/r"], gh)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(text)["level"], "admin")
+
+    def test_human_for_none_and_errors(self):
+        gh = FakeGh({("GET", "repos/o/r"): {"permissions": {"pull": True}}})
+        self.assertEqual(self.main_output(["o/r", "--human"], gh),
+                         (1, "none: you have no write access.\n"))
+        gh = FakeGh({("GET", "repos/o/r"): GhError(404, "not found")})
+        code, text = self.main_output(["o/r", "--human"], gh)
+        self.assertEqual(code, 1)
+        self.assertTrue(text.startswith("none: "))
 
 
 class WriteWorkflowsTest(unittest.TestCase):
