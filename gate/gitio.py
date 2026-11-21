@@ -35,3 +35,21 @@ def changed_files(repo, base, head) -> dict:
         added, removed, path = entry.lstrip("\n").split("\t", 2)
         files[path] = (0 if added == "-" else int(added)) + (0 if removed == "-" else int(removed))
     return files
+
+
+def commit_of(repo, ref) -> str | None:
+    """The full commit id that ref names, or None when ref names no commit."""
+    proc = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"{ref}^{{commit}}"],
+                          capture_output=True, text=True, check=False)
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+def worktree_of(repo, branch: str) -> str | None:
+    """The folder of the worktree that has branch checked out, or None."""
+    folder = None
+    for line in git(repo, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            folder = line[len("worktree "):]
+        elif line == f"branch refs/heads/{branch}":
+            return folder
+    return None

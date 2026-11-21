@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from gate import freeze, gate, prepare
+from gate import settings as st
 from gate import manifest as mf
 from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
@@ -25,6 +26,10 @@ def results_file(folder, **status):
     return str(path)
 
 
+def results_of(path):
+    return Results.from_json(Path(path).read_text()).tests
+
+
 class FreezeTest(unittest.TestCase):
     def setUp(self):
         self.repo = Repo()
@@ -33,43 +38,33 @@ class FreezeTest(unittest.TestCase):
         self.repo.write(mf.ticket_path("T-1"), TICKET)
         self.repo.write("tests/test_t1.py", "# tests\n")
         self.commit = self.repo.commit()
+        self.settings = st.load_from_ref(str(self.repo.path), "main")
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
 
-    def test_first_freeze(self):
-        name, text = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                    results_file(self.tmp.name), "123", "main")
-        self.assertEqual(name, "tg/freeze/T-1/1")
-        m = mf.loads(text)
-        self.assertEqual((m["run_id"], m["number"], m["commit"]), (123, 1, self.commit))
+    def record(self, number=1, ticket="T-1", **status):
+        return freeze.record(str(self.repo.path), ticket, self.commit, "b" * 40, self.settings,
+                             results_of(results_file(self.tmp.name, **status)), number)
 
-    def test_second_freeze_gets_the_next_number_and_a_third_is_refused(self):
-        self.repo.tag("tg/freeze/T-1/1", "x", self.commit)
-        name, _ = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                 results_file(self.tmp.name), "1", "main")
-        self.assertEqual(name, "tg/freeze/T-1/2")
-        self.repo.tag("tg/freeze/T-1/2", "x", self.commit)
+    def test_first_lock(self):
+        lock = self.record()
+        self.assertEqual((lock["number"], lock["commit"], lock["base_commit"]),
+                         (1, self.commit, "b" * 40))
+        self.assertEqual(sorted(lock["manifest"]), ["files", "keeps_behavior", "tests"])
+        self.assertEqual(lock["manifest"]["keeps_behavior"], ["tests.test_t1::test_c2_sent_once"])
+
+    def test_a_third_lock_is_refused(self):
+        self.assertEqual(self.record(number=2)["number"], 2)
         with self.assertRaisesRegex(mf.FreezeError, "already has 2 freezes"):
-            freeze.message(str(self.repo.path), "T-1", self.commit,
-                           results_file(self.tmp.name), "1", "main")
+            self.record(number=3)
 
     def test_refuses_a_bad_ticket_id(self):
         with self.assertRaisesRegex(mf.FreezeError, "not a valid ticket id"):
-            freeze.message(str(self.repo.path), "T-1;rm", self.commit,
-                           results_file(self.tmp.name), "1", "main")
+            self.record(ticket="T-1;rm")
 
-    def test_command_line_writes_name_and_message(self):
-        out, name_out = Path(self.tmp.name, "msg"), Path(self.tmp.name, "name")
-        code = freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
-                            "--commit", self.commit, "--results", results_file(self.tmp.name),
-                            "--run-id", "9", "--base", "main", "--out", str(out), "--name-out", str(name_out)])
-        self.assertEqual(code, 0)
-        self.assertEqual(name_out.read_text(), "tg/freeze/T-1/1")
-        self.assertEqual(freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
-                                      "--commit", self.commit, "--results",
-                                      results_file(self.tmp.name, test_c1_retries="passed"),
-                                      "--run-id", "9", "--base", "main", "--out", str(out),
-                                      "--name-out", str(name_out)]), 1)
+    def test_refuses_a_test_that_passes_before_the_build(self):
+        with self.assertRaisesRegex(mf.FreezeError, "passed before the build"):
+            self.record(test_c1_retries="passed")
 
 
 class PrepareTest(unittest.TestCase):

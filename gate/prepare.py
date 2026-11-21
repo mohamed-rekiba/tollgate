@@ -1,4 +1,4 @@
-"""Put back the harness from the main branch and the locked files from the freeze.
+"""Put back the harness from the main branch and the locked files of a lock.
 
 This runs in the checkout of a change, before its checks run. A change then
 runs its tests with the main branch's test settings and with the locked tests
@@ -55,16 +55,19 @@ def restore(repo, base: str, freeze_commit: str | None = None, manifest=None,
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="tollgate prepare", description=__doc__)
     parser.add_argument("--repo", default=".")
-    parser.add_argument("--base", default="origin/main")
-    parser.add_argument("--ticket", help="put back the locked files of this ticket's freeze")
+    parser.add_argument("--base", default="main")
+    parser.add_argument("--project", help="the project whose state folder holds the lock; "
+                        "the default is --repo")
+    parser.add_argument("--ticket", help="put back the locked files of this ticket's lock")
     parser.add_argument("--keep-harness", action="store_true")
     args = parser.parse_args(argv)
     freeze_commit = manifest = None
     if args.ticket:
-        from gate.gate import _freeze
-        freeze = _freeze(args.repo, args.ticket)
-        if freeze:
-            freeze_commit, manifest = freeze.tag_commit, freeze.manifest
+        from gate import freeze
+        signers = st.load_from_ref(args.repo, args.base)["signers"]
+        lock = freeze.read_lock(args.project or args.repo, args.ticket, signers)
+        if lock:
+            freeze_commit, manifest = lock["commit"], lock["manifest"]
     for path in restore(args.repo, args.base, freeze_commit, manifest, args.keep_harness):
         print(f"put back: {path}")
     return 0
