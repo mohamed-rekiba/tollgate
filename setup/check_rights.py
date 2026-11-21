@@ -32,17 +32,23 @@ def level(gh, repository: str) -> dict:
     return {"level": "write", "reason": "you can push but cannot set rulesets"}
 
 
+def sentence(found: dict) -> str:
+    return f"{found['level']}: {found['reason']}."
+
+
 def main(argv=None, gh=None) -> int:
     parser = argparse.ArgumentParser(prog="check_rights", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("repository", help="owner/name")
+    parser.add_argument("--human", action="store_true", help="print one plain sentence")
     args = parser.parse_args(argv)
+    show = sentence if args.human else json.dumps
     try:
         found = level(gh or Gh(), args.repository)
     except GhError as err:
-        print(json.dumps({"level": "none", "reason": str(err)}))
+        print(show({"level": "none", "reason": str(err)}))
         return 1
-    print(json.dumps(found))
+    print(show(found))
     return 0 if found["level"] != "none" else 1
 
 
