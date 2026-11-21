@@ -107,7 +107,7 @@ class ProveGateTest(unittest.TestCase):
 
         def tag_ref():
             self.tag_calls += 1
-            if self.tag_calls == 1:
+            if self.tag_calls <= 2:
                 raise GhError(404, "not yet")
             return {"object": {"sha": "t"}}
 
