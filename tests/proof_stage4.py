@@ -3,8 +3,6 @@
     python3 -m unittest tests.proof_stage4 -v
 """
 
-import contextlib
-import io
 import json
 import os
 import subprocess
@@ -158,28 +156,6 @@ class BaseSuiteTest(unittest.TestCase):
         self.assertTrue(results["checks_run"]["passed"])
         self.assertIn("ended with 3", results["env_up_down"]["why"])
         self.assertEqual(results["bad_setting_stops"]["why"], "not set")
-    def project_dir(self, d, **base):
-        os.makedirs(f"{d}/.tollgate")
-        Path(d, st.PATH).write_text(json.dumps({"base": base}))
-
-    def test_only_runs_one_check(self):
-        with tempfile.TemporaryDirectory() as d:
-            self.project_dir(d, checks_run="true", env_up_down="exit 3")
-            s = st.parse(Path(d, st.PATH).read_text())
-            self.assertEqual([r["name"] for r in base_suite.run(s, d, only="checks_run")],
-                             ["checks_run"])
-            out = io.StringIO()
-            with contextlib.redirect_stdout(out):
-                self.assertEqual(base_suite.main(["--project", d, "--only", "checks_run"]), 0)
-                self.assertEqual(base_suite.main(["--project", d, "--only", "env_up_down"]), 1)
-            self.assertEqual(len(out.getvalue().splitlines()), 2)
-
-    def test_an_unknown_name_ends_with_1_and_names_the_five(self):
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            self.assertEqual(base_suite.main(["--only", "nope"]), 1)
-        for name in base_suite.NAMES:
-            self.assertIn(name, err.getvalue())
 
 
 class RoadmapTest(unittest.TestCase):
@@ -192,9 +168,10 @@ class RoadmapTest(unittest.TestCase):
         with self.assertRaisesRegex(rm.RoadmapError, "no section: Skeleton"):
             rm.parse(ROADMAP.replace("## Skeleton\n", ""))
 
-    def test_a_roadmap_freezes_its_checklist_first_runs_each_task_then_checks_the_whole(self):
+    def run_roadmap(self, base):
         sample = Sample(builder="pass1",
-                        advisor=(f"{sys.executable} {Path(__file__).parent / 'fake_role.py'} ok",))
+                        advisor=(f"{sys.executable} {Path(__file__).parent / 'fake_role.py'} ok",),
+                        extra={"base": base})
         self.addCleanup(sample.close)
         p = sample.project
         Path(p, rm.roadmap_path("orders")).parent.mkdir(parents=True)
@@ -209,13 +186,28 @@ class RoadmapTest(unittest.TestCase):
         env["PYTHONPATH"] = str(Path(__file__).resolve().parent.parent)
         result = subprocess.run([sys.executable, "-c", code], cwd=env["PYTHONPATH"], env=env,
                                 capture_output=True, text=True, timeout=600, check=False)
+        events = read(str(p / ".tollgate/logs/roadmap-orders.jsonl"))
+        return sample, result, events
+
+    def test_a_roadmap_freezes_its_checklist_first_runs_each_task_then_checks_the_whole(self):
+        sample, result, events = self.run_roadmap({name: "true" for name in base_suite.NAMES})
         self.assertEqual(result.returncode, 0, result.stderr)
-        events = [e["event"] for e in read(str(p / ".tollgate/logs/roadmap-orders.jsonl"))]
-        self.assertEqual(events, ["checklist_frozen", "task_done", "task_done", "roadmap_done"])
+        self.assertEqual([e["event"] for e in events],
+                         ["checklist_frozen", "task_done", "base_passed", "task_done",
+                          "roadmap_done"])
         tags = sh(sample.bare, "git", "tag").split()
         for tag in ("tg/freeze/orders-done/1", "tg/plan/orders-base/1", "tg/plan/orders-more/1"):
             self.assertIn(tag, tags)
 
+    def test_a_base_with_a_gap_stops_the_roadmap_before_the_skeleton(self):
+        base = {name: "true" for name in base_suite.NAMES}
+        base["one_log_line"] = ""
+        sample, result, events = self.run_roadmap(base)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual([e["event"] for e in events],
+                         ["checklist_frozen", "task_done", "roadmap_waiting"])
+        self.assertIn("one_log_line (not set)", events[-1]["reason"])
+        self.assertNotIn("tg/plan/orders-more/1", sh(sample.bare, "git", "tag").split())
 
 
 class RetroTest(unittest.TestCase):

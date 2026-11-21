@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from setup.gh import Gh
-from setup.home import HomeError, git, load
+from setup.home import git, load
 
 BRANCH = "tollgate-sync"
 
@@ -47,39 +47,10 @@ def sync(home: str, gh=None, push=True) -> list:
     return out
 
 
-def check(home: str) -> list:
-    """Names of the projects whose .tollgate/lenses differ from the home's lenses.
-
-    Read-only: it compares the files in each project's working tree and runs no git.
-    A lens differs if it is missing or has other content. Extra lenses that only the
-    project has are not a difference, because sync never removes them.
-    """
-    data = load(home)
-    lenses = sorted(Path(home, "rules", "lenses").glob("*.md"))
-    differ = []
-    for project in data["projects"]:
-        target = Path(home, project["path"], ".tollgate", "lenses")
-        if any(not (target / lens.name).is_file()
-               or (target / lens.name).read_bytes() != lens.read_bytes() for lens in lenses):
-            differ.append(project["name"])
-    return differ
-
-
 def main(argv=None, gh=None) -> int:
     parser = argparse.ArgumentParser(prog="sync_rules", description=__doc__)
     parser.add_argument("--home", default=".")
-    parser.add_argument("--check", action="store_true",
-                        help="list the projects whose lenses differ; change nothing; exit 1 if any")
     args = parser.parse_args(argv)
-    if args.check:
-        try:
-            differ = check(args.home)
-        except (HomeError, OSError) as err:
-            print(f"sync_rules: {err}", file=sys.stderr)
-            return 2
-        for name in differ:
-            print(name)
-        return 1 if differ else 0
     try:
         for line in sync(args.home, gh):
             print(json.dumps(line))

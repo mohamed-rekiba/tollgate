@@ -82,3 +82,7 @@ As the advisor set before the run: odd tickets merge the Tollgate arm, even tick
 - `packet/` and the key: the blind review.
 - `invented_names.py`, `fixes_after_merge.py`, `blind_packet.py`: the measuring scripts.
 - The raw logs are on the branch `tollgate-logs`. `python3 -m driver.report --project . --logs-branch tollgate-logs` reads them.
+
+## Cleanup on 2026-11-21: not a fix
+
+The 3.10 requests asked for command-line entry points and flags (tickets-cli, plan-cli, roadmap-check-cli, ticket-file-cli, human-flag, inbox-json-flag, and the plain arm's e310-02, -04, -06, -07, -08, -10). The plan's decision is "skills in Claude Code, and no command-line program", so those requests should not have been chosen. Every one that merged was removed on 2026-11-21, in both arms. The fixes-after-merge count must not count these removals: the changes did what they were asked; the request was wrong. Only report-minutes stays, because `/tollgate:status` shows its column.

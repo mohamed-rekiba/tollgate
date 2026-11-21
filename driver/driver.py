@@ -1,6 +1,5 @@
 """The driver: build one ticket, steps 1 to 9, and stop when a stop rule says so.
 
-    PYTHONPATH=<tollgate> python3 -m driver.driver --project . --ticket T-1
 
 Run state lives only in the log, .tollgate/logs/<ticket>.jsonl. A driver that
 starts again reads the log and repeats no finished step.
@@ -543,6 +542,3 @@ def main(argv=None, server=None) -> int:
         print(f"driver: {err}", file=sys.stderr)
         return 1
 
-
-if __name__ == "__main__":
-    sys.exit(main())

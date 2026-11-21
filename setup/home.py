@@ -110,8 +110,7 @@ def main(argv=None, gh=None) -> int:
             print(json.dumps(add(args.home, args.name)))
         else:
             for p in load(args.home)["projects"]:
-                found = Path(args.home, p["path"], ".tollgate/settings.json").exists()
-                print(f"{p['name']}\t{p['path']}\t{'settings' if found else 'no settings'}")
+                print(f"{p['name']}\t{p['path']}")
     except (HomeError, subprocess.CalledProcessError) as err:
         print(f"home: {err}", file=sys.stderr)
         return 1
