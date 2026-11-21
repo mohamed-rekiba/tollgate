@@ -120,9 +120,10 @@ class SummaryTest(unittest.TestCase):
 
 class WorkflowTemplatesTest(unittest.TestCase):
     FILES = ("workflows/tollgate-freeze.yml", "workflows/tollgate-gate.yml")
+    ALL = (*FILES, "workflows/tollgate-plan.yml", "workflows/tollgate-review.yml")
 
     def test_pin_placeholder_and_no_broad_permissions(self):
-        for name in self.FILES:
+        for name in self.ALL:
             text = (ROOT / name).read_text()
             self.assertIn("mohamed-rekiba/tollgate/action@__TOLLGATE_REF__", text, name)
             self.assertIn("permissions: {}", text, name)
@@ -130,8 +131,8 @@ class WorkflowTemplatesTest(unittest.TestCase):
     def test_untrusted_text_never_lands_in_a_shell_line(self):
         # Text the author of a change controls must reach a shell through env only.
         bad = re.compile(r"\$\{\{\s*(github\.event\.(pull_request\.head|comment|issue\.title|"
-                         r"issue\.body)|inputs\.ticket|needs\.find\.outputs\.branch)")
-        for name in self.FILES:
+                         r"issue\.body)|inputs\.(ticket|task)|needs\.find\.outputs\.branch)")
+        for name in self.ALL:
             block = None
             for line in (ROOT / name).read_text().splitlines():
                 if re.match(r"\s*run:\s*\|", line) or re.match(r"\s*run:\s*\S", line):
@@ -157,7 +158,7 @@ class WorkflowTemplatesTest(unittest.TestCase):
             import yaml
         except ImportError:
             self.skipTest("no YAML parser here")
-        for name in (*self.FILES, "action/action.yml"):
+        for name in (*self.ALL, "action/action.yml"):
             self.assertIsInstance(yaml.safe_load((ROOT / name).read_text()), dict)
 
 

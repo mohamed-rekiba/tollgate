@@ -2,7 +2,7 @@ name: Tollgate
 description: Run one Tollgate step - checks, prepare, freeze, or gate - from this pinned copy.
 inputs:
   command:
-    description: One of checks, prepare, freeze, gate, settings.
+    description: One of checks, prepare, freeze, gate, settings, plantag, review.
     required: true
   args:
     description: Arguments for the command.
@@ -20,7 +20,7 @@ runs:
       # only. The shell never reads them as code.
       run: |
         case "$TG_COMMAND" in
-          checks|prepare|freeze|gate|settings) ;;
+          checks|prepare|freeze|gate|settings|plantag|review) ;;
           *) echo "unknown command: $TG_COMMAND"; exit 2 ;;
         esac
         read -r -a args <<<"$TG_ARGS"

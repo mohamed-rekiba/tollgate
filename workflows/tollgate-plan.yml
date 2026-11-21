@@ -1,0 +1,58 @@
+# Tollgate plan lock. Written by /tollgate:init. Do not edit by hand.
+# Started by hand on the main branch after an advisor approved the plan. It
+# reads the plan and its tickets on the branch tg-plan/<task id> as files, runs
+# none of the project's code, and creates the tag tg/plan/<task id>/<number>.
+name: tollgate plan
+# The gate reads this title to confirm which task a run locked.
+run-name: tollgate plan ${{ inputs.task }}
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Task id. The plan is on the branch tg-plan/<task id>.
+        required: true
+permissions: {}
+concurrency:
+  group: tollgate-plan-${{ inputs.task }}
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse a run outside the main branch or a bad task id
+        env:
+          TASK: ${{ inputs.task }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+          [[ "$TASK" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: head
+        env:
+          TASK: ${{ inputs.task }}
+        run: |
+          git fetch --no-tags origin "refs/heads/tg-plan/$TASK"
+          echo "commit=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: mohamed-rekiba/tollgate/action@__TOLLGATE_REF__
+        with:
+          command: plantag
+          args: >-
+            --task ${{ inputs.task }} --commit ${{ steps.head.outputs.commit }}
+            --run-id ${{ github.run_id }}
+            --out ${{ runner.temp }}/tag.txt --name-out ${{ runner.temp }}/name.txt
+      - name: Create the plan tag
+        env:
+          COMMIT: ${{ steps.head.outputs.commit }}
+        run: |
+          name="$(cat "$RUNNER_TEMP/name.txt")"
+          git -c user.name="tollgate plan" -c user.email="tollgate@users.noreply.github.com" \
+            tag -a "$name" -F "$RUNNER_TEMP/tag.txt" "$COMMIT"
+          git push origin "refs/tags/$name"
+      # The gate compares the tag with this copy, which only this run could upload.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tollgate-manifest
+          path: ${{ runner.temp }}/tag.txt
+          retention-days: 90

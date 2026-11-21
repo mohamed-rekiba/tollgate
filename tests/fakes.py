@@ -69,7 +69,7 @@ Other languages.
 """
 
 
-def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", **stop):
+def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", extra=None, **stop):
     """With an image, every role runs in a container from that image, and the fake
     role is the copy of fake_role.py that the sample project holds."""
     py = sys.executable
@@ -86,6 +86,7 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", **st
                "reviewer": f"{role} {reviewer}",
                "advisor": list(advisor)},
         "stop": {"attempts": 3, "attempt_minutes": 1, "ticket_usd": 10, "task_usd": 60, **stop},
+        **(extra or {}),
     }
 
 

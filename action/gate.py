@@ -18,6 +18,7 @@ from action.gitio import changed_files, git
 from action.paths import matches
 
 FREEZE_WORKFLOW = ".github/workflows/tollgate-freeze.yml"
+PLAN_WORKFLOW = ".github/workflows/tollgate-plan.yml"
 REVIEW_CHECK = "tollgate review"
 GATE_CHECK = "tollgate gate"
 TAG_NUMBER = re.compile(r"[1-9][0-9]{0,3}", re.ASCII)
@@ -44,6 +45,8 @@ class Facts:
     frozen_now_changed: list = field(default_factory=list)
     plan_required: bool = False
     plan_tickets: set | None = None
+    plan: dict | None = None
+    plan_run: dict | None = None
     pr_author: str = ""
     approvals: list = field(default_factory=list)
     review_passed: bool | None = None
@@ -129,6 +132,17 @@ def evaluate(facts: Facts) -> tuple:
             fail(2, "no approved plan exists for this ticket")
         elif ticket not in facts.plan_tickets:
             fail(2, f"the approved plan does not list ticket {ticket}")
+        else:
+            task = (facts.plan or {}).get("task", "")
+            run = facts.plan_run
+            if run is None:
+                fail(2, "the run that locked the plan could not be checked")
+            elif (run.get("path") != PLAN_WORKFLOW or run.get("head_branch") != "main"
+                  or run.get("event") != "workflow_dispatch" or run.get("conclusion") != "success"
+                  or run.get("title") != f"tollgate plan {task}"):
+                fail(2, f"the plan tag of {task} did not come from a plan run on main")
+            elif run.get("manifest") != facts.plan:
+                fail(2, "the plan tag differs from the one its run recorded")
 
     # Rule 3: locked files.
     for path in facts.frozen_now_changed:
@@ -172,7 +186,8 @@ def _freeze(repo, ticket: str) -> Freeze | None:
     return Freeze(number, commit, mf.loads(message))
 
 
-def _plan_tickets(repo, plan: str) -> set | None:
+def _plan(repo, plan: str) -> dict | None:
+    """The message of the plan tag with the highest number, or None."""
     if not plan:
         return None
     prefix = f"refs/tags/{BRANCH_PREFIX}plan/{plan}/"
@@ -180,9 +195,9 @@ def _plan_tickets(repo, plan: str) -> set | None:
     numbered = [(int(r[len(prefix):]), r) for r in refs if TAG_NUMBER.fullmatch(r[len(prefix):])]
     if not numbered:
         return None
-    message = git(repo, "for-each-ref", "--format=%(contents)", max(numbered)[1])
-    return set(mf.loads(message).get("tickets", []))
-
+    number, ref = max(numbered)
+    found = mf.loads(git(repo, "for-each-ref", "--format=%(contents)", ref))
+    return found if found.get("number") == number and found.get("task") == plan else None
 
 def collect(repo, base: str, head: str, branch: str, results: Results,
             server=None, pr: int | None = None) -> Facts:
@@ -204,7 +219,11 @@ def collect(repo, base: str, head: str, branch: str, results: Results,
         from action.tickets import parse
         data = show_bytes(repo, facts.freeze.tag_commit, mf.ticket_path(ticket))
         plan = parse(data.decode()).plan if data else ""
-        facts.plan_tickets = _plan_tickets(repo, plan)
+        facts.plan = _plan(repo, plan)
+        if facts.plan:
+            facts.plan_tickets = set(facts.plan.get("tickets", []))
+            if server is not None and facts.plan.get("run_id"):
+                facts.plan_run = server.run(facts.plan["run_id"])
     if server is not None and pr is not None:
         facts.pr_author = server.pull(pr)["author"]
         facts.approvals = server.approvals(pr)

@@ -63,7 +63,9 @@ class WriteWorkflowsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             first = write_workflows.write(d, SHA)
             self.assertEqual(sorted(first), [".github/workflows/tollgate-freeze.yml",
-                                             ".github/workflows/tollgate-gate.yml"])
+                                             ".github/workflows/tollgate-gate.yml",
+                                             ".github/workflows/tollgate-plan.yml",
+                                             ".github/workflows/tollgate-review.yml"])
             self.assertEqual(write_workflows.write(d, SHA), [])
             text = Path(d, first[0]).read_text()
             self.assertIn(f"tollgate/action@{SHA}", text)

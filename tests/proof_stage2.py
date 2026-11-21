@@ -114,6 +114,16 @@ class StopRules(Case):
 
 
 class Guards(Case):
+    def test_a_blocking_change_finding_on_tier_2_fails_the_attempt(self):
+        self.start(builder="pass2", reviewer="ok block=change",
+                   extra={"tier1": {"max_files": 1, "max_lines": 1}})
+        self.assertEqual(run_driver(self.sample).returncode, 3)
+        failed = [e for e in self.events() if e["event"] == "attempt_failed" and e["score"] >= 0]
+        self.assertTrue(failed)
+        self.assertEqual(failed[-1]["tier"], 2)
+        self.assertEqual(failed[-1]["findings"][0]["lens"], "change")
+        self.assertEqual(self.count("pr_opened"), 0)
+
     def test_a_change_under_github_is_never_pushed(self):
         self.start(builder="github")
         self.assertEqual(run_driver(self.sample).returncode, 3)
