@@ -1,19 +1,30 @@
 # E2: The closed room
 
-**Result: not run.**
+**Result: the container half passed. The model half is not run.**
 
-## Why
+## What ran
 
-The workspace that built this repository has a container command but no container daemon, and it must not use its own model access as Tollgate's builder.
+`tests/proof_container.py`, on 2026-11-21, with Docker 29.10 and a local image (`tollgate-lab/py:local`). The image holds only Python 3.13, git with its HTTPS helper, a shell, and CA certificates. It was built from the workspace's own files, because the workspace cannot reach Docker Hub.
 
-## What the owner runs
+The roles were fake roles with the same contract as Claude Code: read the prompt on standard input, print `{"result": ..., "total_cost_usd": ...}`.
 
-[scripts/e2_closed_room.sh](scripts/e2_closed_room.sh) on a machine with Docker or Podman and Claude Code. It makes a fresh copy of a repository, starts Claude Code in a container with only the model key, asks it to add one line to a file, and checks three things:
+| Check | Result |
+| --- | --- |
+| A role in the container writes to the copy, and the driver reads its answer and cost. | Passed. |
+| A push from inside, to the local server, fails. | Passed: the server's path is not in the container. |
+| A push from inside, to `https://github.com/mohamed-rekiba/tollgate.git`, fails. | Passed. The container reached GitHub, which asked for a user name: no credentials are inside. |
+| A `GH_TOKEN` set for the driver does not reach the role. | Passed: the role saw no variable with `TOKEN` or `GH` in its name, and an empty home folder. |
+| Files written inside belong to the user who runs the driver. | Passed. |
+| The driver builds a ticket with `sandbox: container`, every role in the container: one failed attempt, one passed attempt, a pull request. | Passed. |
 
-1. The output parses as data and holds a cost.
-2. The file changed in the copy.
-3. A `git push` from inside the container fails.
+## What is not run
 
-## What rests on this experiment
+Claude Code inside the container, with a model key. The workspace has no model key, and it must not use its own model access as Tollgate's builder. [scripts/e2_closed_room.sh](scripts/e2_closed_room.sh) runs that half on any machine with Docker or Podman and `ANTHROPIC_API_KEY`.
 
-The builder's container in task 2.3, and the claim that the builder cannot reach the server. Until E2 passes, the driver treats `sandbox: container` as untested, and the plan lists it under "Not verified".
+## How to run it again
+
+```
+TOLLGATE_TEST_IMAGE=<image with python3 and git> python3 -m unittest tests.proof_container -v
+```
+
+Without `TOLLGATE_TEST_IMAGE` or a container daemon, the tests skip. CI has neither, so CI skips them.

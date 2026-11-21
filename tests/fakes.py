@@ -69,15 +69,21 @@ Other languages.
 """
 
 
-def settings(builder="pass2", reviewer="ok", advisor=("person",), **stop):
+def settings(builder="pass2", reviewer="ok", advisor=("person",), image="", **stop):
+    """With an image, every role runs in a container from that image, and the fake
+    role is the copy of fake_role.py that the sample project holds."""
     py = sys.executable
+    role = f"{py} {FAKE_ROLE}"
+    if image:
+        role = "python3 fake_role.py"
     return {
         "checks": {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"}},
         "harness": ["run_tests.py"],
         "require_plan": False,
-        "sandbox": "none",
-        "ai": {"builder": f"{py} {FAKE_ROLE} {builder}",
-               "reviewer": f"{py} {FAKE_ROLE} {reviewer}",
+        "sandbox": "container" if image else "none",
+        "container_image": image,
+        "ai": {"builder": f"{role} {builder}",
+               "reviewer": f"{role} {reviewer}",
                "advisor": list(advisor)},
         "stop": {"attempts": 3, "attempt_minutes": 1, "ticket_usd": 10, "task_usd": 60, **stop},
     }
@@ -99,6 +105,8 @@ class Sample:
             sh(p, "git", "config", k, v)
         (p / "app.py").write_text('def greet(name):\n    return f"hello {name}"\n')
         (p / "run_tests.py").write_text(RUN_TESTS)
+        if settings_args.get("image"):
+            (p / "fake_role.py").write_text(Path(FAKE_ROLE).read_text())
         (p / "tests").mkdir()
         (p / "tests/__init__.py").write_text("")
         (p / ".gitignore").write_text(".tollgate/logs/\n.tollgate/work/\n.tollgate/run/\n"
