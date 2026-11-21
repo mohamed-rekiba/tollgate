@@ -57,9 +57,17 @@ JOB_KINDS = {"freeze-test": "check", "freeze-lock": "server", "plan-lock": "serv
 
 def workflow_jobs(text: str) -> list:
     """The jobs of a workflow, in file order: name, needs, trigger, and the comment above it."""
-    jobs, comment = [], []
+    jobs, comment, in_needs = [], [], False
+    if "\njobs:\n" not in text:
+        raise ValueError("the workflow has no 'jobs:' section")
     body = text[text.index("\njobs:\n"):]
     for line in body.splitlines():
+        if in_needs:
+            item = re.match(r"^      - ([A-Za-z0-9_-]+)\s*$", line)
+            if item:
+                jobs[-1]["needs"].append(item.group(1))
+                continue
+            in_needs = False
         if re.match(r"^  # ", line):
             comment.append(line[4:].strip())
             continue
@@ -72,6 +80,9 @@ def workflow_jobs(text: str) -> list:
         if not line.startswith("   "):
             comment = []
         if not jobs:
+            continue
+        if re.match(r"^    needs:\s*$", line):
+            in_needs = True
             continue
         m = re.match(r"^    needs:\s*\[?([^\]]+)\]?\s*$", line)
         if m:
@@ -139,7 +150,7 @@ def workflow_spec() -> dict:
         taken.add((col, r))
         row[name] = r
         title, line = JOB_TEXT.get(name, (name, " ".join(about(job["about"]))))
-        node = {"id": name, "text": "\n".join([title, line, f"job: {name}"]), "col": col, "row": r}
+        node = {"id": name, "text": f"{title}\n{line}", "col": col, "row": r}
         if JOB_KINDS.get(name):
             node["kind"] = JOB_KINDS[name]
         if JOB_ICONS.get(name):
@@ -158,8 +169,8 @@ def workflow_spec() -> dict:
     names = ", ".join(j["name"] for j in jobs)
     return {
         "title": "The jobs of the Tollgate workflow",
-        "desc": (f"The jobs of .github/workflows/tollgate.yml, drawn from the file itself: "
-                 f"{names}. An arrow means a job waits for the one before it. Each box says "
+        "desc": (f"The jobs of the Tollgate workflow, drawn from the workflow file itself "
+                 f"({names}). An arrow means a job waits for the one before it. Each box says "
                  f"what starts the job and what it does."),
         "nodes": nodes, "edges": edges,
         "groups": [g for g in (

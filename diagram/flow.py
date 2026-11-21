@@ -516,7 +516,38 @@ def content(n, bx, t, accent, shape):
     return out
 
 
+def check(spec):
+    """Stop with a plain message when a spec cannot be drawn."""
+    from diagram.icons import ICONS
+    if not spec.get("nodes"):
+        raise ValueError("the diagram has no nodes")
+    ids = {n["id"] for n in spec["nodes"]}
+    kinds = set(THEMES["light"]["kinds"])
+    for n in spec["nodes"]:
+        if n.get("kind", "neutral") not in kinds:
+            raise ValueError(f"node '{n['id']}': kind must be one of {', '.join(sorted(kinds))}")
+        if n.get("shape", "step") not in SHAPES:
+            raise ValueError(f"node '{n['id']}': shape must be one of {', '.join(SHAPES)}")
+        if n.get("icon") and n["icon"] not in ICONS:
+            raise ValueError(f"node '{n['id']}': no icon named '{n['icon']}'")
+    for e in spec.get("edges", []):
+        for end in ("from", "to"):
+            if e[end] not in ids:
+                raise ValueError(f"an arrow {end} '{e[end]}', which is not a node")
+        if e.get("tone") not in (None, "pass", "fail"):
+            raise ValueError("an arrow's tone must be 'pass' or 'fail'")
+    for g in spec.get("groups", []):
+        if not g.get("nodes") or set(g["nodes"]) - ids:
+            raise ValueError(f"group '{g.get('label')}' names nodes that do not exist")
+    for a, b in (spec.get("ticket") or {}).get("path", []):
+        if not any(e["from"] == a and e["to"] == b for e in spec.get("edges", [])):
+            raise ValueError(f"the ticket's path uses an arrow {a} -> {b} that is not drawn")
+    if spec.get("ticket") is not None and not spec["ticket"].get("path"):
+        raise ValueError("the ticket has an empty path")
+
+
 def draw(spec, theme):
+    check(spec)
     t = THEMES[theme]
     boxes = layout(spec)
     lanes = loop_lanes(spec, boxes)

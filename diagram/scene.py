@@ -153,7 +153,6 @@ class Scene:
         else:
             post, start, end = (x, arm_to), self.iso(x, y + 22, 42), self.iso(x, arm_to, 42)
             turn = 80
-        self.front_post = post
         self.prism(post[0] - 6, post[1] - 6, post[0] + 6, post[1] + 6, 0, 30, kind)
         (px, py), (ex, ey) = start, end
         self.out.append(f'<g class="{arm_class}" style="transform-origin:{px:.1f}px {py:.1f}px">'
@@ -220,7 +219,7 @@ class Scene:
 
     def board(self, x, y, kind="ai"):
         """A board with a small chart: the retro."""
-        stroke, top, left, _ = self.faces(kind)
+        stroke, top, _, _ = self.faces(kind)
         self.prism(x - 6, y - 6, x + 6, y + 6, 0, 30, "neutral")
         p = [self.iso(x, y - 42, 30), self.iso(x, y + 42, 30), self.iso(x, y + 42, 86),
              self.iso(x, y - 42, 86)]
@@ -231,7 +230,6 @@ class Scene:
             a, b = self.iso(x, y + dy, 38), self.iso(x, y + dy, 38 + hgt)
             self.out.append(f'<line x1="{a[0]:.1f}" y1="{a[1]:.1f}" x2="{b[0]:.1f}" '
                             f'y2="{b[1]:.1f}" stroke="{stroke}" stroke-width="5"/>')
-        del left
 
     def house(self, x, y, kind="you", size=90):
         stroke, top, left, right = self.faces(kind)
@@ -446,6 +444,8 @@ def from_spec(spec: dict, theme: str) -> str:
         x, y, z = (label["at"] + [0])[:3]
         s.text(x, y, z, label["head"].upper(), label.get("sub"), label.get("anchor", "middle"))
     ticket = spec.get("ticket")
+    if ticket and (not ticket.get("legs") or not all(leg.get("path") for leg in ticket["legs"])):
+        raise ValueError("the ticket needs legs, each with a path")
     if ticket:
         for leg in ticket["legs"]:
             s.leg([s.iso(x, y, 2) for x, y in leg["path"]], leg.get("tone"), leg.get("wait", 0.4))

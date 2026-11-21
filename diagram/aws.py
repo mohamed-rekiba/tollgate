@@ -18,8 +18,11 @@ clash.
 import io
 import os
 import re
+import shutil
 import sys
+import tempfile
 import urllib.request
+import xml.etree.ElementTree as ET
 import zipfile
 from functools import cache
 from pathlib import Path
@@ -60,30 +63,104 @@ class Missing(LookupError):
     pass
 
 
-def unpack(data: bytes, target: Path) -> int:
-    """Unpack the package, and any zip inside it. Return how many SVG files there are."""
+# Limits on the package, so a broken or hostile file cannot fill the disk.
+MAX_BYTES, MAX_FILES, MAX_DEPTH = 300 * 2**20, 20000, 2
+
+
+def unpack(data: bytes, target: Path, depth: int = 0) -> int:
+    """Unpack the package's SVG files, and any zip one level inside it.
+
+    Return how many SVG files there are. Raise ValueError on a package over the limits.
+    """
+    if depth > MAX_DEPTH:
+        raise ValueError("the AWS package nests zips too deep")
     with zipfile.ZipFile(io.BytesIO(data)) as z:
-        for info in z.infolist():
+        infos = z.infolist()
+        if len(infos) > MAX_FILES or sum(i.file_size for i in infos) > MAX_BYTES:
+            raise ValueError("the AWS package is larger than expected")
+        for info in infos:
             name = Path(info.filename)
             if info.is_dir() or name.is_absolute() or ".." in name.parts or name.name.startswith("."):
                 continue
-            body = z.read(info)
             if name.suffix == ".zip":
-                unpack(body, target / name.stem)
+                unpack(z.read(info), target / name.stem, depth + 1)
             elif name.suffix == ".svg":
                 out = target / name
                 out.parent.mkdir(parents=True, exist_ok=True)
-                out.write_bytes(body)
+                out.write_bytes(z.read(info))
     return sum(1 for _ in target.rglob("*.svg"))
 
 
 def fetch(url: str = URL, target: Path | None = None) -> int:
-    """Download the official package from AWS into the cache. Return the icon count."""
+    """Download the official package from AWS into the cache. Return the icon count.
+
+    It unpacks into a new folder first and moves it into place only when that
+    worked, so a failed download leaves no half-filled cache behind.
+    """
     target = Path(target or CACHE)
+    if not url.startswith("https://d1.awsstatic.com/"):
+        raise ValueError("the AWS package must come from https://d1.awsstatic.com/")
     print(f"Downloading the AWS icon package once, into {target} ...", file=sys.stderr)
     data = urllib.request.urlopen(url, timeout=120).read()
-    target.mkdir(parents=True, exist_ok=True)
-    return unpack(data, target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix=".aws-icons-", dir=target.parent))
+    try:
+        count = unpack(data, stage)
+        if not count:
+            raise ValueError("the AWS package holds no SVG icons")
+        if target.exists():
+            shutil.rmtree(target)
+        stage.rename(target)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    return count
+
+
+# The SVG parts an icon may use. Anything else is dropped when an icon is copied
+# into a diagram, so a broken or tampered icon cannot bring a script, an event
+# handler, or an outside file into a committed picture.
+SAFE_TAGS = {"svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+             "defs", "lineargradient", "radialgradient", "stop", "clippath", "mask", "title",
+             "desc", "use", "symbol", "text", "tspan"}
+SAFE_ATTRS = {"id", "d", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "width",
+              "height", "points", "viewbox", "fill", "fill-rule", "fill-opacity", "stroke",
+              "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit",
+              "stroke-opacity", "stroke-dasharray", "opacity", "transform", "offset",
+              "stop-color", "stop-opacity", "gradientunits", "gradienttransform", "clip-path",
+              "clip-rule", "mask", "href", "preserveaspectratio", "class", "style",
+              "font-size", "font-family", "font-weight", "text-anchor", "version"}
+
+
+def clean(svg: str) -> str:
+    """Keep only the safe SVG parts of an icon."""
+    ns = "http://www.w3.org/2000/svg"
+    ET.register_namespace("", ns)
+    ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
+    root = ET.fromstring(svg)
+
+    def local(name):
+        return name.split("}", 1)[-1].lower()
+
+    def scrub(el):
+        for child in list(el):
+            if local(child.tag) not in SAFE_TAGS:
+                el.remove(child)
+            else:
+                scrub(child)
+        for key in list(el.attrib):
+            name, value = local(key), el.attrib[key]
+            unsafe_url = "url(" in value and "url(#" not in value.replace(" ", "")
+            if (name not in SAFE_ATTRS or name.startswith("on") or unsafe_url
+                    or (name == "href" and not value.startswith("#"))
+                    or (name == "style" and re.search(r"url\(\s*['\"]?[^#'\"\s]|@import|expression",
+                                                      value, re.IGNORECASE))):
+                del el.attrib[key]
+
+    if local(root.tag) != "svg":
+        raise Missing("an AWS icon file is not an SVG")
+    scrub(root)
+    return ET.tostring(root, encoding="unicode")
 
 
 def _words(name: str) -> str:
@@ -99,7 +176,7 @@ def index(root: str) -> dict:
     if not base.exists() and root == str(CACHE) and os.environ.get("TOLLGATE_AWS_ICONS_FETCH") != "0":
         try:
             fetch()
-        except OSError as err:
+        except (OSError, ValueError, zipfile.BadZipFile) as err:
             raise Missing(f"Could not download the AWS icons ({err}). Download the package from "
                           f"https://aws.amazon.com/architecture/icons/ and run: "
                           f"python3 -m setup.aws_icons --zip <file>") from err
@@ -137,6 +214,7 @@ def _inline(path: Path, prefix: str) -> str:
     """The icon's SVG, without the XML header, its ids prefixed."""
     text = path.read_text()
     text = re.sub(r"<\?xml[^>]*\?>|<!DOCTYPE[^>]*>|<!--.*?-->", "", text, flags=re.DOTALL).strip()
+    text = clean(text)
     ids = set(re.findall(r'\bid="([^"]+)"', text))
     for old in sorted(ids, key=len, reverse=True):
         new = f"{prefix}-{re.sub(r'[^A-Za-z0-9_-]', '-', old)}"
