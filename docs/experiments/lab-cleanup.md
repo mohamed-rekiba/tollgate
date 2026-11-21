@@ -1,5 +1,7 @@
 # Lab cleanup
 
+Done on 2026-11-21: the branches and tags below are gone from GitHub. The list stays as a record.
+
 The experiments and proofs ran in this repository, because this session could not create a separate lab repository. This session could not delete branches or tags either. You delete these.
 
 ## Branches
