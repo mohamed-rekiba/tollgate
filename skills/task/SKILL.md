@@ -48,7 +48,7 @@ Run it on GitHub when the user asks for that, and for a roadmap, which can run f
 gh workflow run tollgate.yml --ref main -f kind=task -f id="<task id>" -f request="$(cat ".tollgate/requests/<task id>.md")"
 ```
 
-**A roadmap on GitHub.** The run reads the roadmap and its checklist from the branch `tg-roadmap/<task id>`. Push them there without touching the user's working folder:
+**A roadmap on GitHub.** The run reads the roadmap and its checklist from the branch `tg-roadmap/<task id>`. Push them there without touching the user's working folder. The branch only carries these two files, so a new push replaces it:
 
 ```
 git fetch -q origin main && tmp="$(mktemp -d)" && git worktree add -q --detach "$tmp" origin/main \
@@ -56,7 +56,7 @@ git fetch -q origin main && tmp="$(mktemp -d)" && git worktree add -q --detach "
   && cp ".tollgate/roadmaps/<task id>.md" "$tmp/.tollgate/roadmaps/" \
   && cp -r ".tollgate/tickets/<task id>-done" "$tmp/.tollgate/tickets/" \
   && git -C "$tmp" add .tollgate && git -C "$tmp" commit -q -m "roadmap <task id>" \
-  && git -C "$tmp" push -q origin "HEAD:refs/heads/tg-roadmap/<task id>"; git worktree remove --force "$tmp"
+  && git -C "$tmp" push -q --force origin "HEAD:refs/heads/tg-roadmap/<task id>"; git worktree remove --force "$tmp"
 gh workflow run tollgate.yml --ref main -f kind=roadmap -f id="<task id>"
 ```
 

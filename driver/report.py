@@ -191,8 +191,9 @@ def roadmap_progress(project: str) -> tuple:
         if "base_passed" in kinds:
             done.append(f"{name}: the base passes all five checks.")
         if kinds and kinds[-1] == "roadmap_done":
-            done.append(f"{name}: done. All {len(finished)} tasks and the checklist for the "
-                        f"whole request pass.")
+            what = "its task" if len(set(finished)) == 1 else f"all {len(set(finished))} tasks"
+            done.append(f"{name}: done. {what.capitalize()} and the checklist for the whole "
+                        f"request pass.")
             continue
         plural = "task" if len(finished) == 1 else "tasks"
         count = (f"{len(finished)} of {len(tasks)} tasks done" if tasks is not None
@@ -301,6 +302,10 @@ def logs_from_branch(project: str, branch: str) -> str:
             data = subprocess.run(["git", "show", f"{ref}:{name}"], cwd=project,
                                   capture_output=True, check=False).stdout
             target = Path(out, name)
+            # A run on this machine may be newer than the copy on the branch: the
+            # fuller log wins.
+            if target.exists() and target.stat().st_size >= len(data):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
     return out

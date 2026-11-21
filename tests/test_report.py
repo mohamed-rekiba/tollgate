@@ -100,9 +100,6 @@ class ProgressTest(unittest.TestCase):
             self.assertIn("MERGED", words)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class RoadmapReportTest(unittest.TestCase):
     def setUp(self):
@@ -140,7 +137,7 @@ class RoadmapReportTest(unittest.TestCase):
                        {"event": "roadmap_done"}])
         text = report.brief(self.p)
         self.assertIn("Roadmap a: stopped, 0 tasks done so far. The base is not ready", text)
-        self.assertIn("Roadmap b: done. All 1 tasks and the checklist for the whole request pass.",
+        self.assertIn("Roadmap b: done. Its task and the checklist for the whole request pass.",
                       text)
 
     def test_local_runs_and_github_runs_are_read_together(self):
@@ -160,3 +157,7 @@ class RoadmapReportTest(unittest.TestCase):
         text = report.brief(folder)
         self.assertIn("Roadmap remote: done.", text)
         self.assertIn("Roadmap local:", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

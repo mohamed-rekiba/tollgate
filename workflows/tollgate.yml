@@ -323,8 +323,17 @@ jobs:
         run: |
           auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -C main -c "http.extraheader=$auth" fetch -q origin "refs/heads/tg-roadmap/$ID"
-          git -C main checkout -q FETCH_HEAD -- .tollgate/roadmaps .tollgate/tickets
-          git -C main reset -q
+          # Only this roadmap's two files, and never over a file main already has.
+          road=".tollgate/roadmaps/$ID.md"
+          [[ ! -e "main/$road" ]] || { echo "main already has $road"; exit 1; }
+          mkdir -p main/.tollgate/roadmaps
+          git -C main show "FETCH_HEAD:$road" > "main/$road"
+          check="$(sed -n 's/^checklist: *//p' "main/$road" | head -1)"
+          [[ "$check" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo "bad checklist id"; exit 1; }
+          [[ ! -e "main/.tollgate/tickets/$check" ]] || { echo "main already has the ticket $check"; exit 1; }
+          mkdir -p "main/.tollgate/tickets/$check"
+          git -C main show "FETCH_HEAD:.tollgate/tickets/$check/ticket.md" \
+            > "main/.tollgate/tickets/$check/ticket.md"
           if git -C main -c "http.extraheader=$auth" fetch -q origin tollgate-logs 2>/dev/null; then
             mkdir -p main/.tollgate/logs
             git -C main show "FETCH_HEAD:.tollgate/logs/roadmap-$ID.jsonl" \
