@@ -172,20 +172,28 @@ class State:
         return s
 
 
+NETWORK = {"fetch", "push", "pull", "clone", "ls-remote"}
+
+
+def _auth() -> list:
+    """On GitHub Actions, the token from the environment, for one network command. It
+    never goes into a saved config that the project's checks could read."""
+    token = os.environ.get("GH_TOKEN") if os.environ.get("GITHUB_ACTIONS") == "true" else ""
+    if not token:
+        return []
+    import base64
+    basic = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return ["-c", f"http.extraheader=AUTHORIZATION: basic {basic}"]
+
+
 def git(cwd, *args) -> str:
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True,
+    auth = _auth() if args and args[0] in NETWORK else []
+    return subprocess.run(["git", *auth, *args], cwd=cwd, check=True, capture_output=True,
                           text=True).stdout.strip()
 
 
 def push(cwd, *args) -> str:
-    """git push, with the GitHub token from the environment on GitHub Actions. The token
-    goes only to this one command, never into a saved config the checks could read."""
-    token = os.environ.get("GH_TOKEN") if os.environ.get("GITHUB_ACTIONS") == "true" else ""
-    if not token:
-        return git(cwd, "push", *args)
-    import base64
-    basic = base64.b64encode(f"x-access-token:{token}".encode()).decode()
-    return git(cwd, "-c", f"http.extraheader=AUTHORIZATION: basic {basic}", "push", *args)
+    return git(cwd, "push", *args)
 
 
 def cost_of(events: list) -> float:
