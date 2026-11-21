@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Write or update a README, a document, code comments, a commit message, or a pull request description in plain words, by the project's writing rules, and install the writing check. Use whenever you write words for people in a project, or when the user asks for docs, a README, or plain writing.
+description: Write or update a README, a document, code comments, or a commit message in plain words, by the project's writing rules, and install the writing check. Use whenever you write words for people in a project, or when the user asks for docs, a README, or plain writing.
 ---
 
 # Write for people
@@ -19,16 +19,12 @@ description: Write or update a README, a document, code comments, a commit messa
 - **A diagram:** use the `diagram` skill. Never a Mermaid block or a picture of text.
 - **A code comment:** say why the code is this way. Leave out what the code already says.
 - **A commit message:** a subject in the form `type(scope): subject`, then a body that says why. The author is the owner of the repository. No line credits an AI.
-- **A pull request:** what changes and why, then how it was checked. Say plainly what is not tested.
+- **A change for review:** what changes and why, then how it was checked. Say plainly what is not tested.
 
 Done when each changed line follows the rules and uses the word list.
 
-## Install the check
+## The writing check
 
-When the project has no check named `writing` in `.tollgate/settings.json`, run from the project's root:
+The check runs in two places: pre-commit runs it on each commit, on the lines the commit adds, and the gate runs it on the whole branch against main. It reads documents for the word list, long dashes, and filler, and the comments in source files for long dashes and filler.
 
-```sh
-python3 "$TG/setup/install_writing_check.py"
-```
-
-It copies the check into `.tollgate/checks/`, adds it to the settings, and marks it as harness. Then run `python3 .tollgate/checks/check_writing.py` and fix what it finds. Done when it ends with 0. Open a pull request with the three changed paths: the settings change needs an approval by a person.
+When `.tollgate/checks/check_writing.py` is missing, run `/tollgate:init`: it installs the check with the other checks. To check a branch by hand, run `python3 .tollgate/checks/check_writing.py` from the project's root and fix what it finds. Done when it ends with 0.

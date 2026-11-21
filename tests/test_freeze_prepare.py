@@ -1,7 +1,5 @@
-"""Tests for the freeze command, the restore step, and the workflow templates."""
+"""Tests for the freeze command and the restore step."""
 
-import re
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,8 +8,6 @@ from gate import freeze, gate, prepare
 from gate import manifest as mf
 from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
-
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def results_file(folder, **status):
@@ -117,71 +113,6 @@ class SummaryTest(unittest.TestCase):
         title, text = gate.summary([{"rule": 3, "file": "a.py", "message": "changed"}], 1)
         self.assertIn("1 finding", title)
         self.assertIn("Rule 3: changed (`a.py`)", text)
-
-
-class WorkflowTemplatesTest(unittest.TestCase):
-    FILE = ROOT / "workflows/tollgate.yml"
-
-    def jobs(self):
-        try:
-            import yaml
-        except ImportError:
-            self.skipTest("no YAML parser here")
-        return yaml.safe_load(self.FILE.read_text())["jobs"]
-
-    def test_this_repository_runs_the_template_as_it_is(self):
-        # Tollgate guards itself with this file, so the installed copy must match.
-        # It compares the copy the commit holds. On GitHub, the test job puts main's
-        # harness back on disk before the tests run, so for a change to the workflow
-        # the file on disk is main's copy, not the one this commit installs.
-        path = ".github/workflows/tollgate.yml"
-        proc = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{path}"],
-                              capture_output=True, text=True, check=False)
-        installed = proc.stdout if proc.returncode == 0 else (
-            (ROOT / path).read_text() if (ROOT / path).exists() else None)
-        if installed is not None:
-            self.assertEqual(installed, self.FILE.read_text(),
-                             "run: python3 -m setup.write_workflows --version self")
-
-    def test_no_broad_permissions_and_no_pin_in_the_file(self):
-        text = self.FILE.read_text()
-        self.assertIn("permissions: {}", text)
-        self.assertNotIn("tollgate/action@", text)
-        self.assertIn(".tollgate/settings.json", text)
-
-    def test_untrusted_text_never_lands_in_a_shell_line(self):
-        bad = re.compile(r"\$\{\{\s*(github\.event\.(pull_request\.head|comment|issue\.title|"
-                         r"issue\.body)|inputs\.id|needs\.find\.outputs\.(branch|ticket))")
-        block = None
-        for line in self.FILE.read_text().splitlines():
-            if re.match(r"\s*run:", line):
-                block = len(line) - len(line.lstrip())
-                self.assertIsNone(bad.search(line), line)
-            elif block is not None and line.strip() and len(line) - len(line.lstrip()) <= block:
-                block = None
-            elif block is not None:
-                self.assertIsNone(bad.search(line), line)
-
-    def test_jobs_that_run_the_change_cannot_write(self):
-        for name in ("freeze-test", "test"):
-            job = self.jobs()[name]
-            self.assertEqual(job["permissions"], {"contents": "read"}, name)
-            text = str(job)
-            self.assertNotIn("secrets.", text)
-            for step in job["steps"]:
-                if "actions/checkout" in step.get("uses", ""):
-                    self.assertEqual(step["with"]["persist-credentials"], False, name)
-
-    def test_there_is_no_gate_job_and_a_failed_check_fails_the_test_job(self):
-        self.assertNotIn("gate", self.jobs())
-        steps = [s.get("name") for s in self.jobs()["test"]["steps"]]
-        self.assertEqual(steps[-1], "Fail when a check failed")
-
-    def test_the_change_is_never_where_the_code_runs_from(self):
-        for name, job in self.jobs().items():
-            for step in job["steps"]:
-                if "actions/checkout" in step.get("uses", "") and step["with"].get("path") == "main":
-                    self.assertEqual(step["with"]["ref"], "main", name)
 
 
 if __name__ == "__main__":
