@@ -18,6 +18,9 @@ from pathlib import Path
 
 ROLES = Path(__file__).resolve().parent.parent / "roles"
 LENSES = Path(__file__).resolve().parent.parent / "lenses"
+# Claude Code reads one of these. An API key comes from the Anthropic console.
+# An OAuth token comes from `claude setup-token` and uses a Claude subscription.
+MODEL_ACCESS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
 FENCE = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
 
 TOOLS = {
@@ -70,11 +73,25 @@ def command_line(command: str, role: str, sandbox: str = "none", image: str = ""
         return args
     if not image:
         raise RoleError("sandbox is container but container_image is empty")
-    # No git or gh credentials go in, so a push from inside fails. Only the
-    # model key goes in, by name, from the driver's environment.
+    # No git or gh credentials go in, so a push from inside fails. Only model
+    # access goes in, by name, from the driver's environment, and only if set.
+    access = [x for name in model_access() for x in ("-e", name)]
     return [tool, "run", "--rm", "-i", "--user", f"{os.getuid()}:{os.getgid()}",
             "-v", f"{os.path.abspath(workdir)}:/work", "-w", "/work",
-            "-e", "ANTHROPIC_API_KEY", "-e", "HOME=/tmp", image, *args]
+            *access, "-e", "HOME=/tmp", image, *args]
+
+
+def model_access() -> list:
+    """The model access variables that are set and not empty."""
+    return [name for name in MODEL_ACCESS if os.environ.get(name)]
+
+
+def drop_empty_access() -> None:
+    """A workflow sets a missing secret to an empty string. Claude Code may read an
+    empty ANTHROPIC_API_KEY as a key and skip the OAuth token, so unset it."""
+    for name in MODEL_ACCESS:
+        if name in os.environ and not os.environ[name]:
+            del os.environ[name]
 
 
 def run(command: str, role: str, inputs: dict, workdir: str, minutes: float,

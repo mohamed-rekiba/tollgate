@@ -95,8 +95,8 @@ class ServerReviewTest(unittest.TestCase):
         self.change("src/auth/login.py")
         passed, title, text = review.review(str(self.repo.path), "main", "HEAD", "tg/T-1", key="")
         self.assertFalse(passed)
-        self.assertIn("no model key", title)
-        self.assertIn("ANTHROPIC_API_KEY", text)
+        self.assertIn("no model access", title)
+        self.assertIn("ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN", text)
 
     def test_tier_3_runs_both_lenses_and_fails_on_a_blocking_finding(self):
         self.change("src/auth/login.py")

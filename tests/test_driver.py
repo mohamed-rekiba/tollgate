@@ -64,6 +64,22 @@ class RolesTest(unittest.TestCase):
         self.assertEqual(roles.command_line("python3 fake.py x", "builder"),
                          ["python3", "fake.py", "x"])
 
+    def test_container_gets_whichever_model_access_is_set(self):
+        saved = {k: os.environ.pop(k, None) for k in roles.MODEL_ACCESS}
+        try:
+            os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = "t"
+            os.environ["ANTHROPIC_API_KEY"] = ""
+            args = roles.command_line("claude -p", "builder", "container", "img:1", "/w")
+            self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", args)
+            self.assertNotIn("ANTHROPIC_API_KEY", args)
+            roles.drop_empty_access()
+            self.assertNotIn("ANTHROPIC_API_KEY", os.environ)
+        finally:
+            for k, v in saved.items():
+                os.environ.pop(k, None)
+                if v is not None:
+                    os.environ[k] = v
+
     def test_container_mounts_only_the_copy_and_no_credentials(self):
         args = roles.command_line("claude -p", "builder", "container", "img:1", "/w")
         self.assertEqual(args[:3], ["docker", "run", "--rm"])

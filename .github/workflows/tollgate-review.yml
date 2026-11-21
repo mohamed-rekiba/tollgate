@@ -79,7 +79,9 @@ jobs:
       - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
         env:
           GH_TOKEN: ${{ github.token }}
+          # Either one works. An unset secret arrives as an empty string.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         with:
           command: review
           args: >-
