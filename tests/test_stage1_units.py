@@ -1,5 +1,6 @@
 """Tests for settings, paths, tickets, JUnit reports, manifests, tiers, and checks."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,6 +29,13 @@ class SettingsTest(unittest.TestCase):
     def test_check_needs_a_run_command(self):
         with self.assertRaisesRegex(settings.SettingsError, "checks.tests needs a run"):
             settings.parse('{"checks": {"tests": {"report": "x.xml"}}}')
+
+    def test_version_is_self_or_a_full_commit_id(self):
+        self.assertEqual(settings.parse('{"version": "self"}')["version"], "self")
+        self.assertEqual(settings.parse(json.dumps({"version": "a" * 40}))["version"], "a" * 40)
+        for bad in ("main", "v1.0", "a" * 39, "SELF"):
+            with self.assertRaisesRegex(settings.SettingsError, "version must be"):
+                settings.parse(json.dumps({"version": bad}))
 
     def test_no_sandbox_turns_auto_merge_off(self):
         s = settings.parse('{"sandbox": "none", "auto_merge": true}')
@@ -167,6 +175,14 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual(r.failed_checks(), ["style"])
         self.assertEqual(r.tests["t::test_c1_a"]["status"], "passed")
         self.assertEqual(checks.Results.from_json(r.to_json()).tests, r.tests)
+
+    def test_project_commands_do_not_see_tollgates_import_path(self):
+        import os
+        os.environ["PYTHONPATH"] = "/tollgate/code"
+        self.addCleanup(os.environ.pop, "PYTHONPATH", None)
+        with tempfile.TemporaryDirectory() as d:
+            s = settings.parse('{"checks": {"env": {"run": "test -z \\"$PYTHONPATH\\""}}}')
+            self.assertEqual(checks.run(s, d).failed_checks(), [])
 
     def test_a_check_past_its_time_limit_fails(self):
         with tempfile.TemporaryDirectory() as d:

@@ -3,15 +3,37 @@
     "python3 -m pip install --quiet --user pytest pyyaml || python3 -m pip install --quiet --break-system-packages pytest pyyaml"
   ],
   "checks": {
-    "tests": {"run": "python3 -m pytest -q -p no:cacheprovider --junitxml=report.xml tests", "report": "report.xml", "minutes": 15},
-    "style": {"run": "pipx run ruff check ."}
+    "tests": {
+      "run": "python3 -m pytest -q -p no:cacheprovider --junitxml=report.xml tests",
+      "report": "report.xml",
+      "minutes": 15
+    },
+    "style": {
+      "run": "pipx run ruff check ."
+    }
   },
-  "harness": ["tests/helpers.py", "tests/fakes.py", "tests/fake_role.py"],
+  "harness": [
+    "tests/helpers.py",
+    "tests/fakes.py",
+    "tests/fake_role.py"
+  ],
   "tiers": {
-    "3": ["driver/**", "roles/**", "lenses/**"],
-    "4": ["action/**", "workflows/**", "setup/**", "skills/init/**"]
+    "3": [
+      "driver/**",
+      "roles/**",
+      "lenses/**"
+    ],
+    "4": [
+      "action/**",
+      "workflows/**",
+      "setup/**",
+      "skills/init/**"
+    ]
   },
   "require_plan": false,
   "auto_merge": false,
-  "approvers": ["mohamed-rekiba"]
+  "approvers": [
+    "mohamed-rekiba"
+  ],
+  "version": "self"
 }

@@ -35,12 +35,12 @@ Done when that command prints the settings with no error. Show the user the file
 
 ## 3. Write the workflows
 
-1. Get the commit of Tollgate to pin: `gh api repos/mohamed-rekiba/tollgate/commits/main --jq .sha`. Tell the user the commit.
-2. Run `python3 -m setup.write_workflows --ref <commit>`.
-3. On a new branch `tollgate-setup`, commit `.tollgate/settings.json` and `.github/workflows/tollgate-*.yml`, push it, and open a pull request.
+1. Get the commit of Tollgate to use: `gh api repos/mohamed-rekiba/tollgate/commits/main --jq .sha`. Tell the user the commit.
+2. Run `python3 -m setup.write_workflows --version <commit>`. It writes `.github/workflows/tollgate.yml`, which never changes, and sets `"version"` in the settings. A later upgrade changes only that line.
+3. On a new branch `tollgate-setup`, commit `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, push it, and open a pull request.
 4. Ask the user to merge it. The workflows run only from the main branch, so nothing after this step works before the merge.
 
-Done when `git fetch origin && git show origin/main:.github/workflows/tollgate-gate.yml` prints the file.
+Done when `git fetch origin && git show origin/main:.github/workflows/tollgate.yml` prints the file.
 
 ## 4. Lock the gate
 
@@ -85,4 +85,4 @@ Done when it prints `"proof": "passed"`. If it prints `"failed"`, show the user 
 
 ## 6. Tell the user
 
-In three lines or fewer: the level of rights, the pinned commit, and the result of the proof. With level `write`, repeat that the gate does not block a merge until an admin runs the ruleset commands.
+In three lines or fewer: the level of rights, the version, and the result of the proof. With level `write`, repeat that the gate does not block a merge until an admin runs the ruleset commands.

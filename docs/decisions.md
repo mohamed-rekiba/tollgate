@@ -32,7 +32,20 @@ GitHub accepts the GitHub Actions app as a bypass actor only in an organization.
 
 ## The admin bypass
 
-The ruleset on the main branch lets a repository admin merge a pull request that the gate blocks. GitHub logs each such merge. This is the only way a change under `.github/` can merge, because the gate fails every such change. It gives an admin no new power: an admin can delete the ruleset anyway. The driver never uses it.
+The ruleset on the main branch lets a repository admin merge a pull request that the gate blocks, and GitHub logs it. It is for emergencies only. No normal change needs it: an upgrade is a settings change, a change under `.github/` is tier 4 and takes an approval, and a broken review never blocks an approval. The driver never uses it.
+
+## One workflow, and the version in the settings
+
+The four workflow files became one, `tollgate.yml`, that is the same for every version of Tollgate. The version is `"version"` in the settings on main: a full commit id, or `"self"` in the Tollgate repository, where main's own code runs the gate. Before this, each workflow held a pin, so every upgrade was a `.github/` change, and each one needed the admin bypass.
+
+## Nothing can deadlock
+
+- A change under `.github/` is tier 4, not an automatic failure.
+- For tier 4, the review is advice. A person's approval decides.
+- For tier 3, the review passing or a person's approval is enough.
+- Changes to free paths only, such as docs, need no ticket.
+
+So every change can merge through the gate with at most one approval by a person.
 
 ## Which approvals count
 
@@ -65,7 +78,7 @@ These count as harness in every project, whatever the settings say: `.github/**`
 
 ## Changes under .github
 
-The driver refuses to push any change under `.github/`. The gate fails any change that touches it. A file under `.github/` that a pushed branch adds would run with the repository's rights before any gate runs, so a later check is too late.
+The driver refuses to push any change under `.github/`, because a file there that a pushed branch adds runs with the repository's rights before any gate runs. A person's change under `.github/` is harness, so it is tier 4 and needs an approval.
 
 ## Approval by a person
 

@@ -27,6 +27,22 @@ class NonAsciiPaths(unittest.TestCase):
         self.assertIn(4, rules(facts(changes=found)))
 
 
+class FreePathsAndRenames(unittest.TestCase):
+    def test_moving_code_into_docs_is_not_free(self):
+        repo = Repo()
+        self.addCleanup(repo.close)
+        repo.write("src/x.py", "x = 1\n" * 20)
+        repo.commit("base")
+        repo.git("checkout", "-q", "-b", "docs/move")
+        (repo.path / "docs").mkdir()
+        repo.git("mv", "src/x.py", "docs/x.py")
+        repo.commit("move")
+        found = changed_files(str(repo.path), "main", "HEAD")
+        self.assertEqual(sorted(found), ["docs/x.py", "src/x.py"])
+        f = facts(branch="docs/move", freeze=None, changes=found)
+        self.assertIn(1, rules(f))
+
+
 class FreezeBoundToItsRun(unittest.TestCase):
     def test_a_run_that_froze_another_ticket_fails(self):
         f = facts()

@@ -118,8 +118,8 @@ def gate_result(gh, repo, sha):
 
 
 def freeze(gh, repo, ticket):
-    gh.api("POST", f"repos/{repo}/actions/workflows/tollgate-freeze.yml/dispatches",
-           {"ref": "main", "inputs": {"ticket": ticket}})
+    gh.api("POST", f"repos/{repo}/actions/workflows/tollgate.yml/dispatches",
+           {"ref": "main", "inputs": {"kind": "freeze", "id": ticket}})
 
     def probe():
         try:

@@ -5,6 +5,7 @@ loosen the rules that judge it.
 """
 
 import json
+import re
 import subprocess
 from copy import deepcopy
 
@@ -55,6 +56,11 @@ DEFAULTS = {
     "auto_merge": False,
     "check_minutes": 20,
     "approvers": [],
+    # "self" when this repository is Tollgate, or a full commit id of Tollgate.
+    # The workflow reads it from main, so an upgrade is an ordinary pull request.
+    "version": "",
+    # Paths a change may touch with no ticket: tier 1, and only the checks run.
+    "free": ["docs/**", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"],
     # The base suite: one command for each of the five things a base must prove.
     "base": {"checks_run": "", "parallel_tests": "", "env_up_down": "",
              "bad_setting_stops": "", "one_log_line": ""},
@@ -101,6 +107,8 @@ def parse(text: str) -> dict:
     for tier in settings["tiers"]:
         if tier not in ("3", "4"):
             raise SettingsError(f"unknown key: tiers.{tier}")
+    if settings["version"] and not re.fullmatch(r"self|[0-9a-f]{40}", settings["version"]):
+        raise SettingsError('version must be "self" or a full commit id of Tollgate')
     if settings["sandbox"] == "none":
         settings["auto_merge"] = False
     settings["harness"] = list(settings["harness"]) + BUILT_IN_HARNESS
