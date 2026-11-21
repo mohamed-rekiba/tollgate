@@ -5,6 +5,7 @@ repositories with --repo.
 """
 
 import argparse
+import json
 import sys
 
 from setup.gh import Gh, GhError
@@ -30,9 +31,14 @@ def main(argv=None, gh=None) -> int:
     parser = argparse.ArgumentParser(prog="inbox", description=__doc__)
     parser.add_argument("--home", default=".")
     parser.add_argument("--repo", action="append", help="owner/name; repeat for more")
+    parser.add_argument("--json", action="store_true", help="print the questions as a JSON list")
     args = parser.parse_args(argv)
     repos = args.repo or [p["name"] for p in load(args.home)["projects"]]
     found = inbox(repos, gh)
+    if args.json:
+        print(json.dumps([{"repo": i["repo"], "issue": i["issue"], "title": i["title"],
+                           "url": i.get("url", "")} for i in found]))
+        return 0
     if not found:
         print("Nothing waits for a person.")
     for item in found:
