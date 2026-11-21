@@ -119,7 +119,7 @@ Each number is a setting.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/who-holds-the-key-dark.svg">
-  <img alt="Who can change main: the AI works in its own copy, and only the gate on GitHub lets a change in" src="diagrams/who-holds-the-key.svg">
+  <img alt="Who can change what: the AI works in its own copy, and GitHub keeps the tests locked" src="diagrams/who-holds-the-key.svg">
 </picture>
 
 ### Who can do what
@@ -369,7 +369,7 @@ Python 3.11 with the standard library only. It calls `git`, `gh`, a container to
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/build-order-dark.svg">
-  <img alt="The build order in five stages" src="diagrams/build-order.svg">
+  <img alt="Tollgate was built in five stages" src="diagrams/build-order.svg">
 </picture>
 
 | Stage | Builds | Proof, as a script against a test repository |

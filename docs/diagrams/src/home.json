@@ -1,7 +1,7 @@
 {
  "type": "scene",
  "title": "A home with three projects",
- "desc": "An isometric scene. A home repository holds the list of projects and the rules they share. Lanes carry the shared rules to three projects. Each project keeps its own rules and its own gate.",
+ "desc": "An isometric scene. A home repository holds the list of projects and the rules they share. Lanes carry the shared rules to three projects. Each project keeps its own tests and its own rules.",
  "size": [
   1120,
   640
@@ -200,7 +200,7 @@
     0
    ],
    "head": "Project A",
-   "sub": "its own rules and gate",
+   "sub": "its own tests and rules",
    "anchor": "start"
   },
   {
@@ -210,7 +210,7 @@
     0
    ],
    "head": "Project B",
-   "sub": "its own rules and gate",
+   "sub": "its own tests and rules",
    "anchor": "start"
   },
   {
@@ -220,7 +220,7 @@
     0
    ],
    "head": "Project C",
-   "sub": "its own rules and gate",
+   "sub": "its own tests and rules",
    "anchor": "start"
   }
  ]

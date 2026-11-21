@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 995 167" width="995" height="167" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The idea of Tollgate in four steps</title>
-<desc id="desc">First the tests are written; they say what done means. Then they are locked on GitHub, where the AI cannot change them. The AI builds, and may try again, but cannot move the goal. The locked tests decide: only a change that passes them is merged.</desc>
+<desc id="desc">First the tests are written; they say what done means. Then they are locked on GitHub, where the AI cannot change them. The AI builds, and can try again, but the tests stay the same. The tests and fresh reviewers check each try, never the AI: 70% or more passes.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-24" y="-24" width="995" height="167" fill="#ffffff"/>
@@ -31,7 +31,7 @@
 <rect x="746.4" y="0.0" width="200.8" height="119.0" rx="59.5" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(781.3,21.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
 <text x="807.3" y="34.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">STEP 4 · CHECK</text>
-<text x="846.8" y="61.0" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">The tests decide</text>
-<text x="846.8" y="79.0" text-anchor="middle" font-size="12" fill="#59636e">Only a change that</text>
-<text x="846.8" y="96.0" text-anchor="middle" font-size="12" fill="#59636e">passes is merged</text>
+<text x="846.8" y="61.0" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Others check it</text>
+<text x="846.8" y="79.0" text-anchor="middle" font-size="12" fill="#59636e">Tests and reviewers.</text>
+<text x="846.8" y="96.0" text-anchor="middle" font-size="12" fill="#59636e">70% or more passes.</text>
 </svg>

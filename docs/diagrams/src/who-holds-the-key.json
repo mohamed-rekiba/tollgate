@@ -1,7 +1,7 @@
 {
  "type": "scene",
- "title": "The AI's room and GitHub",
- "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot change anything on GitHub. On the right, GitHub: it keeps the locked tests, which nobody can change, and the main branch. The only way through the wall is the gate. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. On a pass the barrier lifts.",
+ "title": "The AI's copy and GitHub",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot change anything on GitHub. On the right, GitHub keeps the locked tests, which nobody can change, and the main branch. A change goes in on one lane; GitHub runs the tests again, and pass or fail comes back on the other. Tollgate merges small changes, and you merge the risky ones.",
  "size": [
   1120,
   620
@@ -13,8 +13,8 @@
  "scale": 0.8,
  "grid": 420,
  "caption": [
-  "Who can change main",
-  "the AI works in its own copy; only the gate on GitHub lets a change in"
+  "Who can change what",
+  "the AI works in its own copy; GitHub keeps the tests locked"
  ],
  "zones": [
   {
@@ -142,7 +142,7 @@
    "at": [
     170,
     -110,
-    110
+    150
    ],
    "head": "Locked tests",
    "sub": "nobody can change them",
@@ -155,17 +155,17 @@
     -10
    ],
    "head": "Main branch",
-   "sub": "only changes that pass",
+   "sub": "you or Tollgate merge",
    "anchor": "start"
   },
   {
    "at": [
     0,
     -58,
-    140
+    180
    ],
-   "head": "The gate",
-   "sub": "runs the tests on GitHub",
+   "head": "GitHub checks",
+   "sub": "runs the tests again",
    "anchor": "middle"
   }
  ],

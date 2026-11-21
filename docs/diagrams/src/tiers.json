@@ -1,10 +1,10 @@
 {
  "title": "The four tiers",
- "desc": "Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tier 3, login, payments, or user data, adds a review on GitHub. Tier 4, data, production, or the locks themselves, adds a person's approval.",
+ "desc": "Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds a plan and a review. Tollgate merges tiers 1 and 2 itself. Tier 3, login, payments, or user data, and tier 4, production or the locks themselves, add an AI review on GitHub, and you merge them.",
  "nodes": [
   {
    "id": "t1",
-   "text": "A small fix\nLocked tests",
+   "text": "A small fix\nLocked tests.\nTollgate merges it.",
    "col": 0,
    "row": 0,
    "kind": "ai",
@@ -13,7 +13,7 @@
   },
   {
    "id": "t2",
-   "text": "A normal change\n+ a plan and a review",
+   "text": "A normal change\n+ a plan and a review.\nTollgate merges it.",
    "col": 1,
    "row": 0,
    "kind": "check",
@@ -22,7 +22,7 @@
   },
   {
    "id": "t3",
-   "text": "Login, payments, data\n+ a review on GitHub",
+   "text": "Login, payments, data\n+ an AI review on GitHub.\nYou merge it.",
    "col": 2,
    "row": 0,
    "kind": "server",
@@ -31,7 +31,7 @@
   },
   {
    "id": "t4",
-   "text": "Production, the locks\n+ a person approves",
+   "text": "Production, the locks\n+ an AI review on GitHub.\nYou merge it.",
    "col": 3,
    "row": 0,
    "kind": "you",

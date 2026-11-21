@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" width="1120" height="600" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Where each part runs</title>
-<desc id="desc">An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver that runs the steps, and the instructions for each AI role. On GitHub runs one workflow: it locks the tests, and runs them again on every change. The plugin starts the workflow, and the workflow reports back.</desc>
+<desc id="desc">An isometric scene in two parts. On your machine runs the plugin: the commands you type in Claude Code, the driver, which runs each step and the gate, and the instructions for each AI role. On GitHub runs one workflow: it locks the tests, and runs them again on every change. The plugin starts the workflow, and the workflow reports back.</desc>
 <defs><radialGradient id="glow" cx="0.500" cy="0.550" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1120" height="600" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#ab7df8"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.still-arm{display:none}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.moving-arm{display:none}.still-arm{display:inline}}</style>
 <rect width="1120" height="600" fill="#0d1117"/>
@@ -97,6 +97,19 @@
 <polygon points="323.6,236.4 269.5,267.6 269.5,223.1 323.6,191.9" fill="#0d1d35" stroke="#4493f8" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="318.2,233.3 274.9,258.2 274.9,225.5 318.2,200.5" fill="#173258" stroke="#4493f8" stroke-width="1"/>
 <line x1="283.1" y1="232.5" x2="299.9" y2="222.8" stroke="#4493f8" stroke-width="2" stroke-linecap="round"/>
+<polygon points="354.7,259.8 384.4,277.0 384.4,331.6 354.7,314.4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="384.4,277.0 414.1,259.8 414.1,314.4 384.4,331.6" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="354.7,259.8 384.4,277.0 414.1,259.8 384.4,242.6" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="346.5,255.1 384.4,277.0 384.4,281.6 346.5,259.8" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="384.4,277.0 422.2,255.1 422.2,259.8 384.4,281.6" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="346.5,255.1 384.4,277.0 422.2,255.1 384.4,233.3" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<rect x="393.2" y="294.5" width="12" height="10" rx="2" fill="#d29922"/>
+<path d="M395.7,294.5 v-3.5 a3.5,3.5 0 0 1 7,0 v3.5" fill="none" stroke="#d29922" stroke-width="1.8"/>
+<polygon points="416.8,267.6 424.9,272.3 424.9,295.7 416.8,291.0" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="424.9,272.3 433.0,267.6 433.0,291.0 424.9,295.7" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="416.8,267.6 424.9,272.3 433.0,267.6 424.9,262.9" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<g class="moving-arm"><line x1="369.5" y1="290.2" x2="424.9" y2="258.2" stroke="#d29922" stroke-width="8" stroke-linecap="round"/><line x1="369.5" y1="290.2" x2="424.9" y2="258.2" stroke="#0d1117" stroke-width="4" stroke-dasharray="9 9"/></g><g class="still-arm"><line x1="369.5" y1="290.2" x2="424.9" y2="258.2" stroke="#d29922" stroke-width="8" stroke-linecap="round"/><line x1="369.5" y1="290.2" x2="424.9" y2="258.2" stroke="#0d1117" stroke-width="4" stroke-dasharray="9 9"/></g>
+<circle cx="369.5" cy="290.2" r="4.5" fill="#d29922"/>
 <polygon points="685.6,304.3 728.9,329.2 728.9,374.5 685.6,349.5" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="728.9,329.2 772.1,304.3 772.1,349.5 728.9,374.5" fill="#08150d" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="685.6,304.3 728.9,329.2 772.1,304.3 728.9,279.3" fill="#153c1f" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
@@ -116,19 +129,6 @@
 <circle cx="679.6" cy="405.3" r="2.1" fill="#3fb950"/>
 <circle cx="685.6" cy="408.8" r="2.1" fill="#3fb950"/>
 <line x1="693.7" y1="413.5" x2="710.0" y2="422.8" stroke="#3fb950" stroke-width="2" stroke-linecap="round"/>
-<polygon points="584.3,400.2 614.0,417.4 614.0,472.0 584.3,454.8" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="614.0,417.4 643.8,400.2 643.8,454.8 614.0,472.0" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="584.3,400.2 614.0,417.4 643.8,400.2 614.0,383.0" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="576.2,395.5 614.0,417.4 614.0,422.0 576.2,400.2" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="614.0,417.4 651.9,395.5 651.9,400.2 614.0,422.0" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="576.2,395.5 614.0,417.4 651.9,395.5 614.0,373.7" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<rect x="622.9" y="434.9" width="12" height="10" rx="2" fill="#d29922"/>
-<path d="M625.4,434.9 v-3.5 a3.5,3.5 0 0 1 7,0 v3.5" fill="none" stroke="#d29922" stroke-width="1.8"/>
-<polygon points="551.9,400.2 560.0,404.9 560.0,428.3 551.9,423.6" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="560.0,404.9 568.1,400.2 568.1,423.6 560.0,428.3" fill="#161105" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="551.9,400.2 560.0,404.9 568.1,400.2 560.0,395.5" fill="#42310d" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
-<g class="moving-arm"><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#d29922" stroke-width="8" stroke-linecap="round"/><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#0d1117" stroke-width="4" stroke-dasharray="9 9"/></g><g class="still-arm"><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#d29922" stroke-width="8" stroke-linecap="round"/><line x1="599.2" y1="413.5" x2="560.0" y2="390.8" stroke="#0d1117" stroke-width="4" stroke-dasharray="9 9"/></g>
-<circle cx="599.2" cy="413.5" r="4.5" fill="#d29922"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#f0f6fc">WHERE EACH PART RUNS</text>
 <text x="40" y="68" font-size="12" fill="#9198a1">a plugin on your machine, one workflow on GitHub</text>
 <rect x="555.8" y="308.7" width="55.6" height="20" rx="3" fill="#0d1117" stroke="#9198a1"/>
@@ -137,7 +137,7 @@
 <text x="536.4" y="350.0" text-anchor="middle" font-size="11" fill="#9198a1">reports back</text>
 <text x="310.1" y="396.3" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">YOUR MACHINE: THE PLUGIN</text>
 <text x="310.1" y="412.3" text-anchor="end" font-size="12" fill="#9198a1">the commands you type in Claude Code</text>
-<text x="310.1" y="428.3" text-anchor="end" font-size="12" fill="#9198a1">the driver that runs the steps</text>
+<text x="310.1" y="428.3" text-anchor="end" font-size="12" fill="#9198a1">the driver, which runs each step and the gate</text>
 <text x="310.1" y="444.3" text-anchor="end" font-size="12" fill="#9198a1">the instructions for each AI role</text>
 <text x="776.2" y="517.2" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">GITHUB: ONE WORKFLOW</text>
 <text x="776.2" y="533.2" text-anchor="start" font-size="12" fill="#9198a1">it locks the tests</text>

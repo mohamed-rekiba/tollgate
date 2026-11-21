@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Tollgate: let AI write your code, merge only what works</title>
-<desc id="desc">A banner. On the left: Tollgate, a plugin for Claude Code. Let AI write your code, and merge only what works: tests are written before the code, the AI cannot change them, and nothing reaches the main branch until they pass. On the right, an isometric drawing: a change leaves the AI and stops at the gate while the tests run. They fail, and it goes back to the AI on a red path. It comes again, the tests pass, the barrier lifts, and it goes into the main branch.</desc>
+<desc id="desc">A banner. On the left: Tollgate, a plugin for Claude Code. Let AI write your code, and merge only what works: tests are written before the code, the AI cannot change them, and nothing reaches the main branch until they pass. On the right, an isometric drawing: a change leaves the AI and stops at the gate while the tests run. They fail, and it goes back to the AI on a red path. It comes again, it scores 70% or more, the barrier lifts, and it goes into the main branch.</desc>
 <defs><radialGradient id="glow" cx="0.762" cy="0.500" r="0.42"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1200" height="600" fill="url(#glow)"/></mask><marker id="fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.still-arm{display:none}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.moving-arm{display:none}.still-arm{display:inline}}</style>
 <rect width="1200" height="600" fill="#ffffff"/>
@@ -69,8 +69,8 @@
 <text x="779.9" y="504.2" text-anchor="middle" font-size="12" fill="#59636e">writes the code in its own copy</text>
 <polyline class="main" points="798.8,364.7 1028.5,232.1" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round"/>
 <polyline class="side" points="863.7,317.9 760.3,258.3 648.2,323.0 719.1,364.0" fill="none" stroke="#cf222e" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#fail)"/>
-<rect x="614.0" y="280.8" width="176.4" height="22" rx="11" fill="#ffffff" stroke="#cf222e"/>
-<text x="702.2" y="295.8" text-anchor="middle" font-size="12" fill="#cf222e">failed: back to the AI</text>
+<rect x="621.2" y="280.8" width="162.0" height="22" rx="11" fill="#ffffff" stroke="#cf222e"/>
+<text x="702.2" y="295.8" text-anchor="middle" font-size="12" fill="#cf222e">below 70%: try again</text>
 <polygon points="974.4,296.9 1004.2,314.0 1004.2,368.6 974.4,351.5" fill="#fde9ac" stroke="#9a6700" stroke-width="1.4" stroke-linejoin="round"/>
 <polygon points="1004.2,314.0 1033.9,296.9 1033.9,351.5 1004.2,368.6" fill="#f3d27a" stroke="#9a6700" stroke-width="1.4" stroke-linejoin="round"/>
 <polygon points="974.4,296.9 1004.2,314.0 1033.9,296.9 1004.2,279.7" fill="#fff6d9" stroke="#9a6700" stroke-width="1.4" stroke-linejoin="round"/>
@@ -86,7 +86,7 @@
 <g class="still-arm"><line x1="989.3" y1="324.2" x2="866.4" y2="253.2" stroke="#9a6700" stroke-width="8" stroke-linecap="round"/><line x1="989.3" y1="324.2" x2="866.4" y2="253.2" stroke="#ffffff" stroke-width="4" stroke-dasharray="9 9"/></g>
 <circle cx="989.3" cy="324.2" r="4.5" fill="#9a6700"/>
 <text x="1053.5" y="387.8" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.6" fill="#1f2328">THE GATE</text>
-<text x="1053.5" y="404.8" text-anchor="start" font-size="12" fill="#59636e">opens when tests pass</text>
+<text x="1053.5" y="404.8" text-anchor="start" font-size="12" fill="#59636e">opens at 70%</text>
 <polygon points="998.8,193.9 1063.6,231.4 1063.6,251.6 998.8,214.2" fill="#cdeed6" stroke="#1a7f37" stroke-width="1.4" stroke-linejoin="round"/>
 <polygon points="1063.6,231.4 1128.5,193.9 1128.5,214.2 1063.6,251.6" fill="#a8dcb6" stroke="#1a7f37" stroke-width="1.4" stroke-linejoin="round"/>
 <polygon points="998.8,193.9 1063.6,231.4 1128.5,193.9 1063.6,156.5" fill="#eaf7ee" stroke="#1a7f37" stroke-width="1.4" stroke-linejoin="round"/>

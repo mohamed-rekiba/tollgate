@@ -1,10 +1,10 @@
 {
- "title": "The build order in five stages",
- "desc": "Stage 0, experiments: the design holds. Stage 1, the lock: you protect a change by hand. Stage 2, the loop: Tollgate builds one ticket. Stage 3, the task: you give a task and read a report. Stage 4, scale: large requests and many projects.",
+ "title": "Tollgate was built in five stages",
+ "desc": "Stage 0: five experiments test the idea. Stage 1: GitHub locks a ticket's tests. Stage 2: Tollgate builds one ticket: it tries, the tests and reviewers check it, and it tries again until it scores 70%. Stage 3: you ask for a task and read a report. Stage 4: large requests and many projects.",
  "nodes": [
   {
    "id": "s0",
-   "text": "Experiments\nThe design holds",
+   "text": "Test the idea\nFive experiments first",
    "col": 0,
    "row": 0,
    "kind": "check",
@@ -13,7 +13,7 @@
   },
   {
    "id": "s1",
-   "text": "The lock\nYou protect a change by hand",
+   "text": "Lock the tests\nGitHub locks a ticket's tests",
    "col": 0,
    "row": 1,
    "kind": "server",
@@ -22,7 +22,7 @@
   },
   {
    "id": "s2",
-   "text": "The loop\nTollgate builds one ticket",
+   "text": "Build one ticket\nTry, check, score, try again",
    "col": 0,
    "row": 2,
    "kind": "ai",
@@ -31,7 +31,7 @@
   },
   {
    "id": "s3",
-   "text": "The task\nYou give a task, read a report",
+   "text": "Run a task\nYou ask, then read a report",
    "col": 0,
    "row": 3,
    "kind": "you",
@@ -40,7 +40,7 @@
   },
   {
    "id": "s4",
-   "text": "Scale\nLarge requests, many projects",
+   "text": "Grow\nLarge requests, many projects",
    "col": 0,
    "row": 4,
    "kind": "advisor",

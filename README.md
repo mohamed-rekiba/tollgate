@@ -17,7 +17,7 @@ The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.githu
 - **The AI cannot weaken a test to pass it.** Tests are written from the ticket and locked on GitHub before any code exists. They must fail first, and nobody can change them after.
 - **"Done" means the same thing every time.** A ticket passes only when each must-have item is proven by a locked test, or by a file and line that Tollgate confirms exists.
 - **Less invented code reaches you.** Separate AI sessions write the tests, build, and review. Each reviewer starts fresh and cannot edit. It looks for one thing: behavior nobody asked for, untested logic, or ways to misuse the change.
-- **You step in only when it matters.** Small changes go through on their own. Changes to risky paths, such as security code, the test setup, or the workflows, wait for your approval.
+- **You step in only when it matters.** Small changes go through on their own. Changes to risky paths, such as security code, the test setup, or the workflows, wait for you to merge them.
 - **Work does not stall or loop.** Tollgate retries from its best attempt with what went wrong, and stops after 3 tries, the same failure twice, 30 minutes, or a cost limit. Then the advisor, a second AI or you, decides what happens next.
 - **You can leave it running.** One request becomes a plan and a pull request for each ticket. A stopped run picks up where it was.
 - **The AI cannot reach your accounts.** The builder works in a container on a copy of your project, with model access only: no git or GitHub credentials.
@@ -28,7 +28,7 @@ The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.githu
 ## The principles
 
 1. **Tests come first.** Before the AI writes any code, Tollgate writes tests for what you asked for and locks them. The AI cannot change them.
-2. **The AI never grades its own work.** The tests and fresh reviewers judge it.
+2. **The AI never grades its own work.** The tests and fresh reviewers check it.
 3. **Every try gets a score.** 70% or more passes. A failed must-have item always fails.
 4. **Each try builds on the best one.** When a try fails, the AI gets the reasons and tries again from its best try so far.
 5. **It knows when to stop.** After 3 tries, the AI asks for help: a second AI, or you.
@@ -39,7 +39,7 @@ The website: https://tollgate-ai.github.io/ (its source is in [tollgate-ai.githu
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/principles-dark.svg">
-  <img alt="Tollgate's principles: tests come first, others judge each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks for help, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
+  <img alt="Tollgate's principles: tests come first, others check each try, 70% passes, a failed try goes again from the best one, after 3 tries the AI asks for help, and lessons become rules for the next task" src="docs/diagrams/principles.svg">
 </picture>
 
 ## How it works

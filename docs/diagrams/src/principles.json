@@ -1,6 +1,6 @@
 {
  "title": "Tollgate's principles",
- "desc": "You ask. Tests are written first and locked, so the AI cannot change them. The AI builds, and the tests and separate reviewers judge it, never the AI itself. A score of 70% or more passes. A riskier change is merged by you. Below 70%, the AI tries again from its best try, and after 3 tries it asks a second AI or you for help. After each task, up to 3 lessons become stricter rules for the next task.",
+ "desc": "You ask. Tests are written first and locked, so the AI cannot change them. The AI builds, and the tests and separate reviewers check it, never the AI itself. A score of 70% or more passes. A riskier change is merged by you. Below 70%, the AI tries again from its best try, and after 3 tries it asks the advisor: a second AI, or you. After each task, up to 3 lessons become stricter rules for the next task.",
  "nodes": [
   {
    "id": "ask",
@@ -28,7 +28,7 @@
   },
   {
    "id": "judge",
-   "text": "Others judge it\nThe tests and fresh\nreviewers, never the AI",
+   "text": "Others check it\nThe tests and fresh\nreviewers, never the AI",
    "col": 3,
    "row": 0,
    "kind": "check",
@@ -61,7 +61,7 @@
   },
   {
    "id": "help",
-   "text": "Ask for help\nA second AI, or you",
+   "text": "Ask the advisor\nA second AI, or you",
    "col": 1,
    "row": 1,
    "kind": "advisor",
