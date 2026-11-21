@@ -61,7 +61,7 @@ jobs:
         env:
           PR: ${{ needs.find.outputs.pr }}
         run: git fetch --no-tags origin "refs/pull/$PR/head"
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@cbadc5954eb7e8d6a2be96f6937067608713f838
         with:
           command: review
           args: >-
@@ -76,7 +76,7 @@ jobs:
         run: |
           npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code
           claude --version
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@cbadc5954eb7e8d6a2be96f6937067608713f838
         env:
           GH_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

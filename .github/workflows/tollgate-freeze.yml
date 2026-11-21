@@ -34,11 +34,11 @@ jobs:
           persist-credentials: false
       - id: head
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@cbadc5954eb7e8d6a2be96f6937067608713f838
         with:
           command: prepare
           args: --base origin/main
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@cbadc5954eb7e8d6a2be96f6937067608713f838
         with:
           command: checks
           args: --base origin/main --setup --only tests --out ${{ runner.temp }}/results.json
@@ -59,7 +59,7 @@ jobs:
         with:
           name: results
           path: ${{ runner.temp }}/in
-      - uses: mohamed-rekiba/tollgate/action@8371b6d1937d0c950615386ba096c6e7c7fe1471
+      - uses: mohamed-rekiba/tollgate/action@cbadc5954eb7e8d6a2be96f6937067608713f838
         with:
           command: freeze
           args: >-
