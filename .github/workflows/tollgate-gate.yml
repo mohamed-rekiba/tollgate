@@ -1,0 +1,108 @@
+# Tollgate gate. Written by /tollgate:init. Do not edit by hand.
+# pull_request_target runs this copy from the main branch, never the copy in a
+# pull request. Job "test" runs the change with a read-only token and no
+# secrets. Job "gate" runs none of that code and posts the check "tollgate gate".
+name: tollgate gate
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+permissions: {}
+jobs:
+  find:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+       (startsWith(github.event.comment.body, 'tollgate approve ') ||
+        github.event.comment.body == 'tollgate check'))
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+      sha: ${{ steps.pr.outputs.sha }}
+      branch: ${{ steps.pr.outputs.branch }}
+      ticket: ${{ steps.pr.outputs.ticket }}
+    steps:
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          data="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")"
+          # Only a pull request into the main branch gets a gate result.
+          if [[ "$(jq -r .base.ref <<<"$data")" != main ]]; then exit 0; fi
+          branch="$(jq -r .head.ref <<<"$data")"
+          # A branch name is text from the author of the change. Only a plain
+          # ticket branch goes on. Any other name fails gate rule 1.
+          [[ "$branch" =~ ^tg/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || branch="not-a-ticket-branch"
+          {
+            echo "pr=$PR"
+            echo "sha=$(jq -r .head.sha <<<"$data")"
+            echo "branch=$branch"
+            echo "ticket=${branch#tg/}"
+          } >> "$GITHUB_OUTPUT"
+  test:
+    needs: find
+    if: needs.find.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.find.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+        with:
+          command: prepare
+          args: --base origin/main --ticket ${{ needs.find.outputs.ticket }}
+      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+        with:
+          command: checks
+          args: --base origin/main --setup --out ${{ runner.temp }}/results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: ${{ runner.temp }}/results.json
+  gate:
+    needs: [find, test]
+    if: always() && needs.find.result == 'success' && needs.find.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch the change as data
+        env:
+          PR: ${{ needs.find.outputs.pr }}
+        run: git fetch --no-tags "https://github.com/$GITHUB_REPOSITORY" "refs/pull/$PR/head"
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: results
+          path: ${{ runner.temp }}/in
+      - name: Mark missing results as a failed check
+        run: |
+          f="$RUNNER_TEMP/in/results.json"
+          test -f "$f" || echo '{"checks":[{"name":"checks","passed":false,"timed_out":false,"output":"the test job did not finish"}],"tests":{}}' > "$f"
+      - uses: mohamed-rekiba/tollgate/action@95868f0fe1f14f74339c56e9aa3f540bc771757f
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          command: gate
+          args: >-
+            --base origin/main --head ${{ needs.find.outputs.sha }}
+            --branch ${{ needs.find.outputs.branch }} --results ${{ runner.temp }}/in/results.json
+            --repository ${{ github.repository }} --pr ${{ needs.find.outputs.pr }}
+            --post ${{ needs.find.outputs.sha }}
