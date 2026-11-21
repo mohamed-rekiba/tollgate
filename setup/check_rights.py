@@ -3,8 +3,8 @@
 admin   You can make the gate required and lock the tags. Full protection.
 write   The freeze and the gate run and show pass or fail. Nothing forces a
         merge to wait, so Tollgate turns auto_merge off.
-copy    The organization allows only actions from inside the repository. The
-        Action must be copied into the project.
+copy    The organization allows only actions from inside the repository.
+        Tollgate's code is copied into .tollgate/runner/ ("version": "copy").
 none    You cannot push to the repository. Tollgate cannot be set up.
 """
 

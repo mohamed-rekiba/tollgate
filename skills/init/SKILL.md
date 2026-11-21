@@ -18,7 +18,7 @@ Words: the **gate** is the required check `tollgate gate`. A **freeze** locks a 
 3. Tell the user the level and what it means, in one sentence:
    - `admin`: full protection. The gate becomes required.
    - `write`: the gate runs and shows pass or fail, but nothing forces a merge to wait. Tollgate turns `auto_merge` off.
-   - `copy`: the organization allows only local actions. Stop here and say that this level is not built yet.
+   - `copy`: the organization allows only local actions. Tollgate's code is copied into the project, and in step 3 the version is `copy`.
    - `none`: stop. The user needs write access.
 
 Done when the user has seen the level.
@@ -36,7 +36,7 @@ Done when that command prints the settings with no error. Show the user the file
 ## 3. Write the workflows
 
 1. Get the commit of Tollgate to use: `gh api repos/mohamed-rekiba/tollgate/commits/main --jq .sha`. Tell the user the commit.
-2. Run `python3 -m setup.write_workflows --version <commit>`. It writes `.github/workflows/tollgate.yml`, which never changes, and sets `"version"` in the settings. A later upgrade changes only that line.
+2. Run `python3 -m setup.write_workflows --version <commit>`. With level `copy`, run it with `--version copy` instead: it also copies Tollgate's code into `.tollgate/runner/`. It writes `.github/workflows/tollgate.yml`, which never changes, and sets `"version"` in the settings. A later upgrade changes only that line.
 3. On a new branch `tollgate-setup`, commit `.tollgate/settings.json` and `.github/workflows/tollgate.yml`, push it, and open a pull request.
 4. Ask the user to merge it. The workflows run only from the main branch, so nothing after this step works before the merge.
 

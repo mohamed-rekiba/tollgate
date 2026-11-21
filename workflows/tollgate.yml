@@ -1,6 +1,8 @@
 # Tollgate. Written by /tollgate:init. This file does not change when Tollgate
 # changes: it reads "version" from .tollgate/settings.json on the main branch,
-# either "self" (this repository is Tollgate) or a full commit id of Tollgate.
+# "self" (this repository is Tollgate), "copy" (Tollgate's code is copied into
+# .tollgate/runner/, for an organization that allows only local actions), or a
+# full commit id of Tollgate.
 #
 # Started by hand (workflow_dispatch): a freeze or a plan lock.
 # On a pull request into main, or a comment "tollgate check" or "tollgate approve":
@@ -59,11 +61,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''
@@ -112,11 +116,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''
@@ -175,11 +181,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''
@@ -268,11 +276,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''
@@ -322,11 +332,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''
@@ -390,11 +402,13 @@ jobs:
           v="$(python3 -c 'import json,sys; print(json.load(open("main/.tollgate/settings.json")).get("version",""))')"
           if [[ "$v" == self ]]; then
             echo "path=$GITHUB_WORKSPACE/main" >> "$GITHUB_OUTPUT"
+          elif [[ "$v" == copy ]]; then
+            echo "path=$GITHUB_WORKSPACE/main/.tollgate/runner" >> "$GITHUB_OUTPUT"
           elif [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
             echo "path=$GITHUB_WORKSPACE/tollgate" >> "$GITHUB_OUTPUT"
             echo "ref=$v" >> "$GITHUB_OUTPUT"
           else
-            echo "Set \"version\" in .tollgate/settings.json to \"self\" or a full commit id of Tollgate."
+            echo "Set \"version\" in .tollgate/settings.json to \"self\", \"copy\", or a full commit id of Tollgate."
             exit 1
           fi
       - if: steps.code.outputs.ref != ''

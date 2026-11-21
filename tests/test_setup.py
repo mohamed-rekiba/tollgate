@@ -75,6 +75,23 @@ class WriteWorkflowsTest(unittest.TestCase):
             self.assertEqual(write_workflows.write(d, SHA), [])
             self.assertEqual(write_workflows.write(d, "self"), [".tollgate/settings.json"])
 
+    def test_copy_puts_tollgates_code_in_the_project_and_counts_as_harness(self):
+        from action import settings as st
+        from action.paths import matches
+        with tempfile.TemporaryDirectory() as d:
+            changed = write_workflows.write(d, "copy")
+            self.assertIn(".tollgate/runner/action/gate.py", changed)
+            self.assertTrue(Path(d, ".tollgate/runner/driver/roles.py").exists())
+            self.assertTrue(Path(d, ".tollgate/runner/lenses/change.md").exists())
+            self.assertFalse(any("__pycache__" in p for p in changed))
+            Path(d, ".tollgate/runner/stale.py").write_text("x")
+            again = write_workflows.write(d, "copy")
+            self.assertEqual(again, [".tollgate/runner/stale.py"])
+            self.assertFalse(Path(d, ".tollgate/runner/stale.py").exists())
+            harness = st.parse("{}")["harness"]
+            self.assertTrue(matches(".tollgate/runner/action/gate.py", harness))
+            self.assertEqual(st.parse('{"version": "copy"}')["version"], "copy")
+
     def test_refuses_a_branch_name_as_pin(self):
         with tempfile.TemporaryDirectory() as d, self.assertRaises(ValueError):
             write_workflows.write(d, "main")

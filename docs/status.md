@@ -12,6 +12,7 @@ This file says what is built, what is proven, and what is not.
 | Stage 1: Tollgate guards its own repository (1.12) | Done. One workflow, `tollgate.yml`, with `"version": "self"`: main's own code runs the gate. |
 | Stage 2: the loop | Built. Proven with fake roles in CI, and with every role in a container ([E2](experiments/E2-closed-room.md)). |
 | Stage 3: the task | Built. Proven with fake roles in CI. On GitHub, the plan workflow locked a plan, and the review posted a pass for tier 1 and a failure for tier 4 with no model key. |
+| The `copy` level of rights | Built. `"version": "copy"` runs a copy of Tollgate's code from `.tollgate/runner/`, for organizations that allow only local actions. Tested locally, not yet in such an organization. |
 | Stage 4: scale | Built: roadmap, base suite, home with submodules, rules sync, inbox, retro. Proven with fake roles in CI. |
 
 Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass score of 70) is provisional. No ticket has run with a real model yet.
@@ -25,7 +26,6 @@ Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass sc
 | A model review on the server, for tier 3 and 4 | Not yet passed on GitHub. | Add the secret `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`, then comment `tollgate check` on a tier 3 pull request. |
 | A forged freeze tag pushed from a laptop, and a tag push rejected by the ruleset | This session cannot create tags, and a forged tag through the REST API was refused as undermining oversight. | Unit tests cover the gate's side (`tests/test_review_findings.py`). With the rulesets on, `git tag tg/freeze/x/1 && git push origin tg/freeze/x/1` must be rejected. |
 | E3: a fake check named `tollgate gate` from a workflow added in a pull request | It needs a workflow pushed on a branch, which is the attack itself. | [scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md) |
-| The `copy` level of rights | Not built. It is for organizations that allow only local actions. | |
 
 ## The rulesets
 
