@@ -22,7 +22,10 @@ class Gh:
                               capture_output=True, text=True, check=False)
         if proc.returncode != 0:
             status = 404 if "404" in proc.stderr else 403 if "403" in proc.stderr else 1
-            raise GhError(status, f"{method} {path}: {proc.stderr.strip()}")
+            # gh prints GitHub's error body, which names the bad field, on standard output.
+            detail = proc.stdout.strip()
+            raise GhError(status, f"{method} {path}: {proc.stderr.strip()}"
+                          + (f"\n{detail}" if detail else ""))
         return json.loads(proc.stdout) if proc.stdout.strip() else None
 
     def get(self, path: str):
