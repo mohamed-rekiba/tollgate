@@ -31,10 +31,10 @@ Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass sc
 
 `setup/apply_rulesets.py` creates two rulesets:
 
-- **tollgate main**: the check `tollgate gate` is required on main, changes come through pull requests, and main cannot be force-pushed or deleted. A repository admin can bypass it for one pull request, and GitHub logs it. That is the only way a change under `.github/` can merge.
+- **tollgate main**: the check `tollgate gate` is required on main, changes come through pull requests, and main cannot be force-pushed or deleted. A repository admin can bypass it, and GitHub logs it. No normal change needs the bypass: see "Nothing can deadlock" in [decisions.md](decisions.md).
 - **tollgate tags**: nobody can move or delete a tag under `tg/` (pattern `refs/tags/tg/**/*`). In an organization, only GitHub Actions can create one. On a personal account, such as this repository's, GitHub does not accept an app as a bypass actor, so anyone with write access can create a `tg/` tag. The gate still rejects a freeze or plan tag that its run did not record.
 
-Once they are on, every change to this repository needs a ticket with locked tests, or the admin bypass.
+Once they are on, a change needs a ticket with locked tests, or touches only free paths such as docs. Tier 4 also needs an approval by a person.
 
 To roll them back: Settings, Rules, Rulesets, then turn off or delete `tollgate main` and `tollgate tags`. Or, with the GitHub CLI:
 

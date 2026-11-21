@@ -119,47 +119,49 @@ class SummaryTest(unittest.TestCase):
 
 
 class WorkflowTemplatesTest(unittest.TestCase):
-    FILES = ("workflows/tollgate-freeze.yml", "workflows/tollgate-gate.yml")
-    ALL = (*FILES, "workflows/tollgate-plan.yml", "workflows/tollgate-review.yml")
+    FILE = ROOT / "workflows/tollgate.yml"
 
-    def test_pin_placeholder_and_no_broad_permissions(self):
-        for name in self.ALL:
-            text = (ROOT / name).read_text()
-            self.assertIn("mohamed-rekiba/tollgate/action@__TOLLGATE_REF__", text, name)
-            self.assertIn("permissions: {}", text, name)
+    def jobs(self):
+        import yaml
+        return yaml.safe_load(self.FILE.read_text())["jobs"]
+
+    def test_no_broad_permissions_and_no_pin_in_the_file(self):
+        text = self.FILE.read_text()
+        self.assertIn("permissions: {}", text)
+        self.assertNotIn("tollgate/action@", text)
+        self.assertIn(".tollgate/settings.json", text)
 
     def test_untrusted_text_never_lands_in_a_shell_line(self):
-        # Text the author of a change controls must reach a shell through env only.
         bad = re.compile(r"\$\{\{\s*(github\.event\.(pull_request\.head|comment|issue\.title|"
-                         r"issue\.body)|inputs\.(ticket|task)|needs\.find\.outputs\.branch)")
-        for name in self.ALL:
-            block = None
-            for line in (ROOT / name).read_text().splitlines():
-                if re.match(r"\s*run:\s*\|", line) or re.match(r"\s*run:\s*\S", line):
-                    block = len(line) - len(line.lstrip())
-                    self.assertIsNone(bad.search(line), f"{name}: {line}")
-                elif block is not None and line.strip() and \
-                        len(line) - len(line.lstrip()) <= block:
-                    block = None
-                elif block is not None:
-                    self.assertIsNone(bad.search(line), f"{name}: {line}")
+                         r"issue\.body)|inputs\.id|needs\.find\.outputs\.(branch|ticket))")
+        block = None
+        for line in self.FILE.read_text().splitlines():
+            if re.match(r"\s*run:", line):
+                block = len(line) - len(line.lstrip())
+                self.assertIsNone(bad.search(line), line)
+            elif block is not None and line.strip() and len(line) - len(line.lstrip()) <= block:
+                block = None
+            elif block is not None:
+                self.assertIsNone(bad.search(line), line)
 
-    def test_job_that_runs_the_change_cannot_write(self):
-        for name in self.FILES:
-            text = (ROOT / name).read_text()
-            test_job = text.split("\n  test:\n")[1].split("\n  lock:\n")[0].split("\n  gate:\n")[0]
-            self.assertIn("contents: read", test_job)
-            self.assertIn("persist-credentials: false", test_job)
-            self.assertNotIn("write", test_job)
-            self.assertNotIn("secrets.", test_job)
+    def test_jobs_that_run_the_change_cannot_write(self):
+        for name in ("freeze-test", "test"):
+            job = self.jobs()[name]
+            self.assertEqual(job["permissions"], {"contents": "read"}, name)
+            text = str(job)
+            self.assertNotIn("secrets.", text)
+            for step in job["steps"]:
+                if "actions/checkout" in step.get("uses", ""):
+                    self.assertEqual(step["with"]["persist-credentials"], False, name)
 
-    def test_yaml_parses_when_a_parser_is_present(self):
-        try:
-            import yaml
-        except ImportError:
-            self.skipTest("no YAML parser here")
-        for name in (*self.ALL, "action/action.yml"):
-            self.assertIsInstance(yaml.safe_load((ROOT / name).read_text()), dict)
+    def test_the_gate_runs_after_the_tests_and_the_review(self):
+        self.assertEqual(self.jobs()["gate"]["needs"], ["find", "test", "review"])
+
+    def test_the_change_is_never_where_the_code_runs_from(self):
+        for name, job in self.jobs().items():
+            for step in job["steps"]:
+                if "actions/checkout" in step.get("uses", "") and step["with"].get("path") == "main":
+                    self.assertEqual(step["with"]["ref"], "main", name)
 
 
 if __name__ == "__main__":

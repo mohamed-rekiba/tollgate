@@ -12,7 +12,7 @@ from action import settings as st
 from tests.helpers import sh
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")
-GOOD_RUN = {"path": ".github/workflows/tollgate-freeze.yml", "head_branch": "main",
+GOOD_RUN = {"path": ".github/workflows/tollgate.yml", "head_branch": "main",
             "event": "workflow_dispatch", "conclusion": "success"}
 
 RUN_TESTS = '''"""Run the tests with unittest and write a JUnit report."""
@@ -157,7 +157,7 @@ class LocalServer:
             Path(d, "results.json").write_text(results.to_json())
             run_id = str(len(self.runs) + 1)
             name, message = freeze.message(d, ticket, commit, str(Path(d, "results.json")), run_id)
-            self._record(run_id, f"tollgate freeze {ticket}", ".github/workflows/tollgate-freeze.yml",
+            self._record(run_id, f"tollgate freeze {ticket}", ".github/workflows/tollgate.yml",
                          mf.loads(message))
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
@@ -184,7 +184,7 @@ class LocalServer:
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
             sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
-        self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate-plan.yml",
+        self._record(run_id, f"tollgate plan {task}", ".github/workflows/tollgate.yml",
                      mf.loads(message))
         return name
 

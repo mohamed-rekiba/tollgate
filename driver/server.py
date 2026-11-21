@@ -52,17 +52,18 @@ class GitHub(Server):
         """Start the freeze workflow and wait for a new tag. Raise FreezeError if the run fails."""
         before = self._tags(ticket)
         started = time.time()
-        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate-freeze.yml/"
-                    "dispatches", {"ref": "main", "inputs": {"ticket": ticket}})
+        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate.yml/dispatches",
+                    {"ref": "main", "inputs": {"kind": "freeze", "id": ticket}})
 
         def probe():
             new = self._tags(ticket) - before
             if new:
                 return max(new, key=lambda r: int(r.rsplit("/", 1)[1])).removeprefix("refs/tags/")
-            runs = self.gh.get(f"repos/{self.repository}/actions/workflows/tollgate-freeze.yml/"
+            runs = self.gh.get(f"repos/{self.repository}/actions/workflows/tollgate.yml/"
                                "runs?event=workflow_dispatch&per_page=5")
             for run in runs.get("workflow_runs", []):
-                if (run["status"] == "completed" and run["conclusion"] != "success"
+                if (run.get("display_title") == f"tollgate freeze {ticket}"
+                        and run["status"] == "completed" and run["conclusion"] != "success"
                         and run["created_at"] >= time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                                time.gmtime(started - 5))):
                     raise mf.FreezeError(f"the freeze run failed: {run['html_url']}")
@@ -115,8 +116,8 @@ class GitHub(Server):
                 return set()
             return {r["ref"] for r in refs or [] if r["ref"].startswith(prefix)}
         before = tags()
-        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate-plan.yml/"
-                    "dispatches", {"ref": "main", "inputs": {"task": task}})
+        self.gh.api("POST", f"repos/{self.repository}/actions/workflows/tollgate.yml/dispatches",
+                    {"ref": "main", "inputs": {"kind": "plan", "id": task}})
 
         def probe():
             new = tags() - before

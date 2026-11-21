@@ -121,11 +121,49 @@ class GateRulesTest(unittest.TestCase):
         self.assertEqual(rules(facts(changes={"pyproject.toml": 2}, approvals=[own],
                                      review_passed=True)), [4])
 
-    def test_rule4_github_folder_always_fails(self):
-        review = {"kind": "review", "user": "teammate", "user_type": "User",
-                  "state": "APPROVED", "commit": HEAD, "body": ""}
-        f = facts(changes={".github/workflows/x.yml": 3}, approvals=[review], review_passed=True)
+    def test_rule4_a_github_change_is_tier_4_and_a_person_can_approve_it(self):
+        f = facts(changes={".github/workflows/x.yml": 3})
         self.assertEqual(rules(f), [4])
+        f.approvals = [{"kind": "comment", "user": "owner", "user_type": "User",
+                        "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}]
+        self.assertEqual(rules(f), [])
+
+    def test_rule6_tier_4_does_not_wait_for_a_broken_review(self):
+        approve = {"kind": "comment", "user": "owner", "user_type": "User",
+                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
+        for review in (None, False):
+            f = facts(changes={"pyproject.toml": 2}, approvals=[approve], review_passed=review)
+            self.assertEqual(rules(f), [], review)
+
+    def test_rule6_tier_3_passes_with_the_review_or_a_person(self):
+        s = settings.parse('{"tiers": {"3": ["src/auth/**"]}, "approvers": ["owner"]}')
+        approve = {"kind": "comment", "user": "owner", "user_type": "User",
+                   "body": f"tollgate approve {HEAD}", "state": "", "commit": ""}
+        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1})), [6])
+        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1},
+                                     review_passed=True)), [])
+        self.assertEqual(rules(facts(settings=s, changes={"src/auth/a.py": 1},
+                                     approvals=[approve])), [])
+
+    def test_free_paths_need_no_ticket(self):
+        f = facts(branch="docs/typo", freeze=None, changes={"docs/plan.md": 4, "README.md": 1})
+        self.assertEqual(gate.evaluate(f), ([], 1))
+
+    def test_a_free_change_still_runs_the_checks(self):
+        r = passing_results()
+        r.checks.append(CheckResult("style", False))
+        f = facts(branch="docs/typo", freeze=None, changes={"docs/plan.md": 4}, results=r)
+        self.assertEqual(rules(f), [5])
+
+    def test_a_free_path_mixed_with_code_needs_a_ticket(self):
+        f = facts(branch="docs/typo", freeze=None, changes={"docs/a.md": 1, "src/a.py": 1})
+        self.assertEqual(rules(f), [1])
+
+    def test_a_ticket_or_harness_file_is_never_free(self):
+        s = settings.parse('{"free": ["docs/**", "**/*.md", "pyproject.toml"]}')
+        for path in (".tollgate/tickets/T-9/ticket.md", "pyproject.toml"):
+            f = facts(settings=s, branch="docs/typo", freeze=None, changes={path: 1})
+            self.assertIn(1, rules(f), path)
 
     def test_rule4_replaced_test_needs_approval(self):
         f = facts()

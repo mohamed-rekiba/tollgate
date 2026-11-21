@@ -59,17 +59,21 @@ class CheckRightsTest(unittest.TestCase):
 
 
 class WriteWorkflowsTest(unittest.TestCase):
-    def test_writes_pinned_files_and_twice_gives_the_same_result(self):
+    def test_writes_one_workflow_and_the_version_and_twice_gives_the_same_result(self):
         with tempfile.TemporaryDirectory() as d:
+            Path(d, ".github/workflows").mkdir(parents=True)
+            Path(d, ".github/workflows/tollgate-gate.yml").write_text("old")
+            Path(d, ".tollgate").mkdir()
+            Path(d, ".tollgate/settings.json").write_text('{"pass_score": 80}')
             first = write_workflows.write(d, SHA)
-            self.assertEqual(sorted(first), [".github/workflows/tollgate-freeze.yml",
-                                             ".github/workflows/tollgate-gate.yml",
-                                             ".github/workflows/tollgate-plan.yml",
-                                             ".github/workflows/tollgate-review.yml"])
+            self.assertEqual(first, [".github/workflows/tollgate.yml",
+                                     ".github/workflows/tollgate-gate.yml",
+                                     ".tollgate/settings.json"])
+            self.assertFalse(Path(d, ".github/workflows/tollgate-gate.yml").exists())
+            saved = json.loads(Path(d, ".tollgate/settings.json").read_text())
+            self.assertEqual(saved, {"pass_score": 80, "version": SHA})
             self.assertEqual(write_workflows.write(d, SHA), [])
-            text = Path(d, first[0]).read_text()
-            self.assertIn(f"tollgate/action@{SHA}", text)
-            self.assertNotIn("__TOLLGATE_REF__", text)
+            self.assertEqual(write_workflows.write(d, "self"), [".tollgate/settings.json"])
 
     def test_refuses_a_branch_name_as_pin(self):
         with tempfile.TemporaryDirectory() as d, self.assertRaises(ValueError):

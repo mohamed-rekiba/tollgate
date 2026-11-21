@@ -54,8 +54,8 @@ def prove(gh, repository: str, ticket: str, project: str = ".", git=_git, sleep=
 
     # A second run reuses the freeze it made, so it gives the same result.
     if tag_message() is None:
-        gh.api("POST", f"repos/{repository}/actions/workflows/tollgate-freeze.yml/dispatches",
-               {"ref": "main", "inputs": {"ticket": ticket}})
+        gh.api("POST", f"repos/{repository}/actions/workflows/tollgate.yml/dispatches",
+               {"ref": "main", "inputs": {"kind": "freeze", "id": ticket}})
     manifest = mf.loads(_wait(tag_message, f"the tag {tag}", sleep, seconds))
     locked = min(p for p in manifest["files"] if not p.endswith("ticket.md"))
     git(project, "fetch", "origin", branch)

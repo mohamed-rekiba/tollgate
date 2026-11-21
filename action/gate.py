@@ -17,8 +17,12 @@ from action.checks import Results
 from action.gitio import changed_files, git
 from action.paths import matches
 
-FREEZE_WORKFLOW = ".github/workflows/tollgate-freeze.yml"
-PLAN_WORKFLOW = ".github/workflows/tollgate-plan.yml"
+WORKFLOW = ".github/workflows/tollgate.yml"
+# A freeze or plan made before the single workflow came from one of these.
+FREEZE_WORKFLOWS = {WORKFLOW, ".github/workflows/tollgate-freeze.yml"}
+PLAN_WORKFLOWS = {WORKFLOW, ".github/workflows/tollgate-plan.yml"}
+FREEZE_WORKFLOW = WORKFLOW
+PLAN_WORKFLOW = WORKFLOW
 REVIEW_CHECK = "tollgate review"
 GATE_CHECK = "tollgate gate"
 TAG_NUMBER = re.compile(r"[1-9][0-9]{0,3}", re.ASCII)
@@ -86,8 +90,16 @@ def evaluate(facts: Facts) -> tuple:
     freeze = facts.freeze
     frozen = set(freeze.manifest["files"]) if freeze else set()
 
+    # A change that touches only free paths, such as docs, needs no ticket.
+    guarded = (facts.settings["harness"] + facts.settings["tiers"]["3"]
+               + facts.settings["tiers"]["4"] + [".tollgate/**"])
+    free = bool(facts.changes) and all(
+        matches(p, facts.settings["free"]) and not matches(p, guarded) for p in facts.changes)
+
     # Rule 1: ticket and freeze.
-    if ticket is None:
+    if free:
+        pass
+    elif ticket is None:
         fail(1, f"the branch {facts.branch} is not named tg/<ticket id>")
     elif freeze is None:
         fail(1, f"no freeze exists for ticket {ticket}")
@@ -103,8 +115,8 @@ def evaluate(facts: Facts) -> tuple:
         if run is None:
             fail(1, "the run that created the freeze could not be checked")
         else:
-            if run["path"] != FREEZE_WORKFLOW:
-                fail(1, f"the freeze came from {run['path']}, not {FREEZE_WORKFLOW}")
+            if run["path"] not in FREEZE_WORKFLOWS:
+                fail(1, f"the freeze came from {run['path']}, not {WORKFLOW}")
             if run["head_branch"] != "main":
                 fail(1, f"the freeze ran on {run['head_branch']}, not main")
             if run["event"] != "workflow_dispatch":
@@ -118,16 +130,13 @@ def evaluate(facts: Facts) -> tuple:
 
     # Rule 4 comes before rule 2, because rule 2 needs the tier.
     level, reason = tiers.tier(facts.settings, facts.changes, frozen)
-    github = sorted(p for p in facts.changes if matches(p, [".github/**"]))
-    for path in github:
-        fail(4, "a change under .github/ is made outside Tollgate", path)
     needs_person = level == 4 or (freeze is not None and freeze.number > 1)
     if needs_person and not approved(facts):
         why = f"tier 4 ({reason})" if level == 4 else "a locked test was replaced"
         fail(4, f"{why}: needs an approval by a person on {facts.head_sha}")
 
     # Rule 2: plan.
-    if facts.plan_required and level >= 2:
+    if facts.plan_required and level >= 2 and not free:
         if facts.plan_tickets is None:
             fail(2, "no approved plan exists for this ticket")
         elif ticket not in facts.plan_tickets:
@@ -137,7 +146,7 @@ def evaluate(facts: Facts) -> tuple:
             run = facts.plan_run
             if run is None:
                 fail(2, "the run that locked the plan could not be checked")
-            elif (run.get("path") != PLAN_WORKFLOW or run.get("head_branch") != "main"
+            elif (run.get("path") not in PLAN_WORKFLOWS or run.get("head_branch") != "main"
                   or run.get("event") != "workflow_dispatch" or run.get("conclusion") != "success"
                   or run.get("title") != f"tollgate plan {task}"):
                 fail(2, f"the plan tag of {task} did not come from a plan run on main")
@@ -163,9 +172,9 @@ def evaluate(facts: Facts) -> tuple:
                 fail(5, f"locked test failed: {test_id}")
 
     # Rule 6: review on the server.
-    if level >= 3 and facts.review_passed is not True:
+    if level == 3 and facts.review_passed is not True and not approved(facts):
         state = "did not run" if facts.review_passed is None else "failed"
-        fail(6, f"tier {level} needs the server review, which {state}")
+        fail(6, f"tier 3 needs the server review or an approval by a person; the review {state}")
 
     return findings, level
 

@@ -156,9 +156,11 @@ A change passes when all six rules hold:
 1. **Ticket.** The branch is named `tg/<ticket id>`, and the server holds a freeze for that ticket. The gate uses the freeze with the highest number. It accepts the freeze only when the run that created it was the freeze workflow, on the main branch, started by hand, and it succeeded. It also checks that the tag points at the commit that the manifest names.
 2. **Plan.** The server holds an approved plan that lists this ticket. Tier 1 needs no plan.
 3. **Locked files.** Every file in the manifest has the fingerprint in the manifest.
-4. **Tier.** The gate works out the tier from the files that changed. Tier 4 needs an approval by a person, on the latest version of the change. So does a ticket with a replaced test. A change to any file under `.github/` always fails: the driver never sends one, and a person makes that change outside Tollgate.
+4. **Tier.** The gate works out the tier from the files that changed. Tier 4 needs an approval by a person, on the latest version of the change. So does a ticket with a replaced test. A change under `.github/` is harness, so it is tier 4: the driver never sends one, and a person approves it like any other harness change.
 5. **Tests and checks.** Every check passes. Every test in the manifest ran and passed. No locked test was skipped.
-6. **Review.** For tier 3 and 4, the review on the server passed.
+6. **Review.** For tier 3, the review on the server passed, or a person approved. For tier 4, the review is advice for the person who approves: it never blocks an approval, so a broken review cannot block its own fix.
+
+A change that touches only free paths, such as `docs/**` and `README.md`, needs no ticket: rules 1, 2, and 3 do not apply, and the checks still run. The settings list the free paths. Harness, tier 3 and 4 paths, and anything under `.tollgate/` are never free.
 
 On the server, the gate itself comes from the Action, the harness comes from the main branch, and the locked tests come from the freeze. A change cannot bring its own.
 
@@ -345,7 +347,7 @@ One repository, mohamed-rekiba/tollgate, holds both pieces, so they share one ve
 | Plugin | The skills, the role and lens files, the driver script, and the setup scripts | On your machine |
 | Action | The gate and the freeze | On the server, and on your machine when the driver calls the gate |
 
-A project pins the Action to one exact commit. The pin changes only when the Action itself changes.
+A project names the version of Tollgate in its settings: `"version"` is a full commit id, or `"self"` in the Tollgate repository itself. The one workflow file reads it from the main branch and never changes, so an upgrade is one line in the settings, in an ordinary pull request.
 
 ### What is a skill and what is a script
 
@@ -557,7 +559,7 @@ tollgate/
     tiers.py               work out the tier from the changed files
     checks.py              run the check commands, read the test report
     settings.py            load and validate the settings
-  workflows/               tollgate-freeze.yml, tollgate-gate.yml, tollgate-review.yml, as templates
+  workflows/               tollgate.yml, the one workflow, the same for every version
   tests/
 ```
 
@@ -571,7 +573,7 @@ tollgate/
   tickets/<id>/ticket.md     committed
   logs/                      not committed
   work/<ticket>/             not committed: the builder's copy
-.github/workflows/           the three workflows
+.github/workflows/           tollgate.yml
 ```
 
 ### In a home
@@ -695,15 +697,15 @@ Each ticket has its own log file, and each task has one. One file has one writer
 
 ## Reference: the server
 
-### The three workflows
+### The workflow
 
-| Workflow | Starts when | What it does |
+One file, `.github/workflows/tollgate.yml`, holds every job. It reads `"version"` from the settings on the main branch and gets Tollgate's code from there: the main branch itself for `"self"`, or Tollgate at that commit. The change is always checked out into a folder of its own.
+
+| Jobs | Start when | What they do |
 | --- | --- | --- |
-| Freeze | The driver starts it by hand (`workflow_dispatch`) on the main branch, with the ticket id as input. The ticket and its tests are on the branch `tg/<ticket id>`. | A job with a token that can only read, and no secrets, runs the tests at the head of that branch, with the harness from the main branch. It saves the test report. A second job, which runs none of the code, reads the report, writes the manifest with its own run id, and creates the freeze tag. |
-| Gate | `pull_request_target`, when a pull request opens or changes. GitHub then runs the copy of the workflow from the main branch, not from the pull request. | A job with a token that can only read, and no secrets, checks out the change without saving the token, puts back the harness from the main branch and the locked tests from the freeze, runs the checks, and runs the gate. |
-| Review | `pull_request_target`, for a pull request of tier 3 or 4 | A job that holds the model key reads the change as text and runs the change and security lenses. It never checks out the change and runs none of it. A blocking finding fails it. |
-
-Each workflow calls the Action at the commit in the settings on the main branch.
+| Freeze | The driver starts the workflow by hand on main, with `kind: freeze` and the ticket id. | A job with a read-only token and no secrets runs the tests at the head of `tg/<ticket id>`, with the harness from main. A second job runs none of that code, writes the manifest with its own run id, creates the freeze tag, and saves the manifest as an artifact. |
+| Plan | By hand on main, with `kind: plan` and the task id. | One job reads the plan and its tickets on `tg-plan/<task id>` as files and creates the plan tag. |
+| Test, review, gate | `pull_request_target` into main, or a comment `tollgate check` or `tollgate approve <sha>`. | The test job runs the change with a read-only token and no secrets. The review job reads the change as text and holds the model access. The gate runs last, after both, so it reads their results, and posts `tollgate gate`. |
 
 A workflow on `pull_request` would run the copy from the pull request, so a change could rewrite its own gate. Experiment E3 showed this. That is why the gate and the review use `pull_request_target`.
 
