@@ -24,4 +24,5 @@ runs:
           *) echo "unknown command: $TG_COMMAND"; exit 2 ;;
         esac
         read -r -a args <<<"$TG_ARGS"
-        python3 -m "action.$TG_COMMAND" "${args[@]}"
+        # -P keeps the working folder, which may hold the change, off the import path.
+        python3 -P -m "action.$TG_COMMAND" "${args[@]}"

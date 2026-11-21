@@ -41,6 +41,8 @@ def restore(repo, base: str, freeze_commit: str | None = None, manifest=None,
                 touched.append(path)
     if manifest and freeze_commit:
         for path in manifest["files"]:
+            if matches(path, settings["harness"]):
+                continue  # the harness from the main branch wins
             data = show_bytes(repo, freeze_commit, path)
             target = repo / path
             if data is not None and (not target.exists() or target.read_bytes() != data):

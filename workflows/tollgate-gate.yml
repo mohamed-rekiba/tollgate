@@ -5,6 +5,7 @@
 name: tollgate gate
 on:
   pull_request_target:
+    branches: [main]
     types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
@@ -31,6 +32,8 @@ jobs:
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           data="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")"
+          # Only a pull request into the main branch gets a gate result.
+          if [[ "$(jq -r .base.ref <<<"$data")" != main ]]; then exit 0; fi
           branch="$(jq -r .head.ref <<<"$data")"
           # A branch name is text from the author of the change. Only a plain
           # ticket branch goes on. Any other name fails gate rule 1.
@@ -43,6 +46,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
   test:
     needs: find
+    if: needs.find.outputs.pr != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,7 +70,7 @@ jobs:
           path: ${{ runner.temp }}/results.json
   gate:
     needs: [find, test]
-    if: always() && needs.find.result == 'success'
+    if: always() && needs.find.result == 'success' && needs.find.outputs.pr != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -76,6 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: false
       - name: Fetch the change as data

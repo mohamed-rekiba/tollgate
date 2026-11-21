@@ -37,7 +37,7 @@ class FreezeTest(unittest.TestCase):
 
     def test_first_freeze(self):
         name, text = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                    results_file(self.tmp.name), "123")
+                                    results_file(self.tmp.name), "123", "main")
         self.assertEqual(name, "tg/freeze/T-1/1")
         m = mf.loads(text)
         self.assertEqual((m["run_id"], m["number"], m["commit"]), (123, 1, self.commit))
@@ -45,29 +45,29 @@ class FreezeTest(unittest.TestCase):
     def test_second_freeze_gets_the_next_number_and_a_third_is_refused(self):
         self.repo.tag("tg/freeze/T-1/1", "x", self.commit)
         name, _ = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                 results_file(self.tmp.name), "1")
+                                 results_file(self.tmp.name), "1", "main")
         self.assertEqual(name, "tg/freeze/T-1/2")
         self.repo.tag("tg/freeze/T-1/2", "x", self.commit)
         with self.assertRaisesRegex(mf.FreezeError, "already has 2 freezes"):
             freeze.message(str(self.repo.path), "T-1", self.commit,
-                           results_file(self.tmp.name), "1")
+                           results_file(self.tmp.name), "1", "main")
 
     def test_refuses_a_bad_ticket_id(self):
         with self.assertRaisesRegex(mf.FreezeError, "not a valid ticket id"):
             freeze.message(str(self.repo.path), "T-1;rm", self.commit,
-                           results_file(self.tmp.name), "1")
+                           results_file(self.tmp.name), "1", "main")
 
     def test_command_line_writes_name_and_message(self):
         out, name_out = Path(self.tmp.name, "msg"), Path(self.tmp.name, "name")
         code = freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
                             "--commit", self.commit, "--results", results_file(self.tmp.name),
-                            "--run-id", "9", "--out", str(out), "--name-out", str(name_out)])
+                            "--run-id", "9", "--base", "main", "--out", str(out), "--name-out", str(name_out)])
         self.assertEqual(code, 0)
         self.assertEqual(name_out.read_text(), "tg/freeze/T-1/1")
         self.assertEqual(freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
                                       "--commit", self.commit, "--results",
                                       results_file(self.tmp.name, test_c1_retries="passed"),
-                                      "--run-id", "9", "--out", str(out),
+                                      "--run-id", "9", "--base", "main", "--out", str(out),
                                       "--name-out", str(name_out)]), 1)
 
 

@@ -8,7 +8,8 @@ from action.paths import matches
 
 def tier(settings: dict, changes: dict, frozen=()) -> tuple:
     """Return (tier, reason). changes maps a path to the lines it changed."""
-    counted = {p: n for p, n in changes.items() if p not in frozen}
+    guarded = settings["harness"] + settings["tiers"].get("3", []) + settings["tiers"].get("4", [])
+    counted = {p: n for p, n in changes.items() if p not in frozen or matches(p, guarded)}
     for path in sorted(counted):
         if matches(path, settings["harness"]):
             return 4, f"{path} is harness"

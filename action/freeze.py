@@ -10,8 +10,10 @@ import sys
 
 from action import junit, tickets
 from action import manifest as mf
+from action import settings as st
 from action.checks import Results
 from action.gitio import git, show_bytes
+from action.paths import matches
 
 TICKET_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_FREEZES = 2
@@ -24,7 +26,8 @@ def next_number(repo, ticket_id: str) -> int:
     return max(numbers, default=0) + 1
 
 
-def message(repo, ticket_id: str, commit: str, results: str, run_id: str) -> tuple:
+def message(repo, ticket_id: str, commit: str, results: str, run_id: str,
+            base: str = "origin/main") -> tuple:
     """Return (tag name, tag message). Raise FreezeError when the ticket cannot be frozen."""
     if not TICKET_ID.match(ticket_id):
         raise mf.FreezeError(f"not a valid ticket id: {ticket_id!r}")
@@ -37,6 +40,11 @@ def message(repo, ticket_id: str, commit: str, results: str, run_id: str) -> tup
     ticket = tickets.parse(data.decode())
     if ticket.id != ticket_id:
         raise mf.FreezeError(f"the ticket file names {ticket.id}, not {ticket_id}")
+    settings = st.load_from_ref(repo, base)
+    guarded = settings["harness"] + settings["tiers"]["3"] + settings["tiers"]["4"]
+    for path in ticket.tests:
+        if matches(path, guarded):
+            raise mf.FreezeError(f"{path} is harness or a tier 3 or 4 path, so it cannot be locked")
     with open(results) as f:
         tests = Results.from_json(f.read()).tests
     found = {i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in tests.items()}
@@ -56,10 +64,12 @@ def main(argv=None) -> int:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--out", required=True, help="file for the tag message")
     parser.add_argument("--name-out", required=True, help="file for the tag name")
+    parser.add_argument("--base", default="origin/main", help="read the settings from here")
     args = parser.parse_args(argv)
     try:
-        name, text = message(args.repo, args.ticket, args.commit, args.results, args.run_id)
-    except (mf.FreezeError, tickets.TicketError, OSError, ValueError) as err:
+        name, text = message(args.repo, args.ticket, args.commit, args.results, args.run_id,
+                             args.base)
+    except Exception as err:  # noqa: BLE001 - any failure refuses the freeze
         print(f"the ticket cannot be frozen: {err}", file=sys.stderr)
         return 1
     with open(args.out, "w") as f:

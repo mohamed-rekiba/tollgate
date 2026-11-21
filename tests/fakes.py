@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from action import checks, freeze, prepare
+from action import manifest as mf
 from action import settings as st
 from tests.helpers import sh
 
@@ -128,6 +129,12 @@ class LocalServer:
         self.prs = []
         self.merged = []
         self.freezes = 0
+        # Runs live next to the bare repository, as GitHub keeps them across driver restarts.
+        self.runs_file = Path(bare, "tollgate-runs.json")
+
+    @property
+    def runs(self) -> dict:
+        return json.loads(self.runs_file.read_text()) if self.runs_file.exists() else {}
 
     def freeze(self, ticket: str) -> str:
         with tempfile.TemporaryDirectory() as d:
@@ -138,7 +145,11 @@ class LocalServer:
             s = st.load_from_ref(d, "origin/main")
             results = checks.run(s, d, ["tests"])
             Path(d, "results.json").write_text(results.to_json())
-            name, message = freeze.message(d, ticket, commit, str(Path(d, "results.json")), "1")
+            run_id = str(len(self.runs) + 1)
+            name, message = freeze.message(d, ticket, commit, str(Path(d, "results.json")), run_id)
+            runs = self.runs
+            runs[run_id] = [ticket, mf.loads(message)]
+            self.runs_file.write_text(json.dumps(runs))
             Path(d, "msg").write_text(message)
             sh(d, "git", "tag", "-a", name, "-F", "msg", commit)
             sh(d, "git", "push", "-q", "origin", f"refs/tags/{name}")
@@ -146,7 +157,8 @@ class LocalServer:
         return name
 
     def run(self, run_id):
-        return dict(GOOD_RUN)
+        ticket, manifest = self.runs[str(run_id)]
+        return dict(GOOD_RUN, title=f"tollgate freeze {ticket}", manifest=manifest)
 
     def pull(self, pr):
         return {"author": "owner", "head": ""}

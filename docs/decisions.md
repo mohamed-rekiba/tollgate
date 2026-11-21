@@ -16,8 +16,19 @@ The gate takes the freeze with the highest number. It accepts it when all of the
 1. The tag points at the commit that the manifest names.
 2. The manifest names the ticket of the branch.
 3. The run named in the manifest used the workflow file `.github/workflows/tollgate-freeze.yml`, ran on the main branch, was started by hand, and succeeded.
+4. The title of that run is `tollgate freeze <ticket id>`, so the run froze this ticket.
+5. The run recorded the same manifest as the tag. The lock job uploads the tag message as the artifact `tollgate-manifest`, and only that run can upload to itself.
+6. The number in the tag name is plain ASCII digits and equals the number in the manifest.
 
-A tagger name proves nothing, because anyone with write access can set one. Point 3 is what a forged freeze cannot meet.
+A tagger name proves nothing, because anyone with write access can set one. Points 3 to 5 are what a forged freeze cannot meet. The artifact expires after 90 days. A pull request that waits longer needs a new freeze.
+
+## What a ticket may lock
+
+A ticket's `tests:` header may not name harness or a tier 3 or 4 path. The freeze refuses it. If such a file is frozen anyway, it still counts for the tier, and the restore step keeps the main branch's copy.
+
+## Which approvals count
+
+A review counts only from someone whose role in the repository is owner, member, or collaborator, or who is named under `approvers`.
 
 ## Where the ticket id comes from
 
@@ -60,6 +71,8 @@ A comment cannot name a commit before the commit exists, so it comes after the l
 The plan tag arrives in stage 3. Until then, `require_plan` is off in the settings, and gate rule 2 passes with the note "no plan required". With `require_plan` on and no plan tag, rule 2 fails.
 
 ## How results reach the gate
+
+The gate workflow runs only for pull requests into the main branch, and it checks out the main branch by name. The action starts Python with `-P`, so a module in the change cannot replace the gate's code. Any error inside the gate posts a failing check.
 
 The gate does not run checks. A caller runs them with `action/checks.py`, writes the results to a file, and passes the file to the gate. The gate workflow does this on the server. The driver does it on your machine.
 
