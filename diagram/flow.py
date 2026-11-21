@@ -518,10 +518,17 @@ def content(n, bx, t, accent, shape):
 
 def check(spec):
     """Stop with a plain message when a spec cannot be drawn."""
+    from diagram.aws import GROUPS
     from diagram.icons import ICONS
+    for key in ("title", "desc"):
+        if not spec.get(key):
+            raise ValueError(f"the diagram needs a '{key}'")
     if not spec.get("nodes"):
         raise ValueError("the diagram has no nodes")
-    ids = {n["id"] for n in spec["nodes"]}
+    ids = [n["id"] for n in spec["nodes"]]
+    if len(ids) != len(set(ids)):
+        raise ValueError("two nodes share an id")
+    ids = set(ids)
     kinds = set(THEMES["light"]["kinds"])
     for n in spec["nodes"]:
         if n.get("kind", "neutral") not in kinds:
@@ -537,6 +544,8 @@ def check(spec):
         if e.get("tone") not in (None, "pass", "fail"):
             raise ValueError("an arrow's tone must be 'pass' or 'fail'")
     for g in spec.get("groups", []):
+        if g.get("aws") and g["aws"] not in GROUPS:
+            raise ValueError(f"no AWS group '{g['aws']}'; use one of {', '.join(GROUPS)}")
         if not g.get("nodes") or set(g["nodes"]) - ids:
             raise ValueError(f"group '{g.get('label')}' names nodes that do not exist")
     for a, b in (spec.get("ticket") or {}).get("path", []):

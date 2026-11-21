@@ -101,7 +101,13 @@ def fetch(url: str = URL, target: Path | None = None) -> int:
     if not url.startswith("https://d1.awsstatic.com/"):
         raise ValueError("the AWS package must come from https://d1.awsstatic.com/")
     print(f"Downloading the AWS icon package once, into {target} ...", file=sys.stderr)
-    data = urllib.request.urlopen(url, timeout=120).read()
+    with urllib.request.urlopen(url, timeout=120) as reply:
+        # A redirect must stay on AWS's host, and the body must stay under the limit.
+        if not reply.geturl().startswith("https://d1.awsstatic.com/"):
+            raise ValueError("the AWS package redirected away from AWS's host")
+        data = reply.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise ValueError("the AWS package is larger than expected")
     target.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=".aws-icons-", dir=target.parent))
     try:
@@ -145,12 +151,14 @@ def clean(svg: str) -> str:
     def scrub(el):
         for child in list(el):
             if local(child.tag) not in SAFE_TAGS:
+                child.tail = None
                 el.remove(child)
             else:
                 scrub(child)
         for key in list(el.attrib):
             name, value = local(key), el.attrib[key]
-            unsafe_url = "url(" in value and "url(#" not in value.replace(" ", "")
+            urls = re.findall(r"url\(\s*['\"]?([^)'\"\s]*)", value)
+            unsafe_url = any(not u.startswith("#") for u in urls)
             if (name not in SAFE_ATTRS or name.startswith("on") or unsafe_url
                     or (name == "href" and not value.startswith("#"))
                     or (name == "style" and re.search(r"url\(\s*['\"]?[^#'\"\s]|@import|expression",

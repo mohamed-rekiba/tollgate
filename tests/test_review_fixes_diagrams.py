@@ -54,6 +54,14 @@ class CleanTest(unittest.TestCase):
 
 
 class DownloadTest(unittest.TestCase):
+    def test_a_redirect_away_from_aws_stops(self):
+        reply = mock.MagicMock()
+        reply.__enter__.return_value = reply
+        reply.geturl.return_value = "https://evil.example/pack.zip"
+        with mock.patch("urllib.request.urlopen", return_value=reply), \
+                self.assertRaises(ValueError):
+            aws.fetch(aws.URL, Path(tempfile.mkdtemp(), "x"))
+
     def test_only_aws_own_host(self):
         with self.assertRaises(ValueError):
             aws.fetch("https://evil.example/pack.zip", Path(tempfile.mkdtemp(), "x"))
@@ -71,7 +79,9 @@ class DownloadTest(unittest.TestCase):
     def test_a_broken_download_leaves_no_cache_behind(self):
         with tempfile.TemporaryDirectory() as d:
             target = Path(d, "icons")
-            reply = mock.Mock()
+            reply = mock.MagicMock()
+            reply.__enter__.return_value = reply
+            reply.geturl.return_value = aws.URL
             reply.read.return_value = b"this is not a zip"
             with mock.patch("urllib.request.urlopen", return_value=reply), \
                     self.assertRaises(zipfile.BadZipFile):

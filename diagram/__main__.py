@@ -15,12 +15,20 @@ def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
     Return the files that changed, or with check, that would.
     """
     base = Path(folder)
+    specs = sorted((base / "src").glob("*.json"))
+    if not specs and not extra:
+        raise SystemExit(f"No specs in {base / 'src'}. Each diagram is <folder>/src/<name>.json.")
     makers = {}
-    for src in sorted((base / "src").glob("*.json")):
+    for src in specs:
         spec = json.loads(src.read_text())
         makers[src.stem] = lambda theme, spec=spec: draw(spec, theme)
     makers.update(extra or {})
     stale = []
+    # A drawing whose spec is gone is stale too.
+    for svg in base.glob("*.svg"):
+        name = svg.stem.removesuffix("-dark")
+        if name not in makers:
+            stale.append(f"{svg.name} (no spec)")
     for name, make in makers.items():
         for theme, suffix in (("light", ""), ("dark", "-dark")):
             target = base / f"{name}{suffix}.svg"

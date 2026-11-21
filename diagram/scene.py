@@ -332,6 +332,7 @@ class Scene:
 
     def lift(self, name, dur, up, down):
         """Lift the barrier of class `name` from time `up` to time `down`, in a loop of dur."""
+        up = max(up, 0.0)
         a, b = 100 * up / dur, 100 * down / dur
         self.css.append(f".{name}{{transform-box:view-box;animation:{name} {dur:.2f}s ease-in-out "
                         f"infinite}}@keyframes {name}{{0%,{max(a - 4, 0):.1f}%{{transform:rotate(0)}}"
@@ -390,12 +391,15 @@ class Scene:
         return "\n".join(head + self.back + self.out + self.front + ["</svg>"]) + "\n"
 
 
-OBJECTS = ("zone", "room", "gate", "server", "vault", "papers", "laptop", "board", "house",
+OBJECTS = ("room", "gate", "server", "vault", "papers", "laptop", "board", "house",
            "database", "pedestal", "wall", "aws")
 
 
 def from_spec(spec: dict, theme: str) -> str:
     """Draw a scene from a spec. See the format in diagram/__init__.py."""
+    for key in ("title", "desc"):
+        if not spec.get(key):
+            raise ValueError(f"the scene needs a '{key}'")
     w, h = spec.get("size", [1120, 640])
     s = Scene(theme, w, h, origin=tuple(spec.get("origin", [w / 2, h / 2])),
               scale=spec.get("scale", 0.8))
@@ -452,5 +456,7 @@ def from_spec(spec: dict, theme: str) -> str:
         dur, times = s.ticket(speed=ticket.get("speed", 150))
         if "lift" in ticket:
             n = ticket["lift"]
+            if not 0 <= n < len(times):
+                raise ValueError(f"lift names leg {n}, but the ticket has {len(times)} legs")
             s.lift(ticket.get("gate", "arm"), dur, times[n][0] - 0.75, times[n][1])
     return s.render(spec["title"], spec["desc"])
