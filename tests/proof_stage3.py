@@ -96,6 +96,17 @@ class TaskLoop(TaskCase):
         report = (self.sample.project / ".tollgate/reports/demo.md").read_text()
         self.assertIn("Cost:", report)
 
+    def test_a_plan_that_reuses_a_frozen_ticket_id_goes_back_to_the_planner(self):
+        self.start(builder="pass1")
+        self.assertEqual(run_task(self.sample).returncode, 0)
+        # A second task whose planner reuses demo's ticket ids, on a fresh machine.
+        import shutil
+        shutil.rmtree(self.sample.project / ".tollgate/logs")
+        shutil.rmtree(self.sample.project / ".tollgate/work")
+        result = run_task(self.sample, task="demo")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("already used by an earlier freeze", result.stderr)
+
     def test_a_finished_task_started_again_repeats_nothing(self):
         self.start(builder="pass1")
         self.assertEqual(run_task(self.sample).returncode, 0)

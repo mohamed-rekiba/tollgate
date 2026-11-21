@@ -190,9 +190,11 @@ def logs_from_branch(project: str, branch: str) -> str:
     plans = Path(project, ".tollgate", "plans")
     if plans.exists():
         shutil.copytree(plans, Path(out, ".tollgate", "plans"))
-    subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=project, check=False,
-                   capture_output=True)
-    ref = f"origin/{branch}"
+    fetched = subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=project, check=False,
+                             capture_output=True)
+    # What the fetch just returned. origin/<branch> may not exist in a clone whose
+    # fetch setup is narrow.
+    ref = "FETCH_HEAD" if fetched.returncode == 0 else f"origin/{branch}"
     files = subprocess.run(["git", "ls-tree", "-r", "--name-only", ref, ".tollgate"], cwd=project,
                            capture_output=True, text=True, check=False).stdout.split()
     for name in files:

@@ -282,9 +282,18 @@ class Driver:
             blocking = review.data.get("verdict") == "fail" or any(
                 f.get("level") == "blocking" for f in findings)
             if not blocking:
-                self.log.add("tests_reviewed", cost_usd=self.spend(review))
-                st_.tests_done = True
-                break
+                # The other checks, such as style, run on the new tests now. The builder
+                # may not change a locked test, so a failure there must go back here.
+                others = [n for n in self.settings["checks"] if n != "tests"]
+                found = checks.run(self.settings, self.copy, others) if others else None
+                failed = [c for c in (found.checks if found else []) if not c.passed]
+                if failed:
+                    findings = [{"level": "blocking", "text": f"check {c.name} fails on the "
+                                 f"new tests:\n{c.output}"} for c in failed]
+                else:
+                    self.log.add("tests_reviewed", cost_usd=self.spend(review))
+                    st_.tests_done = True
+                    break
             st_.rejections += 1
             self.log.add("tests_rejected", cost_usd=self.spend(review), findings=findings)
             if st_.rejections > MAX_REJECTIONS:
@@ -327,7 +336,8 @@ class Driver:
         last = [e for e in read(self.log_path) if e["event"] == "attempt_failed"]
         inputs = {"ticket": self.ticket_text, "attempt": n, "hint": st_.hint,
                   "findings": last[-1].get("findings", []) if last else [],
-                  "failed": last[-1].get("failed", []) if last else []}
+                  "failed": last[-1].get("failed", []) if last else [],
+                  "check_output": last[-1].get("check_output", {}) if last else {}}
         self.log.add("attempt_started", attempt=n)
         try:
             stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
@@ -353,6 +363,7 @@ class Driver:
                               and t in (facts.freeze.manifest["tests"] if facts.freeze else []))
         key = (tuple(results.failed_checks()), tuple(failed_tests))
         fields = {"attempt": n, "commit": commit, "cost_usd": cost, "tier": tier,
+                  "check_output": {c.name: c.output for c in results.checks if not c.passed},
                   "failed": [*results.failed_checks(), *failed_tests],
                   "failed_key": [list(key[0]), list(key[1])]}
         other = [f for f in findings if f["rule"] not in BUILDER_RULES]
