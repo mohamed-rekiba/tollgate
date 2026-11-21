@@ -90,6 +90,14 @@ class ApplyRulesetsTest(unittest.TestCase):
         gh.rulesets[1] = dict(gh.rulesets[1], enforcement="disabled")
         self.assertIn("tollgate main: updated", apply_rulesets.apply(gh, "o/r"))
 
+    def test_a_personal_repository_gets_no_creation_rule_or_app_bypass(self):
+        tags = apply_rulesets.wanted("User")[1]
+        self.assertEqual([r["type"] for r in tags["rules"]], ["update", "deletion"])
+        self.assertEqual(tags["bypass_actors"], [])
+        org = apply_rulesets.wanted("Organization")[1]
+        self.assertEqual(org["rules"][0], {"type": "creation"})
+        self.assertEqual(org["bypass_actors"][0]["actor_type"], "Integration")
+
     def test_print_shows_both_requests(self):
         text = apply_rulesets.commands("o/r")
         self.assertEqual(text.count("gh api -X POST repos/o/r/rulesets"), 2)
