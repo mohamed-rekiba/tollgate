@@ -84,11 +84,38 @@ class ApplyRulesetsTest(unittest.TestCase):
         self.assertEqual(apply_rulesets.apply(gh, "o/r"),
                          ["tollgate main: already in place", "tollgate tags: already in place"])
 
+    def test_fields_github_adds_do_not_count_as_a_change(self):
+        gh = FakeGh()
+        apply_rulesets.apply(gh, "o/r")
+        rules = gh.rulesets[1]["rules"]
+        rules[2] = dict(rules[2], parameters={**rules[2]["parameters"],
+                                              "allowed_merge_methods": ["squash"]})
+        self.assertEqual(apply_rulesets.apply(gh, "o/r")[0], "tollgate main: already in place")
+
     def test_updates_a_changed_ruleset(self):
         gh = FakeGh()
         apply_rulesets.apply(gh, "o/r")
         gh.rulesets[1] = dict(gh.rulesets[1], enforcement="disabled")
         self.assertIn("tollgate main: updated", apply_rulesets.apply(gh, "o/r"))
+
+    def test_the_tag_pattern_reaches_every_level_under_tg(self):
+        # GitHub uses fnmatch with FNM_PATHNAME; this mimics it for the tag names Tollgate makes.
+        import re
+        pattern = apply_rulesets.wanted("User")[1]["conditions"]["ref_name"]["include"][0]
+        self.assertEqual(pattern, "refs/tags/tg/**/*")
+        rx = re.compile("^" + re.escape(pattern).replace(r"\*\*/", "(?:[^/]+/)*")
+                        .replace(r"\*", "[^/]*") + "$")
+        for tag in ("refs/tags/tg/freeze/T-1/1", "refs/tags/tg/plan/retries/12"):
+            self.assertTrue(rx.match(tag), tag)
+        self.assertFalse(rx.match("refs/tags/v1.0"))
+
+    def test_a_personal_repository_gets_no_creation_rule_or_app_bypass(self):
+        tags = apply_rulesets.wanted("User")[1]
+        self.assertEqual([r["type"] for r in tags["rules"]], ["update", "deletion"])
+        self.assertEqual(tags["bypass_actors"], [])
+        org = apply_rulesets.wanted("Organization")[1]
+        self.assertEqual(org["rules"][0], {"type": "creation"})
+        self.assertEqual(org["bypass_actors"][0]["actor_type"], "Integration")
 
     def test_print_shows_both_requests(self):
         text = apply_rulesets.commands("o/r")
