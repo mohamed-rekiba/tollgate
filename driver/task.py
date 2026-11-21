@@ -2,12 +2,13 @@
 
     PYTHONPATH=<tollgate> python3 -m driver.task --project . --task retries --request-file r.txt
 
-The task's own log is .tollgate/logs/task-<task id>.jsonl. Each ticket keeps its
-own log. A task that starts again repeats no finished step. A ticket that waits
-for the advisor or is parked does not stop the others: the report says why.
+The task's own log is logs/task-<task id>.jsonl in the state folder, and its
+copy is builders/task-<task id>/. Each ticket keeps its own log. A task that
+starts again repeats no finished step. A ticket that waits for the advisor or is
+parked does not stop the others: the report says why.
 
-Exit codes: 0 every ticket has a pull request, 3 something waits for the advisor,
-4 another driver holds the task, 1 an error.
+Exit codes: 0 every ticket is a ready change or merged, 3 something waits for the
+advisor, 4 another driver holds the task, 1 an error.
 """
 
 import argparse
@@ -16,12 +17,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from driver import advisor, report, roles
-from driver.driver import Busy, Driver, Parked, TicketLock, git, push
-from driver.log import Log, read
 from gate import plan as pl
 from gate import settings as st
+from gate import state
 from gate import tickets as tk
+from gate.store import Store, StoreError
+from driver import advisor, report, roles
+from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
+from driver.log import Log, read
 
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
 MAX_ROUNDS = 4
@@ -29,24 +32,26 @@ OPEN_LEVELS = ("blocking", "major")
 
 
 class Task:
-    def __init__(self, project: str, task_id: str, request: str, server, base="origin/main"):
+    def __init__(self, project: str, task_id: str, request: str, store=None, driver_args=None):
         if not pl.ID.match(task_id):
             raise pl.PlanError(f"not a valid task id: {task_id!r}")
         self.project = os.path.abspath(project)
         self.id = task_id
         self.request = request
-        self.server = server
-        self.base = base
-        self.logs = os.path.join(self.project, ".tollgate", "logs")
-        self.log_path = os.path.join(self.logs, f"task-{task_id}.jsonl")
+        self.store = store or Store(self.project)
+        self.driver_args = driver_args or {}
+        self.base = BASE
+        self.logs = state.path(self.project, "logs")
+        self.log_path = str(self.logs / f"task-{task_id}.jsonl")
         self.ai_decisions = 0
 
     def role(self, name, inputs, lens=None, command=None):
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name == "reviewer" else s["ai"]["builder"])
-        answer = roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
-                           s["sandbox"], s["container_image"])
-        return answer
+        # The builder writes the plan here, so it may write plans and tickets.
+        policy = "planner" if name == "builder" else name
+        return roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
+                         s["isolation"], s["container_image"], self.project, policy)
 
     def read_copy(self, path):
         p = Path(self.copy, path)
@@ -63,9 +68,9 @@ class Task:
         if plan.id != self.id:
             return [f"the plan names {plan.id}, not {self.id}"]
         used = [t for t in plan.tickets
-                if git(self.copy, "tag", "--list", f"tg/freeze/{t}/*") and not Path(
-                    self.logs, f"{t}.jsonl").exists()]
-        problems = [f"ticket id {t} is already used by an earlier freeze; pick a new id"
+                if state.path(self.project, "locks", f"{t}.json").exists()
+                and not Path(self.logs, f"{t}.jsonl").exists()]
+        problems = [f"ticket id {t} is already used by an earlier lock; pick a new id"
                     for t in used]
         return problems + pl.check_tickets(plan, self.read_copy)
 
@@ -133,9 +138,9 @@ class Task:
         plan = self.read_copy(pl.plan_path(self.id))
         for entry in self.settings["ai"]["advisor"]:
             if entry == "person":
-                return advisor.ask_person(self.server, self.log, self.log_path, f"plan {self.id}",
+                return advisor.ask_person(self.store, self.log, self.log_path, f"plan {self.id}",
                                           f"{reason}\n\nThe plan:\n\n{plan}",
-                                          ["approve", "send_back"], self.settings["approvers"])
+                                          ["approve", "send_back"])
             if self.ai_decisions >= 2:
                 continue
             answer = self.role("advisor", {"plan": plan, "findings": open_findings,
@@ -151,9 +156,11 @@ class Task:
     def lock_plan(self):
         git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets")
         git(self.copy, "commit", "-q", "--allow-empty", "-m", f"docs({self.id}): the plan")
-        push(self.copy, "-q", "-f", "origin", f"HEAD:refs/heads/tg-plan/{self.id}")
-        tag = self.server.lock_plan(self.id)
-        self.log.add("plan_locked", tag=tag, commit=git(self.copy, "rev-parse", "HEAD"))
+        fetch_branch(self.project, self.copy, f"tg-plan/{self.id}")
+        path = self.store.lock_plan(self.id)
+        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        self.log.add("plan_locked", path=path, commit=git(self.copy, "rev-parse", "HEAD"),
+                     tickets=plan.tickets)
 
     def build_tickets(self) -> dict:
         plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
@@ -161,14 +168,14 @@ class Task:
         for tid in plan.tickets:
             if done.get(tid) == 0:
                 continue
-            target = Path(self.project, f".tollgate/tickets/{tid}/ticket.md")
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(self.read_copy(f".tollgate/tickets/{tid}/ticket.md"))
+            text = self.read_copy(f".tollgate/tickets/{tid}/ticket.md")
             try:
-                code = Driver(self.project, tid, self.server, self.base).run()
+                code = Driver(self.project, tid, self.store, ticket_text=text,
+                              **self.driver_args).run()
             except Busy:
                 code = 4
-            except (roles.RoleError, tk.TicketError, subprocess.CalledProcessError) as err:
+            except (roles.RoleError, tk.TicketError, StoreError,
+                    subprocess.CalledProcessError) as err:
                 self.log.add("ticket_error", ticket=tid, error=str(err)[-500:])
                 code = 1
             self.log.add("ticket_done", ticket=tid, code=code)
@@ -176,7 +183,7 @@ class Task:
         return done
 
     def run(self) -> int:
-        lock = TicketLock(os.path.join(self.project, ".tollgate", "run", f"task-{self.id}.lock"))
+        lock = run_lock(self.project, f"task-{self.id}")
         lock.acquire()
         try:
             events = read(self.log_path)
@@ -185,7 +192,6 @@ class Task:
                                     if e["event"] == "advisor_decided" and e.get("by") == "ai")
             with Log(self.log_path, task=self.id) as self.log:
                 self.copy = roles.make_copy(self.project, f"task-{self.id}")
-                git(self.copy, "fetch", "-q", "origin", "--tags", "--force")
                 self.settings = st.load_from_ref(self.copy, self.base)
                 self.log.add("started")
                 if "plan_locked" not in kinds:
@@ -220,28 +226,24 @@ class Task:
             lock.release()
 
 
-def main(argv=None, server=None) -> int:
+def main(argv=None, store=None) -> int:
     parser = argparse.ArgumentParser(prog="tollgate task", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--task", required=True)
     parser.add_argument("--request", help="the request, in your own words")
     parser.add_argument("--request-file")
-    parser.add_argument("--repository")
     args = parser.parse_args(argv)
     request = args.request or (Path(args.request_file).read_text() if args.request_file else "")
     if not request.strip():
         print("tollgate task: give --request or --request-file", file=sys.stderr)
         return 1
-    if server is None:
-        from driver.server import GitHub
-        server = GitHub.for_project(args.project, args.repository)
     try:
-        return Task(args.project, args.task, request, server).run()
+        return Task(args.project, args.task, request, store).run()
     except Busy as err:
         print(err, file=sys.stderr)
         return 4
-    except (roles.RoleError, pl.PlanError, st.SettingsError, OSError,
+    except (roles.RoleError, pl.PlanError, st.SettingsError, StoreError, OSError,
             subprocess.CalledProcessError) as err:
         print(f"tollgate task: {err}", file=sys.stderr)
         return 1

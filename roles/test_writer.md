@@ -13,7 +13,7 @@ Words: an **item** is one line of the ticket's checklist. A **seam** is a public
 5. Run the tests. A test for an item that keeps behavior must pass now. Every other test must fail now, because nothing is built. Done when each test fails or passes as it should, and the failure is for the right reason, not a typing error or a missing import.
 6. If `rejected` is in the inputs, read each finding and change only the tests it names. Done when each finding is answered.
 
-You may not change any file outside the test files of the ticket.
+You may not change any file outside the test files of the ticket. Do not commit, push, or merge: the driver commits the tests.
 
 ## Answer
 
