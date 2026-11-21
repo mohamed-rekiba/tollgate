@@ -17,6 +17,8 @@ and each gap becomes a ticket.
 
 import subprocess
 
+from action.checks import project_env
+
 NAMES = ("checks_run", "parallel_tests", "env_up_down", "bad_setting_stops", "one_log_line")
 
 
@@ -28,8 +30,10 @@ def run(settings: dict, workdir: str, minutes: float = 10) -> list:
             out.append({"name": name, "passed": False, "why": "not set"})
             continue
         try:
+            # The project's own commands, from the settings on main, with no token:
+            # the same environment the project's checks get.
             proc = subprocess.run(command, shell=True, cwd=workdir, capture_output=True,
-                                  text=True, timeout=minutes * 60, check=False)
+                                  text=True, timeout=minutes * 60, check=False, env=project_env())
         except subprocess.TimeoutExpired:
             out.append({"name": name, "passed": False, "why": f"ran past {minutes} minutes"})
             continue

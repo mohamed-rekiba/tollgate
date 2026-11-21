@@ -1,5 +1,6 @@
 """The driver: build one ticket, steps 1 to 9, and stop when a stop rule says so.
 
+The task, or a roadmap, starts it for each ticket.
 
 Run state lives only in the log, .tollgate/logs/<ticket>.jsonl. A driver that
 starts again reads the log and repeats no finished step.
@@ -541,4 +542,3 @@ def main(argv=None, server=None) -> int:
             subprocess.CalledProcessError) as err:
         print(f"driver: {err}", file=sys.stderr)
         return 1
-

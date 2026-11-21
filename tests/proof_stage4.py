@@ -210,6 +210,20 @@ class RoadmapTest(unittest.TestCase):
         self.assertNotIn("tg/plan/orders-more/1", sh(sample.bare, "git", "tag").split())
 
 
+class BaseCheckTest(unittest.TestCase):
+    def test_settings_that_cannot_be_read_stop_the_roadmap_with_a_reason(self):
+        from driver import roadmap as dr
+        from driver.log import Log
+        with tempfile.TemporaryDirectory() as d:
+            sh(d, "git", "init", "-q")
+            log_path = os.path.join(d, "roadmap.jsonl")
+            with Log(log_path, roadmap="r") as log:
+                self.assertEqual(dr.check_base(d, log), 1)
+            last = read(log_path)[-1]
+            self.assertEqual(last["event"], "roadmap_waiting")
+            self.assertIn("cannot read the settings", last["reason"])
+
+
 class RetroTest(unittest.TestCase):
     def test_numbers_and_candidates(self):
         sample = Sample(builder="pass2")

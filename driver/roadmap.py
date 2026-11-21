@@ -9,6 +9,7 @@ Exit codes as for driver.task.
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +23,12 @@ from setup import base_suite
 
 def check_base(project: str, log, ref: str = "origin/main") -> int:
     """Run the base suite with the settings on main. Log it; 0 when all five pass."""
-    settings = st.load_from_ref(project, ref)
+    try:
+        settings = st.load_from_ref(project, ref)
+    except (st.SettingsError, OSError, ValueError, subprocess.CalledProcessError) as err:
+        log.add("roadmap_waiting", reason=f"cannot read the settings on {ref} for the base "
+                                          f"suite: {err}")
+        return 1
     results = base_suite.run(settings, project)
     failed = [r for r in results if not r["passed"]]
     if failed:

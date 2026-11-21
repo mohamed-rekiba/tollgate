@@ -19,7 +19,7 @@ Words: a **task** is what the user asks for, in their own words. The **driver** 
 ## 2. Get the request
 
 1. Take the request from the user's message. If it is empty, ask for it in one question.
-2. Pick a task id: a few lower-case words joined by `-`, such as `webhook-retries`. It must not match a file in `.tollgate/plans/`. Tell the user the id.
+2. Pick a task id: a few lower-case words joined by `-`, such as `webhook-retries`. Use only `a` to `z`, `0` to `9`, and `-`, so the id is safe in a command and a file name. It must not match a file in `.tollgate/plans/` or `.tollgate/roadmaps/`. Tell the user the id.
 3. Write the request, in the user's own words, to `.tollgate/requests/<task id>.md`.
 
 Done when the file exists.
@@ -35,11 +35,11 @@ For a roadmap:
 1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/action/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
 2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/action/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
 3. If `base` in the settings has an empty command, tell the user which of the five base checks has none. The roadmap stops after the base tasks until all five pass.
-4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from action import roadmap as rm; rm.parse(open(sys.argv[1]).read())' .tollgate/roadmaps/<task id>.md`. Done when it ends with no error.
+4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from action import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
 5. Start it, from the project folder, as one command:
 
    ```
-   mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.roadmap --project . --roadmap <task id> > .tollgate/logs/roadmap-<task id>.out 2>&1 < /dev/null
+   mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.roadmap --project . --roadmap "<task id>" > ".tollgate/logs/roadmap-<task id>.out" 2>&1 < /dev/null
    ```
 
    Done when `.tollgate/logs/roadmap-<task id>.jsonl` exists, within 60 seconds. If it does not, show the user the last 20 lines of `.tollgate/logs/roadmap-<task id>.out` and stop. Then go to step 5.
@@ -49,7 +49,7 @@ For a roadmap:
 Run this from the project folder, as one command:
 
 ```
-mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.task --project . --task <task id> --request-file .tollgate/requests/<task id>.md > .tollgate/logs/task-<task id>.out 2>&1 < /dev/null
+mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.task --project . --task "<task id>" --request-file ".tollgate/requests/<task id>.md" > ".tollgate/logs/task-<task id>.out" 2>&1 < /dev/null
 ```
 
 `setsid -f` starts it as its own process, so closing this session does not stop it.
