@@ -20,9 +20,9 @@ Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass sc
 
 | Item | Why not | What proves it |
 | --- | --- | --- |
-| A ticket built by a real model (2.9), and the experiment on 10 to 15 real tickets (3.10) | This session has no model key, and must not use its own model access as Tollgate's builder. | Set `ANTHROPIC_API_KEY`, then run `/tollgate:task` on a lab project. `/tollgate:retro` gives the numbers. |
+| A ticket built by a real model (2.9), and the experiment on 10 to 15 real tickets (3.10) | This session has no model key, and must not use its own model access as Tollgate's builder. | Set `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`), then run `/tollgate:task` on a lab project. `/tollgate:retro` gives the numbers. |
 | The model half of E2: Claude Code inside the container | The same: no model key. | [scripts/e2_closed_room.sh](experiments/scripts/e2_closed_room.sh) |
-| A model review on the server, for tier 3 and 4 | This repository has no `ANTHROPIC_API_KEY` secret. | Add the secret, then comment `tollgate check` on a tier 3 pull request. |
+| A model review on the server, for tier 3 and 4 | Not yet passed on GitHub. | Add the secret `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`, then comment `tollgate check` on a tier 3 pull request. |
 | A forged freeze tag pushed from a laptop, and a tag push rejected by the ruleset | This session cannot create tags, and a forged tag through the REST API was refused as undermining oversight. | Unit tests cover the gate's side (`tests/test_review_findings.py`). With the rulesets on, `git tag tg/freeze/x/1 && git push origin tg/freeze/x/1` must be rejected. |
 | E3: a fake check named `tollgate gate` from a workflow added in a pull request | It needs a workflow pushed on a branch, which is the attack itself. | [scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md) |
 | The `copy` level of rights | Not built. It is for organizations that allow only local actions. | |

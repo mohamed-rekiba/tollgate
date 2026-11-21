@@ -2,13 +2,12 @@
 
 It reads the change as text and runs none of it. Tier 1 and 2 pass at once.
 For tier 3 and 4 it runs the reviewer with the change lens and the security lens,
-with the model key from the secret ANTHROPIC_API_KEY. Without a key it fails, so
-the pull request waits.
+with model access from the secret ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN.
+Without either, it fails, so the pull request waits.
 """
 
 import argparse
 import json
-import os
 import sys
 import tempfile
 
@@ -35,10 +34,14 @@ def review(repo, base, head, branch, run_role=None, key=None) -> tuple:
     level, reason, settings, freeze = tier_of(repo, base, head, branch)
     if level < 3:
         return True, f"Not needed for tier {level}.", reason
-    key = os.environ.get("ANTHROPIC_API_KEY") if key is None else key
+    if key is None:
+        from driver import roles as _roles
+        _roles.drop_empty_access()
+        key = ",".join(_roles.model_access())
     if not key and run_role is None:
-        return False, f"Tier {level} needs the review, and there is no model key.", (
-            "Add the repository secret ANTHROPIC_API_KEY, then comment `tollgate check`.")
+        return False, f"Tier {level} needs the review, and there is no model access.", (
+            "Add the repository secret ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN, then "
+            "comment `tollgate check`.")
     ticket = ""
     if freeze:
         data = show_bytes(repo, freeze.tag_commit, f".tollgate/tickets/{freeze.manifest['ticket']}"
