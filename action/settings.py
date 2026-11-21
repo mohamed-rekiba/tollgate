@@ -16,6 +16,7 @@ BUILT_IN_HARNESS = [
     ".github/**",
     ".tollgate/settings.json",
     ".tollgate/lenses/**",
+    ".tollgate/runner/**",
     "**/conftest.py",
     "**/pytest.ini",
     "**/pyproject.toml",
@@ -56,7 +57,8 @@ DEFAULTS = {
     "auto_merge": False,
     "check_minutes": 20,
     "approvers": [],
-    # "self" when this repository is Tollgate, or a full commit id of Tollgate.
+    # "self" when this repository is Tollgate, "copy" for the copy of Tollgate's
+    # code in .tollgate/runner/, or a full commit id of Tollgate.
     # The workflow reads it from main, so an upgrade is an ordinary pull request.
     "version": "",
     # Paths a change may touch with no ticket: tier 1, and only the checks run.
@@ -107,8 +109,8 @@ def parse(text: str) -> dict:
     for tier in settings["tiers"]:
         if tier not in ("3", "4"):
             raise SettingsError(f"unknown key: tiers.{tier}")
-    if settings["version"] and not re.fullmatch(r"self|[0-9a-f]{40}", settings["version"]):
-        raise SettingsError('version must be "self" or a full commit id of Tollgate')
+    if settings["version"] and not re.fullmatch(r"self|copy|[0-9a-f]{40}", settings["version"]):
+        raise SettingsError('version must be "self", "copy", or a full commit id of Tollgate')
     if settings["sandbox"] == "none":
         settings["auto_merge"] = False
     settings["harness"] = list(settings["harness"]) + BUILT_IN_HARNESS

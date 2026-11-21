@@ -19,14 +19,44 @@ TEMPLATE = Path(__file__).resolve().parent.parent / "workflows" / "tollgate.yml"
 WORKFLOW = ".github/workflows/tollgate.yml"
 OLD = [f".github/workflows/tollgate-{n}.yml" for n in ("freeze", "gate", "plan", "review")]
 SETTINGS = ".tollgate/settings.json"
-VERSION = re.compile(r"^(self|[0-9a-f]{40})$")
+VERSION = re.compile(r"^(self|copy|[0-9a-f]{40})$")
+RUNNER = ".tollgate/runner"
+# The packages the workflow runs. The copy holds these and the role and lens files.
+COPIED = ("action", "driver", "setup", "roles", "lenses")
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def copy_runner(project: str) -> list:
+    """Copy Tollgate's code into .tollgate/runner/. Return the paths that changed.
+
+    For an organization that allows only actions from inside the repository. The
+    copy is harness, so a change to it is tier 4 and needs a person."""
+    changed = []
+    wanted = {}
+    for package in COPIED:
+        for src in sorted(Path(ROOT, package).rglob("*")):
+            if src.is_file() and "__pycache__" not in src.parts:
+                wanted[f"{RUNNER}/{src.relative_to(ROOT)}"] = src.read_bytes()
+    for rel, data in wanted.items():
+        target = Path(project, rel)
+        if not target.exists() or target.read_bytes() != data:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            changed.append(rel)
+    runner = Path(project, RUNNER)
+    for old in sorted(p for p in runner.rglob("*") if p.is_file()):
+        rel = str(old.relative_to(project))
+        if rel not in wanted:
+            old.unlink()
+            changed.append(rel)
+    return changed
 
 
 def write(project: str, version: str) -> list:
     """Write the workflow and the version. Return the paths that changed."""
     if not VERSION.match(version):
-        raise ValueError('the version is "self" or a full commit id of Tollgate, not a branch '
-                         "or a tag")
+        raise ValueError('the version is "self", "copy", or a full commit id of Tollgate, not a '
+                         "branch or a tag")
     changed = []
     target = Path(project, WORKFLOW)
     text = TEMPLATE.read_text()
@@ -38,6 +68,8 @@ def write(project: str, version: str) -> list:
         if Path(project, old).exists():
             Path(project, old).unlink()
             changed.append(old)
+    if version == "copy":
+        changed += copy_runner(project)
     settings_path = Path(project, SETTINGS)
     settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
     if settings.get("version") != version:
@@ -57,7 +89,7 @@ def main(argv=None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
     parser.add_argument("--version", "--ref", dest="version", required=True,
-                        help='"self", or a full commit id of Tollgate')
+                        help='"self", "copy", or a full commit id of Tollgate')
     args = parser.parse_args(argv)
     try:
         changed = write(args.project, args.version)
