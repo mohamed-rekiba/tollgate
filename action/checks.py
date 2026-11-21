@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -34,6 +35,14 @@ class Results:
         return cls([CheckResult(**c) for c in data["checks"]], data["tests"])
 
 
+def project_env() -> dict:
+    """The environment for the project's own commands, without Tollgate's import path,
+    so Tollgate's modules cannot shadow the project's."""
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
+    return env
+
+
 def _tail(text: str, lines: int = 40) -> str:
     return "\n".join(text.splitlines()[-lines:])
 
@@ -54,7 +63,7 @@ def run(settings: dict, workdir, only=None) -> Results:
         try:
             proc = subprocess.run(
                 check["run"], shell=True, cwd=workdir, capture_output=True, text=True, check=False,
-                timeout=minutes * 60,
+                timeout=minutes * 60, env=project_env(),
             )
             result = CheckResult(name, proc.returncode == 0, False, _tail(proc.stdout + proc.stderr))
         except subprocess.TimeoutExpired:
@@ -79,7 +88,7 @@ def main(argv=None) -> int:
     settings = st.load_from_ref(args.repo, args.base)
     if args.setup:
         for command in settings["setup"]:
-            subprocess.run(command, shell=True, cwd=args.repo, check=True)
+            subprocess.run(command, shell=True, cwd=args.repo, check=True, env=project_env())
     results = run(settings, args.repo, args.only)
     with open(args.out, "w") as f:
         f.write(results.to_json())

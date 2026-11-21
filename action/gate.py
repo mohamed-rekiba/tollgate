@@ -18,9 +18,8 @@ from action.gitio import changed_files, git
 from action.paths import matches
 
 WORKFLOW = ".github/workflows/tollgate.yml"
-# A freeze or plan made before the single workflow came from one of these.
-FREEZE_WORKFLOWS = {WORKFLOW, ".github/workflows/tollgate-freeze.yml"}
-PLAN_WORKFLOWS = {WORKFLOW, ".github/workflows/tollgate-plan.yml"}
+FREEZE_WORKFLOWS = {WORKFLOW}
+PLAN_WORKFLOWS = {WORKFLOW}
 FREEZE_WORKFLOW = WORKFLOW
 PLAN_WORKFLOW = WORKFLOW
 REVIEW_CHECK = "tollgate review"

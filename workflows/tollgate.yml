@@ -28,6 +28,9 @@ on:
   issue_comment:
     types: [created]
 permissions: {}
+concurrency:
+  # One freeze or plan lock at a time for each id. Pull request runs do not queue.
+  group: ${{ github.event_name == 'workflow_dispatch' && format('tollgate-{0}-{1}', inputs.kind, inputs.id) || github.run_id }}
 jobs:
   # Freeze, job one: run the ticket's tests with a read-only token.
   freeze-test:
@@ -312,7 +315,7 @@ jobs:
           ref: main
           path: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - name: Get Tollgate's code
         id: code
         run: |
@@ -336,7 +339,10 @@ jobs:
       - name: Fetch the change as data
         env:
           PR: ${{ needs.find.outputs.pr }}
-        run: git -C main fetch --no-tags origin "refs/pull/$PR/head"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C main -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            fetch --no-tags origin "refs/pull/$PR/head"
       - name: Work out the tier
         env:
           PYTHONPATH: ${{ steps.code.outputs.path }}
@@ -349,7 +355,7 @@ jobs:
       - name: Install Claude Code for tier 3 and 4
         if: steps.tier.outputs.tier >= 3
         run: |
-          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.330
           claude --version
       - name: Review
         env:
@@ -377,7 +383,7 @@ jobs:
           ref: main
           path: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - name: Get Tollgate's code
         id: code
         run: |
@@ -401,7 +407,10 @@ jobs:
       - name: Fetch the change as data
         env:
           PR: ${{ needs.find.outputs.pr }}
-        run: git -C main fetch --no-tags origin "refs/pull/$PR/head"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C main -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            fetch --no-tags origin "refs/pull/$PR/head"
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
