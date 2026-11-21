@@ -10,10 +10,13 @@ Two kinds of diagram:
   time. When that file changes and the picture does not, --check fails, so
   the picture cannot drift from the code. "workflow" is the jobs of
   .github/workflows/tollgate.yml and the order they run in.
+- A view: another picture of a written spec. "how-it-works-rules" is the
+  objects of how-it-works.json with the callouts of how-it-works-rules.json.
 - Art: a picture drawn in its own code, such as the README banner in hero.py.
 """
 
 import argparse
+import json
 import re
 import sys
 import textwrap
@@ -226,7 +229,23 @@ def icons_sheet(theme: str) -> str:
     return "\n".join([*out, "</svg>"]) + "\n"
 
 
-GENERATED = {"workflow": workflow_spec}
+def rules_spec() -> dict:
+    """The rules view: the objects of how-it-works.json, with no labels of its own,
+    framed smaller, and the numbered callouts of how-it-works-rules.json."""
+    base = json.loads((HERE / "src" / "how-it-works.json").read_text())
+    rules = json.loads((HERE / "src" / "how-it-works-rules.json").read_text())
+    view = {k: v for k, v in base.items() if k not in ("labels", "caption", "title", "desc")}
+    # The callouts carry the words here, so the lanes keep no labels.
+    view["lanes"] = [{k: v for k, v in lane.items() if k != "label"} for lane in base["lanes"]]
+    view.update(RULES_FRAME)
+    view.update(rules)
+    return view
+
+
+# The frame of the rules view, before the callout columns widen it.
+RULES_FRAME = {"size": [700, 420], "origin": [254, 214], "scale": 0.72}
+
+GENERATED = {"workflow": workflow_spec, "how-it-works-rules": rules_spec}
 # Drawn by hand in code, not from a spec.
 ART = {"hero": hero.draw, "icons": icons_sheet}
 

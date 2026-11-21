@@ -77,8 +77,8 @@ class TestDiagrams(unittest.TestCase):
         import json
         for spec in (DIAGRAMS / "src").glob("*.json"):
             data = json.loads(spec.read_text())
-            if data.get("type") == "scene":
-                continue
+            if data.get("type") == "scene" or "nodes" not in data:
+                continue  # a scene, or the callouts of a view drawn by build.py
             kinds = {n.get("kind", "neutral") for n in data["nodes"] if not n.get("aws")}
             with self.subTest(diagram=spec.stem):
                 self.assertNotEqual(kinds, {"neutral"}, "give the boxes the kind that drives them")
