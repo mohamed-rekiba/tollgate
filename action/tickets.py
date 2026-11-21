@@ -11,6 +11,7 @@ they apply.
 """
 
 import re
+import sys
 from dataclasses import dataclass, field
 
 SECTIONS = ("Current behavior", "Desired behavior", "Checklist", "Out of scope")
@@ -111,3 +112,27 @@ def parse(text: str) -> Ticket:
         items=items,
         sections={k: "\n".join(v).strip() for k, v in sections.items()},
     )
+
+
+def main(argv=None) -> int:
+    """Check one ticket file. Print its id and items, or an error on stderr."""
+    args = sys.argv[1:] if argv is None else list(argv)
+    if len(args) != 1:
+        print("error: give exactly one ticket path", file=sys.stderr)
+        return 1
+    try:
+        with open(args[0], encoding="utf-8") as handle:
+            ticket = parse(handle.read())
+    except (OSError, ValueError) as err:  # TicketError and UnicodeDecodeError are ValueErrors
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+    lines = [f"id: {ticket.id}"]
+    for item in ticket.items:
+        marks = ["must"] * item.must + ["keeps behavior"] * item.keeps_behavior
+        lines.append(" ".join(filter(None, [item.id, ", ".join(marks), item.text])))
+    print("\n".join(lines))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
