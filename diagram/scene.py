@@ -367,6 +367,9 @@ class Scene:
         ux, uy = dx / far, dy / far
         a = (x + ux * (BADGE + 3), y + uy * (BADGE + 3))
         b = (px - ux * 5, py - uy * 5)
+        # A page can find each callout and the point it names, to light that part.
+        self.front.append(f'<g class="callout" data-n="{c["n"]}" data-x="{px:.1f}" '
+                          f'data-y="{py:.1f}">')
         self.front.append(f'<line x1="{a[0]:.1f}" y1="{a[1]:.1f}" x2="{b[0]:.1f}" y2="{b[1]:.1f}" '
                           f'stroke="{accent}" stroke-width="1.5" stroke-dasharray="1 4" '
                           f'stroke-linecap="round"/>')
@@ -384,11 +387,13 @@ class Scene:
             self.front.append(f'<text x="{tx:.1f}" y="{y + 4 + STEP * (k + 1):.1f}" '
                               f'text-anchor="{anchor}" font-size="12" '
                               f'fill="{self.c["sub"]}">{escape(line)}</text>')
+        self.front.append("</g>")
 
     def callout_under(self, c, cx, cy):
         """A numbered label on one line, centered under the scene, with no leader."""
         accent = self.c["kinds"][c.get("kind", "neutral")][0]
         x = cx - bottom_width(c) / 2
+        self.front.append(f'<g class="callout" data-n="{c["n"]}">')
         self.number(x + BADGE, cy, c["n"], accent)
         hx = x + 2 * BADGE + 12
         self.front.append(f'<text x="{hx:.1f}" y="{cy + 4:.1f}" font-size="12" font-weight="700" '
@@ -397,6 +402,7 @@ class Scene:
         lx = hx + len(c["head"]) * HEAD_CHAR + 14
         self.front.append(f'<text x="{lx:.1f}" y="{cy + 4:.1f}" font-size="12" '
                           f'fill="{self.c["sub"]}">{escape(c["line"])}</text>')
+        self.front.append("</g>")
 
     # The page ------------------------------------------------------------------
     def grid(self, extent=420, step=30):
