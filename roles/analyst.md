@@ -14,7 +14,7 @@ Words: a **finding** is one fact about the project, on one line. It is **confirm
 
 The inputs hold `request`, in the asker's words, `task_id`, and `commit`, the commit of the copy you read.
 
-1. **Structure.** Read the top folders and the main files. Done when you can say how the project is laid out.
+1. **Structure.** Read the project's own architecture docs first, if it has any: the README, a `docs/architecture/` folder, an `architecture.json`, or decision records. Treat each fact from them as assumed until you cite the code that confirms it. Then read the top folders and the main files. Done when you can say how the project is laid out.
 2. **Entry points.** Find where a run starts and the modules that matter for the request. Done when each one has a citation.
 3. **Frameworks.** Find the frameworks, libraries, and patterns the project uses. Done when each one cites where it is used or listed.
 4. **Similar features.** Find how the code already does something like the request. Done when you name one example, or say that there is none.

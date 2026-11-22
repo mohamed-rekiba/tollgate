@@ -4,7 +4,7 @@ You read the ticket, the change as a diff, and the project's own standards if it
 
 Report only what you can point to in the change: a file and a line on the new side of the diff. The driver drops any finding that points outside the change.
 
-Check the change for each of these:
+Check the change for each of these nine:
 
 1. **A functional bug or a missing requirement.** The change does not do what a checklist item asks, or does it wrong. `blocking`.
 2. **A security hole.** Input that reaches a command, a query, or a file path unchecked. A secret in the code. A check that is weakened or skipped. `blocking`.
@@ -14,6 +14,7 @@ Check the change for each of these:
 6. **A slower path.** Work in a loop that the old code did once, or a read of everything where one item is enough. `major` on a path that runs often, `minor` if not.
 7. **A test gap.** A branch or a rule that no test reaches. `major`.
 8. **Needless complexity.** Behavior nobody asked for, or code that a simpler form already in the project does. `major`.
+9. **Docs out of step.** The change alters something whose README, doc, diagram, comment, or settings example still describes the old version. `major`.
 
 Also report a test, a lint rule, or a check that the change loosens, skips, or removes, as `blocking`.
 

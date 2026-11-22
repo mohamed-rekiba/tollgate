@@ -1,6 +1,6 @@
 # Tollgate's principles
 
-Tollgate lets an AI write your code, and merges only what works. It keeps 17 rules, in 8 groups. This page explains each rule: what it means, why, how Tollgate does it, and where it stops.
+Tollgate lets an AI write your code, and merges only what works. It keeps 18 rules, in 8 groups. This page explains each rule: what it means, why, how Tollgate does it, and where it stops.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
@@ -292,3 +292,18 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 - `check_writing.py` runs in pre-commit. It finds the words to avoid, filler, and long dashes. `check_commit_msg.py` checks each commit message.
 
 **Where it stops.** A script finds only some of the rules. The review lens reads for the rest, and only from tier 2.
+
+### Rule 18. Docs move with the code
+
+**What it means.** A change that alters behavior, a command, a setting, an interface, or the architecture updates the README, docs, diagrams, and comments that describe it, in the same change.
+
+**Why.** A doc that describes code that is gone misleads the next reader, and the next AI.
+
+**How Tollgate does it.**
+
+- The plan lists the docs a change alters under Files, and a checklist item covers them. The readiness lens reports a plan that changes behavior and lists no doc.
+- The review lens reports a change whose docs still describe the old version, in each ticket and in the whole task.
+- `check_writing.py` fails a change that removes a file or a name that a doc still points at: a link, a path in backticks, or `path::name`. It also fails a new link to a file that does not exist. It runs in pre-commit and in the gate, so the builder fixes the doc in the same loop as the code.
+- The analyst reads the project's own architecture docs, and confirms each fact against the code.
+
+**Where it stops.** The script proves that a link or a name still exists, not that the sentence around it is still true. The review lens reads for that, and only from tier 2. A reference that was broken before the change is not reported.

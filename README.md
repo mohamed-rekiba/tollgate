@@ -22,7 +22,7 @@ Telling it not to does not stop these mistakes. A review by the same AI does not
 
 ## The principles
 
-Tollgate keeps 17 rules, in 8 groups.
+Tollgate keeps 18 rules, in 8 groups.
 
 1. **Plan first.** An analyst reads the project first, and each finding cites the code or is marked assumed. Fresh reviewers check the plan, for up to 4 rounds, before any code. A question the plan cannot settle waits for the advisor. A large request starts with the base, then one thin path, then one feature at a time. Each ticket has a checklist, and a must-have item cannot fail.
 2. **Tests first.** The test writer writes one test for each must-have item, and the store locks it before any code. The AI cannot change a locked test.
@@ -31,7 +31,7 @@ Tollgate keeps 17 rules, in 8 groups.
 5. **Stop when stuck.** After 3 tries, or the same failure twice, the advisor decides: a second AI, or you. The advisor also decides at each checkpoint: after the plan and after the whole task, by default.
 6. **Risk sets the checks.** The files a change touches give it a tier from 1 to 4. You merge tiers 3 and 4.
 7. **Mistakes become rules.** A task gives at most 3 lessons. Rules never get looser.
-8. **Always.** Code enforces the rules. Every word is plain, for people.
+8. **Always.** Code enforces the rules. Every word is plain, for people. Docs move with the code, in the same change.
 
 Each number on the picture marks the part where that rule holds.
 

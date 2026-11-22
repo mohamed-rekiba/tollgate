@@ -17,7 +17,7 @@ Think of an exam. The questions are set and sealed before the student starts. Th
 
 **The problem.** An AI that writes code makes four kinds of mistake. It invents things: a function, a file, a fact. It pads its work. It stops before the work is done. It weakens a test to make the test pass. Written instructions do not stop these mistakes, because the AI can ignore them. A review by the same AI does not stop them either, because it defends its own work.
 
-**The answer.** Tollgate does not ask the AI to behave. The store locks the tests before the AI builds, and signs the lock. The gate, a program with no AI in it, checks each try. Two layers stop a change that skips the gate: Claude Code hooks and policies, and pre-commit in git. The 17 rules in [principles.md](principles.md) say what Tollgate holds to, and why.
+**The answer.** Tollgate does not ask the AI to behave. The store locks the tests before the AI builds, and signs the lock. The gate, a program with no AI in it, checks each try. Two layers stop a change that skips the gate: Claude Code hooks and policies, and pre-commit in git. The 18 rules in [principles.md](principles.md) say what Tollgate holds to, and why.
 
 **The limit.** Tollgate stops an AI that takes a shortcut. It does not stop code written to attack the test tools themselves. It does not stop a person who skips pre-commit with `--no-verify`.
 
@@ -125,7 +125,7 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 | Git step | Check | What it refuses |
 | --- | --- | --- |
 | Commit | `check_locked.py` | A change to a locked file, or to `.tollgate/` or the pre-commit config |
-| Commit | `check_writing.py` | Words to avoid, filler, and long dashes in the staged change |
+| Commit | `check_writing.py` | Words to avoid, filler, and long dashes in the staged change. A doc that points at a file or a name the change removes. |
 | Commit message | `check_commit_msg.py` | A subject that is not `type(scope): subject`, or a line that credits an AI |
 | Merge | `check_merge.py merge` | A merge into main with no verified pass record, or a tier 3 or 4 merge with no approval |
 | Push | `check_merge.py push` | A push to main with a merge that has no pass record, or a commit made on main itself |
@@ -527,6 +527,7 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | It has no stub, no unfinished marker, and no hidden error. | Review lens |
 | New logic has a test. | Review lens |
 | It follows the project's own written standards. | Review lens |
+| It updates the docs that describe what it changes. | Review lens, and `check_writing.py` for links and names |
 
 ### A bug fix
 

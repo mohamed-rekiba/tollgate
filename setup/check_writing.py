@@ -17,7 +17,12 @@ It fails on:
   how to start, and when to use it. With --staged, only when the README is in
   the change;
 - on the branch, a commit whose subject is not `type(scope): subject`, or that
-  credits an AI.
+  credits an AI;
+- a document that points at what its own change removes: a relative link or a
+  path in backticks to a file the change deletes or moves, or `path::name` for
+  a function or class the change removes. A new link to a file that does not
+  exist fails too. A reference that was broken before the change, or an
+  example path that never existed, is not reported.
 
 The word list is CONTEXT.md, in this form: a term in bold, then a line that
 starts with `_Avoid_:` and lists the words to avoid, with commas between them.
@@ -29,6 +34,7 @@ line for each finding: the file and line, then what to change.
 
 import ast
 import io
+import os
 import re
 import subprocess
 import sys
@@ -246,6 +252,97 @@ def check_lines(root: Path, base: str, staged: bool = False) -> list:
     return found
 
 
+LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+TICKED = re.compile(r"`([^`\s]+)`")
+NOT_A_PATH = ("<", "*", "~", "$", "{", "://", "@")
+DEFINES = r"^\s*(?:async\s+def|def|class|func|fn|function|const|let|var)\s+{0}\b|^\s*{0}\s*="
+
+
+def _tree(root: Path, rev: str | None) -> set:
+    """The files of a commit, or of the index when rev is None."""
+    args = ["ls-files"] if rev is None else ["ls-tree", "-r", "--name-only", rev]
+    code, out = git(*args, cwd=root)
+    return set(out.splitlines()) if code == 0 else set()
+
+
+def _text(root: Path, rev: str | None, name: str) -> str:
+    code, out = git("show", f"{'' if rev is None else rev}:{name}", cwd=root)
+    return out if code == 0 else ""
+
+
+def _defines(text: str, name: str) -> bool:
+    last = re.escape(name.rsplit(".", 1)[-1])
+    return bool(re.search(DEFINES.format(last), text, re.MULTILINE))
+
+
+def _refs(doc: str, text: str):
+    """(line number, kind, path, name) for each link and each path in backticks,
+    outside fenced code. A link is relative to the doc; a path in backticks may be
+    relative to the doc or to the root, so both are given."""
+    inside = False
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith(("```", "~~~")):
+            inside = not inside
+            continue
+        if inside:
+            continue
+        here = os.path.dirname(doc)
+        for m in LINK.finditer(line):
+            target = m.group(1).split("#", 1)[0]
+            if not target or any(t in target for t in NOT_A_PATH) or target.startswith("mailto:"):
+                continue
+            path = target[1:] if target.startswith("/") else os.path.join(here, target)
+            yield n, "links to", [os.path.normpath(path)], None
+        for m in TICKED.finditer(line):
+            token = m.group(1)
+            if any(t in token for t in NOT_A_PATH) or token.startswith(("-", "/", ".")):
+                continue
+            path, _, name = token.partition("::")
+            path = re.sub(r":\d+$", "", path)
+            if "/" not in path and "." not in path:
+                continue
+            yield n, "names", [os.path.normpath(path), os.path.normpath(os.path.join(here, path))], \
+                name or None
+
+
+def check_docs(root: Path, base: str, staged: bool = False) -> list:
+    """Each reference in a document that this change breaks."""
+    if staged:
+        old_rev, new_rev = "HEAD", None
+    else:
+        code, out = git("merge-base", base, "HEAD", cwd=root)
+        if code != 0:
+            return []
+        old_rev, new_rev = out.strip(), "HEAD"
+    old, new = _tree(root, old_rev), _tree(root, new_rev)
+    span = ["--cached"] if staged else [f"{base}...HEAD"]
+    code, out = git("diff", "--name-only", *span, cwd=root)
+    changed = set(out.splitlines() if code == 0 else []) | (old - new)
+    added = {name: {n for n, _ in lines} for name, lines in diff_lines(root, base, staged).items()}
+    # Only a removed file or a changed source can break a reference in a doc the
+    # change does not touch. Otherwise, check only the docs the change touches.
+    reach = old - new or any(not c.endswith(DOCS) for c in changed)
+    docs = sorted(d for d in new if d.endswith(DOCS) and (reach or d in changed))
+    found = []
+    for doc in docs:
+        seen = set()
+        for n, kind, paths, name in _refs(doc, _text(root, new_rev, doc)):
+            was = [p for p in paths if p in old]
+            label = (paths[0] if not was else was[0]) + (f"::{name}" if name else "")
+            if (n, label) in seen:
+                continue
+            if was and not any(p in new for p in was) or was and name and _defines(_text(root, old_rev, was[0]), name) \
+                    and not _defines(_text(root, new_rev, was[0]), name):
+                seen.add((n, label))
+                found.append(f"{doc}:{n}: {kind} {label}, which this change removes. "
+                             "Update the doc.")
+            elif not was and kind == "links to" and not any(p in new for p in paths) \
+                    and n in added.get(doc, ()):
+                seen.add((n, label))
+                found.append(f"{doc}:{n}: {kind} {label}, which does not exist.")
+    return found
+
+
 def check_readme(root: Path) -> list:
     path = root / "README.md"
     if not path.exists():
@@ -287,12 +384,14 @@ def main(repo=".", base="main", staged=False) -> int:
     root = Path(repo).resolve()
     if staged:
         names = diff_lines(root, base, True)
-        found = check_lines(root, base, True) + (check_readme(root) if "README.md" in names else [])
+        found = (check_lines(root, base, True) + check_docs(root, base, True)
+                 + (check_readme(root) if "README.md" in names else []))
     elif git("rev-parse", "--verify", "-q", base, cwd=root)[0] != 0:
         print(f"check_writing: there is no {base} to compare with, so only the README is checked.")
         found = check_readme(root)
     else:
-        found = check_lines(root, base) + check_readme(root) + check_commits(root, base)
+        found = (check_lines(root, base) + check_docs(root, base) + check_readme(root)
+                 + check_commits(root, base))
     for line in found:
         print(line)
     return 1 if found else 0

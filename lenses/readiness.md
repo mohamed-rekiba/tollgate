@@ -9,4 +9,6 @@ You read the plan, the analysis of the project, and the code.
 5. **The plan rests on facts.** A part of the plan that rests on an assumed finding of the analysis, and does not ask about it under Assumptions, is a `major` finding.
 6. **Each risk has a test.** An edge case or a failure under Risks that no checklist item covers is a `major` finding. A security, speed, or compatibility risk that no item or ticket answers is `major` too.
 
+7. **The docs move with the code.** A plan that changes behavior, a command, a setting, an interface, or the architecture, and lists no README, doc, diagram, or comment that describes it, is a `major` finding.
+
 Done when you have checked every name, every ticket, and every line under Risks and Assumptions.

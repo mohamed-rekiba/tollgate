@@ -66,6 +66,75 @@ class Repo:
         return code, out.getvalue()
 
 
+class DocsTest(unittest.TestCase):
+    """A document must not point at a file or a name that its own change removes."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Repo(Path(self.tmp.name))
+        r = self.repo
+        r.write("src/send.py", "def send():\n    pass\n\n\ndef retry():\n    pass\n")
+        r.write("docs/guide.md", "See [the sender](../src/send.py).\n"
+                "The code is in `src/send.py`, and `src/send.py::retry` retries.\n"
+                "An example ticket names `tests/test_example.py`.\n")
+        r.commit("docs(guide): add a guide")
+        sh(r.root, "git", "update-ref", "refs/heads/main", "HEAD")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_removing_a_file_that_a_doc_names_fails(self):
+        (self.repo.root / "src/send.py").unlink()
+        self.repo.commit("refactor(send): remove the sender")
+        code, out = self.repo.check()
+        self.assertEqual(code, 1)
+        self.assertIn("docs/guide.md:1: links to src/send.py, which this change removes. "
+                      "Update the doc.", out)
+        self.assertIn("docs/guide.md:2: names src/send.py, which this change removes. "
+                      "Update the doc.", out)
+
+    def test_moving_a_file_that_a_doc_names_fails(self):
+        sh(self.repo.root, "git", "mv", "src/send.py", "src/sender.py")
+        self.repo.commit("refactor(send): rename the module")
+        self.assertIn("docs/guide.md:2: names src/send.py, which this change removes.",
+                      self.repo.check()[1])
+
+    def test_removing_a_name_that_a_doc_cites_fails(self):
+        self.repo.write("src/send.py", "def send():\n    pass\n")
+        self.repo.commit("refactor(send): drop retry")
+        code, out = self.repo.check()
+        self.assertEqual(code, 1)
+        self.assertIn("docs/guide.md:2: names src/send.py::retry, which this change removes. "
+                      "Update the doc.", out)
+
+    def test_a_doc_updated_in_the_same_change_passes(self):
+        (self.repo.root / "src/send.py").unlink()
+        self.repo.write("docs/guide.md", "The sender is gone.\n")
+        self.repo.commit("refactor(send): remove the sender")
+        self.assertEqual(self.repo.check(), (0, ""))
+
+    def test_a_new_link_to_a_missing_file_fails(self):
+        self.repo.write("docs/more.md", "Read [the setup](setup.md) and [the web](https://x.org).\n")
+        self.repo.commit("docs(more): add a page")
+        self.assertIn("docs/more.md:1: links to docs/setup.md, which does not exist.",
+                      self.repo.check()[1])
+
+    def test_a_reference_broken_on_main_or_an_example_is_not_reported(self):
+        # tests/test_example.py never existed: an example, not drift.
+        self.repo.write("docs/old.md", "See [gone](gone.md).\n")
+        self.repo.commit("docs(old): a page with an old broken link")
+        sh(self.repo.root, "git", "update-ref", "refs/heads/main", "HEAD")
+        self.repo.write("src/send.py", "def send():\n    return 1\n\n\ndef retry():\n    pass\n")
+        self.repo.commit("fix(send): return a value")
+        self.assertEqual(self.repo.check(), (0, ""))
+
+    def test_the_staged_change_is_checked_before_a_commit(self):
+        sh(self.repo.root, "git", "rm", "-q", "src/send.py")
+        code, out = self.repo.check(staged=True)
+        self.assertEqual(code, 1)
+        self.assertIn("docs/guide.md:1: links to src/send.py, which this change removes.", out)
+
+
 class CheckWritingTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

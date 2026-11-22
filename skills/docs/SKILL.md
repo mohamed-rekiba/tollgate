@@ -25,6 +25,6 @@ Done when each changed line follows the rules and uses the word list.
 
 ## The writing check
 
-The check runs in two places: pre-commit runs it on each commit, on the lines the commit adds, and the gate runs it on the whole branch against main. It reads documents for the word list, long dashes, and filler, and the comments in source files for long dashes and filler.
+The check runs in two places: pre-commit runs it on each commit, on the lines the commit adds, and the gate runs it on the whole branch against main. It reads documents for the word list, long dashes, and filler, and the comments in source files for long dashes and filler. It also fails a doc that points at a file or a name the change removes: a link, a path in backticks, or `path::name`. Update the doc in the same change.
 
 When `.tollgate/checks/check_writing.py` is missing, run `/tollgate:init`: it installs the check with the other checks. To check a branch by hand, run `python3 .tollgate/checks/check_writing.py` from the project's root and fix what it finds. Done when it ends with 0.
