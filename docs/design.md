@@ -32,7 +32,16 @@ Think of an exam. The questions are set and sealed before the student starts. Th
 
 Before the plan, the analyst reads the project and reports how it is built: each fact confirmed, with a citation to the code, or marked assumed. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. The plan writer and the plan reviewers read the analysis. A plan that lists an assumption goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
 
-Steps 4 to 6 repeat for each ticket. With `auto_merge` on, the store merges a tier 1 or 2 change. You merge tiers 3 and 4, and every change when `auto_merge` is off.
+Steps 4 to 6 repeat for each ticket. Each ticket starts from the ready change of the ticket before it, and the store checks that this start passed the gate before it locks the tests. No ticket merges until the review of the whole task passes. Then the tickets merge in plan order: with `auto_merge` on, the store merges each tier 1 or 2 change, and stops at the first that it may not merge, since each later ticket holds the ones before it. You merge tiers 3 and 4, and every change when `auto_merge` is off.
+
+### The fix round
+
+When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. If that review fails too, the task checkpoint asks the advisor, and a stop parks the task.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/task-lifecycle-dark.svg">
+  <img alt="The life of a task: analysis, plan, approval, the tickets built in order and held, the review of the whole task, one fix round when it finds problems, then the merges in plan order" src="diagrams/task-lifecycle.svg">
+</picture>
 
 ## How one ticket is built
 
@@ -491,6 +500,8 @@ A ticket describes behavior and seams. `tests` lists every file the locked tests
   "owners": ["ssh-ed25519 AAAA... you@laptop"]
 }
 ```
+
+`.tollgate/settings.json` is a locked file: the locked-file check refuses a commit that changes it, so a role's commit cannot loosen the rules. You change it on main and commit it yourself, from your own terminal, with `git commit --no-verify`, as `init` does. Tollgate's hook refuses `--no-verify` inside Claude Code.
 
 The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
 
