@@ -1,6 +1,6 @@
 {
  "title": "How one ticket is built",
- "desc": "The AI builds from its best try. First the locked tests must pass; then the reviewers check the rest, and the try needs a score of 70% or more. Then it goes to GitHub, which runs the tests again. When a try fails, the AI tries again with the reasons. After 3 tries, it asks the advisor: a second AI, or you.",
+ "desc": "The AI builds from its best try. First the locked tests must pass; then the reviewers check the rest, and the try needs a score of 70% or more. Then the change gets a signed pass record and waits to merge. When a try fails, the AI tries again with the reasons. After 3 tries, it asks the advisor: a second AI, or you.",
  "nodes": [
   {
    "id": "b",
@@ -29,11 +29,11 @@
   },
   {
    "id": "s",
-   "text": "Send to GitHub\nIt runs the tests again",
+   "text": "A ready change\nSigned as passed,\nit waits to merge",
    "col": 3,
    "row": 0,
    "kind": "server",
-   "icon": "pull-request",
+   "icon": "merge",
    "shape": "end"
   },
   {
@@ -96,7 +96,7 @@
   }
  ],
  "names": {
-  "server": "GITHUB"
+  "server": "STORE"
  },
  "ticket": {
   "path": [
