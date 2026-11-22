@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1](https://github.com/tollgate-ai/tollgate/compare/v0.1.0...v0.1.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **setup:** skip CHANGELOG.md in the writing check ([#108](https://github.com/tollgate-ai/tollgate/issues/108)) ([b0e0cbb](https://github.com/tollgate-ai/tollgate/commit/b0e0cbb0f95a388046404f51a02217500643ea3b))
+* **setup:** skip pip requirements files in the writing check ([#104](https://github.com/tollgate-ai/tollgate/issues/104)) ([e9a17a2](https://github.com/tollgate-ai/tollgate/commit/e9a17a2ce35285317c6db18ac891e7821457360d))
+* **skills:** run the plugin's Python code, not a project package of the same name ([#107](https://github.com/tollgate-ai/tollgate/issues/107)) ([0207f33](https://github.com/tollgate-ai/tollgate/commit/0207f33823f0c39eba08c286e244642b711f0fbe))
+
 ## 0.1.0 (2026-11-22)
 
 
