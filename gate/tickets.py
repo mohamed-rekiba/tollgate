@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 SECTIONS = ("Current behavior", "Desired behavior", "Checklist", "Out of scope")
 HEADER_KEYS = {"id", "plan", "seams", "tests"}
 LIST_KEYS = {"seams", "tests"}
-ITEM = re.compile(r"^- \[(C\d+)((?:,\s*[a-z ]+)*)\]\s+(.+)$")
+ITEM = re.compile(r"^- \[(C\d+)((?:,[ \t]*[a-z][a-z ]*)*)\]\s+(.+)$")
 
 
 class TicketError(ValueError):

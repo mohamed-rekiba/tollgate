@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from gate import analysis as an
+from tests.helpers import within
 
 TEXT = """---
 task: retries
@@ -59,6 +60,11 @@ class FormatTest(unittest.TestCase):
     def test_a_confirmed_finding_cites_the_code(self):
         with self.assertRaisesRegex(an.AnalysisError, "cites no code: tests use unittest"):
             an.parse(TEXT.replace(" [tests/test_send.py:1]", ""))
+
+    def test_a_long_broken_citation_is_read_quickly(self):
+        broken = "- confirmed: tests use unittest [" + "!/" * 40 + "\n"
+        with within(2), self.assertRaisesRegex(an.AnalysisError, "cites no code"):
+            an.parse(TEXT.replace("- confirmed: tests use unittest [tests/test_send.py:1]\n", broken))
 
 
 class VerifyTest(unittest.TestCase):

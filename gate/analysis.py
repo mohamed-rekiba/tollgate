@@ -31,7 +31,7 @@ from gate.paths import line_exists, name_exists
 ANALYSES = ".tollgate/analysis"
 SECTIONS = ("Structure", "Entry points", "Frameworks", "Similar features", "Tests", "Standards")
 STATUSES = ("confirmed", "assumed")
-CITE = re.compile(r"\[([^\]\s:]+(?:/[^\]\s:]+)*)(?::(\d+)|::([\w.]+))\]")
+CITE = re.compile(r"\[([^\]\s:]+)(?::(\d+)|::([\w.]+))\]")
 
 
 class AnalysisError(ValueError):
