@@ -88,6 +88,17 @@ class CostTest(unittest.TestCase):
         self.assertTrue(stop.is_hard(verdict))
         self.assertFalse(stop.is_hard("stop: the ticket used 3 tries"))
 
+    def test_the_usd_stops_apply_only_in_background_mode(self):
+        session = {**SETTINGS, "runner": "session"}
+        self.assertEqual(stop.check([{"event": "tests_written", "cost_usd": 10}], session), stop.GO)
+        self.assertEqual(stop.check([], session, task_spent=60), stop.GO)
+        background = {**SETTINGS, "runner": "background"}
+        self.assertTrue(stop.check([], background, task_spent=60).startswith("stop: the task"))
+
+    def test_a_cost_that_is_not_known_counts_nothing(self):
+        events = [{"event": "tests_written", "cost_usd": None}, failed(1, tests=["a"])]
+        self.assertEqual(stop.check(events, SETTINGS), stop.GO)
+
     def test_every_number_comes_from_the_settings(self):
         tight = {"stop": {"attempts": 1, "attempt_minutes": 1, "ticket_usd": 1, "task_usd": 2}}
         self.assertEqual(stop.check([failed(1, tests=["a"])], tight),
