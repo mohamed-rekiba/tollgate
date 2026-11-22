@@ -7,6 +7,26 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def hook_problems(root: Path) -> list:
+    """What is wrong with the scripts that hooks/hooks.json names."""
+    import os
+    import re
+    hooks = json.loads((root / "hooks" / "hooks.json").read_text())["hooks"]
+    problems = []
+    for groups in hooks.values():
+        for group in groups:
+            for hook in group["hooks"]:
+                scripts = re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\"'\s]+)", hook["command"])
+                if not scripts:
+                    problems.append(f"{hook['command']} names no script in the plugin")
+                for script in scripts:
+                    if not (root / script).is_file():
+                        problems.append(f"{script} is missing")
+                    elif not os.access(root / script, os.X_OK):
+                        problems.append(f"{script} is not executable")
+    return problems
+
+
 def load(name):
     return json.loads((ROOT / ".claude-plugin" / name).read_text())
 
@@ -42,6 +62,23 @@ class PluginManifestTest(unittest.TestCase):
         pyproject = (ROOT / "pyproject.toml").read_text()
         self.assertEqual(re.search(r'description = "([^"]*)"', pyproject).group(1), text)
         self.assertNotIn("GitHub", text)
+
+    def test_the_hooks_name_scripts_that_exist_and_run(self):
+        self.assertTrue((ROOT / "hooks" / "hooks.json").is_file())
+        self.assertEqual(hook_problems(ROOT), [])
+
+    def test_a_missing_or_plain_script_is_a_problem(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "hooks").mkdir()
+            (root / "hooks" / "hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [
+                {"matcher": "Bash", "hooks": [
+                    {"type": "command", "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/a.py"'},
+                    {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/b.py"}]}]}}))
+            (root / "hooks" / "a.py").write_text("print()\n")
+            self.assertEqual(hook_problems(root), ["hooks/a.py is not executable",
+                                                   "hooks/b.py is missing"])
 
     def test_no_skill_sends_the_user_to_github(self):
         import re

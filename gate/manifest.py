@@ -1,9 +1,8 @@
-"""Build, check, and read a manifest: the record of a freeze.
+"""Build and check a manifest: the record of a freeze.
 
-The manifest lives in the message of the freeze tag, as JSON.
+The store puts the manifest in the signed lock, locks/<ticket>.json in the state folder.
 """
 
-import json
 
 from gate import junit
 from gate.gitio import fingerprint, show_bytes
@@ -73,14 +72,3 @@ def changed(manifest: dict, repo, ref: str) -> list:
             out.append(path)
     return out
 
-
-def dumps(manifest: dict) -> str:
-    return json.dumps(manifest, indent=2, sort_keys=True)
-
-
-def loads(text: str) -> dict:
-    """Read a manifest from a tag message. The JSON may follow other lines."""
-    start = text.find("{")
-    if start < 0:
-        raise FreezeError("the tag message holds no manifest")
-    return json.loads(text[start : text.rfind("}") + 1])

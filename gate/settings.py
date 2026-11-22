@@ -65,8 +65,6 @@ DEFAULTS = {
     "auto_merge": False,
     # The time limit of a check that sets no "minutes" of its own.
     "check_minutes": 20,
-    # Paths a change may touch with no ticket: tier 1, and only the checks run.
-    "free": ["docs/**", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"],
     # The base suite: one command for each of the five things a base must prove.
     "base": {"checks_run": "", "parallel_tests": "", "env_up_down": "",
              "bad_setting_stops": "", "one_log_line": ""},

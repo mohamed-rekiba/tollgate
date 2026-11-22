@@ -18,7 +18,7 @@ _Avoid_: issue, work item
 **gate**: The check that decides whether a change may merge.
 _Avoid_: judge, ticket
 
-**workflow**: The one GitHub workflow.
+**workflow**: The steps a ticket goes through.
 _Avoid_: Action, item
 """
 
@@ -200,6 +200,15 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(Path(tmp, install_writing_check.TARGET).read_bytes(),
                              install_writing_check.SOURCE.read_bytes())
             self.assertEqual(install_writing_check.install(tmp), [])
+
+    def test_help_installs_nothing_and_project_names_the_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+                install_writing_check.main(["--help", "--project", tmp])
+            self.assertFalse(Path(tmp, install_writing_check.TARGET).exists())
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(install_writing_check.main(["--project", tmp]), 0)
+            self.assertTrue(Path(tmp, install_writing_check.TARGET).exists())
 
     def test_the_copy_runs_alone_with_no_tollgate_code(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -46,6 +46,10 @@ class Env(unittest.TestCase):
                                              "TOLLGATE_KEYS": str(self.tmp / "keys")})
         patch.start()
         self.addCleanup(patch.stop)
+        # Docker is checked on its own, in DockerCheckTest.
+        docker = mock.patch.object(setup_init, "docker_ready", return_value="")
+        docker.start()
+        self.addCleanup(docker.stop)
         self.addCleanup(self._tmp.cleanup)
         self.owner = self.tmp / "owner_key"
         sh(self.tmp, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "owner", "-f",
@@ -372,6 +376,43 @@ class InitTest(Env):
             setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False)
 
 
+REAL_DOCKER_READY = setup_init.docker_ready
+
+
+class DockerCheckTest(Env):
+    def write(self, root, isolation):
+        Path(root, ".tollgate").mkdir(exist_ok=True)
+        Path(root, ".tollgate/settings.json").write_text(json.dumps({"isolation": isolation}))
+
+    def test_the_container_isolation_needs_docker(self):
+        root = self.repo()
+        self.write(root, "container")
+        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY):
+            with self.assertRaisesRegex(setup_init.InitError, "docker is not installed"):
+                setup_init.check_isolation(root, which=lambda t: None)
+            with mock.patch.object(setup_init.subprocess, "run",
+                                   return_value=mock.Mock(returncode=1)), \
+                    self.assertRaisesRegex(setup_init.InitError, "installed but not running"):
+                setup_init.check_isolation(root, which=lambda t: "/bin/" + t)
+            with mock.patch.object(setup_init.subprocess, "run",
+                                   return_value=mock.Mock(returncode=0)):
+                self.assertEqual(setup_init.check_isolation(root, which=lambda t: "/bin/" + t),
+                                 "isolation: container, Docker is running")
+
+    def test_no_settings_means_container(self):
+        root = self.repo()
+        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY), \
+                self.assertRaisesRegex(setup_init.InitError, "docker is not installed"):
+            setup_init.check_isolation(root, which=lambda t: None)
+
+    def test_the_sandbox_isolation_skips_the_check(self):
+        root = self.repo()
+        self.write(root, "sandbox")
+        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY):
+            self.assertEqual(setup_init.check_isolation(root, which=lambda t: None),
+                             "isolation: sandbox, Docker not needed")
+
+
 class MergeTest(Env):
     def setUp(self):
         super().setUp()
@@ -400,6 +441,17 @@ class MergeTest(Env):
         code, out = self.run_main("approve", self.commit, "--key", str(self.owner))
         self.assertEqual(code, 0, out)
         self.assertEqual(len(self.store.approvals(self.commit)), 1)
+        code, out = self.run_main("merge", self.commit)
+        self.assertEqual(code, 0, out)
+        sh(self.root, "git", "merge-base", "--is-ancestor", self.commit, "main")
+
+    def test_a_change_made_by_hand_merges_only_after_your_approval(self):
+        self.assertIn("a change made by hand", self.run_main("show", self.commit)[1])
+        code, out = self.run_main("merge", self.commit)
+        self.assertEqual(code, 1)
+        self.assertIn("needs your approval first", out)
+        code, out = self.run_main("approve", self.commit, "--key", str(self.owner))
+        self.assertEqual(code, 0, out)
         code, out = self.run_main("merge", self.commit)
         self.assertEqual(code, 0, out)
         sh(self.root, "git", "merge-base", "--is-ancestor", self.commit, "main")

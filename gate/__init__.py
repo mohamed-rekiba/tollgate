@@ -1,1 +1,1 @@
-"""The Tollgate Action: the freeze and the gate. Python standard library only."""
+"""The store, the freeze, and the gate. They run on your machine. Python standard library only."""

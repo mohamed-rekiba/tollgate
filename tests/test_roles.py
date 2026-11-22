@@ -44,10 +44,10 @@ class AnswerTest(unittest.TestCase):
         self.assertEqual(answer.cost_usd, 0.25)
 
     def test_a_failing_role_shows_what_it_printed(self):
-        with tempfile.TemporaryDirectory() as d:
-            with self.assertRaisesRegex(roles.RoleError, "credit balance is too low"):
-                roles.run(f"{sys.executable} -c 'print(\"credit balance is too low\"); exit(1)'",
-                          "reviewer", {}, d, 1)
+        with tempfile.TemporaryDirectory() as d, \
+                self.assertRaisesRegex(roles.RoleError, "credit balance is too low"):
+            roles.run(f"{sys.executable} -c 'print(\"credit balance is too low\"); exit(1)'",
+                      "reviewer", {}, d, 1)
 
     def test_a_role_past_its_time_is_a_timeout(self):
         with tempfile.TemporaryDirectory() as d, self.assertRaises(roles.RoleTimeout):

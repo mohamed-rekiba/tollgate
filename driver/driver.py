@@ -426,6 +426,13 @@ class Driver:
             st_.hint = hint
             st_.stronger = st_.stronger or decision == "stronger"
             return True
+        if decision == "split":
+            # UNFINISHED: the driver does not split a ticket yet. New tickets would need a
+            # new plan lock, so you split it by hand and start a task for the parts.
+            reason = (f"{who} chose split: UNFINISHED, parked. Split the ticket by hand into "
+                      "smaller tickets")
+            self.log.add("parked", reason=reason, decision="split")
+            raise Parked(reason)
         self.log.add("parked", reason=f"{who} chose {decision}")
         raise Parked(f"{who} chose {decision}")
 

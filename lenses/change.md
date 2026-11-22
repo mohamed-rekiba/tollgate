@@ -13,7 +13,7 @@ Look for these, and report each one you can point to with a file and a line:
 
 ## Writing
 
-These rules cover documents, code comments, commit messages, and pull requests.
+These rules cover documents, code comments, commit messages, and the descriptions of changes.
 
 Write like a plain-spoken senior engineer talking to someone who knows the project. Follow the spirit of Simplified Technical English (ASD-STE100), with these rules and nothing more from it:
 

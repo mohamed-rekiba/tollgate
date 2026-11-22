@@ -89,9 +89,9 @@ def check_edit(path: str, cwd: str, role: str, copy: str, project: str) -> str:
     if not _under(target, base):
         return ""
     rel = target.relative_to(base).as_posix()
-    if rel.startswith(".tollgate/") or rel == ".tollgate":
-        if not (role in ("planner", "") and rel.startswith(DRAFTS)):
-            return f"{rel} is under .tollgate/; only the driver writes there"
+    if (rel.startswith(".tollgate/") or rel == ".tollgate") and not (
+            role in ("planner", "") and rel.startswith(DRAFTS)):
+        return f"{rel} is under .tollgate/; only the driver writes there"
     ticket = locked_files(project).get(rel)
     if ticket:
         return f"{rel} is locked by ticket {ticket}; no role may change it"
@@ -194,8 +194,8 @@ def main(argv=None, stdin=None) -> int:
     try:
         call = json.loads((stdin or sys.stdin).read())
         if not isinstance(call, dict):
-            raise ValueError("not an object")
-    except ValueError as err:
+            raise TypeError("not an object")
+    except (ValueError, TypeError) as err:
         # A guard that cannot read the call refuses it.
         print(f"tollgate: the hook could not read the tool call: {err}", file=sys.stderr)
         return 2
