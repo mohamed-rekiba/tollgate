@@ -111,6 +111,35 @@ def _branch(cwd: str) -> str:
     return done.stdout.strip()
 
 
+def _remotes(cwd: str) -> set:
+    try:
+        out = subprocess.run(["git", "-C", cwd, "remote"], capture_output=True, text=True,
+                             check=False, timeout=10).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    return set(out.split())
+
+
+def is_sync(rest: list, cwd: str) -> bool:
+    """True when a merge only brings a remote's main up to date here: --ff-only, and
+    every target is a remote's main, such as origin/main or @{u}. A fast-forward
+    creates no commit, so it brings in only what the remote already has."""
+    if "--ff-only" not in rest:
+        return False
+    targets = [w for w in rest if not w.startswith("-")]
+    if not targets:
+        return False
+    remotes = _remotes(cwd)
+    for target in targets:
+        if target in ("@{u}", "@{upstream}") or re.fullmatch(r"(main|master)@\{(u|upstream)\}",
+                                                             target):
+            continue
+        found = re.fullmatch(r"(?:refs/remotes/)?([^/\s]+)/(main|master)", target)
+        if not found or found.group(1) not in remotes:
+            return False
+    return True
+
+
 def check_git(words: list, cwd: str, on_main: bool = False) -> str:
     """words start at a git command. on_main is true when an earlier part of the
     command checked out main. The reason to refuse it, or ""."""
@@ -132,7 +161,8 @@ def check_git(words: list, cwd: str, on_main: bool = False) -> str:
         return "no role pushes; the store merges a ready change"
     if sub == "config" and any(w.startswith("core.hookspath") for w in lowered):
         return "the command changes core.hooksPath"
-    if sub == "merge" and (MAIN & set(rest) or on_main or _branch(cwd) in MAIN):
+    into_main = MAIN & set(rest) or on_main or _branch(cwd) in MAIN
+    if sub == "merge" and into_main and not is_sync(rest, cwd):
         return "only the store merges into main"
     if sub == "commit":
         for n, w in enumerate(rest):

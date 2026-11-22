@@ -155,6 +155,25 @@ class BashTest(Env):
         # The command names main, so the hook cannot tell the direction from the words.
         self.assertRefuses("only the store merges", "Bash", {"command": "git merge main"})
 
+    def add_origin(self):
+        subprocess.run(["git", "-C", str(self.project), "remote", "add", "origin",
+                        str(self.project)], check=True)
+
+    def test_a_fast_forward_from_the_remote_main_is_a_sync(self):
+        self.add_origin()
+        for command in ("git merge --ff-only origin/main", "git merge --ff-only @{u}",
+                        "git checkout main && git merge --ff-only refs/remotes/origin/main"):
+            self.assertLets("Bash", {"command": command}, role="", cwd=self.project)
+
+    def test_a_merge_that_is_not_a_sync_is_still_refused(self):
+        self.add_origin()
+        for command in ("git merge origin/main",             # it may create a merge commit
+                        "git merge --ff-only tg/T-1",        # a local branch, not the remote
+                        "git merge --ff-only fake/main",     # no remote has that name
+                        "git merge --ff-only origin/main tg/T-1"):
+            self.assertRefuses("only the store merges", "Bash", {"command": command},
+                               role="", cwd=self.project)
+
     def test_no_verify_is_refused(self):
         for command in ("git commit --no-verify -m x", "git commit -nm x", "git commit -n"):
             self.assertRefuses("skips the checks", "Bash", {"command": command})
