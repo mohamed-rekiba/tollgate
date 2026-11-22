@@ -11,14 +11,17 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
+      - name: Install the check tools
+        run: pip install -r requirements-dev.txt
       - name: Style
-        run: pipx run ruff check .
+        run: ruff check .
       - name: Tests
-        run: |
-          pip install pyyaml
-          python -m unittest discover -s tests -t . -v
+        run: python -m unittest discover -s tests -t . -v

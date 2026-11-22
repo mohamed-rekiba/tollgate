@@ -1,0 +1,4 @@
+# The tools that check Tollgate in CI. Tollgate itself needs only the Python
+# standard library. Dependabot keeps these versions current.
+ruff==0.17.6
+pyyaml==6.0.4
