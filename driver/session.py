@@ -177,10 +177,11 @@ def save_work(copy: str, found_key: str) -> str:
     return commit
 
 
-def restore_work(copy: str, found_key: str) -> bool:
-    """Put the saved work back in the copy's work tree, on top of HEAD. False when the
-    copy holds no such work, for example a copy made again."""
-    ref = work_ref(found_key)
+def restore_work(copy: str, commit: str) -> bool:
+    """Put the saved work back in the copy's work tree, on top of HEAD. commit is the
+    one the saved answer names, not the ref, which a role in the copy could move.
+    False when the copy holds no such commit, for example a copy made again."""
+    ref = commit
     done = subprocess.run(["git", "rev-parse", "-q", "--verify", f"{ref}^{{tree}}"], cwd=copy,
                           capture_output=True, text=True, check=False)
     if done.returncode:
@@ -228,7 +229,7 @@ class Session:
     def __call__(self, call: Call) -> roles.Answer:
         found_key = key(call.role, call.lens, call.inputs)
         found = saved(call.project, call.log, found_key)
-        if found and (not found.get("work") or restore_work(call.copy, found_key)):
+        if found and (not found.get("work") or restore_work(call.copy, found["work"])):
             text = found["text"]
             return roles.Answer(roles.last_block(text), None, float(found.get("seconds") or 0),
                                 text)

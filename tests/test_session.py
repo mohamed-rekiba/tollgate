@@ -129,6 +129,24 @@ class WorkTest(Case):
         self.assertFalse(Path(copy, "run_tests.py").exists())
         self.assertEqual(sh(copy, "git", "diff", "--cached", "--name-only"), "")
 
+    def test_a_replay_puts_back_the_saved_commit_even_if_the_ref_moves(self):
+        s = self.sample()
+        copy = roles.make_copy(str(s.project), "T-1")
+        caller = session.Session()
+        call = self.call(s, role="builder", lens=None, copy=copy)
+        with self.assertRaises(session.Pause) as paused:
+            caller(call)
+        Path(copy, "app.py").write_text("saved\n")
+        session.save_answer(str(s.project), paused.exception.step, '```json\n{}\n```')
+        sh(copy, "git", "reset", "-q", "--hard", "HEAD")
+        # A role in the copy points the ref at other work.
+        Path(copy, "app.py").write_text("forged\n")
+        sh(copy, "git", "update-ref", session.work_ref(paused.exception.step["key"]),
+           session.save_work(copy, "other"))
+        sh(copy, "git", "reset", "-q", "--hard", "HEAD")
+        caller(call)
+        self.assertEqual(Path(copy, "app.py").read_text(), "saved\n")
+
     def test_a_reviewer_s_answer_saves_no_work(self):
         s = self.sample()
         copy = roles.make_copy(str(s.project), "T-1")
