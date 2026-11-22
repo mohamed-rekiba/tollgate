@@ -13,6 +13,7 @@ Tollgate holds its own changes to the rules it holds for a project. This page sa
 - Style: `ruff check .`.
 - Writing: `python3 setup/check_writing.py`. It reads the change against main: plain words, docs that move with the code, and the commit messages.
 - Diagrams: `python3 docs/diagrams/build.py --check`. A diagram is a spec drawn as SVG, never a Mermaid block.
+- Agents: `python3 -m setup.agents --check`. Each file in `agents/` is written from a role file in `roles/`; after you change a role, run `python3 -m setup.agents`.
 
 CI runs the same checks on each proposed change.
 

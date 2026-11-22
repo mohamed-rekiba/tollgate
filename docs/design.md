@@ -298,7 +298,7 @@ When a task ends, you read the report. It has:
 | Formats | `gate/settings.py`, `gate/analysis.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
 | Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py` | Run one ticket, one task, one roadmap. |
 | Stop and advisor | `driver/stop.py`, `driver/advisor.py` | When to stop, and how to ask. |
-| Roles | `driver/roles.py`, `roles/`, `lenses/` | Run one AI session in its copy and its isolation. |
+| Roles | `driver/roles.py`, `roles/`, `lenses/`, `agents/` | Run one AI session in its copy and its isolation. `agents/` holds each role as a Claude Code subagent, written from its role file by `setup/agents.py`. |
 | Log and report | `driver/log.py`, `driver/history.py`, `driver/report.py`, `driver/retro.py` | One line per event. Read the logs back. |
 | Hook and policies | `hooks/guard.py`, `hooks/policy.py`, `hooks/hooks.json` | Layer 1. |
 | Setup | `setup/init.py`, `setup/precommit.py`, `setup/check_*.py`, `setup/health.py`, `setup/merge.py`, `setup/inbox.py`, `setup/home.py`, `setup/sync_rules.py` | Layer 2, and the scripts behind the skills. |
