@@ -1,0 +1,227 @@
+{
+ "type": "scene",
+ "title": "A home with three projects",
+ "desc": "An isometric scene. A home, one git repository on your machine, holds the list of projects and the rules they share. Lanes carry the shared rules to three projects. Each project keeps its own tests and its own rules.",
+ "size": [
+  1120,
+  640
+ ],
+ "origin": [
+  500,
+  330
+ ],
+ "scale": 0.74,
+ "grid": 480,
+ "caption": [
+  "A home with three projects",
+  "one git repository keeps the list and the shared rules"
+ ],
+ "zones": [
+  {
+   "at": [
+    -330,
+    -120,
+    -100,
+    120
+   ],
+   "kind": "you"
+  },
+  {
+   "at": [
+    90,
+    -340,
+    310,
+    -160
+   ],
+   "kind": "server"
+  },
+  {
+   "at": [
+    90,
+    -90,
+    310,
+    90
+   ],
+   "kind": "server"
+  },
+  {
+   "at": [
+    90,
+    160,
+    310,
+    340
+   ],
+   "kind": "server"
+  }
+ ],
+ "lanes": [
+  {
+   "path": [
+    [
+     -160,
+     0
+    ],
+    [
+     40,
+     0
+    ],
+    [
+     40,
+     -250
+    ],
+    [
+     90,
+     -250
+    ]
+   ],
+   "label": "shared rules",
+   "at": 0.55
+  },
+  {
+   "path": [
+    [
+     -160,
+     0
+    ],
+    [
+     90,
+     0
+    ]
+   ],
+   "at": 0.55
+  },
+  {
+   "path": [
+    [
+     -160,
+     0
+    ],
+    [
+     40,
+     0
+    ],
+    [
+     40,
+     250
+    ],
+    [
+     90,
+     250
+    ]
+   ],
+   "at": 0.55
+  }
+ ],
+ "objects": [
+  {
+   "type": "house",
+   "at": [
+    -215,
+    0
+   ],
+   "size": 110
+  },
+  {
+   "type": "server",
+   "at": [
+    210,
+    -270
+   ],
+   "levels": 2,
+   "size": 64
+  },
+  {
+   "type": "gate",
+   "at": [
+    210,
+    -198
+   ],
+   "arm_to": 110,
+   "axis": "x",
+   "name": "still"
+  },
+  {
+   "type": "server",
+   "at": [
+    210,
+    -20
+   ],
+   "levels": 2,
+   "size": 64
+  },
+  {
+   "type": "gate",
+   "at": [
+    210,
+    52
+   ],
+   "arm_to": 110,
+   "axis": "x",
+   "name": "still"
+  },
+  {
+   "type": "server",
+   "at": [
+    210,
+    230
+   ],
+   "levels": 2,
+   "size": 64
+  },
+  {
+   "type": "gate",
+   "at": [
+    210,
+    302
+   ],
+   "arm_to": 110,
+   "axis": "x",
+   "name": "still"
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    -330,
+    140,
+    30
+   ],
+   "head": "Home",
+   "sub": [
+    "the list of projects",
+    "and the rules they share"
+   ],
+   "anchor": "end"
+  },
+  {
+   "at": [
+    340,
+    -220,
+    0
+   ],
+   "head": "Project A",
+   "sub": "its own tests and rules",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    340,
+    30,
+    0
+   ],
+   "head": "Project B",
+   "sub": "its own tests and rules",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    340,
+    280,
+    0
+   ],
+   "head": "Project C",
+   "sub": "its own tests and rules",
+   "anchor": "start"
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "title": "A large request in three parts",
+ "desc": "First the base: the project can be built, tested, and run. Then the skeleton: the shared rules, and one thin path that works from end to end. Then the features, one at a time, each proven from end to end.",
+ "nodes": [
+  {
+   "id": "a",
+   "text": "The base\nIt builds, tests,\nand runs",
+   "col": 0,
+   "row": 0,
+   "kind": "server",
+   "icon": "package",
+   "tag": "PART 1"
+  },
+  {
+   "id": "b",
+   "text": "The skeleton\nShared rules, one\nthin path that works",
+   "col": 1,
+   "row": 0,
+   "kind": "check",
+   "icon": "workflow",
+   "tag": "PART 2"
+  },
+  {
+   "id": "c",
+   "text": "The features\nOne at a time,\nend to end",
+   "col": 2,
+   "row": 0,
+   "kind": "ai",
+   "icon": "ticket",
+   "tag": "PART 3"
+  }
+ ],
+ "edges": [
+  {
+   "from": "a",
+   "to": "b"
+  },
+  {
+   "from": "b",
+   "to": "c"
+  }
+ ],
+ "names": {
+  "server": "STORE"
+ }
+}
