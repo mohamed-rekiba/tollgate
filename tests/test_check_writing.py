@@ -180,6 +180,12 @@ class CheckWritingTest(unittest.TestCase):
         self.repo.commit("build(deps): pin the check tools")
         self.assertEqual(self.repo.check(), (0, ""))
 
+    def test_a_changelog_is_written_from_commit_subjects_and_not_checked(self):
+        self.repo.write("CHANGELOG.md", "* skip pip requirements files\n")
+        self.repo.write("docs/CHANGELOG.md", "* fix the judge\n")
+        self.repo.commit("chore(main): release 0.1.1")
+        self.assertEqual(self.repo.check(), (0, ""))
+
     def test_a_word_to_avoid_names_the_term_to_use(self):
         self.repo.write("docs/guide.md", "Open an issue for each judge.\n")
         self.repo.commit("docs(guide): add a guide")
