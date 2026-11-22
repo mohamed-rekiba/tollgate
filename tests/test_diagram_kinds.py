@@ -2,6 +2,7 @@
 and fetching the AWS icons on first use."""
 
 import json
+import re
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -180,18 +181,60 @@ class CalloutTest(unittest.TestCase):
                 draw(callout_spec([dict(LEFT[0], **bad)]), "light")
             self.assertIn(says, str(err.exception))
 
-    def test_every_word_is_for_people(self):
-        """The words of the rules view pass the same check as every other picture."""
+    def test_the_how_it_works_picture_numbers_every_rule(self):
+        """One picture holds the process and the rules: numbers 1 to 8, each once."""
         import re
         root = Path(__file__).resolve().parent.parent / "docs" / "diagrams"
-        for name in ("how-it-works-rules.svg", "how-it-works-rules-dark.svg"):
+        for name in ("how-it-works.svg", "how-it-works-dark.svg"):
             svg = (root / name).read_text()
-            said = " ".join(e.text or "" for e in ET.fromstring(svg).iter(f"{NS}text"))
-            self.assertIsNone(re.search(r"tg/|\b[0-9a-f]{12,}\b|\.py\b|\.ya?ml\b", said))
-            for n in range(1, 9):
-                self.assertIn(str(n), said.split())
-        spec = json.loads((root / "src" / "how-it-works-rules.json").read_text())
-        self.assertEqual(sorted(spec), ["callouts", "desc", "title"], "objects come from one source")
+            found = sorted(int(n) for n in re.findall(r'class="pin" data-n="(\d+)"', svg))
+            self.assertEqual(found, list(range(1, 9)), name)
+
+
+def pin_spec(label, **extra):
+    return {"type": "scene", "title": "t", "desc": "d", "size": [600, 400],
+            "origin": [300, 200], "scale": 0.6, "labels": [label], **extra}
+
+
+class PinTest(unittest.TestCase):
+    def stem(self, svg):
+        group = ET.fromstring(svg).find(f".//{NS}g[@class='pin']")
+        return group, [float(v) for v in re.findall(r"-?\d+\.\d", group.find(f"{NS}path").get("d"))]
+
+    def test_a_straight_stem_stops_at_the_edge_of_its_number(self):
+        for drop in (60, -60):
+            svg = draw(pin_spec({"n": 3, "head": "Build", "sub": "x", "pin": [0, 0, 0],
+                                 "drop": drop, "kind": "ai"}), "light")
+            group, d = self.stem(svg)
+            number = group.find(f"{NS}circle[@r='{scene.BADGE}']")
+            cx, cy = float(number.get("cx")), float(number.get("cy"))
+            with self.subTest(drop=drop):
+                self.assertEqual(d[0], cx, "the number sits on the stem")
+                self.assertEqual(abs(d[-1] - cy), scene.BADGE + 2, "the stem stops at its edge")
+
+    def test_a_number_close_to_the_stem_moves_onto_it(self):
+        svg = draw(pin_spec({"n": 6, "head": "Main", "sub": "x", "pin": [0, 0, 0],
+                             "at": [10, -10, -60], "anchor": "start", "kind": "you"}), "light")
+        group, d = self.stem(svg)
+        number = group.find(f"{NS}circle[@r='{scene.BADGE}']")
+        self.assertEqual(float(number.get("cx")), d[0])
+        words = group.find(f"{NS}text[@letter-spacing]")
+        self.assertEqual(float(words.get("x")) - d[0], scene.PIN_GAP)
+
+    def test_the_rings_stop_pulsing_on_request(self):
+        svg = draw(pin_spec({"n": 1, "head": "Plan", "pin": [0, 0, 0], "drop": 50}), "dark")
+        self.assertIn('class="pulse"', svg)
+        self.assertRegex(svg, r"prefers-reduced-motion:reduce\)\{[^}]*\.pulse\{animation:none")
+
+    def test_a_pinned_label_needs_a_place(self):
+        with self.assertRaisesRegex(ValueError, "give it 'at' or 'drop'"):
+            draw(pin_spec({"head": "Lost", "pin": [0, 0, 0]}), "light")
+
+    def test_the_note_has_its_number(self):
+        svg = draw(pin_spec({"head": "x", "at": [0, 0, 0]}, caption=["A", "b"],
+                            note={"n": 8, "head": "Always", "line": "every rule"}), "light")
+        self.assertIn('class="pin" data-n="8"', svg)
+        self.assertIn("ALWAYS", svg)
 
 
 class BuildTest(unittest.TestCase):

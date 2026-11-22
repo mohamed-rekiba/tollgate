@@ -33,21 +33,18 @@ Tollgate keeps 14 rules, in 8 groups.
 7. **Mistakes become rules.** A task gives at most 3 lessons. Rules never get looser.
 8. **Always.** Code enforces the rules. Every word is plain, for people.
 
+Each number on the picture marks the part where that rule holds.
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-rules-dark.svg">
-  <img alt="Tollgate's rules, numbered on the picture of how it works: 1 plan first, 2 tests first, 3 build from the best try, 4 the gate judges, 5 stop when stuck, 6 risk sets the checks, 7 mistakes become rules, 8 code enforces every rule, in plain words" src="docs/diagrams/how-it-works-rules.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
+  <img alt="How Tollgate works, with each rule numbered where it holds: 1 the plan, 2 the locked tests, 3 the AI builds from its best try, 4 the gate opens at 70%, 5 the advisor decides after 3 tries, 6 you merge tiers 3 and 4 into main, 7 at most 3 lessons become rules, 8 code enforces every rule, in plain words" src="docs/diagrams/how-it-works.svg">
 </picture>
 
 [docs/principles.md](docs/principles.md) explains each rule: what it means, why, how Tollgate does it, and where it stops.
 
 ## How it works
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
-  <img alt="How Tollgate works, with its three loops" src="docs/diagrams/how-it-works.svg">
-</picture>
-
-Three loops send each problem back to the step that can fix it:
+In the picture above, three loops send each problem back to the step that can fix it:
 
 1. **The plan loop.** Three reviewers read the plan before any code exists. For each finding, the builder fixes it, argues against it with evidence, or asks the advisor. This repeats for up to 4 rounds. Then the advisor approves the plan, and the store signs a plan lock.
 2. **The build loop.** The gate checks each try. Below 70%, the builder gets the reasons and tries again from its best try. After 3 tries, the advisor decides.

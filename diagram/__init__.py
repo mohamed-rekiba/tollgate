@@ -25,7 +25,9 @@ A scene spec:
                           "board" | "house" | "database" | "pedestal" | "aws" | "wall",
                   "at": [x, y], "kind": "server", ...}],
      "labels":  [{"at": [x, y, z], "head": "Main", "sub": ["line", "line"],
-                  "anchor": "start" | "middle" | "end"}],
+                  "anchor": "start" | "middle" | "end",
+                  "pin": [x, y, z], "n": 1, "kind": "ai", "drop": 60}],
+     "note":    {"n": 8, "head": "Always", "line": "One short line.", "kind": "neutral"},
      "ticket":  {"legs": [{"path": [[x, y], ...], "tone": "fail", "wait": 0.9}],
                  "lift": 6},
      "callouts": [{"n": 1, "head": "Plan first", "line": "One short sentence or two.",
@@ -35,6 +37,14 @@ Ground units: x runs down-right on the page, y runs down-left, z runs up.
 "gate" takes "arm_to" (where the barrier ends) and "axis" ("x" or "y");
 "pedestal" takes "icon"; "aws" takes "aws" (a service name); "wall" takes "to".
 "lift" names the ticket leg during which the gate's barrier is up.
+
+A label with "pin" is tied to its part: a flat ring on the point "pin" names,
+and a stem straight up or down from it, with one rounded turn, level to the
+label. Place the label with "at", or with "drop" to put it that many pixels
+under the pin, its words to the right of a straight stem. "n" puts a number
+where the stem ends, and the numbered rings pulse in order. "kind" sets the
+color. "note" is one numbered line under the caption, for what holds for the
+whole picture.
 
 Callouts are numbered labels beside the scene. The page widens by a column for
 each side that has them, and grows by a row for each bottom one. A dotted
