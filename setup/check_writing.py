@@ -22,7 +22,9 @@ It fails on:
   path in backticks to a file the change deletes or moves, or `path::name` for
   a function or class the change removes. A new link to a file that does not
   exist fails too. A reference that was broken before the change, or an
-  example path that never existed, is not reported.
+  example path that never existed, is not reported;
+- a Mermaid block that the change adds to a document: a diagram is a spec
+  drawn as SVG with the diagram skill.
 
 The word list is CONTEXT.md, in this form: a term in bold, then a line that
 starts with `_Avoid_:` and lists the words to avoid, with commas between them.
@@ -343,6 +345,17 @@ def check_docs(root: Path, base: str, staged: bool = False) -> list:
     return found
 
 
+def check_mermaid(root: Path, base: str, staged: bool = False) -> list:
+    """Each Mermaid block that the change adds to a document."""
+    found = []
+    for name, lines in diff_lines(root, base, staged).items():
+        if name.endswith(DOCS):
+            found += [f"{name}:{n}: a Mermaid block. Draw the diagram with the diagram skill: "
+                      "a spec in a src folder, drawn as SVG."
+                      for n, text in lines if text.strip().startswith(("```mermaid", "~~~mermaid"))]
+    return found
+
+
 def check_readme(root: Path) -> list:
     path = root / "README.md"
     if not path.exists():
@@ -385,12 +398,14 @@ def main(repo=".", base="main", staged=False) -> int:
     if staged:
         names = diff_lines(root, base, True)
         found = (check_lines(root, base, True) + check_docs(root, base, True)
+                 + check_mermaid(root, base, True)
                  + (check_readme(root) if "README.md" in names else []))
     elif git("rev-parse", "--verify", "-q", base, cwd=root)[0] != 0:
         print(f"check_writing: there is no {base} to compare with, so only the README is checked.")
         found = check_readme(root)
     else:
-        found = (check_lines(root, base) + check_docs(root, base) + check_readme(root)
+        found = (check_lines(root, base) + check_docs(root, base) + check_mermaid(root, base)
+                 + check_readme(root)
                  + check_commits(root, base))
     for line in found:
         print(line)

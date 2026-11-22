@@ -16,7 +16,7 @@ description: Write or update a README, a document, code comments, or a commit me
 
 - **README:** answer the four questions in the first screen. Put the rest under them.
 - **A document:** one topic for each section, and the answer first in each.
-- **A diagram:** use the `diagram` skill. Never a Mermaid block or a picture of text.
+- **A diagram:** draw it with the `diagram` skill, as the Writing rules say. The writing check fails a Mermaid block that a change adds.
 - **A code comment:** say why the code is this way. Leave out what the code already says.
 - **A commit message:** a subject in the form `type(scope): subject`, then a body that says why. The author is the owner of the repository. No line credits an AI.
 - **A change for review:** what changes and why, then how it was checked. Say plainly what is not tested.

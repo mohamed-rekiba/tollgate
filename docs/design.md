@@ -528,6 +528,7 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | New logic has a test. | Review lens |
 | It follows the project's own written standards. | Review lens |
 | It updates the docs that describe what it changes. | Review lens, and `check_writing.py` for links and names |
+| A diagram is a spec drawn as SVG, never a Mermaid block. The builder writes the spec, and the driver draws the SVG files after each try. | The driver, and `check_writing.py` |
 
 ### A bug fix
 
