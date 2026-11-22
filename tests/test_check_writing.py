@@ -174,6 +174,12 @@ class CheckWritingTest(unittest.TestCase):
         self.repo.commit("docs(guide): say what the gate checks")
         self.assertEqual(self.repo.check(), (0, ""))
 
+    def test_a_pip_requirements_file_is_not_prose(self):
+        self.repo.write("requirements-dev.txt", "ruff==0.17.6\n    # via -r requirements-dev.in\n")
+        self.repo.write("constraints.txt", "# leverage nothing\n")
+        self.repo.commit("build(deps): pin the check tools")
+        self.assertEqual(self.repo.check(), (0, ""))
+
     def test_a_word_to_avoid_names_the_term_to_use(self):
         self.repo.write("docs/guide.md", "Open an issue for each judge.\n")
         self.repo.commit("docs(guide): add a guide")
