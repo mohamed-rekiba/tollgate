@@ -17,11 +17,11 @@ A way for an AI role, or a change that Tollgate builds, to get past a rule that 
 
 The limits that `docs/principles.md` already states, such as a person skipping the checks with `--no-verify`, are not holes.
 
-## The machine key in session mode
+## Threat model of session mode
 
-In session mode, the default, each role runs as a subagent of your own Claude Code session, on your machine. The hook refuses a role's Read, Grep, or Glob of the key folder, or of the state folder outside its copy, and a Bash command whose text names either folder. A Bash command can still hide a path, for example by building it from parts. So in session mode the machine key is protected by the hook only.
+Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your signing key. For that, use background mode, which runs roles in a container with no key.
 
-The background driver with `"isolation": "container"` is the mode where the key is out of a role's reach: the key folder is never mounted in the container. Use it when a role must have no way to the machine key. A way around the hook in session mode is a known limit, not a hole; a way around it in background mode with a container is a hole.
+So in session mode, a role that reaches the machine key on purpose, for example from a test it writes, is a known limit, not a hole. A way for a role to get past a rule by mistake or as a shortcut is a hole. In background mode with `"isolation": "container"`, any way for a role to reach the key is a hole. Use background mode for tier 3 and 4 work from a source you do not trust.
 
 ## Versions
 

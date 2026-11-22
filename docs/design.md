@@ -119,7 +119,7 @@ The driver decides every step, the gate scores every try, and the store signs an
 
 The driver asks for each role through one caller. In session mode, the caller works out a key for the question: the SHA-256 of the role, the lens, and the inputs. If `logs/<log>.answers.jsonl` in the state folder already holds an answer with that key, the caller returns it. If not, it writes the step file, `run/step.json`: the role, the lens, the full prompt, the copy, the key, and the task and ticket. Then the driver lets go of its run lock and ends with 5.
 
-`python3 -P -m driver.step next --project . --task <task id>` runs the driver up to the next step and prints it: the subagent to start, its prompt, its folder, and the key. `driver.step answer --project . --key <key> --nonce <nonce>` takes the subagent's whole answer on standard input. Each `next` prints a new nonce and keeps only its hash in the step file, so only the session that ran `next` can answer; and the hook refuses any Tollgate command from a role. `answer` refuses a key or a nonce that is not the waiting step's, and never prints them, and it refuses an answer with no final json block. It saves the answer, then runs `next` again. `next` also prints the end of the task, or a question for you, which you answer as `/tollgate:inbox` does.
+`python3 -P -m driver.step next --project . --task <task id>` runs the driver up to the next step and prints it: the subagent to start, its prompt, its folder, and the key. `driver.step answer --project . --key <key> --nonce <nonce>` takes the subagent's whole answer on standard input. Each `next` prints a new nonce and keeps only its hash in the step file, so only the session that ran `next` can answer, and the hook refuses a role's plain run of a Tollgate command. These are defense in depth: see [Threat model](#threat-model). `answer` refuses a key or a nonce that is not the waiting step's, and never prints them, and it refuses an answer with no final json block. It saves the answer, then runs `next` again. `next` also prints the end of the task, or a question for you, which you answer as `/tollgate:inbox` does.
 
 ### The replay
 
@@ -135,9 +135,17 @@ The builder works in the driver's own copy, in the state folder, with no remote:
 
 In session mode the cost of a role is your session's own, and Tollgate cannot see it. The log keeps `cost_usd: null`, not 0, and the report shows the cost as unknown. The two USD stop rules apply only in background mode. Each subagent has a limit of turns instead, in `maxTurns`: the builder the most, then the test writer, and the analyst, the reviewer, and the advisor few.
 
-### The security trade
+### Threat model
 
-In background mode with a container, the key folder is never mounted, so a role cannot reach the machine key at all. In session mode the role runs on your machine as your own session does. The hook refuses a role's Read, Grep, or Glob of the key folder or of the state folder outside its copy, and a Bash command whose text names either folder. But a command can hide a path, for example by building it from parts. So in session mode the machine key is protected by the hook only. The gate and the signed records still hold: a role that reads the key still cannot change main without the store. Choose background mode with a container when a role must have no way to the key.
+Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your signing key. For that, use background mode, which runs roles in a container with no key.
+
+What holds in session mode:
+
+- **Mistakes and shortcuts.** The hook refuses a role's edit of a locked file, of `.tollgate/`, of the copy's `.git` folder, and of the state folder; its read of the key folder and of the state folder outside its copy; a command that names those folders; a push, a merge into main, and `--no-verify`; and a plain run of a Tollgate command that changes its state, such as `driver.step answer`. These rules read the text of a call, so they catch what a role does by mistake or as a shortcut, not what it hides on purpose.
+- **Defense in depth.** `answer` needs a nonce that only `next` prints; the step file keeps only its hash. Each saved answer carries a code made with a secret drawn from the machine key, and a replay ignores an answer whose code does not verify. The driver runs git in a copy with no hooks, no file system monitor, and no replace refs, and puts the builder's work back from the commit the signed answer names.
+- **The gate and the store.** The gate scores each try with no AI. A ticket's pass record names the commit it started from, and the store and the merge check refuse it until that commit is on main, so each ticket merges with its own tier and approval.
+
+What does not hold: a role, or a test or script it writes, runs as you, so it can reach the machine key, sign a record, and get past every rule above. Use background mode, with `"isolation": "container"`, for tier 3 and 4 work from a source you do not trust: the key folder is never mounted in the container.
 
 ### Before a task starts
 

@@ -127,6 +127,10 @@ In a task, each ticket builds on the ready change before it, and nothing merges 
 
 In both modes a stopped task picks up where it stopped, and a question waits in the state folder until you answer it. [docs/design.md](docs/design.md#two-ways-to-run-the-roles) has the details, and what each mode protects.
 
+### Threat model
+
+Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your signing key. For that, use background mode, which runs roles in a container with no key. Use background mode for tier 3 and 4 work from a source you do not trust. [docs/design.md](docs/design.md#threat-model) says what each mode protects.
+
 ## Cost, and when to use it
 
 Each task runs an analyst and a review of the whole task, and each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. In background mode the stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. In session mode the cost is your session's own, so the report shows it as unknown, and each role has a limit of turns instead. Tollgate has no measured cost numbers yet.
