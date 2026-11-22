@@ -1,0 +1,25 @@
+# Dependabot opens a pull request each week when a GitHub Action or a check tool
+# has a new version. Updates of one kind come in one pull request, and each
+# commit message has the form type(scope): subject, so release-please reads it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+      include: scope
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      check-tools:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope

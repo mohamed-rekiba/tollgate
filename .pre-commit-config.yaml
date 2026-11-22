@@ -1,0 +1,62 @@
+# Written by Tollgate: python3 -m setup.precommit.
+# Change the checks in .tollgate/settings.json, then run /tollgate:init.
+default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+- repo: local
+  hooks:
+  - id: tollgate-locked
+    name: "Tollgate: no change to a locked file"
+    entry: "python3 .tollgate/checks/check_locked.py"
+    language: system
+    stages: ["pre-commit", "pre-merge-commit"]
+    pass_filenames: false
+    always_run: true
+  - id: tollgate-writing
+    name: "Tollgate: plain words"
+    entry: "python3 .tollgate/checks/check_writing.py --staged"
+    language: system
+    stages: ["pre-commit"]
+    pass_filenames: false
+    always_run: true
+  - id: tollgate-commit-msg
+    name: "Tollgate: commit message"
+    entry: "python3 .tollgate/checks/check_commit_msg.py"
+    language: system
+    stages: ["commit-msg"]
+    pass_filenames: true
+  - id: tollgate-merge
+    name: "Tollgate: a merge into main passed the gate"
+    entry: "python3 .tollgate/checks/check_merge.py merge"
+    language: system
+    stages: ["pre-merge-commit"]
+    pass_filenames: false
+    always_run: true
+  - id: tollgate-push
+    name: "Tollgate: each commit on main passed the gate"
+    entry: "python3 .tollgate/checks/check_merge.py push"
+    language: system
+    stages: ["pre-push"]
+    pass_filenames: false
+    always_run: true
+  - id: tollgate-check-style
+    name: "Tollgate check: style"
+    entry: "sh -c"
+    language: system
+    args: ["ruff check ."]
+    stages: ["pre-push"]
+    pass_filenames: false
+    always_run: true
+  - id: tollgate-check-tests
+    name: "Tollgate check: tests"
+    entry: "sh -c"
+    language: system
+    args: ["python3 -m pytest -q -p no:cacheprovider --junitxml=report.xml tests"]
+    stages: ["pre-push"]
+    pass_filenames: false
+    always_run: true
+  - id: ruff
+    name: "ruff"
+    entry: "ruff check --force-exclude"
+    language: system
+    types: ["python"]
