@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 from driver import advisor, history, report, roles, session
-from driver.driver import Busy
+from driver.driver import Busy, run_lock
 from driver.log import read
 from driver.task import Task
 from gate import plan as pl
@@ -91,10 +91,20 @@ def next_step(project: str, task: str, store=None) -> tuple:
             subprocess.CalledProcessError) as err:
         return {"error": str(err)}, 1
     if code == 5:
-        step = session.read_step(project)
-        if step is None:
-            return {"error": "the driver paused, but no step file is there; run next again"}, 1
-        nonce = session.new_nonce(project)
+        # The nonce goes in under the task's run lock, so a second next cannot interleave.
+        lock = run_lock(project, f"task-{task}")
+        try:
+            lock.acquire()
+        except Busy as err:
+            return {"error": str(err)}, 1
+        try:
+            step = session.read_step(project)
+            if step is None:
+                return {"error": "the driver paused, but no step file is there; run next "
+                                 "again"}, 1
+            nonce = session.new_nonce(project)
+        finally:
+            lock.release()
         return {"agent": step.get("agent", ""), "prompt": step["prompt"],
                 "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}, 0
     if code == 0:

@@ -301,6 +301,20 @@ class StepTest(Case):
         self.assertIn("another driver", busy["error"])
         self.assertEqual(session.read_step(str(s.project))["key"], out["key"])
 
+    def test_next_writes_the_nonce_only_under_the_run_lock(self):
+        import os
+
+        from driver.task import Task
+        s, store = self.task_sample()
+        self.next(s, store)
+        before = session.step_path(str(s.project)).read_text()
+        state.path(str(s.project), "run", "task-demo.lock").write_text(str(os.getpid()))
+        with mock.patch.object(Task, "run", return_value=5):
+            code, busy = self.next(s, store)
+        self.assertEqual(code, 1)
+        self.assertIn("another driver", busy["error"])
+        self.assertEqual(session.step_path(str(s.project)).read_text(), before)
+
     def test_answer_refuses_an_answer_with_no_final_json_block(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
