@@ -305,5 +305,6 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 - The review lens reports a change whose docs still describe the old version, in each ticket and in the whole task.
 - `check_writing.py` fails a change that removes a file or a name that a doc still points at: a link, a path in backticks, or `path::name`. It also fails a new link to a file that does not exist. It runs in pre-commit and in the gate, so the builder fixes the doc in the same loop as the code.
 - The analyst reads the project's own architecture docs, and confirms each fact against the code.
+- A diagram is a spec drawn as SVG. The builder writes the spec, and the driver draws the SVG files from it after each try, with Tollgate's own code, so a picture always matches its spec. `check_writing.py` fails a Mermaid block that a change adds.
 
 **Where it stops.** The script proves that a link or a name still exists, not that the sentence around it is still true. The review lens reads for that, and only from tier 2. A reference that was broken before the change is not reported.

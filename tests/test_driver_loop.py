@@ -47,6 +47,35 @@ class BuildTest(LoopCase):
                             for e in failed for f in e.get("findings", [])))
         self.assertEqual(store.ready_marks, [])
 
+    def test_the_driver_draws_a_diagram_from_the_builder_s_spec(self):
+        s = self.sample(builder="good diagram=ok")
+        d, store = driver(s)
+        d.run()
+        from tests.driver_fakes import sh
+        head = store.ready_marks[-1]["commit"] if store.ready_marks else "HEAD"
+        svg = sh(d.copy, "git", "show", f"{head}:docs/diagrams/shout.svg")
+        self.assertIn("<svg", svg)
+        self.assertNotIn("drawn by hand", svg)
+        self.assertIn("<svg", sh(d.copy, "git", "show", f"{head}:docs/diagrams/shout-dark.svg"))
+        drawn = [e for e in s.log() if e["event"] == "diagrams_drawn"]
+        self.assertEqual(drawn[0]["folders"], ["docs/diagrams"])
+
+    def test_the_builder_gets_the_diagram_guide_only_when_the_ticket_names_a_diagram(self):
+        from driver.driver import diagram_guide
+        guide = diagram_guide("- [ ] I1 (must): the README has a diagram of the flow")
+        self.assertIn("# Draw a diagram", guide)
+        self.assertIn("The format", guide)
+        self.assertIn("Tollgate draws the SVG files", guide)
+        self.assertEqual(diagram_guide("- [ ] I1 (must): shout returns capitals"), "")
+
+    def test_a_spec_that_cannot_be_drawn_fails_the_try(self):
+        s = self.sample(builder="good diagram=bad")
+        d, _ = driver(s)
+        d.run()
+        failed = [e for e in s.log() if e["event"] == "try_failed"]
+        self.assertTrue(failed)
+        self.assertIn("cannot be drawn", failed[0]["findings"][0]["text"])
+
     def test_nothing_the_driver_writes_stays_in_the_project(self):
         s = self.sample()
         driver(s)[0].run()

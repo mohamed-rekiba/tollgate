@@ -138,6 +138,22 @@ class DocsTest(unittest.TestCase):
         self.assertIn("docs/tool.md:1: names .tool/run.py, which this change removes.",
                       self.repo.check()[1])
 
+    def test_a_new_mermaid_block_fails(self):
+        self.repo.write("docs/flow.md", "The flow:\n\n```mermaid\ngraph TD; a-->b\n```\n")
+        self.repo.commit("docs(flow): add the flow")
+        code, out = self.repo.check()
+        self.assertEqual(code, 1)
+        self.assertIn("docs/flow.md:3: a Mermaid block. Draw the diagram with the diagram "
+                      "skill: a spec in a src folder, drawn as SVG.", out)
+
+    def test_a_mermaid_block_already_on_main_is_not_reported(self):
+        self.repo.write("docs/old.md", "```mermaid\ngraph TD; a-->b\n```\n")
+        self.repo.commit("docs(old): an old flow")
+        sh(self.repo.root, "git", "update-ref", "refs/heads/main", "HEAD")
+        self.repo.write("docs/old.md", "```mermaid\ngraph TD; a-->b\n```\nMore words.\n")
+        self.repo.commit("docs(old): one more line")
+        self.assertEqual(self.repo.check(), (0, ""))
+
     def test_the_staged_change_is_checked_before_a_commit(self):
         sh(self.repo.root, "git", "rm", "-q", "src/send.py")
         code, out = self.repo.check(staged=True)

@@ -10,7 +10,8 @@ way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
 function that does not exist), block=<lens> (that lens finds a blocking problem).
-Builder options: ask=1 (the plan lists an assumption). Advisor options: plan_decision=<d>,
+Builder options: ask=1 (the plan lists an assumption), diagram=ok or bad (the try
+writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
@@ -233,6 +234,17 @@ def main() -> int:
             Path(".github/workflows").mkdir(parents=True, exist_ok=True)
             Path(".github/workflows/evil.yml").write_text("on: push\n")
             Path("app.py").write_text(GREET + SHOUT_OK)
+        if opts.get("diagram"):
+            # A diagram spec; the driver draws the SVG files. "bad" cannot be drawn.
+            Path("docs/diagrams/src").mkdir(parents=True, exist_ok=True)
+            spec = {"type": "flow", "title": "Shout", "desc": "One step.",
+                    "nodes": [{"id": "a", "text": "Shout\nIn capitals", "col": 0, "row": 0}],
+                    "edges": []}
+            if opts["diagram"] == "bad":
+                spec["nodes"][0].pop("col")
+            Path("docs/diagrams/src/shout.json").write_text(json.dumps(spec))
+            Path("docs/diagrams/shout.svg").write_text("<svg>drawn by hand</svg>")
+            Path("docs/diagrams/notes.txt").write_text(json.dumps(sorted(data)))
         answer({"changed": ["app.py"], "locked_test_wrong": None,
                 "decisions": ["shout reuses greet"], "concerns": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: test fit" in prompt:

@@ -23,6 +23,7 @@ advisor or is parked, 4 another driver holds the ticket, 1 an error.
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -106,6 +107,58 @@ def _alive(pid: int) -> bool:
 
 
 # The score.
+
+def diagram_guide(ticket_text: str) -> str:
+    """For a ticket that names a diagram: the diagram skill's rules and the spec
+    formats, so the builder can write a spec. Empty for any other ticket."""
+    if "diagram" not in ticket_text.lower():
+        return ""
+    import diagram
+    from diagram import flow
+    root = Path(__file__).resolve().parent.parent
+    skill = (root / "skills" / "diagram" / "SKILL.md").read_text()
+    return "\n\n".join([
+        ("You write the spec in <folder>/src/<name>.json. Tollgate draws the SVG files from "
+         "it after your try, so leave the build command and the SVG files to it."),
+        skill, "## The format of a flow\n\n" + (flow.__doc__ or ""),
+        "## The format of a scene\n\n" + (diagram.__doc__ or "")])
+
+
+def _is_spec(path: Path) -> bool:
+    """A diagram spec: a JSON object with a diagram type or nodes. A file that does
+    not parse counts only inside a folder named for diagrams."""
+    try:
+        spec = json.loads(path.read_text())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return path.exists() and "diagram" in path.parent.parent.name
+    return isinstance(spec, dict) and (spec.get("type") in ("flow", "scene") or "nodes" in spec)
+
+
+def draw_diagrams(copy: str) -> tuple:
+    """Draw each diagram folder that the builder's try touched: a changed spec in
+    <folder>/src/, or an SVG file in a folder that has specs. The builder writes
+    the spec; Tollgate's own code draws the SVG files, so they always match it.
+    Return (folders, problem); problem is empty when every folder was drawn."""
+    from diagram import aws
+    from diagram.__main__ import build
+    folders = set()
+    for line in git(copy, "status", "--porcelain", "-uall").splitlines():
+        # "XY path", or "R  old -> new"; the output may come with its first space trimmed.
+        path = Path(line.split(None, 1)[-1].split(" -> ")[-1].strip('"'))
+        if path.suffix == ".json" and path.parent.name == "src" and _is_spec(Path(copy, path)):
+            folders.add(path.parent.parent)
+        elif path.suffix == ".svg" and Path(copy, path.parent, "src").is_dir():
+            folders.add(path.parent)
+    names = sorted(str(f) for f in folders)
+    for folder in names:
+        try:
+            build(str(Path(copy, folder)))
+        except (aws.Missing, ValueError, KeyError, TypeError, IndexError,
+                json.JSONDecodeError, SystemExit) as err:
+            return names, (f"the diagram spec in {folder}/src cannot be drawn: {err}. "
+                           "Fix the spec; Tollgate draws the SVG files.")
+    return names, ""
+
 
 def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     """Return (score, {item id: passed}).
@@ -272,6 +325,7 @@ class Driver:
         git(self.copy, "clean", "-q", "-fd")
         last = [e for e in read(self.log_path) if e["event"] == "try_failed"]
         inputs = {"ticket": self.ticket_text, "attempt": n, "hint": st_.hint,
+                  "diagram_guide": diagram_guide(self.ticket_text),
                   "findings": last[-1].get("findings", []) if last else [],
                   "failed": last[-1].get("failed", []) if last else [],
                   "check_output": last[-1].get("check_output", {}) if last else {}}
@@ -290,6 +344,14 @@ class Driver:
         said = {k: answer.data.get(k) for k in ("decisions", "concerns") if answer.data.get(k)}
         if said:
             self.log.add("builder_said", attempt=n, **said)
+        folders, problem = draw_diagrams(self.copy)
+        if folders:
+            self.log.add("diagrams_drawn", attempt=n, folders=folders, problem=problem)
+        if problem:
+            self.log.add("try_failed", attempt=n, commit=st_.best_commit, score=-1, cost_usd=cost,
+                         findings=[{"level": "blocking", "text": problem}])
+            st_.attempts = n
+            return
         commit = self.commit(f"feat({self.ticket_id}): try {n}")
         results = self.checks()
         facts = self.gate.collect(self.project, self.copy, self.base, "HEAD", self.ticket_id,
