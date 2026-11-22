@@ -24,8 +24,10 @@ changes `core.hooksPath`. A role never pushes. Your own session may push a
 branch for review, but never main.
 
 For a role, it also refuses a Read, Grep, or Glob of the key folder, or of the
-state folder outside the role's own copy, and a Bash command whose text names
-the key folder or the state folder. A command can still hide a path, for
+state folder outside the role's own copy; a Bash command whose text names the
+key folder or the state folder, or climbs with `..`; and a command that runs
+Tollgate's own code: `python -m driver.step`, a path to one of its files, or an
+import of it. A command can still hide a path, for
 example by building it from parts, so this rule is one layer, not a wall.
 
 A call from one of Tollgate's subagents carries its agent type, such as
@@ -33,7 +35,11 @@ A call from one of Tollgate's subagents carries its agent type, such as
 named the role. A call from any other subagent gets your own session's rules.
 In session mode no driver names the copy, so the hook reads it from the step
 file, run/step.json in the state folder, and only when the step is for that
-same role. No role can write the state folder, so no role can change it.
+same role. The hook refuses a role's edit of the state folder, its read of it, a
+command that names it or climbs out of the copy with `..`, and any command that
+runs Tollgate's own code, such as `driver.step answer`. A command can still hide
+a path, so this is one layer; the step file holds only a hash of the nonce that
+`answer` needs, and saved answers carry a code made with the machine key.
 
 This hook is one layer. The gate and the signed records hold even when a role
 gets past it, for example by writing a file from a Bash command.
@@ -171,6 +177,40 @@ def check_names(command: str, copy: str, project: str) -> str:
         for form in _forms(folder):
             if form in text:
                 return f"the command names the {name}, which no role may reach"
+    return ""
+
+
+ROOT = Path(__file__).resolve().parent.parent
+PACKAGES = ("driver", "gate", "setup")
+MODULES = sorted({p.stem for pkg in PACKAGES for p in (ROOT / pkg).glob("*.py")} - {"__init__"})
+_MODS = "|".join(MODULES)
+TOLLGATE_CODE = [
+    re.compile(rf"\b({'|'.join(PACKAGES)})\.({_MODS})\b"),            # -m, import, import_module
+    re.compile(rf"\bfrom\s+({'|'.join(PACKAGES)})\s+import\b"),
+    re.compile(rf"\bimport\s+({'|'.join(PACKAGES)})\b"),
+]
+TOLLGATE_FILE = re.compile(rf"(^|[\s/'\"=])({'|'.join(PACKAGES)})/({_MODS})\.py\b")
+CLIMB = re.compile(r"(^|[\s/'\"=:(])\.\.(?=$|[/\s'\");])")
+
+
+def check_tollgate(command: str) -> str:
+    """For a role: the reason to refuse a command that runs Tollgate's own code, or "".
+    Tollgate's commands answer steps, record your answers, sign, lock, and merge: only
+    your own session runs them. A role may still read Tollgate's files."""
+    if str(ROOT) in command or os.path.realpath(ROOT) in command:
+        return "the command names Tollgate's own folder; no role runs a Tollgate command"
+    if any(p.search(command) for p in TOLLGATE_CODE):
+        return "the command runs Tollgate's own code; no role runs a Tollgate command"
+    if "python" in command and TOLLGATE_FILE.search(command):
+        return "the command runs a file of Tollgate's; no role runs a Tollgate command"
+    return ""
+
+
+def check_climb(command: str) -> str:
+    """For a role: refuse a command that climbs with .. , which could reach the state
+    folder from inside the copy, since the copy is in it."""
+    if CLIMB.search(command):
+        return "the command climbs out of the role's copy with .. ; name paths inside the copy"
     return ""
 
 
@@ -336,7 +376,9 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
         if role in READ_ONLY:
             return f"the {role} reads only; it may not run commands"
         if role:
-            reason = check_names(data.get("command", ""), copy, project)
+            command = data.get("command", "")
+            reason = (check_tollgate(command) or check_climb(command)
+                      or check_names(command, copy, project))
             if reason:
                 return reason
         return check_bash(data.get("command", ""), cwd, role)
