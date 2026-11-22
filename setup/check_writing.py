@@ -44,8 +44,10 @@ import tokenize
 from pathlib import Path
 
 DOCS = (".md", ".markdown", ".txt", ".rst")
-# pip's requirements and constraints files end in .txt but hold package pins, not prose.
-PINS = re.compile(r"(^|/)(requirements|constraints)[\w.-]*\.txt$")
+# Files that are not prose to check: pip's requirements and constraints files hold
+# package pins, and a changelog is written by a tool, such as release-please, from
+# commit subjects. Nobody edits it by hand, so a finding there cannot be fixed.
+NOT_PROSE = re.compile(r"(^|/)((requirements|constraints)[\w.-]*\.txt|CHANGELOG\.md)$")
 SLASH_COMMENTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs")
 SOURCES = (".py",) + SLASH_COMMENTS
 WORD_LIST = "CONTEXT.md"
@@ -134,7 +136,7 @@ def diff_lines(root: Path, base: str, staged: bool) -> dict:
 
 def is_doc(name: str) -> bool:
     """True for a file of prose that the writing rules apply to."""
-    return name.endswith(DOCS) and not PINS.search(name)
+    return name.endswith(DOCS) and not NOT_PROSE.search(name)
 
 
 def added_lines(root: Path, base: str, staged: bool = False) -> dict:
