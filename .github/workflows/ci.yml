@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install the check tools
-        run: pip install -r requirements-dev.txt
+        run: pip install --require-hashes -r requirements-dev.txt
       - name: Style
         run: ruff check .
       - name: Writing
