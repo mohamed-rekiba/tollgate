@@ -82,7 +82,47 @@ Prefer the simplest plan that fits the architecture the analysis found. Plan a n
    ```
 
    Each line in Files starts with create, modify, or delete. When the change alters behavior, a command, a setting, an interface, or the architecture, Files also lists the README, docs, diagrams, and comments that describe it, and a checklist item covers them. Reuse names the code you use as it is. Risks names the edge cases, the failures, and any security, speed, or compatibility risk. Assumptions is `none`, or one assumption for each thing the request and the analysis do not settle, asked as a question that ends with `?`. An assumption stops the plan until the advisor answers it, so list only what changes the plan. Done when each ticket in the header has one line in Tickets.
-3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Each edge case and failure under Risks becomes a checklist item in the ticket that handles it. Behavior that must keep working is a `keeps behavior` item. Done when each ticket names its seams and its test files.
+3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, in the shape of the example below, with `plan: <task_id>`. Each ticket fits one session, has 3 to 10 checklist items, and at least one must-have item. Each edge case and failure under Risks becomes a checklist item in the ticket that handles it. Behavior that must keep working is a `keeps behavior` item.
+
+   Mark each item with at most one kind of test: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, or `concurrency`. Decide each of the 10 kinds: an item for it, or one line under `## Not covered` with a reason that is true for this change. The gate refuses a ticket that leaves a kind out, or that breaks one of these rules:
+
+   - A ticket that changes behavior always has a `happy` item and an `error` item.
+   - A ticket that fixes a bug has `fixes: <the bug, in one line>` in its header, and a `regression` item for the case that failed.
+   - A `performance` or `concurrency` item states a number: a time, a count, or a size.
+
+   ```
+   ---
+   id: order-totals
+   plan: <task_id>
+   seams: app.orders.total
+   tests: tests/test_order_totals.py
+   ---
+   ## Current behavior
+   An order has no total.
+
+   ## Desired behavior
+   app.orders.total returns the sum of an order's lines, rounded to cents.
+
+   ## Checklist
+   - [C1, must, happy] An order with lines of 2.50 and 1.25 totals 3.75.
+   - [C2, must, edge] An order with no lines totals 0.
+   - [C3, must, error] A line with a negative price is refused with a ValueError.
+   - [C4, boundary] A line of 0.005 rounds to 0.01, and a line of 0.004 rounds to 0.
+   - [C5, performance] An order of 10000 lines is totaled in under 1 second.
+   - [C6] The README shows how to total an order.
+
+   ## Not covered
+   - regression: the ticket fixes no bug.
+   - integration: total reads no file, process, or database.
+   - e2e: no command or web address changes.
+   - security: total reads nothing from a user.
+   - concurrency: total keeps no state and takes no lock.
+
+   ## Out of scope
+   Tax, which is the next ticket.
+   ```
+
+   Done when each ticket names its seams and its test files, and decides each of the 10 kinds.
 4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
 
 End with:

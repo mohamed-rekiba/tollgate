@@ -53,7 +53,7 @@ When the first review of the whole task finds a blocking or major problem, the t
 ### The steps
 
 1. The test writer writes one test at a seam for each must-have item, in the builder's copy.
-2. A reviewer confirms three things for each test: it fits its item, it can fail, and its expected result does not come from the code it tests.
+2. A reviewer confirms four things for each test: it fits its item, it can fail, its expected result does not come from the code it tests, and it is the kind of test its item is marked with.
 3. The driver fetches the ticket and its tests into the branch `tg/<ticket id>` of your project. The store locks them: it runs the tests once in a clean clone with main's harness, confirms that none passes yet, and signs the lock.
 4. The builder builds in its copy, from the best try so far. It writes its own smaller tests as it goes.
 5. The driver puts back main's harness and the locked files, runs the checks, and runs the gate. If a locked test or a check fails, the findings go to the builder and step 4 repeats.
@@ -201,15 +201,15 @@ Every reviewer is the same role with a different lens. The analyst, a separate r
 | --- | --- | --- | --- |
 | Simplicity | The whole plan and the analysis | Plan review | Is this needed? Does the code already have it? Is anything built for a need nobody has? Does it fit the architecture the analysis found? |
 | Fresh reader | The plan alone | Plan review | It writes in its own words what the plan proposes. A part it cannot restate is a blocking finding. |
-| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? |
-| Test fit | A ticket and its tests | Before the lock | The three points in step 2. |
+| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? Is each reason under Not covered true? |
+| Test fit | A ticket and its tests | Before the lock | The four points in step 2. |
 | Checklist | A ticket and the change | Step 6, every tier | Each item with no test. |
 | Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity. |
 | Security | The change | Step 6, tier 3 and 4 | Ways to misuse the change. |
 
 ### Plan review
 
-The builder writes the plan, with its tickets, checklists, and must-have marks. The first three lenses read it in each round. The builder answers each finding in one of three ways:
+The builder writes the plan, with its tickets, checklists, must-have marks, and kinds of test. The first three lenses read it in each round. The builder answers each finding in one of three ways:
 
 - **Fix.** The finding is right.
 - **Contest.** The finding is wrong, and the builder points to evidence that the reviewer could read.

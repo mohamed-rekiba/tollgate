@@ -30,6 +30,7 @@ LIST_KEYS = {"seams", "tests"}
 ITEM = re.compile(r"^- \[(C\d+)((?:,[ \t]*[a-z][a-z0-9 ]*)*)\]\s+(.+)$")
 KINDS = ("happy", "edge", "boundary", "error", "regression", "integration", "e2e", "security",
          "performance", "concurrency")
+MIN_ITEMS, MAX_ITEMS = 3, 10
 NUMBERED_KINDS = {"performance", "concurrency"}
 NOT_COVERED = "Not covered"
 NOT_COVERED_LINE = re.compile(r"^- ([a-z0-9]+):(.*)$")
@@ -122,8 +123,8 @@ def parse(text: str) -> Ticket:
     ids = [i.id for i in items]
     if len(set(ids)) != len(ids):
         raise TicketError("two checklist items have the same id")
-    if not 3 <= len(items) <= 10:
-        raise TicketError(f"the checklist needs 3 to 10 items, not {len(items)}")
+    if not MIN_ITEMS <= len(items) <= MAX_ITEMS:
+        raise TicketError(f"the checklist needs {MIN_ITEMS} to {MAX_ITEMS} items, not {len(items)}")
     if not any(i.must for i in items):
         raise TicketError("the checklist needs at least one must-have item")
     for item in items:

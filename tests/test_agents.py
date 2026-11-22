@@ -3,8 +3,11 @@
 import re
 import subprocess
 import sys
+import textwrap
 import unittest
 from pathlib import Path
+
+from gate import tickets
 
 ROOT = Path(__file__).resolve().parent.parent
 AGENTS = ROOT / "agents"
@@ -61,3 +64,42 @@ class AgentsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def fenced_blocks(text):
+    """Each fenced block of a prompt, without its indent."""
+    return [textwrap.dedent(b) for b in re.findall(r"^[ \t]*```[a-z]*\n(.*?)^[ \t]*```", text,
+                                                   re.DOTALL | re.MULTILINE)]
+
+
+class PromptsMatchTheGateTest(unittest.TestCase):
+    """The prompts take the ticket rules from gate/tickets.py, so the two cannot drift."""
+
+    def read(self, path):
+        return (ROOT / path).read_text()
+
+    def test_the_planner_names_the_cap_and_every_kind(self):
+        text = self.read("roles/builder.md")
+        self.assertIn(f"{tickets.MIN_ITEMS} to {tickets.MAX_ITEMS} checklist items", text)
+        for kind in tickets.KINDS:
+            with self.subTest(kind=kind):
+                self.assertIn(f"`{kind}`", text)
+        for words in ("## Not covered", "fixes:"):
+            self.assertIn(words, text)
+
+    def test_the_planner_s_example_ticket_passes_the_gate(self):
+        examples = [b for b in fenced_blocks(self.read("roles/builder.md")) if "## Checklist" in b]
+        self.assertEqual(len(examples), 1)
+        tickets.parse(examples[0])
+
+    def test_the_test_writer_defines_every_kind(self):
+        text = self.read("roles/test_writer.md")
+        for kind in tickets.KINDS:
+            with self.subTest(kind=kind):
+                self.assertRegex(text, rf"\n[ \t]*- `{kind}`: \S")
+
+    def test_the_lenses_check_the_kinds(self):
+        self.assertIn("kind", self.read("lenses/test_fit.md"))
+        readiness = self.read("lenses/readiness.md")
+        for words in ("Not covered", "fixes:", "kind"):
+            self.assertIn(words, readiness)
