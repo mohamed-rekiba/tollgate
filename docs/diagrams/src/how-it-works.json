@@ -291,18 +291,13 @@
    "n": 1,
    "head": "The analysis",
    "sub": "the code, with proof",
-   "at": [
-    -150,
-    330,
-    30
-   ],
-   "anchor": "end",
    "pin": [
-    -28,
+    0,
     300,
-    12
+    22
    ],
-   "kind": "ai"
+   "kind": "ai",
+   "drop": 62
   },
   {
    "head": "The plan",
@@ -314,9 +309,9 @@
    ],
    "anchor": "end",
    "pin": [
-    0,
-    170,
-    26
+    8,
+    162,
+    18
    ],
    "kind": "ai"
   },
@@ -324,12 +319,12 @@
    "head": "Review",
    "sub": "fresh AIs check the plan",
    "pin": [
-    22,
-    62,
-    6
+    0,
+    40,
+    22
    ],
-   "drop": 46,
-   "kind": "check"
+   "kind": "check",
+   "drop": 72
   },
   {
    "n": 2,
@@ -398,17 +393,18 @@
    "head": "Main branch",
    "sub": "you merge tiers 3 and 4",
    "at": [
-    470,
-    -150,
+    520.0,
+    -170.0,
     0
    ],
    "anchor": "start",
    "pin": [
-    415,
-    -190,
-    40
+    370,
+    -220,
+    80
    ],
-   "kind": "you"
+   "kind": "you",
+   "route": "level"
   },
   {
    "n": 7,

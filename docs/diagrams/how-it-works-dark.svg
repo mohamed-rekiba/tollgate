@@ -209,30 +209,30 @@
 <text x="234.9" y="674.1" text-anchor="start" font-size="12" fill="#9198a1">in plain words</text>
 </g>
 <g class="pin" data-n="1">
-<path d="M294.4,507.6 L294.4,460.0 Q294.4,450.0 284.4,450.0 L207.9,450.0" fill="none" stroke="#ab7df8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
-<ellipse cx="294.4" cy="511.6" rx="7" ry="4" fill="#ab7df8" fill-opacity="0.25" stroke="#ab7df8" stroke-width="1.6"/>
-<circle cx="294.4" cy="511.6" r="1.8" fill="#ab7df8"/>
-<ellipse class="pulse" cx="294.4" cy="511.6" rx="7" ry="4" fill="none" stroke="#ab7df8" stroke-width="1.2" style="animation-delay:0.0s"/>
-<circle cx="195.9" cy="450.0" r="10" fill="#ab7df8"/>
-<text x="195.9" y="454.0" text-anchor="middle" font-size="11" font-weight="700" fill="#0d1117">1</text>
-<text x="175.9" y="454.0" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">THE ANALYSIS</text>
-<text x="175.9" y="470.0" text-anchor="end" font-size="12" fill="#9198a1">the code, with proof</text>
+<path d="M316.2,511.2 L316.2,561.2" fill="none" stroke="#ab7df8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
+<ellipse cx="316.2" cy="515.2" rx="7" ry="4" fill="#ab7df8" fill-opacity="0.25" stroke="#ab7df8" stroke-width="1.6"/>
+<circle cx="316.2" cy="515.2" r="1.8" fill="#ab7df8"/>
+<ellipse class="pulse" cx="316.2" cy="515.2" rx="7" ry="4" fill="none" stroke="#ab7df8" stroke-width="1.2" style="animation-delay:0.0s"/>
+<circle cx="316.2" cy="573.2" r="10" fill="#ab7df8"/>
+<text x="316.2" y="577.2" text-anchor="middle" font-size="11" font-weight="700" fill="#0d1117">1</text>
+<text x="336.2" y="577.2" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">THE ANALYSIS</text>
+<text x="336.2" y="593.2" text-anchor="start" font-size="12" fill="#9198a1">the code, with proof</text>
 </g>
 <g class="pin" data-n="">
-<path d="M417.5,449.1 L417.5,406.0 Q417.5,396.0 407.5,396.0 L308.0,396.0" fill="none" stroke="#ab7df8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
-<ellipse cx="417.5" cy="453.1" rx="7" ry="4" fill="#ab7df8" fill-opacity="0.25" stroke="#ab7df8" stroke-width="1.6"/>
-<circle cx="417.5" cy="453.1" r="1.8" fill="#ab7df8"/>
+<path d="M430.0,456.3 L430.0,406.0 Q430.0,396.0 420.0,396.0 L308.0,396.0" fill="none" stroke="#ab7df8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
+<ellipse cx="430.0" cy="460.3" rx="7" ry="4" fill="#ab7df8" fill-opacity="0.25" stroke="#ab7df8" stroke-width="1.6"/>
+<circle cx="430.0" cy="460.3" r="1.8" fill="#ab7df8"/>
 <circle cx="305.0" cy="396.0" r="2.5" fill="#ab7df8"/>
 <text x="285.0" y="400.0" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">THE PLAN</text>
 <text x="285.0" y="416.0" text-anchor="end" font-size="12" fill="#9198a1">small tickets</text>
 </g>
 <g class="pin" data-n="">
-<path d="M518.8,428.4 L518.8,471.4" fill="none" stroke="#d29922" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
-<ellipse cx="518.8" cy="432.4" rx="7" ry="4" fill="#d29922" fill-opacity="0.25" stroke="#d29922" stroke-width="1.6"/>
-<circle cx="518.8" cy="432.4" r="1.8" fill="#d29922"/>
-<circle cx="518.8" cy="474.4" r="2.5" fill="#d29922"/>
-<text x="538.8" y="478.4" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">REVIEW</text>
-<text x="538.8" y="494.4" text-anchor="start" font-size="12" fill="#9198a1">fresh AIs check the plan</text>
+<path d="M518.8,394.2 L518.8,463.2" fill="none" stroke="#d29922" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
+<ellipse cx="518.8" cy="398.2" rx="7" ry="4" fill="#d29922" fill-opacity="0.25" stroke="#d29922" stroke-width="1.6"/>
+<circle cx="518.8" cy="398.2" r="1.8" fill="#d29922"/>
+<circle cx="518.8" cy="466.2" r="2.5" fill="#d29922"/>
+<text x="538.8" y="470.2" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">REVIEW</text>
+<text x="538.8" y="486.2" text-anchor="start" font-size="12" fill="#9198a1">fresh AIs check the plan</text>
 </g>
 <g class="pin" data-n="2">
 <path d="M620.1,301.5 L620.1,287.6 Q620.1,277.6 610.1,277.6 L609.3,277.6" fill="none" stroke="#3fb950" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
@@ -275,14 +275,14 @@
 <text x="776.5" y="523.5" text-anchor="start" font-size="12" fill="#9198a1">a second AI, or you</text>
 </g>
 <g class="pin" data-n="6">
-<path d="M1021.5,461.2 L1021.5,528.0" fill="none" stroke="#4493f8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
-<ellipse cx="1021.5" cy="465.2" rx="7" ry="4" fill="#4493f8" fill-opacity="0.25" stroke="#4493f8" stroke-width="1.6"/>
-<circle cx="1021.5" cy="465.2" r="1.8" fill="#4493f8"/>
-<ellipse class="pulse" cx="1021.5" cy="465.2" rx="7" ry="4" fill="none" stroke="#4493f8" stroke-width="1.2" style="animation-delay:3.0s"/>
-<circle cx="1021.5" cy="540.0" r="10" fill="#4493f8"/>
-<text x="1021.5" y="544.0" text-anchor="middle" font-size="11" font-weight="700" fill="#0d1117">6</text>
-<text x="1041.5" y="544.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">MAIN BRANCH</text>
-<text x="1041.5" y="560.0" text-anchor="start" font-size="12" fill="#9198a1">you merge tiers 3 and 4</text>
+<path d="M1009.8,391.5 L1057.8,391.5 Q1067.8,391.5 1067.8,401.5 L1067.8,541.5" fill="none" stroke="#4493f8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
+<ellipse cx="1009.8" cy="395.5" rx="7" ry="4" fill="#4493f8" fill-opacity="0.25" stroke="#4493f8" stroke-width="1.6"/>
+<circle cx="1009.8" cy="395.5" r="1.8" fill="#4493f8"/>
+<ellipse class="pulse" cx="1009.8" cy="395.5" rx="7" ry="4" fill="none" stroke="#4493f8" stroke-width="1.2" style="animation-delay:3.0s"/>
+<circle cx="1067.8" cy="553.5" r="10" fill="#4493f8"/>
+<text x="1067.8" y="557.5" text-anchor="middle" font-size="11" font-weight="700" fill="#0d1117">6</text>
+<text x="1087.8" y="557.5" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#f0f6fc">MAIN BRANCH</text>
+<text x="1087.8" y="573.5" text-anchor="start" font-size="12" fill="#9198a1">you merge tiers 3 and 4</text>
 </g>
 <g class="pin" data-n="7">
 <path d="M885.1,569.7 L885.1,599.8 Q885.1,609.8 895.1,609.8 L935.0,609.8" fill="none" stroke="#ab7df8" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>

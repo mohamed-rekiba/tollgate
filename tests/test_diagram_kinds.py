@@ -221,6 +221,15 @@ class PinTest(unittest.TestCase):
         words = group.find(f"{NS}text[@letter-spacing]")
         self.assertEqual(float(words.get("x")) - d[0], scene.PIN_GAP)
 
+    def test_a_level_route_leaves_the_pin_sideways_first(self):
+        svg = draw(pin_spec({"n": 2, "head": "Gate", "sub": "x", "pin": [0, 0, 0],
+                             "at": [200, -200, 120], "anchor": "start", "kind": "check",
+                             "route": "level"}), "light")
+        _, d = self.stem(svg)
+        x0, y0, x1, y1 = d[0], d[1], d[2], d[3]
+        self.assertEqual(y1, y0, "the first leg is level")
+        self.assertNotEqual(x1, x0)
+
     def test_the_rings_stop_pulsing_on_request(self):
         svg = draw(pin_spec({"n": 1, "head": "Plan", "pin": [0, 0, 0], "drop": 50}), "dark")
         self.assertIn('class="pulse"', svg)
