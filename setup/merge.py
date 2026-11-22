@@ -77,9 +77,12 @@ def describe(project: str, commit: str, record: dict, store) -> list:
 def show(project: str, commit: str, store) -> list:
     commit = full(project, commit)
     record = store.passed(commit)
-    if not record:
-        raise MergeError(f"{commit[:12]} has no verified pass record")
-    lines = describe(project, commit, record, store)
+    if record:
+        lines = describe(project, commit, record, store)
+    else:
+        lines = [f"{commit[:12]}  a change made by hand: no pass record",
+                 "  approved" if store.approvals(commit) else "  needs your approval"]
+        record = {}
     for name, passed in sorted(record.get("checks", {}).items()):
         lines.append(f"  {'pass' if passed else 'FAIL'}  {name}")
     lines.append(git(project, "log", "--oneline", f"main..{commit}")[1])
@@ -149,8 +152,11 @@ def merge(project: str, commit: str, store) -> str:
     commit = full(project, commit)
     record = store.passed(commit)
     if not record:
-        raise MergeError(f"{commit[:12]} has no verified pass record")
-    if needs_approval(record) and not store.approvals(commit):
+        # A change made by hand, such as the rules a home syncs, merges on your approval.
+        if not any(not a["ticket"] for a in store.approvals(commit)):
+            raise MergeError(f"{commit[:12]} has no verified pass record and no approval. "
+                             "A change made by hand needs your approval first.")
+    elif needs_approval(record) and not store.approvals(commit):
         raise MergeError(f"{commit[:12]} is tier {record.get('tier')}: approve it first")
     return store.merge(commit)
 

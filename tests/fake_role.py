@@ -9,7 +9,8 @@ Builder modes: pass2 (fails attempt 1, passes attempt 2), same (fails the same
 way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist).
-Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1).
+Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
+inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
 """
 
 import json
@@ -24,6 +25,7 @@ GREET = 'def greet(name):\n    return f"hello {name}"\n'
 SHOUT_OK = '\n\ndef shout(name):\n    """Return the greeting in capitals."""\n    return greet(name).upper()\n'
 SHOUT_BAD = '\n\ndef shout(name):\n    """Return the greeting in capitals."""\n    return greet(name)\n'
 WHISPER = '\n\ndef whisper(name):\n    """Return the greeting in small letters."""\n    return greet(name).lower()\n'
+WHISPER_BAD = '\n\ndef whisper(name):\n    """Return the greeting in small letters."""\n    return greet(name)\n'
 GREET_BROKEN = 'def greet(name):\n    return f"hi {name}"\n'
 TESTS = '''import unittest
 
@@ -168,6 +170,9 @@ def main() -> int:
                             for i, _ in enumerate(data.get("findings", []))]}, cost)
     elif first == "# Role: builder":
         n = data["attempt"]
+        if opts.get("inputs_to"):
+            with open(opts["inputs_to"], "a") as f:
+                f.write(json.dumps(data) + "\n")
         die = opts.get("die_once")
         if die and n == 1 and not os.path.exists(die):
             Path(die).write_text("died")
@@ -176,10 +181,14 @@ def main() -> int:
         if mode == "slow":
             time.sleep(30)
         good = (mode == "pass2" and n >= 2) or mode == "pass1"
-        if mode == "different" and n % 2 == 0:
+        if "seams: app.whisper" in data.get("ticket", ""):
+            # The whisper ticket builds on what main has, which may hold shout already.
+            kept = Path("app.py").read_text().split("\n\ndef whisper(")[0]
+            Path("app.py").write_text(kept + (WHISPER if good else WHISPER_BAD))
+        elif mode == "different" and n % 2 == 0:
             Path("app.py").write_text(GREET_BROKEN + SHOUT_OK)
         else:
-            Path("app.py").write_text(GREET + (SHOUT_OK + WHISPER if good else SHOUT_BAD))
+            Path("app.py").write_text(GREET + (SHOUT_OK if good else SHOUT_BAD))
         if mode == "github":
             Path(".github/workflows").mkdir(parents=True, exist_ok=True)
             Path(".github/workflows/evil.yml").write_text("on: push\n")

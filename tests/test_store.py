@@ -315,6 +315,25 @@ class MergeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "has changes"):
             self.store.merge(commit)
 
+    def test_an_untracked_file_the_change_adds_with_the_same_bytes_is_removed(self):
+        # You wrote the ticket on main before the task; the change adds the same file.
+        commit = self.change(path=mf.ticket_path("T-1"), text=TICKET)
+        self.store.record_pass(commit, self.pass_record(commit))
+        self.repo.write(mf.ticket_path("T-1"), TICKET)
+        self.assertTrue(self.store.merge(commit))
+        self.assertEqual(Path(self.repo.path, mf.ticket_path("T-1")).read_text(), TICKET)
+        self.assertEqual(self.repo.git("status", "--porcelain").strip(), "")
+
+    def test_an_untracked_file_the_change_adds_with_other_bytes_is_refused(self):
+        commit = self.change(path=mf.ticket_path("T-1"), text=TICKET)
+        self.store.record_pass(commit, self.pass_record(commit))
+        self.repo.write(mf.ticket_path("T-1"), "my own notes\n")
+        with self.assertRaisesRegex(StoreError, "untracked files .* other content"):
+            self.store.merge(commit)
+        self.assertEqual(Path(self.repo.path, mf.ticket_path("T-1")).read_text(),
+                         "my own notes\n")
+        self.assertNotIn("T-1", self.repo.git("log", "--oneline", "main"))
+
 
 if __name__ == "__main__":
     unittest.main()

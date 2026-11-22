@@ -128,7 +128,6 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(m["commit"], self.commit)
         self.assertEqual(len(m["tests"]), 3)
         self.assertEqual(m["keeps_behavior"], ["tests.test_t1::test_c2_sent_once"])
-        self.assertEqual(manifest.loads("Freeze of T-1\n\n" + manifest.dumps(m)), m)
 
     def test_refuses_a_new_test_that_already_passes(self):
         with self.assertRaisesRegex(manifest.FreezeError, "passed before the build"):

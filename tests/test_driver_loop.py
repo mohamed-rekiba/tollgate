@@ -126,12 +126,24 @@ class StopTest(LoopCase):
         self.assertEqual(s.events()[-1], "still_waiting")
         store.answer(n, "tollgate decide retry look at shout")
         driver(s, store=store)[0].run()
-        decided = [e for e in s.log() if e["event"] == "advisor_decided"][0]
+        decided = next(e for e in s.log() if e["event"] == "advisor_decided")
         self.assertEqual((decided["decision"], decided["hint"]), ("retry", "look at shout"))
         self.assertEqual(len(self.tries(s)), 3)
         self.assertIsNotNone(store.question(n)["answer"])
         # Try 3 failed the same way as try 2, so a new question waits.
         self.assertEqual(list(store.open_questions()), [n + 1])
+
+    def test_split_is_unfinished_and_parks_the_ticket_plainly(self):
+        from driver import report
+        s = self.sample(builder="same")
+        d, store = driver(s)
+        self.assertEqual(d.run(), 3)
+        n = s.log()[-1]["question"]
+        store.answer(n, "split")
+        self.assertEqual(driver(s, store=store)[0].run(), 3)
+        self.assertEqual(s.events()[-1], "parked")
+        self.assertIn("split: UNFINISHED, parked", s.log()[-1]["reason"])
+        self.assertIn("split: UNFINISHED, parked", report.status(str(s.project)))
 
     def test_three_tries_stop(self):
         s = self.sample(builder="different", advisor=())
@@ -167,7 +179,7 @@ class StopTest(LoopCase):
         py = sys.executable
         s = self.sample(builder="same", advisor=(f"{py} {FAKE_ROLE} ok decision=retry",
                                                  "person"))
-        d, store = driver(s)
+        d, _ = driver(s)
         self.assertEqual(d.run(), 3)
         decided = [e for e in s.log() if e["event"] == "advisor_decided"]
         self.assertEqual([e["decision"] for e in decided], ["retry", "retry"])

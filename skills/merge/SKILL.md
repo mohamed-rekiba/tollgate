@@ -7,7 +7,7 @@ description: Merge a ready Tollgate change into main. It lists the changes that 
 
 `TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m setup.merge`, from the project folder.
 
-Words: a **ready change** is a commit that passed the gate and is not on main yet. Its **pass record** is the gate's signed result. A change of tier 3 or 4 also needs your **approval**: a record you sign with your own SSH key.
+Words: a **ready change** is a commit that passed the gate and is not on main yet. Its **pass record** is the gate's signed result. A change of tier 3 or 4 also needs your **approval**: a record you sign with your own SSH key. A **change made by hand**, such as the branch `tollgate-sync` that a home writes, has no pass record: it needs your approval at any tier. `<commit>` below may be a branch name.
 
 ## 1. List the ready changes
 
@@ -19,7 +19,7 @@ Done when the user has picked a change, or there is none.
 
 Run `python3 -m setup.merge show <commit>`. Show the checks, the commits, and the files it changes. For tier 3 and 4, offer to show the diff: `git diff main...<commit>`.
 
-## 3. Approve it, for tier 3 and 4
+## 3. Approve it, for tier 3 and 4 and a change made by hand
 
 You never sign the approval. Only the user does, with a passphrase only they know.
 

@@ -1,4 +1,4 @@
-"""The task loop: plan, plan review, approval, plan tag, then each ticket in order.
+"""The task loop: plan, plan review, approval, plan lock, then each ticket in order.
 
     PYTHONPATH=<tollgate> python3 -m driver.task --project . --task retries --request-file r.txt
 

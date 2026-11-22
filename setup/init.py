@@ -4,7 +4,8 @@
 
 The steps, in order:
 
-1. Check that git, ssh-keygen, pre-commit, and claude are installed.
+1. Check that git, ssh-keygen, pre-commit, and claude are installed. With the
+   isolation "container", the default, check that Docker is installed and running.
 2. Check that the project is a git repository on the branch main.
 3. Create the state folder, and this machine's key.
 4. Add the machine's public key to `signers`, which sign locks and pass
@@ -49,6 +50,34 @@ def check_tools(which=shutil.which) -> None:
     missing = [t for t in TOOLS if not which(t)]
     if missing:
         raise InitError(f"not installed: {', '.join(missing)}. Install them, then run again.")
+
+
+def docker_ready(which=shutil.which) -> str:
+    """Why Docker cannot run the builder, or "" when it can."""
+    fix = 'Start Docker, or set "isolation": "sandbox" in .tollgate/settings.json.'
+    if not which("docker"):
+        return ("the isolation is container, so the builder runs in Docker, but docker is not "
+                "installed. Install Docker, or set \"isolation\": \"sandbox\" in "
+                ".tollgate/settings.json.")
+    try:
+        up = subprocess.run(["docker", "info"], capture_output=True, check=False,
+                            timeout=30).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        up = False
+    return "" if up else f"docker is installed but not running. {fix}"
+
+
+def check_isolation(root: Path, which=shutil.which) -> str:
+    """Refuse the container isolation when Docker cannot run. Return one line."""
+    path = root / st.PATH
+    settings = json.loads(path.read_text()) if path.exists() else {}
+    isolation = settings.get("isolation", "container")
+    if isolation != "container":
+        return f"isolation: {isolation}, Docker not needed"
+    problem = docker_ready(which)
+    if problem:
+        raise InitError(problem)
+    return "isolation: container, Docker is running"
 
 
 def owner_key(path: str | None = None) -> str:
@@ -98,6 +127,7 @@ def init(project=".", key_path=None, replace=False, which=shutil.which, install=
     out = []
     check_tools(which)
     out.append(f"tools: {', '.join(TOOLS)} are installed")
+    out.append(check_isolation(root, which))
     if git(root, "rev-parse", "--show-toplevel", check=False) != str(root):
         raise InitError(f"{root} is not the top folder of a git repository")
     branch = git(root, "symbolic-ref", "-q", "--short", "HEAD", check=False)

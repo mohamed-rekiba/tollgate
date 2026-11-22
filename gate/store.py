@@ -295,6 +295,25 @@ class Store:
                            self._settings()["owners"])
         return [found] if found else []
 
+    @staticmethod
+    def _clear_untracked(folder: str, commit: str) -> None:
+        """Remove each untracked file in the main worktree that the commit adds with the same
+        bytes, such as a ticket you wrote before the task started. git would refuse to
+        overwrite it. Refuse, and remove nothing, when one of them differs."""
+        untracked = git(folder, "ls-files", "-z", "--others", "--exclude-standard").split("\0")
+        incoming = set(git(folder, "ls-tree", "-r", "-z", "--name-only", commit).split("\0"))
+        same, differ = [], []
+        for path in filter(None, untracked):
+            if path not in incoming:
+                continue
+            data = show_bytes(folder, commit, path)
+            (same if data == Path(folder, path).read_bytes() else differ).append(path)
+        if differ:
+            raise StoreError(f"the {MAIN} worktree has untracked files that the change adds "
+                             f"with other content: {', '.join(sorted(differ))}")
+        for path in same:
+            Path(folder, path).unlink()
+
     def merge(self, commit: str) -> str:
         """Merge a ready change into main with a merge commit (--no-ff). Refuse without
         a valid pass record, and for tier 3 and 4 without an approval. Return the merge commit."""
@@ -324,6 +343,7 @@ class Store:
         if subprocess.run(["git", "-C", folder, "merge-base", "--is-ancestor", full, MAIN],
                           capture_output=True, check=False).returncode == 0:
             raise StoreError(f"{full[:12]} is already in {MAIN}")
+        self._clear_untracked(folder, full)
         name = found["ticket"] or "change"
         try:
             git(folder, "merge", "-q", "--no-ff", "--no-edit", "-m",

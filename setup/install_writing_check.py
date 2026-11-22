@@ -6,6 +6,7 @@ change cannot weaken the check that judges it. Running it twice gives the same
 files. It prints each path that changed.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -39,9 +40,13 @@ def install(project: str = ".") -> list:
     return changed
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="install_writing_check", description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--project", default=".")
+    args = parser.parse_args(argv)
     try:
-        changed = install(".")
+        changed = install(args.project)
     except (OSError, ValueError) as err:
         print(f"install_writing_check: {err}", file=sys.stderr)
         return 1
