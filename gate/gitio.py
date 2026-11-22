@@ -1,7 +1,16 @@
 """Small helpers that call git."""
 
 import hashlib
+import os
 import subprocess
+
+# A role can write in its copy, so git there must run none of its code and follow none
+# of its object swaps: no hooks, no file system monitor, no replace refs.
+SAFE = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"]
+
+
+def safe_env(env=None) -> dict:
+    return {**(env or os.environ), "GIT_NO_REPLACE_OBJECTS": "1"}
 
 
 class GitError(RuntimeError):
@@ -9,14 +18,17 @@ class GitError(RuntimeError):
 
 
 def git(repo, *args) -> str:
-    proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=False)
+    # The store merges with this too, so the project's own hooks still run here.
+    proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
+                          check=False, env=safe_env())
     if proc.returncode != 0:
         raise GitError(f"git {' '.join(args)}: {proc.stderr.strip()}")
     return proc.stdout
 
 
 def show_bytes(repo, ref, path) -> bytes | None:
-    proc = subprocess.run(["git", "-C", str(repo), "show", f"{ref}:{path}"], capture_output=True, check=False)
+    proc = subprocess.run(["git", "-C", str(repo), "show", f"{ref}:{path}"],
+                          capture_output=True, check=False, env=safe_env())
     return proc.stdout if proc.returncode == 0 else None
 
 
@@ -40,7 +52,7 @@ def changed_files(repo, base, head) -> dict:
 def commit_of(repo, ref) -> str | None:
     """The full commit id that ref names, or None when ref names no commit."""
     proc = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"{ref}^{{commit}}"],
-                          capture_output=True, text=True, check=False)
+                          capture_output=True, text=True, check=False, env=safe_env())
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 

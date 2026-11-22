@@ -5,6 +5,7 @@ and the advisor read it. The log itself is written by driver/log.py.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 # The state of a ticket, as a person reads it, from the last event that sets one.
 STATES = {
@@ -89,8 +90,18 @@ def open_question(events: list) -> dict | None:
 
 
 def cost(events: list) -> float:
-    """What the AI sessions in these events cost, in USD."""
+    """What the AI sessions in these events cost, in USD. A cost that is not known counts 0."""
     return round(sum(float(e.get("cost_usd") or 0) for e in events), 4)
+
+
+def cost_known(events: list) -> bool:
+    """False when a role in these events ran in session mode, where its cost is not known."""
+    return not any("cost_usd" in e and e["cost_usd"] is None for e in events)
+
+
+def logs(folder, pattern: str = "*.jsonl") -> list:
+    """The logs in a folder, in name order, without the saved answers of session mode."""
+    return sorted(p for p in Path(folder).glob(pattern) if not p.name.endswith(".answers.jsonl"))
 
 
 def minutes(events: list) -> int:

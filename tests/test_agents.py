@@ -43,6 +43,16 @@ class AgentsTest(unittest.TestCase):
                 fields, _ = frontmatter((AGENTS / f"{role}.md").read_text())
                 self.assertIn("Only when Tollgate's driver names this role", fields["description"])
 
+    def test_each_agent_has_a_turn_limit_and_the_builder_the_highest(self):
+        turns = {}
+        for role in ROLES:
+            fields, _ = frontmatter((AGENTS / f"{role}.md").read_text())
+            turns[role] = int(fields["maxTurns"])
+        self.assertEqual(max(turns, key=turns.get), "builder")
+        for role in READ_ONLY:
+            self.assertLess(turns[role], turns["test_writer"])
+        self.assertLess(turns["test_writer"], turns["builder"])
+
     def test_the_agents_match_the_roles(self):
         result = subprocess.run([sys.executable, "-m", "setup.agents", "--check"], cwd=ROOT,
                                 capture_output=True, text=True, check=False)

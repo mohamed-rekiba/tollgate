@@ -163,6 +163,134 @@ class AgentTypeTest(Env):
                            agent_type="general-purpose")
 
 
+class StepFileTest(Env):
+    """In session mode a subagent's copy comes from the step file, run/step.json."""
+
+    def write_step(self, role, policy=None, copy=None):
+        step = {"role": role, "policy": policy or role, "copy": str(copy or self.copy),
+                "key": "k"}
+        state.path(str(self.project), "run", "step.json").write_text(json.dumps(step))
+
+    def edit(self, path="app.py"):
+        return "Write", {"file_path": str(self.copy / path), "content": "x"}
+
+    def test_a_subagent_edits_the_copy_the_step_file_names(self):
+        self.write_step("builder")
+        self.assertLets(*self.edit(), role="", agent_type="tollgate:builder")
+        self.assertRefuses("outside the role's own copy", "Write",
+                           {"file_path": str(self.project / "app.py"), "content": "x"},
+                           role="", agent_type="tollgate:builder")
+
+    def test_a_step_for_another_role_gives_no_copy(self):
+        self.write_step("test_writer")
+        self.assertRefuses("outside the role's own copy", *self.edit(), role="",
+                           agent_type="tollgate:builder")
+
+    def test_with_no_step_file_a_subagent_has_no_copy(self):
+        self.assertRefuses("outside the role's own copy", *self.edit(), role="",
+                           agent_type="tollgate:builder")
+
+    def test_a_builder_that_writes_a_plan_may_write_plans_in_its_copy(self):
+        self.write_step("builder", policy="planner")
+        self.assertLets(*self.edit(".tollgate/plans/demo.md"), role="",
+                        agent_type="tollgate:builder")
+        self.write_step("builder")
+        self.assertRefuses("only the driver writes there", *self.edit(".tollgate/plans/demo.md"),
+                           role="", agent_type="tollgate:builder")
+
+
+class KeyAndStateReadTest(Env):
+    """A role reads neither the key folder nor the state folder outside its copy."""
+
+    def setUp(self):
+        super().setUp()
+        self.keys = state.key_dir()
+        self.keys.mkdir(parents=True, exist_ok=True)
+        (self.keys / "id_ed25519").write_text("secret")
+        self.lock = state.path(str(self.project), "locks", "T-1.json")
+
+    def test_a_role_cannot_read_the_key_folder_or_the_state_folder(self):
+        for role in ("builder", "reviewer"):
+            self.assertRefuses("key folder", "Read", {"file_path": str(self.keys / "id_ed25519")},
+                               role=role)
+            self.assertRefuses("state folder", "Read", {"file_path": str(self.lock)}, role=role)
+            self.assertRefuses("key folder", "Grep", {"pattern": "x", "path": str(self.keys)},
+                               role=role)
+            self.assertRefuses("state folder", "Glob",
+                               {"pattern": "*.json", "path": str(self.lock.parent)}, role=role)
+            self.assertRefuses("key folder", "Glob", {"pattern": f"{self.keys}/*"}, role=role)
+
+    def test_a_role_reads_its_own_copy(self):
+        self.assertLets("Read", {"file_path": str(self.copy / "app.py")})
+        self.assertLets("Grep", {"pattern": "x"})
+        self.assertLets("Glob", {"pattern": "**/*.py", "path": str(self.copy)})
+
+    def test_a_subagent_reads_the_copy_of_its_step(self):
+        step = {"role": "reviewer", "policy": "reviewer", "copy": str(self.copy), "key": "k"}
+        state.path(str(self.project), "run", "step.json").write_text(json.dumps(step))
+        self.assertLets("Read", {"file_path": str(self.copy / "app.py")}, role="",
+                        agent_type="tollgate:reviewer")
+        self.assertRefuses("state folder", "Read",
+                           {"file_path": str(state.path(str(self.project), "run", "step.json"))},
+                           role="", agent_type="tollgate:reviewer")
+
+    def test_a_role_s_command_may_not_name_the_key_or_the_state_folder(self):
+        self.assertRefuses("key folder", "Bash", {"command": f"cat {self.keys}/id_ed25519"})
+        self.assertRefuses("state folder", "Bash", {"command": f"cat {self.lock}"})
+        self.assertRefuses("key folder", "Bash", {"command": "cat ~/.config/tollgate/id_ed25519"}
+                           if str(self.keys).startswith(str(Path.home())) else
+                           {"command": f"ls {self.keys}"})
+        self.assertLets("Bash", {"command": f"cd {self.copy} && ls"})
+
+    def test_a_role_may_not_run_a_tollgate_command_written_plainly(self):
+        root = Path(GUARD).resolve().parent.parent
+        for command in ("python3 -m driver.step answer --project . --key k --nonce n",
+                        'PYTHONPATH="/x" python3 -P -m setup.inbox --project . answer 1 approve',
+                        "python3 -m gate.store", "python3 -m setup.merge",
+                        f"python3 {root}/driver/step.py next --task demo"):
+            with self.subTest(command=command):
+                self.assertRefuses("tollgate command", "Bash", {"command": command})
+                self.assertRefuses("tollgate command", "Bash", {"command": command}, role="",
+                                   agent_type="tollgate:builder")
+        # Your own session runs them.
+        self.assertLets("Bash", {"command": "python3 -m driver.step next --task demo"}, role="")
+
+    def test_a_role_s_ordinary_commands_run(self):
+        for command in ("cd src && make && cd ..", "pytest ../tests", "grep -rn driver.session src",
+                        "python3 -c 'from setup import x'", "python3 -m unittest",
+                        "ruff check gate/store.py", "git status && git log -1"):
+            with self.subTest(command=command):
+                self.assertLets("Bash", {"command": command})
+
+    def test_a_role_may_not_write_under_the_copy_s_git_folder(self):
+        self.assertRefuses(".git", "Write", {"file_path": str(self.copy / ".git/hooks/pre-commit"),
+                                             "content": "x"})
+        for command in ("echo x > .git/hooks/pre-commit", f"cp evil {self.copy}/.git/config"):
+            self.assertRefuses(".git", "Bash", {"command": command})
+        self.assertLets("Bash", {"command": "git status && git log -1"})
+
+    def test_a_relative_path_from_the_copy_into_the_state_folder_is_refused(self):
+        for command in ("rm -rf ../../locks", "cat ../../run/step.json",
+                        f"cd {self.copy} && cat ../../run/step.json", "ls ../../locks/"):
+            with self.subTest(command=command):
+                self.assertRefuses("state folder", "Bash", {"command": command})
+        for command in ("cd .. && ls", "pytest ../tests", "cd src && make && cd .."):
+            with self.subTest(command=command):
+                self.assertLets("Bash", {"command": command})
+
+    def test_reading_git_is_named_a_read_and_a_commit_message_is_not_a_command(self):
+        code, err = self.guard("Bash", {"command": "cat .git/HEAD"})
+        if code:
+            self.assertIn("read", err)
+        for command in ('git commit -m "text mentioning -m driver.step"',
+                        'git commit -m "fix the .git/ hooks note"'):
+            with self.subTest(command=command):
+                self.assertLets("Bash", {"command": command})
+
+    def test_your_own_session_may_still_read_the_state_folder(self):
+        self.assertLets("Read", {"file_path": str(self.lock)}, role="")
+
+
 class ReadOnlyTest(Env):
     def test_a_reviewer_reads(self):
         self.assertLets("Read", {"file_path": str(self.copy / "app.py")}, role="reviewer")
@@ -235,7 +363,8 @@ class BashTest(Env):
 class HooksJsonTest(unittest.TestCase):
     def test_the_plugin_runs_the_guard_before_edits_and_commands(self):
         hooks = json.loads(HOOKS_JSON.read_text())["hooks"]["PreToolUse"]
-        self.assertEqual(hooks[0]["matcher"], "Edit|Write|MultiEdit|NotebookEdit|Bash")
+        self.assertEqual(hooks[0]["matcher"],
+                         "Edit|Write|MultiEdit|NotebookEdit|Bash|Read|Grep|Glob")
         self.assertIn("${CLAUDE_PLUGIN_ROOT}/hooks/guard.py", hooks[0]["hooks"][0]["command"])
 
 

@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gate import state
+from gate.gitio import SAFE, safe_env
 from hooks.guard import READ_ONLY
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,6 +65,13 @@ class Answer:
     cost_usd: float
     seconds: float
     text: str = field(repr=False, default="")
+
+
+def add_cost(*costs) -> float | None:
+    """The sum of the costs in USD, or None when one is not known, as in session mode."""
+    if any(c is None for c in costs):
+        return None
+    return round(sum(costs), 4)
 
 
 def prompt(role: str, inputs: dict, lens: str | None = None) -> str:
@@ -205,17 +213,18 @@ def make_copy(project: str, name: str) -> str:
     its `main` up to date and fetches the finished work from it."""
     work = copy_path(project, name)
     if not work.exists():
-        subprocess.run(["git", "clone", "-q", "--no-hardlinks", os.path.abspath(project),
-                        str(work)], check=True, capture_output=True)
-        subprocess.run(["git", "remote", "remove", "origin"], cwd=work, check=True,
-                       capture_output=True)
+        subprocess.run(["git", *SAFE, "clone", "-q", "--no-hardlinks", os.path.abspath(project),
+                        str(work)], check=True, capture_output=True, env=safe_env())
+        subprocess.run(["git", *SAFE, "remote", "remove", "origin"], cwd=work, check=True,
+                       capture_output=True, env=safe_env())
         return str(work)
-    head = subprocess.run(["git", "symbolic-ref", "-q", "--short", "HEAD"], cwd=work,
-                          capture_output=True, text=True, check=False).stdout.strip()
+    head = subprocess.run(["git", *SAFE, "symbolic-ref", "-q", "--short", "HEAD"], cwd=work,
+                          capture_output=True, text=True, check=False,
+                          env=safe_env()).stdout.strip()
     if head != "main":
-        subprocess.run(["git", "fetch", "-q", os.path.abspath(project),
+        subprocess.run(["git", *SAFE, "fetch", "-q", os.path.abspath(project),
                         "+refs/heads/main:refs/heads/main"], cwd=work, check=True,
-                       capture_output=True)
+                       capture_output=True, env=safe_env())
     return str(work)
 
 

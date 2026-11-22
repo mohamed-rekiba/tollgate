@@ -92,10 +92,19 @@ class Env(unittest.TestCase):
         sh(root, "git", "checkout", "-q", "main")
         return head
 
-    def record_pass(self, root, commit, tier=2):
+    def record_pass(self, root, commit, tier=2, ticket="t1", base=None):
+        """A signed lock of the ticket, from base (main by default), and a pass record."""
+        import hashlib
+        base = base or sh(root, "git", "rev-parse", "main").stdout.strip()
+        lock = state.path(str(root), "locks", f"{ticket}.json")
+        sign.write(lock, {"ticket": ticket, "base_commit": base, "commit": commit, "number": 1,
+                          "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                          "at": "now"}, "tollgate-lock")
         path = state.path(str(root), "passes", f"{commit}.json")
-        sign.write(path, {"commit": commit, "ticket": "t1", "tier": tier, "lock_sha256": "x",
+        sign.write(path, {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
+                          "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
                           "checks": {"tests": True}, "score": 100, "at": "now"}, "tollgate-pass")
+        return lock
 
     def record_approval(self, root, commit, key=None):
         path = state.path(str(root), "approvals", f"{commit}.json")
@@ -237,6 +246,61 @@ class MergeCheckTest(Env):
         self.assertIn("no verified approval", check_merge.check_commit(str(self.root), commit)[0])
         self.record_approval(self.root, commit)
         self.assertEqual(check_merge.check_commit(str(self.root), commit), [])
+
+    def chained(self):
+        """t1 on main's branch, and t2 that starts from t1 before t1 merges."""
+        first = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
+        sh(self.root, "git", "checkout", "-q", "-b", "t2", first)
+        Path(self.root, "src/b.py").write_text("y = 2\n")
+        sh(self.root, "git", "add", "-A")
+        sh(self.root, "git", "commit", "-q", "--no-verify", "-m", "feat(t2): b")
+        second = sh(self.root, "git", "rev-parse", "HEAD").stdout.strip()
+        sh(self.root, "git", "checkout", "-q", "main")
+        return first, second
+
+    def test_a_chained_ticket_fails_closed_when_its_lock_is_gone_or_replaced(self):
+        first, second = self.chained()
+        lock = self.record_pass(self.root, second, tier=1, ticket="t2", base=first)
+        record = state.path(str(self.root), "passes", f"{second}.json")
+        lock.unlink()
+        self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
+        # Locked again, from main: the record's base no longer matches any lock.
+        main = sh(self.root, "git", "rev-parse", "main").stdout.strip()
+        sign.write(lock, {"ticket": "t2", "base_commit": main, "commit": second, "number": 2,
+                          "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                          "at": "now"}, "tollgate-lock")
+        self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
+        # A record with no base, for a lock that has one.
+        data = json.loads(record.read_text())
+        data.pop("base_commit")
+        sign.write(record, data, "tollgate-pass")
+        self.assertTrue(check_merge.check_commit(str(self.root), second))
+        # The push of a merge of t2 is refused too.
+        sh(self.root, "git", "merge", "-q", "--no-ff", "--no-verify", "-m", "chore(t2): merge",
+           second)
+        head = sh(self.root, "git", "rev-parse", "HEAD").stdout.strip()
+        self.assertTrue(check_merge.check_push(str(self.root), head, main, "refs/heads/main"))
+
+    def test_a_ticket_that_builds_on_a_change_not_on_main_may_not_merge(self):
+        first, second = self.chained()
+        self.record_pass(self.root, second, tier=1, ticket="t2", base=first)
+        found = check_merge.check_commit(str(self.root), second)
+        self.assertTrue(found and "is not on main" in found[0], found)
+        # The push check reads main as it was before that merge.
+        self.record_pass(self.root, first)
+        FakeStore(str(self.root)).merge(first)
+        self.assertEqual(check_merge.check_commit(str(self.root), second), [])
+
+    def test_a_pass_record_of_an_older_tollgate_must_pass_again(self):
+        commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
+        self.record_pass(self.root, commit)
+        path = state.path(str(self.root), "passes", f"{commit}.json")
+        data = json.loads(path.read_text())
+        data.pop("base_commit")
+        sign.write(path, data, "tollgate-pass")
+        found = check_merge.check_commit(str(self.root), commit)
+        self.assertIn("older Tollgate", found[0])
+        self.assertIn("pass the gate again", found[0])
 
     def test_a_push_of_merges_that_passed_passes(self):
         commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
@@ -383,6 +447,28 @@ class InitTest(Env):
         with self.assertRaisesRegex(setup_init.InitError, "machine key"):
             setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False, which=FOUND)
 
+    def test_init_writes_the_test_check_for_a_python_test_suite(self):
+        root = self.repo()
+        Path(root, "tests").mkdir()
+        Path(root, "tests/test_shop.py").write_text("def test_ok():\n    assert True\n")
+        sh(root, "git", "add", "-A")
+        sh(root, "git", "commit", "-q", "-m", "test(shop): start")
+        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        tests = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]["tests"]
+        self.assertEqual(tests["report"], "report.xml")
+        self.assertIn("pytest", tests["run"])
+        self.assertIn("--junitxml=report.xml tests", tests["run"])
+        self.assertTrue(any(line.startswith("tests: ") for line in lines))
+
+    def test_init_says_when_it_finds_no_tests(self):
+        root = self.repo()
+        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        checks = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]
+        self.assertNotIn("tests", checks)
+        said = next(line for line in lines if line.startswith("tests: "))
+        self.assertIn("no test suite found", said)
+        self.assertIn("checks", said)
+
 
 REAL_DOCKER_READY = setup_init.docker_ready
 
@@ -390,7 +476,8 @@ REAL_DOCKER_READY = setup_init.docker_ready
 class DockerCheckTest(Env):
     def write(self, root, isolation):
         Path(root, ".tollgate").mkdir(exist_ok=True)
-        Path(root, ".tollgate/settings.json").write_text(json.dumps({"isolation": isolation}))
+        Path(root, ".tollgate/settings.json").write_text(json.dumps(
+            {"runner": "background", "isolation": isolation}))
 
     def test_the_container_isolation_needs_docker(self):
         root = self.repo()
@@ -407,11 +494,16 @@ class DockerCheckTest(Env):
                 self.assertEqual(setup_init.check_isolation(root, which=lambda t: "/bin/" + t),
                                  "isolation: container, Docker is running")
 
-    def test_no_settings_means_container(self):
+    def test_session_mode_needs_no_docker(self):
+        # No settings means session mode: your own session runs each role.
         root = self.repo()
-        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY), \
-                self.assertRaisesRegex(setup_init.InitError, "docker is not installed"):
-            setup_init.check_isolation(root, which=lambda t: None)
+        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY):
+            self.assertEqual(setup_init.check_isolation(root, which=lambda t: None),
+                             "runner: session, Docker not needed")
+            Path(root, ".tollgate").mkdir(exist_ok=True)
+            Path(root, ".tollgate/settings.json").write_text(json.dumps({"isolation": "container"}))
+            self.assertEqual(setup_init.check_isolation(root, which=lambda t: None),
+                             "runner: session, Docker not needed")
 
     def test_the_sandbox_isolation_skips_the_check(self):
         root = self.repo()

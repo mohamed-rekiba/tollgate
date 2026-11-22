@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from driver import history
+from driver import history, roles
 from driver.log import read
 from gate import state
 
@@ -26,13 +26,18 @@ def ticket_row(events: list) -> dict:
     return {"question": question["question"] if question else None, "ticket": t.ticket or "?",
             "state": t.state, "tier": t.tier, "attempts": t.attempts,
             "score": t.best_score if t.best_score >= 0 else None,
-            "cost_usd": history.cost(events), "minutes": history.minutes(events),
+            "cost_usd": history.cost(events) if history.cost_known(events) else None, "minutes": history.minutes(events),
             "ready": t.ready or None, "reason": t.reason, "task": t.task}
+
+
+def usd(cost) -> str:
+    """A cost for a person: the number, or "unknown" in session mode."""
+    return "unknown" if cost is None else str(cost)
 
 
 def rows(project: str, task: str | None = None) -> list:
     out = []
-    for path in sorted(logs_dir(project).glob("*.jsonl")):
+    for path in history.logs(logs_dir(project)):
         if path.name.startswith("task-"):
             continue
         events = read(str(path))
@@ -44,18 +49,19 @@ def rows(project: str, task: str | None = None) -> list:
 def render(project: str, task: str) -> str:
     task_events = read(str(logs_dir(project) / f"task-{task}.jsonl"))
     tickets = rows(project, task)
-    all_events = task_events + [e for p in logs_dir(project).glob("*.jsonl")
+    all_events = task_events + [e for p in history.logs(logs_dir(project))
                                 if not p.name.startswith("task-")
                                 for e in read(str(p)) if e.get("task") == task]
-    plan_cost = history.cost(task_events)
-    total = round(plan_cost + sum(r["cost_usd"] for r in tickets), 4)
+    plan_cost = history.cost(task_events) if history.cost_known(task_events) else None
+    total = roles.add_cost(plan_cost, *(r["cost_usd"] for r in tickets))
     waiting = [e for e in task_events if e["event"] == "task_waiting"]
     pic = ('<picture>\n'
            f'  <source media="(prefers-color-scheme: dark)" srcset="{task}-dark.svg">\n'
            f'  <img alt="Task {task}: where each ticket stands" src="{task}.svg">\n'
            '</picture>')
     lines = [f"# Report: task {task}", "", brief(project, task), "", pic, "", "## Details", "",
-             f"- Cost: {total} USD ({plan_cost} USD for the plan).",
+             (f"- Cost: {total} USD ({plan_cost} USD for the plan)." if total is not None else
+              "- Cost: unknown. Your own Claude Code session ran the roles, so it knows the cost."),
              f"- Time: {history.minutes(all_events)} minutes from the first event to the last.",
              f"- Plan: {'locked' if any(e['event'] == 'plan_locked' for e in task_events) else 'not locked'}.",
              _analysis_line(task_events), ""]
@@ -65,7 +71,7 @@ def render(project: str, task: str) -> str:
               "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in tickets:
         lines.append(f"| {r['ticket']} | {r['state']} | {r['tier'] or ''} | {r['attempts']} | "
-                     f"{'' if r['score'] is None else r['score']} | {r['cost_usd']} | {r['minutes']} | "
+                     f"{'' if r['score'] is None else r['score']} | {usd(r['cost_usd'])} | {r['minutes']} | "
                      f"{_ready(r)} | {r['reason']} |")
     advisor_events = [e for e in all_events if e["event"] in ("waiting_for_advisor",
                                                               "advisor_decided")]
@@ -213,7 +219,7 @@ def progress(project: str, task: str | None = None) -> tuple:
     """Return (done, still_to_do): two lists of short sentences for a person."""
     done, todo = roadmap_progress(project) if task is None else ([], [])
     tasks = [task] if task else sorted({r["task"] for r in rows(project) if r["task"]} | {
-        p.name[len("task-"):-len(".jsonl")] for p in logs_dir(project).glob("task-*.jsonl")})
+        p.name[len("task-"):-len(".jsonl")] for p in history.logs(logs_dir(project), "task-*.jsonl")})
     for t in tasks:
         task_events = read(str(logs_dir(project) / f"task-{t}.jsonl"))
         kinds = [e["event"] for e in task_events]
@@ -268,7 +274,7 @@ def status(project: str) -> str:
     for r in found:
         lines.append(f"| {r['task']} | {r['ticket']} | {r['state']} | {r['tier'] or ''} | "
                      f"{r['attempts']} | {'' if r['score'] is None else r['score']} | "
-                     f"{r['cost_usd']} | {r['minutes']} | {_ready(r)} |")
+                     f"{usd(r['cost_usd'])} | {r['minutes']} | {_ready(r)} |")
     waiting = [r for r in found if r["state"] in ("waits for a person", "parked")]
     if waiting:
         lines += ["", "Waiting for a decision:"] + [f"- {r['ticket']}: {r['reason']}" for r in waiting]

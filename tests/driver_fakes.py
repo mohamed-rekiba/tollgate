@@ -41,6 +41,7 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), signer="", **e
         "checks": {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"}},
         "harness": ["run_tests.py"],
         "require_plan": False,
+        "runner": "background",
         "isolation": "sandbox",
         "signers": [signer] if signer else [],
         "ai": {"builder": f"{role} {builder}", "reviewer": f"{role} {reviewer}",
@@ -128,9 +129,10 @@ class FakeStore:
 
     # Locks.
 
-    def freeze(self, ticket: str) -> str:
+    def freeze(self, ticket: str, start: str | None = None) -> str:
         commit = sh(self.project, "git", "rev-parse", f"refs/heads/tg/{ticket}")
-        base = sh(self.project, "git", "merge-base", "main", commit)
+        base = start or sh(self.project, "git", "merge-base", "main", commit)
+        self.starts = {**getattr(self, "starts", {}), ticket: start}
         settings = self._settings()
         with tempfile.TemporaryDirectory() as d:
             sh(d, "git", "clone", "-q", self.project, ".")
@@ -148,7 +150,10 @@ class FakeStore:
                 raise StoreError(f"the ticket cannot be frozen: {path} is missing")
             files[path] = fingerprint(found)
         tests, keeps = [], []
+        modules = {f.removesuffix(".py").replace("/", ".") for f in tk.tests}
         for test_id, result in sorted(results.tests.items()):
+            if test_id.split("::")[0] not in modules:
+                continue    # a test of another ticket, already on the start commit
             item = tk.item(item_of_test(test_id) or "")
             if item is None:
                 continue

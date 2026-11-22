@@ -81,7 +81,17 @@ class StoreCase(unittest.TestCase):
         return commit
 
     def pass_record(self, commit, tier=2, ticket="T-1"):
-        return {"commit": commit, "ticket": ticket, "tier": tier,
+        """A pass record, and a signed lock of the ticket from main when it has none."""
+        base = None
+        if ticket:
+            path = freeze.lock_path(str(self.repo.path), ticket)
+            if not path.exists():
+                sign.write(path, {"ticket": ticket, "base_commit": self.main, "commit": commit,
+                                  "number": 1, "at": "2026-11-22T00:00:00Z",
+                                  "manifest": {"files": {}, "tests": [], "keeps_behavior": []}},
+                           "tollgate-lock")
+            base = json.loads(path.read_text())["base_commit"]
+        return {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
                 "lock_sha256": freeze.lock_sha256(str(self.repo.path), ticket) if ticket else None,
                 "checks": {"tests": True}, "score": 100}
 
@@ -102,6 +112,21 @@ class FreezeTest(StoreCase):
         self.assertEqual(lock["manifest"]["tests"],
                          ["tests.test_t1::test_c1_shout", "tests.test_t1::test_c2_greet"])
         self.assertEqual(lock["manifest"]["keeps_behavior"], ["tests.test_t1::test_c2_greet"])
+
+    def test_a_ticket_may_start_from_a_ready_change_that_passed(self):
+        start = self.change()
+        r = self.repo
+        r.git("checkout", "-q", "-b", "tg/T-1", start)
+        r.write(mf.ticket_path("T-1"), TICKET)
+        r.write("tests/test_t1.py", TESTS.replace('app.shout("ann"), "HELLO ANN"',
+                                                  'app.loud("ann"), "hello ann!"'))
+        r.commit("test(T-1): the ticket and its locked tests")
+        r.git("checkout", "-q", "main")
+        with self.assertRaisesRegex(StoreError, "no pass record"):
+            self.store.freeze("T-1", start=start)
+        self.store.record_pass(start, self.pass_record(start, ticket=""))
+        lock = sign.read(Path(self.store.freeze("T-1", start=start)), "tollgate-lock", [self.pub])
+        self.assertEqual(lock["base_commit"], start)
 
     def test_refuses_a_test_that_passes_before_the_build(self):
         self.ticket_branch(tests=TESTS.replace('app.shout("ann")', '"HELLO ANN"'))
@@ -174,6 +199,40 @@ class LockPlanTest(StoreCase):
         self.plan_branch()
         self.store.lock_plan("retries")
         with self.assertRaisesRegex(StoreError, "already locked"):
+            self.store.lock_plan("retries")
+
+    def amend(self, ticket_text=None, add=True):
+        """A new version of the plan on tg-plan/retries: a second ticket, T-2."""
+        r = self.repo
+        r.git("checkout", "-q", "tg-plan/retries")
+        plan = PLAN.replace("tickets: T-1", "tickets: T-1, T-2") if add else PLAN
+        r.write(pl.plan_path("retries"), plan.replace("## Tickets\n", "## Tickets\n- T-2: fix.\n")
+                if add else plan + "\n")
+        if ticket_text:
+            r.write(mf.ticket_path("T-1"), ticket_text)
+        if add:
+            r.write(mf.ticket_path("T-2"), TICKET.replace("plan: demo", "plan: retries")
+                    .replace("id: T-1", "id: T-2"))
+        commit = r.commit("the fix plan")
+        r.git("checkout", "-q", "main")
+        return commit
+
+    def test_a_new_version_of_the_plan_is_locked_and_the_old_one_kept(self):
+        self.plan_branch()
+        first = Path(self.store.lock_plan("retries")).read_bytes()
+        commit = self.amend()
+        found = sign.read(Path(self.store.lock_plan("retries")), "tollgate-plan", [self.pub])
+        self.assertEqual((found["commit"], found["version"]), (commit, 2))
+        self.assertIn(mf.ticket_path("T-2"), found["files"])
+        kept = state.path(str(self.repo.path), "plans", "replaced", "retries.1.json")
+        self.assertEqual(kept.read_bytes(), first)
+
+    def test_a_new_version_may_not_change_or_drop_a_locked_ticket(self):
+        self.plan_branch()
+        self.store.lock_plan("retries")
+        self.amend(ticket_text=TICKET.replace("plan: demo", "plan: retries")
+                   .replace("There is no shout.", "Shout exists."))
+        with self.assertRaisesRegex(StoreError, "changes ticket T-1"):
             self.store.lock_plan("retries")
 
 
@@ -276,6 +335,57 @@ class MergeTest(StoreCase):
         parents = self.repo.git("rev-list", "--parents", "-n", "1", merged).split()[1:]
         self.assertEqual(parents, [self.main, commit])
         self.assertFalse(state.path(str(self.repo.path), "passes", "ready", "T-1.json").exists())
+
+    def test_the_merge_commit_passes_the_commit_message_check(self):
+        # A project set up by /tollgate:init runs this check on the store's merge too.
+        from setup import check_commit_msg
+        commit = self.change()
+        self.store.record_pass(commit, self.pass_record(commit))
+        self.store.ready("tg/T-1-build", "T-1")
+        merged = self.store.merge(commit)
+        message = self.repo.git("log", "-1", "--format=%B", merged)
+        self.assertEqual(check_commit_msg.problems(message, in_merge=True), [])
+
+    def test_refuses_a_ticket_that_builds_on_a_change_not_on_main(self):
+        # T-1 is tier 3; T-2 starts from it and counts only its own files, tier 1.
+        first = self.change()
+        r = self.repo
+        r.git("checkout", "-q", "-b", "tg/T-2", first)
+        r.write("b.py", "y = 2\n")
+        second = r.commit("feat(T-2): b")
+        r.git("checkout", "-q", "main")
+        sign.write(freeze.lock_path(str(r.path), "T-2"),
+                   {"ticket": "T-2", "base_commit": first, "commit": second, "number": 1,
+                    "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                    "at": "2026-11-22T00:00:00Z"}, "tollgate-lock")
+        self.store.record_pass(second, self.pass_record(second, tier=1, ticket="T-2"))
+        self.store.record_pass(first, self.pass_record(first, tier=3))
+        with self.assertRaisesRegex(StoreError, "is not on main"):
+            self.store.merge(second)
+        self.approve(first)
+        self.store.merge(first)
+        self.assertTrue(self.store.merge(second))
+
+    def test_refuses_a_ticket_whose_lock_is_gone_or_names_another_start(self):
+        commit = self.change()
+        record = self.pass_record(commit)
+        self.store.record_pass(commit, dict(record, base_commit="0" * 40))
+        with self.assertRaisesRegex(StoreError, "not its lock's start"):
+            self.store.merge(commit)
+        self.store.record_pass(commit, record)
+        freeze.lock_path(str(self.repo.path), "T-1").unlink()
+        with self.assertRaisesRegex(StoreError, "lock"):
+            self.store.merge(commit)
+
+    def test_a_pass_record_of_an_older_tollgate_must_pass_again(self):
+        commit = self.change()
+        record = self.pass_record(commit)
+        record.pop("base_commit")
+        record["at"] = "2026-11-01T00:00:00Z"
+        sign.write(state.path(str(self.repo.path), "passes", f"{commit}.json"), record,
+                   "tollgate-pass")
+        with self.assertRaisesRegex(StoreError, "older Tollgate.*pass the gate again"):
+            self.store.merge(commit)
 
     def test_refuses_with_no_pass(self):
         commit = self.change()

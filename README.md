@@ -74,7 +74,7 @@ You need:
 - Python 3.11 or later,
 - git, with `ssh-keygen`,
 - pre-commit,
-- Docker, for the default isolation. You name a container image that has Claude Code in it, under `container_image` in the settings. Tollgate ships no image.
+- Docker, only for background mode with the container isolation. You name a container image that has Claude Code in it, under `container_image` in the settings. Tollgate ships no image.
 
 Install the plugin:
 
@@ -91,12 +91,23 @@ Then, inside your project, on the branch `main`:
 
 `init` writes `.tollgate/settings.json`, makes your machine key, and adds it to `signers`. It adds your SSH public key to `owners`. It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
 
+### Change the settings later
+
+`.tollgate/settings.json` is a locked file: the locked-file check refuses any commit that changes it, so no role can loosen the rules. To change it, edit it on main and commit it yourself, in your own terminal, as `init` does:
+
+```
+git add .tollgate/settings.json
+git commit --no-verify -m "chore(settings): <what you changed>"
+```
+
+Run this outside Claude Code: Tollgate's hook refuses `--no-verify` in a Claude Code session.
+
 ## Use it
 
 | You type | What happens |
 | --- | --- |
 | `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
-| `/tollgate:task` | Starts a task from your request. It runs in the background. |
+| `/tollgate:task` | Runs a task from your request, one role at a time in your session, or in the background. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, across projects, and records your answer. |
 | `/tollgate:merge` | Lists the ready changes, shows one, asks you to sign the approval for tier 3 and 4, and merges it. |
@@ -105,24 +116,37 @@ Then, inside your project, on the branch `main`:
 | `/tollgate:docs` | Writes a README, docs, comments, and commit messages in plain words. It adds a check for the writing rules. |
 | `/tollgate:diagram` | Draws a diagram as an SVG file, in light and dark. |
 
-A task runs in the background, so you can close Claude Code. A stopped task picks up where it stopped. A question waits in the state folder until you answer it with `/tollgate:inbox`.
+### How a task runs
+
+The driver decides each step, the gate scores each try, and the store signs and merges. Who runs each role depends on `"runner"` in the settings:
+
+- **Session mode**, the default: your own Claude Code session runs each role as one of Tollgate's subagents. The task skill asks the driver for the next step, starts the subagent it names, and hands back its answer, until the task is done or a question waits for you. You see each step, and the roles use your own Claude Code login.
+- **Background mode**: the driver starts each role as its own process, in Docker or Claude Code's sandbox, so you can close Claude Code. A roadmap always runs this way.
+
+In a task, each ticket builds on the ready change before it, and nothing merges until a reviewer has read the whole task. If that review finds a problem, the task runs one fix round: the plan gets new tickets for the problem, is approved and locked again, and the new tickets are built. Then the tickets merge in plan order. If the review still finds a problem after the fix round, the task parks and nothing merges.
+
+In both modes a stopped task picks up where it stopped, and a question waits in the state folder until you answer it. [docs/design.md](docs/design.md#two-ways-to-run-the-roles) has the details, and what each mode protects.
+
+### Threat model
+
+Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your signing key. For that, use background mode, which runs roles in a container with no key. Use background mode for tier 3 and 4 work from a source you do not trust. [docs/design.md](docs/design.md#threat-model) says what each mode protects.
 
 ## Cost, and when to use it
 
-Each task runs an analyst and a review of the whole task, and each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. The stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. Tollgate has no measured cost numbers yet.
+Each task runs an analyst and a review of the whole task, and each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. In background mode the stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. In session mode the cost is your session's own, so the report shows it as unknown, and each role has a limit of turns instead. Tollgate has no measured cost numbers yet.
 
 Use Tollgate when an AI writes most of each change, and the change must be right. For a quick change where a mistake is cheap, use Claude Code alone. It is faster and cheaper.
 
 ## Status
 
-Unit tests with fake roles cover the store, the signed records, the gate, the driver loop for a task and a ticket, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home.
+Unit tests with fake roles cover the store, the signed records, the gate, the driver loop for a task and a ticket, a whole task in session mode with fake answers, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home.
 
 Untested:
 
 - A real role obeying its policy inside Claude Code.
 - The `sandbox` isolation. So the default isolation is `container`.
 - A role in Docker through the driver.
-- A task end to end with real models.
+- A task end to end with real models, in either mode.
 - The roadmap and the retro.
 
 The store runs the tests for a lock on your machine, not in the role's isolation.

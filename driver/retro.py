@@ -10,6 +10,7 @@ a ticket. Tollgate can make a rule stricter. Only a person makes a rule looser.
 import argparse
 import sys
 
+from driver import history
 from driver.log import read
 from driver.report import logs_dir, ticket_row
 from gate import state
@@ -17,9 +18,16 @@ from gate import state
 MAX_LESSONS = 3
 
 
+def _per_ticket(costs: list) -> float | None:
+    """The mean cost of a ticket in USD, or None when one is not known (session mode)."""
+    if any(c is None for c in costs):
+        return None
+    return round(sum(costs) / len(costs), 4) if costs else 0
+
+
 def numbers(project: str, task: str) -> dict:
     tickets = []
-    for path in sorted(logs_dir(project).glob("*.jsonl")):
+    for path in history.logs(logs_dir(project)):
         if path.name.startswith(("task-", "roadmap-")):
             continue
         events = read(str(path))
@@ -38,7 +46,7 @@ def numbers(project: str, task: str) -> dict:
             e["event"] == "try_passed" and e.get("attempt") == 1 for e in ev)),
         "parked": sum(1 for r, _ in tickets if r["state"] == "parked"),
         "mean_attempts": round(sum(r["attempts"] for r, _ in tickets) / n, 2) if n else 0,
-        "cost_per_ticket_usd": round(sum(r["cost_usd"] for r, _ in tickets) / n, 4) if n else 0,
+        "cost_per_ticket_usd": _per_ticket([r["cost_usd"] for r, _ in tickets]),
         "tests_rejected": sum(1 for _, ev in tickets for e in ev if e["event"] == "tests_rejected"),
     }, tickets
 

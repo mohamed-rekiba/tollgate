@@ -118,8 +118,36 @@ def keys_on_main(root, name: str) -> list:
         return []
 
 
-def check_commit(root, commit: str) -> list:
-    """The problems that stop commit from reaching main. None means it may."""
+def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> list:
+    """A ticket's pass record and its lock both name the commit the ticket started
+    from. In a task that is the ready change before it, and the ticket's tier counts
+    only its own files. So the lock must be there, be the lock that passed, name the
+    same start as the record, and that start must already be on main (onto), or it
+    would come in with no check of its own. Anything else fails closed."""
+    ticket = record.get("ticket")
+    if not ticket:
+        return []
+    path = folder / "locks" / f"{ticket}.json"
+    lock = read(path, "tollgate-lock", signers) if path.exists() else None
+    if lock is None:
+        return [f"ticket {ticket} has no lock that verifies, so its start cannot be checked"]
+    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get("lock_sha256"):
+        return [f"ticket {ticket} was locked again after its pass record; it must pass again"]
+    if "base_commit" not in record:
+        return [(f"the pass record of ticket {ticket} was made by an older Tollgate, with no "
+                 "start; the change must pass the gate again")]
+    start = record.get("base_commit")
+    if not isinstance(start, str) or not start or lock.get("base_commit") != start:
+        return [f"the pass record of ticket {ticket} names no start, or not its lock's start"]
+    if git(root, "merge-base", "--is-ancestor", start, onto)[0] != 0:
+        return [(f"ticket {ticket} builds on {start[:12]}, which is not on {MAIN}; merge the "
+                 "ticket before it first")]
+    return []
+
+
+def check_commit(root, commit: str, onto: str = f"refs/heads/{MAIN}") -> list:
+    """The problems that stop commit from reaching main, merged onto the commit onto.
+    None means it may."""
     signers = keys_on_main(root, "signers")
     if not signers:
         return [f"{MAIN} has no signers in {SETTINGS}. Run /tollgate:init."]
@@ -140,7 +168,7 @@ def check_commit(root, commit: str) -> list:
         if not approval or approval.get("commit") != commit:
             return [(f"commit {commit[:12]} is tier {tier} and has no verified approval. "
                      "Approve it with /tollgate:merge.")]
-    return []
+    return check_start(root, folder, record, signers, onto)
 
 
 def merge_heads(root) -> list:
@@ -162,7 +190,7 @@ def check_merge(root) -> list:
     heads = merge_heads(root)
     if not heads:
         return ["a merge into main, but git names no commit that it merges"]
-    return [p for head in heads for p in check_commit(root, head)]
+    return [p for head in heads for p in check_commit(root, head, "HEAD")]
 
 
 def has_settings(root, commit: str) -> bool:
@@ -187,7 +215,7 @@ def check_push(root, to_ref: str, from_ref: str = "", branch: str = "") -> list:
             problems.append(f"commit {commit[:12]} was made on main. A change reaches main "
                             "only as a merge by /tollgate:merge.")
             continue
-        problems += check_commit(root, parents[1])
+        problems += check_commit(root, parents[1], parents[0])
     return problems
 
 

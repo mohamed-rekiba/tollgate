@@ -1,7 +1,7 @@
 {
  "type": "state",
  "title": "The life of a task",
- "desc": "A task is analyzed, planned, and approved, then each ticket is built in order: tests first, then tries at the gate until one passes or a stop sends it to the advisor. When every ticket is a ready change, a reviewer reads the whole task. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.",
+ "desc": "A task is analyzed, planned, and approved, then each ticket is built in order, each from the ready change before it: tests first, then tries at the gate until one passes or a stop sends it to the advisor. Every ready change is held. When every ticket is ready, a reviewer reads the whole task. Problems in the first review start one fix round: the plan gets new tickets, is approved and locked again, and the new tickets are built. Problems in the second review park the task with no merge. Once the review passes, the tickets merge in plan order. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.",
  "names": {
   "server": "Store"
  },
@@ -45,7 +45,7 @@
   },
   {
    "id": "tickets",
-   "text": "Building the tickets\nOne at a time, in plan order",
+   "text": "Building the tickets\nIn plan order, each from\nthe ready change before it",
    "col": 0,
    "row": 1,
    "kind": "ai",
@@ -87,7 +87,7 @@
   },
   {
    "id": "ready",
-   "text": "A ready change\nA signed pass record;\nit waits for a merge",
+   "text": "A ready change\nA signed pass record;\nheld for the task",
    "col": 4,
    "row": 0,
    "kind": "server",
@@ -117,6 +117,22 @@
    "row": 2,
    "kind": "check",
    "icon": "search"
+  },
+  {
+   "id": "fixing",
+   "text": "The fix round\nOnce: the plan gets\ntickets for the problems",
+   "col": 2,
+   "row": 2,
+   "kind": "ai",
+   "icon": "plan"
+  },
+  {
+   "id": "merging",
+   "text": "Merging\nIn plan order, as auto\nmerge and tiers allow",
+   "col": 1,
+   "row": 2,
+   "kind": "server",
+   "icon": "merge"
   },
   {
    "id": "done",
@@ -303,14 +319,35 @@
   {
    "from": "reviewing",
    "to": "waits",
-   "event": "the advisor stops it",
-   "loop": "right"
+   "event": "still problems",
+   "loop": "right",
+   "guard": "after the fix round",
+   "tone": "fail"
   },
   {
    "from": "reviewing",
+   "to": "fixing",
+   "event": "problems found",
+   "guard": "first review",
+   "tone": "fail"
+  },
+  {
+   "from": "fixing",
+   "to": "tickets",
+   "event": "plan locked again"
+  },
+  {
+   "from": "reviewing",
+   "to": "merging",
+   "event": "passed",
+   "guard": "and the checkpoint says go on",
+   "tone": "pass",
+   "loop": "below"
+  },
+  {
+   "from": "merging",
    "to": "done",
    "event": "reported",
-   "guard": "passed, or the advisor says go on",
    "tone": "pass"
   }
  ],
@@ -354,6 +391,10 @@
    ],
    [
     "reviewing",
+    "merging"
+   ],
+   [
+    "merging",
     "done"
    ]
   ]

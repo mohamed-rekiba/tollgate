@@ -68,9 +68,12 @@ def docker_ready(which=shutil.which) -> str:
 
 
 def check_isolation(root: Path, which=shutil.which) -> str:
-    """Refuse the container isolation when Docker cannot run. Return one line."""
+    """Refuse the container isolation of the background driver when Docker cannot run.
+    Session mode uses no isolation of the driver's, so it needs no Docker. Return one line."""
     path = root / st.PATH
     settings = json.loads(path.read_text()) if path.exists() else {}
+    if settings.get("runner", "session") != "background":
+        return "runner: session, Docker not needed"
     isolation = settings.get("isolation", "container")
     if isolation != "container":
         return f"isolation: {isolation}, Docker not needed"
@@ -117,6 +120,34 @@ def write_settings(root: Path, machine: str, owner: str) -> bool:
     return True
 
 
+def test_check(root: Path) -> dict | None:
+    """The gate's test check for the test suite init finds, or None. It knows a
+    Python suite: test_*.py files under tests/ or test/, run with pytest. The gate
+    reads the JUnit report the check writes."""
+    for folder in ("tests", "test"):
+        if any(Path(root, folder).rglob("test_*.py")):
+            return {"run": f"python3 -m pytest -q -p no:cacheprovider "
+                           f"--junitxml=report.xml {folder}", "report": "report.xml"}
+    return None
+
+
+def add_test_check(root: Path) -> str:
+    """Write the test check when the settings have none. Return init's line for it."""
+    path = root / st.PATH
+    settings = json.loads(path.read_text())
+    checks = settings.setdefault("checks", {})
+    if "tests" in checks:
+        return f"tests: {checks['tests'].get('run', '')}"
+    found = test_check(root)
+    if not found:
+        return ("tests: no test suite found. Add a check named \"tests\" to \"checks\" in "
+                f"{st.PATH}, a command that writes a JUnit report, and set \"report\" to its "
+                "file. Until then the gate runs no tests.")
+    checks["tests"] = found
+    path.write_text(json.dumps(settings, indent=2) + "\n")
+    return f"tests: {found['run']}"
+
+
 def key_id(line: str) -> str:
     return " ".join(line.split()[:2])
 
@@ -143,9 +174,14 @@ def init(project=".", key_path=None, replace=False, which=shutil.which, install=
     changed = install_writing_check.install(str(root))
     if write_settings(root, machine, owner):
         changed.append(st.PATH)
+    before = (root / st.PATH).read_text()
+    tests_line = add_test_check(root)
+    if (root / st.PATH).read_text() != before:
+        changed.append(st.PATH)
     changed += precommit.write(str(root), replace)
     changed = sorted(set(changed))
     out.append(f"files: {', '.join(changed) if changed else 'already in place'}")
+    out.append(tests_line)
     paths = [st.PATH, precommit.CHECKS_DIR, precommit.CONFIG]
     git(root, "add", "--", *paths)
     if git(root, "diff", "--cached", "--name-only", "--", *paths):

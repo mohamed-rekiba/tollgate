@@ -4,6 +4,7 @@ Each case builds ticket T-1 of a sample project: shout returns the greeting in
 capitals. The fake builder's mode decides how each try goes.
 """
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -37,6 +38,33 @@ class BuildTest(LoopCase):
         self.assertEqual((branch, ticket), ("tg/T-1", "T-1"))
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
+
+    def test_a_check_that_fails_on_the_new_tests_sends_them_back(self):
+        py = sys.executable
+        bad = f"{py} -c \"print('tests/test_t1.py:1: a long dash'); raise SystemExit(1)\""
+        s = self.sample(checks={"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                                "writing": {"run": bad}})
+        d, _ = driver(s)
+        d.run()
+        rejected = [e for e in s.log() if e["event"] == "tests_rejected"]
+        self.assertTrue(rejected)
+        self.assertIn("tests/test_t1.py", rejected[0]["findings"][0]["text"])
+
+    def test_a_check_failure_the_tests_did_not_cause_waits_for_the_builder(self):
+        # A project with no README fails the writing check before any test is written.
+        # The test writer may not write a README, so the tests go on, and the gate
+        # holds the builder's try to that check.
+        py = sys.executable
+        bad = f"{py} -c \"print('README.md: missing.'); raise SystemExit(1)\""
+        s = self.sample(checks={"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                                "writing": {"run": bad}})
+        d, _ = driver(s)
+        d.run()
+        events = s.events()
+        self.assertNotIn("tests_rejected", events)
+        self.assertIn("tests_reviewed", events)
+        failed = [e for e in s.log() if e["event"] == "try_failed"]
+        self.assertTrue(failed, "the gate still runs the writing check on the try")
 
     def test_a_tier_2_change_gets_the_review_lens(self):
         s = self.sample(reviewer="ok block=review", tier1={"max_files": 0, "max_lines": 0})
@@ -285,6 +313,45 @@ class StopTest(LoopCase):
         self.assertEqual(s.events()[-1], "waiting_for_advisor")
 
 
+class ChecklistTest(LoopCase):
+    def test_the_builder_s_own_test_does_not_vouch_for_an_item(self):
+        path = s_path()
+        self.addCleanup(Path(path).unlink, missing_ok=True)
+        s = self.sample(builder="pass1 owntest=1", reviewer=f"ok review_to={path}")
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        seen = [json.loads(line) for line in Path(path).read_text().splitlines()]
+        self.assertNotIn("C3", seen[-1]["tested"])
+        self.assertEqual(sorted(seen[-1]["tested"]), ["C1", "C2"])
+        passed = [e for e in s.log() if e["event"] == "try_passed"][-1]
+        self.assertEqual((passed["score"], passed["items"]["C3"]), (100, True))
+
+    def test_a_low_score_tells_the_builder_which_items_failed_and_why(self):
+        inputs = s_path()
+        self.addCleanup(Path(inputs).unlink, missing_ok=True)
+        s = self.sample(builder=f"pass1 inputs_to={inputs}", reviewer="ok c3fail",
+                        pass_score=70)
+        d, _ = driver(s)
+        d.run()
+        failed = next(e for e in s.log() if e["event"] == "try_failed")
+        text = " ".join(f["text"] for f in failed["findings"])
+        self.assertIn("score 67 is under 70", text)
+        self.assertIn("C3", text)
+        self.assertIn("shout has no docstring", text)
+        second = [json.loads(line) for line in Path(inputs).read_text().splitlines()][1]
+        self.assertIn("shout has no docstring", " ".join(f["text"] for f in second["findings"]))
+
+
+def s_path():
+    """A file outside the copy for a fake role to write to, new for each call."""
+    import tempfile
+    handle, path = tempfile.mkstemp(suffix=".jsonl")
+    import os
+    os.close(handle)
+    os.unlink(path)
+    return path
+
+
 class TaskTest(LoopCase):
     def test_a_task_plans_locks_the_plan_and_builds_each_ticket(self):
         from driver.task import Task
@@ -364,13 +431,14 @@ class TaskTest(LoopCase):
         self.assertIn("- Analysis: written. Every citation was found.", text)
         self.assertIn("## The review of the whole task\n\nPassed. Tier 2.", text)
 
-    def test_a_blocking_finding_in_the_task_review_goes_to_the_advisor(self):
-        s, task = self.task(checkpoints=[], reviewer="ok block=review", advisor="ok checkpoint=stop")
+    def test_a_blocking_finding_after_the_fix_round_parks_the_task(self):
+        s, task = self.task(checkpoints=[], reviewer="ok block=review", advisor="ok")
         # The sample tickets are tier 1, so only the review of the whole task blocks.
         self.assertEqual(task.run(), 3)
-        reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
-        self.assertFalse(reviewed["passed"])
-        self.assertIn("checkpoint_stopped", s.events("task-demo"))
+        reviewed = [e for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual([e["passed"] for e in reviewed], [False, False])
+        self.assertIn("fix_round", s.events("task-demo"))
+        self.assertNotIn("checkpoint_passed", s.events("task-demo"))
 
 
     def test_an_analysis_that_cannot_be_read_parks_the_task(self):
@@ -395,6 +463,81 @@ class TaskTest(LoopCase):
         reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
         self.assertIn("demo-2", reviewed.get("tickets", []))
         self.assertIn("demo-1", reviewed.get("tickets", []))
+
+
+
+class FixRoundTest(LoopCase):
+    """The review of the whole task finds a problem: one fix round, then merges in order."""
+
+    def task(self, advisor="ok", **settings_args):
+        from driver.task import Task
+        from tests.driver_fakes import gate_api, review_api
+        s = Sample(ticket=False, advisor=(f"{sys.executable} {FAKE_ROLE} {advisor}",),
+                   **settings_args)
+        self.addCleanup(s.close)
+        store = FakeStore(s.project)
+        task = Task(str(s.project), "demo", "Add shout and whisper.", store,
+                    driver_args={"gate_api": gate_api(), "review_api": review_api()})
+        return s, store, task
+
+    def ready(self, s, tid):
+        return [e for e in s.log(tid) if e["event"] == "ready"][-1]["commit"]
+
+    def test_a_failed_task_review_runs_one_fix_round_then_merges_in_plan_order(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1", auto_merge=True)
+        self.assertEqual(task.run(), 0)
+        events = s.events("task-demo")
+        self.assertEqual(events.count("fix_round"), 1)
+        rounds = [e.get("round") for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual(rounds, [0, 1])
+        self.assertEqual([m[1] for m in store.ready_marks], ["demo-1", "demo-2", "demo-3"])
+        self.assertEqual(store.merged, [self.ready(s, t) for t in ("demo-1", "demo-2", "demo-3")])
+        plan = json.loads(state.path(str(s.project), "plans", "demo.json").read_text())
+        self.assertIn(".tollgate/tickets/demo-3/ticket.md", plan["files"])
+
+    def test_each_ticket_starts_from_the_ready_change_before_it(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1")
+        self.assertEqual(task.run(), 0)
+        self.assertEqual(store.starts["demo-1"], None)
+        self.assertEqual(store.starts["demo-2"], self.ready(s, "demo-1"))
+        self.assertEqual(store.starts["demo-3"], self.ready(s, "demo-2"))
+        lock = json.loads(state.path(str(s.project), "locks", "demo-3.json").read_text())
+        self.assertEqual(lock["base_commit"], self.ready(s, "demo-2"))
+
+    def test_a_second_failure_parks_and_nothing_merges_whatever_the_advisor_says(self):
+        s, store, task = self.task(reviewer="ok taskmajor=2", advisor="ok checkpoint=continue",
+                                   auto_merge=True)
+        self.assertEqual(task.run(), 3)
+        log = s.log("task-demo")
+        events = [e["event"] for e in log]
+        self.assertEqual(events.count("fix_round"), 1)
+        self.assertFalse([e for e in log if e.get("checkpoint") == "task"
+                          or e.get("name") == "task"])
+        waiting = [e for e in log if e["event"] == "task_waiting"][-1]
+        self.assertIn("after the fix round", waiting["reason"])
+        self.assertEqual(store.merged, [])
+        for tid in ("demo-1", "demo-2", "demo-3"):
+            self.assertEqual(s.events(tid)[-1], "waiting_for_merge")
+
+    def test_the_tickets_stop_at_the_first_that_does_not_end_ready(self):
+        s, _, task = self.task(builder="same", advisor="ok decision=park")
+        self.assertEqual(task.run(), 3)
+        self.assertIn("parked", s.events("demo-1"))
+        self.assertEqual(s.log("demo-2"), [])
+
+    def test_no_ticket_merges_before_the_task_review_passes(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1", auto_merge=True)
+        merged_at = []
+        real = store.merge
+
+        def merge(commit):
+            merged_at.append([e["event"] for e in s.log("task-demo")])
+            return real(commit)
+        store.merge = merge
+        self.assertEqual(task.run(), 0)
+        for seen in merged_at:
+            self.assertIn("checkpoint_passed", seen)
+            self.assertEqual([e for e in seen if e == "task_reviewed"], ["task_reviewed"] * 2)
 
 
 if __name__ == "__main__":

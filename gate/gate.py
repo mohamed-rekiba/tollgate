@@ -178,6 +178,7 @@ def pass_record(facts: Facts, score: int, at: str | None = None) -> dict:
         "commit": facts.head_sha,
         "ticket": facts.ticket,
         "tier": tier_of(facts)[0],
+        "base_commit": (facts.lock or {}).get("base_commit"),
         "lock_sha256": facts.lock_sha256,
         "checks": checks_of(findings),
         "score": score,
@@ -204,23 +205,59 @@ def _differ(repo, ref: str, files: dict) -> list:
     return out
 
 
+def _is_ancestor(repo, commit: str, head: str) -> bool:
+    try:
+        git(repo, "merge-base", "--is-ancestor", commit, head)
+    except GitError:
+        return False
+    return True
+
+
+def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
+                   signers: list) -> list:
+    """The locked files of the other tickets this try builds on, and that are not on main
+    yet, which differ at the try. In a task each ticket starts from the ready change
+    before it, so its try holds the earlier tickets' locked tests too."""
+    out = []
+    folder = state.state_dir(project) / "locks"
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        if path.stem == ticket:
+            continue
+        try:
+            commit = json.loads(path.read_text()).get("commit") or ""
+        except (OSError, ValueError, AttributeError):
+            continue
+        if not commit or not _is_ancestor(repo, commit, head_sha) or _is_ancestor(repo, commit,
+                                                                                    base):
+            continue
+        other, _, _ = _read(project, "locks", path.stem, "tollgate-lock", signers)
+        if other:
+            out += _differ(repo, head_sha, other["manifest"]["files"])
+    return out
+
+
 def collect(project: str, repo, base: str, head: str, ticket: str, results: Results,
-            review_passed: bool | None = None) -> Facts:
+            review_passed: bool | None = None, start: str | None = None) -> Facts:
     """Gather the facts.
 
     project names the state folder. repo is the copy that holds the try.
     base names the main branch: the settings, and so the signers, come from there.
+    start is the commit the ticket started from, when not base: the tier counts only
+    the files changed since then. It must be the base the store recorded in the lock.
     """
     settings = st.load_from_ref(repo, base)
     signers = settings["signers"]
     head_sha = git(repo, "rev-parse", head).strip()
-    facts = Facts(settings, ticket, head_sha, changed_files(repo, base, head), results,
+    facts = Facts(settings, ticket, head_sha, changed_files(repo, start or base, head), results,
                   review_passed=review_passed)
     lock, digest, error = _read(project, "locks", ticket, "tollgate-lock", signers)
     if lock is None:
         facts.lock_error = f"the lock of ticket {ticket} does not verify: {error}"
         return facts
     facts.lock, facts.lock_sha256 = lock, digest
+    if start and git(repo, "rev-parse", start).strip() != lock.get("base_commit"):
+        # The store checked the start of the lock; any other start is not trusted.
+        facts.lock_error = f"the ticket's start {start[:12]} is not the base of its lock"
     files = lock["manifest"]["files"]
     commit = lock["commit"]
     try:
@@ -233,6 +270,9 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
     except GitError as err:
         facts.lock_error = f"the lock commit cannot be compared to its base: {err}"
     facts.locked_now_changed = _differ(repo, head_sha, files)
+    facts.locked_now_changed += [p for p in _chain_changed(project, repo, base, head_sha, ticket,
+                                                           signers)
+                                 if p not in facts.locked_now_changed]
 
     data = show_bytes(repo, commit, ticket_path(ticket))
     if data is not None:

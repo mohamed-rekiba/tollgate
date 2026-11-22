@@ -18,8 +18,13 @@ All run state lives in the state folder: the copy in builders/<ticket>/, the log
 in logs/<ticket>.jsonl, the run lock in run/. A driver that starts again reads
 the log and repeats no finished step.
 
+Each role goes through one caller, from driver/session.py: in session mode your
+own Claude Code session runs it as a subagent, and in background mode the driver
+starts it as its own process. The setting `runner` picks one.
+
 Exit codes: 0 the ticket is a ready change or merged, 3 the ticket waits for the
-advisor or is parked, 4 another driver holds the ticket, 1 an error.
+advisor or is parked, 4 another driver holds the ticket, 5 a role waits for your
+session (the step file, run/step.json, says which), 1 an error.
 """
 
 import argparse
@@ -29,13 +34,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from driver import advisor, history, roles, stop
+from driver import advisor, history, roles, session, stop
 from driver.log import Log, read
 from gate import checks, prepare, state, tickets
 from gate import gate as gatelib
 from gate import manifest as mf
 from gate import review as reviewlib
 from gate import settings as st
+from gate.gitio import SAFE, safe_env
 from gate.paths import line_exists
 from gate.store import Store, StoreError
 from gate.tickets import item_of_test
@@ -189,10 +195,37 @@ def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     return value, passed
 
 
+def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict) -> str:
+    """Why each failed item failed, for the builder's next try."""
+    claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
+    out = []
+    for item in ticket.items:
+        if passed.get(item.id, True):
+            continue
+        tests = sorted(t for t in test_status if item_of_test(t) == item.id)
+        if tests:
+            failing = [t for t in tests if test_status[t] != "passed"]
+            out.append(f"{item.id}: its locked tests fail: {', '.join(failing)}")
+            continue
+        claim = claims.get(item.id)
+        if not claim:
+            out.append(f"{item.id}: it has no locked test, and the reviewer did not pass it")
+        elif not claim.get("passed"):
+            why = claim.get("why") or "no reason given"
+            out.append(f"{item.id}: it has no locked test, and the reviewer failed it: {why}")
+        else:
+            out.append(f"{item.id}: the reviewer passed it, but the line it named does not "
+                       f"exist: {claim.get('file', '')}:{claim.get('line', '')}")
+    return "; ".join(out)
+
+
 # Git.
 
 def git(cwd, *args) -> str:
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True,
+    """git in the project or a copy, with no hooks, no file system monitor, and no
+    replace refs, since a role can write in its copy."""
+    return subprocess.run(["git", *SAFE, *args], cwd=cwd, check=True, capture_output=True,
+                          env=safe_env(),
                           text=True).stdout.strip()
 
 
@@ -203,7 +236,7 @@ def fetch_branch(project: str, copy: str, branch: str) -> None:
 
 def task_cost(logs_dir, task: str) -> float:
     total = 0.0
-    for path in Path(logs_dir).glob("*.jsonl"):
+    for path in history.logs(logs_dir):
         total += history.cost([e for e in read(str(path)) if e.get("task") == task])
     return round(total, 4)
 
@@ -212,26 +245,35 @@ class Driver:
     """gate_api and review_api default to gate.gate and gate.review. Tests pass fakes."""
 
     def __init__(self, project: str, ticket_id: str, store=None, ticket_text: str | None = None,
-                 gate_api=None, review_api=None):
+                 gate_api=None, review_api=None, runner: str | None = None, caller=None,
+                 base: str | None = None, hold: bool = False):
+        """base is the commit the ticket starts from, main by default; in a task, the
+        ready change of the ticket before it. hold=True leaves the merge to the task:
+        the ticket ends at waiting_for_merge, even with auto_merge on."""
         self.project = os.path.abspath(project)
         self.ticket_id = ticket_id
         self.store = store or Store(self.project)
         self.gate = gate_api or gatelib
         self.review = review_api or reviewlib
-        self.base = BASE
+        self.base = BASE         # main: the settings, the harness, and the signers come from here
+        self.start = base or BASE
+        self.hold = hold
         self.branch = f"tg/{ticket_id}"
         self.logs = state.path(self.project, "logs")
         self.log_path = str(self.logs / f"{ticket_id}.jsonl")
         self.ticket_text = ticket_text or Path(self.project, mf.ticket_path(ticket_id)).read_text()
         self.ticket = tickets.parse(self.ticket_text)
+        self.runner = runner    # None: the setting `runner` decides
+        self.caller = caller
 
     # Helpers.
 
     def role(self, name, inputs, lens=None, command=None):
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name == "reviewer" else s["ai"]["builder"])
-        return roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
-                         s["isolation"], s["container_image"], self.project)
+        return self.caller(session.Call(name, inputs, lens, command, name, self.copy,
+                                        self.project, self.ticket_id, self.ticket_id,
+                                        self.ticket.plan))
 
     def lock(self) -> dict | None:
         """The ticket's lock as the store wrote it. The gate verifies its signature;
@@ -292,7 +334,11 @@ class Driver:
                 # may not change a locked test, so a failure there must go back here.
                 others = [n for n in self.settings["checks"] if n != "tests"]
                 found = checks.run(self.settings, self.copy, others) if others else None
-                failed = [c for c in (found.checks if found else []) if not c.passed]
+                # Only a failure that names one of the new test files is the test
+                # writer's to fix. Any other, such as a missing README, waits for the
+                # builder: the gate runs every check on each try.
+                failed = [c for c in (found.checks if found else []) if not c.passed
+                          and any(t in (c.output or "") for t in self.ticket.tests)]
                 if failed:
                     findings = [{"level": "blocking", "text": f"check {c.name} fails on the "
                                  f"new tests:\n{c.output}"} for c in failed]
@@ -310,7 +356,10 @@ class Driver:
         commit = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
         fetch_branch(self.project, self.copy, self.branch)
         try:
-            self.store.freeze(self.ticket_id)
+            if self.start == self.base:
+                self.store.freeze(self.ticket_id)
+            else:
+                self.store.freeze(self.ticket_id, start=self.start)
         except (StoreError, mf.FreezeError) as err:
             st_.rejections += 1
             st_.tests_done = False
@@ -360,7 +409,7 @@ class Driver:
         commit = self.commit(f"feat({self.ticket_id}): try {n}")
         results = self.checks()
         facts = self.gate.collect(self.project, self.copy, self.base, "HEAD", self.ticket_id,
-                                  results)
+                                  results, start=None if self.start == self.base else self.start)
         findings = self.gate.evaluate(facts)
         tier = self.gate.tier_of(facts)[0]
         lock = facts.lock or self.lock() or {"manifest": {"tests": []}}
@@ -384,11 +433,13 @@ class Driver:
             self.log.add("try_failed", findings=findings, score=value, items=passed, **fields)
             self._keep_if_best(st_, value, commit)
             return
-        tested = sorted({item_of_test(t) for t in results.tests if item_of_test(t)})
+        # Only a locked test vouches for an item: the builder's own tests do not, so the
+        # reviewer judges every item that no locked test covers, as score() counts them.
+        tested = sorted({item_of_test(t) for t in locked if item_of_test(t)})
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
         checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
                                          "diff": diff}, lens="checklist")
-        cost += checked.cost_usd
+        cost = roles.add_cost(cost, checked.cost_usd)
         value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
         if tier >= 2:
@@ -399,16 +450,18 @@ class Driver:
                 spent.append(answer.cost_usd)
                 return answer.data
             facts.review_passed, found, _ = self.review.review(
-                tier, self.ticket_text, self.review.diff(self.copy, self.base, "HEAD"), run_role)
-            cost += sum(spent)
+                tier, self.ticket_text, self.review.diff(self.copy, self.start, "HEAD"), run_role)
+            cost = roles.add_cost(cost, *spent)
             blocking += [f for f in found if f.get("level") == "blocking"]
             findings = self.gate.evaluate(facts)
-        fields.update(cost_usd=round(cost, 4), score=value, items=passed)
+        fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
+            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed)
             why = blocking or [{"level": "major", "text": f["message"]} for f in findings] or [
-                {"level": "major", "text": f"must-have items failed: {', '.join(must_failed)}"
-                 if must_failed else f"score {value} is under {self.settings['pass_score']}"}]
+                {"level": "major", "text": (f"must-have items failed: {', '.join(must_failed)}"
+                 if must_failed else f"score {value} is under {self.settings['pass_score']}")
+                 + (f". {reasons}" if reasons else "")}]
             self.log.add("try_failed", findings=why, **fields)
             self._keep_if_best(st_, value, commit)
             if findings:
@@ -441,7 +494,7 @@ class Driver:
     def finish(self, st_: history.Ticket) -> int:
         # A person merges tier 3 and 4, and any change whose tier the log does not show.
         tier = history.replay(read(self.log_path)).tier
-        if not self.settings["auto_merge"] or tier is None or tier >= 3:
+        if self.hold or not self.settings["auto_merge"] or tier is None or tier >= 3:
             self.log.add("waiting_for_merge", branch=self.branch, commit=st_.ready, tier=tier)
             return 0
         try:
@@ -507,11 +560,16 @@ class Driver:
             with Log(self.log_path, ticket=self.ticket_id, task=self.ticket.plan) as self.log:
                 self.copy = roles.make_copy(self.project, self.ticket_id)
                 if not st_.tests_done and not st_.frozen:
-                    git(self.copy, "checkout", "-q", "-B", self.branch, self.base)
+                    if self.start != self.base:
+                        # The ready change this ticket builds on lives in the project.
+                        git(self.copy, "fetch", "-q", self.project,
+                            "+refs/heads/tg/*:refs/tollgate/tickets/*")
+                    git(self.copy, "checkout", "-q", "-B", self.branch, self.start)
                     path = Path(self.copy, mf.ticket_path(self.ticket_id))
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
+                self.caller = self.caller or session.caller(self.settings, self.runner)
                 self.log.add("started", attempts_done=st_.attempts)
                 question = advisor.pending(self.log_path)
                 if question:
@@ -520,6 +578,8 @@ class Driver:
                 return self._loop(st_)
         except Parked:
             return 3
+        except session.Pause:
+            return 5
         finally:
             lock.release()
 

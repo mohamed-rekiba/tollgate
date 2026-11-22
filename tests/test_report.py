@@ -158,5 +158,16 @@ class RoadmapReportTest(StateCase):
                       text)
 
 
+class UnknownCostTest(unittest.TestCase):
+    def test_a_cost_that_is_not_known_shows_as_unknown(self):
+        known = [{"event": "started", "ticket": "T-1"}, {"event": "tests_written", "cost_usd": 0.5}]
+        self.assertEqual(report.ticket_row(known)["cost_usd"], 0.5)
+        session = [{"event": "started", "ticket": "T-1"}, {"event": "tests_written",
+                                                           "cost_usd": None}]
+        self.assertIsNone(report.ticket_row(session)["cost_usd"])
+        self.assertEqual(report.usd(None), "unknown")
+        self.assertEqual(report.usd(0.5), "0.5")
+
+
 if __name__ == "__main__":
     unittest.main()

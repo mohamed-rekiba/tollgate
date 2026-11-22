@@ -13,7 +13,9 @@ The driver asks before each try. Five rules, each number from the settings
 - ticket cost: the ticket cost `ticket_usd` (10 USD by default) or more.
 - task cost: the task cost `task_usd` (60 USD by default) or more.
 
-A cost stop is a hard stop: no advisor can grant more money. The others go to
+A cost stop is a hard stop: no advisor can grant more money. The two cost
+rules apply only in background mode: in session mode the cost of a role is not
+known, so the log holds `cost_usd: null` and your own session's limits hold. The others go to
 the advisor. The rules on the last try count only for a try after the last
 decision of the advisor, so a retry always gets one more try.
 """
@@ -27,7 +29,8 @@ COST_STOP = ("the ticket cost", "the task cost")
 
 
 def check(events: list, settings: dict, task_spent: float = 0.0) -> str:
-    reason = _reason(events, settings["stop"], task_spent)
+    usd = settings.get("runner", "background") == "background"
+    reason = _reason(events, settings["stop"], task_spent, usd)
     return f"stop: {reason}" if reason else GO
 
 
@@ -36,11 +39,11 @@ def is_hard(verdict: str) -> bool:
     return verdict.removeprefix("stop: ").startswith(COST_STOP)
 
 
-def _reason(events: list, limits: dict, task_spent: float) -> str:
+def _reason(events: list, limits: dict, task_spent: float, usd: bool = True) -> str:
     spent = history.cost(events)
-    if spent >= limits["ticket_usd"]:
+    if usd and spent >= limits["ticket_usd"]:
         return f"the ticket cost {spent} USD; the limit is {limits['ticket_usd']} USD"
-    if task_spent >= limits["task_usd"]:
+    if usd and task_spent >= limits["task_usd"]:
         return f"the task cost {round(task_spent, 4)} USD; the limit is {limits['task_usd']} USD"
     tries = [e for e in events if e["event"] in TRY_ENDS]
     decided = [i for i, e in enumerate(events)

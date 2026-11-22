@@ -59,7 +59,12 @@ DEFAULTS = {
     # The public SSH keys of the people who may approve a tier 3 or 4 merge. Only these
     # keys verify an approval, so the machine key that signs locks can never approve.
     "owners": [],
-    # How the builder is kept apart: "container" (Docker) or "sandbox" (Claude Code's).
+    # Who runs each role: "session" (your own Claude Code session starts each role as a
+    # subagent, through driver.step) or "background" (the driver starts each role as its
+    # own process, in its isolation).
+    "runner": "session",
+    # How the background driver keeps a role apart: "container" (Docker) or "sandbox"
+    # (Claude Code's). Session mode does not use it.
     "isolation": "container",
     "require_plan": True,
     "auto_merge": False,
@@ -76,6 +81,7 @@ DEFAULTS = {
 CHECK_KEYS = {"run", "report", "minutes"}
 CHECKPOINTS = ("plan", "ticket", "task")
 ISOLATIONS = ("container", "sandbox")
+RUNNERS = ("session", "background")
 KEY_TYPES = ("ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384",
              "ecdsa-sha2-nistp521", "sk-ssh-ed25519@openssh.com",
              "sk-ecdsa-sha2-nistp256@openssh.com")
@@ -135,6 +141,8 @@ def parse(text: str) -> dict:
         raise SettingsError(f"checkpoints must be a list of: {', '.join(CHECKPOINTS)}")
     if settings["isolation"] not in ISOLATIONS:
         raise SettingsError('isolation must be "container" or "sandbox"')
+    if settings["runner"] not in RUNNERS:
+        raise SettingsError('runner must be "session" or "background"')
     if not isinstance(settings["signers"], list):
         raise SettingsError("signers must be a list of public key lines")
     for n, line in enumerate(settings["signers"], 1):
@@ -155,9 +163,11 @@ def parse(text: str) -> dict:
 
 def load_from_ref(repo: str, ref: str) -> dict:
     """Read the settings file as it is at a git ref, for example origin/main."""
+    from gate.gitio import safe_env
+    # With no replace refs: a role can write them in its copy, and this reads the copy.
     result = subprocess.run(
-        ["git", "-C", repo, "show", f"{ref}:{PATH}"], capture_output=True, text=True, check=False
-    )
+        ["git", "-C", repo, "show", f"{ref}:{PATH}"], capture_output=True, text=True, check=False,
+        env=safe_env())
     if result.returncode != 0:
         raise SettingsError(f"{PATH} not found at {ref}")
     return parse(result.stdout)
