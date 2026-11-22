@@ -511,7 +511,7 @@ A ticket describes behavior and seams. `tests` lists every file the locked tests
 
 `.tollgate/settings.json` is a locked file: the locked-file check refuses a commit that changes it, so a role's commit cannot loosen the rules. You change it on main and commit it yourself, from your own terminal, with `git commit --no-verify`, as `init` does. Tollgate's hook refuses `--no-verify` inside Claude Code.
 
-The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
+The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. Without `container_image`, a role runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned by digest in `gate/settings.py`. It has git, Python, Node, and Go. Name your own image when the project's tests need more. CI runs `tests/proof_container.py` on the pinned image, and a weekly workflow proposes a newer build once that proof passes on it. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
 
 ### What the gate returns
 

@@ -35,6 +35,14 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "isolation must be"):
             settings.parse('{"isolation": "none"}')
 
+    def test_the_default_image_is_docker_s_claude_code_image_pinned_by_digest(self):
+        image = settings.parse("{}")["container_image"]
+        self.assertRegex(image, r"^docker/sandbox-templates:claude-code@sha256:[0-9a-f]{64}$")
+
+    def test_a_project_may_name_its_own_image(self):
+        self.assertEqual(settings.parse('{"container_image": "mine:1"}')["container_image"],
+                         "mine:1")
+
     def test_the_settings_on_a_ref_ignore_replace_refs(self):
         repo = Repo()
         self.addCleanup(repo.close)

@@ -74,7 +74,9 @@ You need:
 - Python 3.11 or later,
 - git, with `ssh-keygen`,
 - pre-commit,
-- Docker, only for background mode with the container isolation. You name a container image that has Claude Code in it, under `container_image` in the settings. Tollgate ships no image.
+- Docker, only for background mode with the container isolation. A role then runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned to one build. You build nothing. Name another image under `container_image` in the settings when your tests need tools that image lacks. Each role logs in to the model with `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` from your environment; these are the only variables that go into the container.
+
+Session mode, the default, needs none of the Docker items: no Docker, no image, and no login variable, because each role runs as a subagent in your own Claude Code session.
 
 Install the plugin:
 
