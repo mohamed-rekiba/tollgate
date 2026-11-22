@@ -238,6 +238,30 @@ class MergeCheckTest(Env):
         self.record_approval(self.root, commit)
         self.assertEqual(check_merge.check_commit(str(self.root), commit), [])
 
+    def test_a_ticket_that_builds_on_a_change_not_on_main_may_not_merge(self):
+        import hashlib
+        first = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
+        sh(self.root, "git", "checkout", "-q", "-b", "t2", first)
+        Path(self.root, "src/b.py").write_text("y = 2\n")
+        sh(self.root, "git", "add", "-A")
+        sh(self.root, "git", "commit", "-q", "--no-verify", "-m", "feat(t2): b")
+        second = sh(self.root, "git", "rev-parse", "HEAD").stdout.strip()
+        sh(self.root, "git", "checkout", "-q", "main")
+        lock = state.path(str(self.root), "locks", "t2.json")
+        sign.write(lock, {"ticket": "t2", "base_commit": first, "commit": second, "number": 1,
+                          "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                          "at": "now"}, "tollgate-lock")
+        path = state.path(str(self.root), "passes", f"{second}.json")
+        sign.write(path, {"commit": second, "ticket": "t2", "tier": 1, "checks": {"tests": True},
+                          "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+                          "score": 100, "at": "now"}, "tollgate-pass")
+        found = check_merge.check_commit(str(self.root), second)
+        self.assertTrue(found and "is not on main" in found[0], found)
+        # The push check reads main as it was before that merge.
+        self.record_pass(self.root, first)
+        FakeStore(str(self.root)).merge(first)
+        self.assertEqual(check_merge.check_commit(str(self.root), second), [])
+
     def test_a_push_of_merges_that_passed_passes(self):
         commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
         self.record_pass(self.root, commit)

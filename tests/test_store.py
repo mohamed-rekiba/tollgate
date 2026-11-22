@@ -336,6 +336,26 @@ class MergeTest(StoreCase):
         message = self.repo.git("log", "-1", "--format=%B", merged)
         self.assertEqual(check_commit_msg.problems(message, in_merge=True), [])
 
+    def test_refuses_a_ticket_that_builds_on_a_change_not_on_main(self):
+        # T-1 is tier 3; T-2 starts from it and counts only its own files, tier 1.
+        first = self.change()
+        r = self.repo
+        r.git("checkout", "-q", "-b", "tg/T-2", first)
+        r.write("b.py", "y = 2\n")
+        second = r.commit("feat(T-2): b")
+        r.git("checkout", "-q", "main")
+        sign.write(freeze.lock_path(str(r.path), "T-2"),
+                   {"ticket": "T-2", "base_commit": first, "commit": second, "number": 1,
+                    "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                    "at": "2026-11-22T00:00:00Z"}, "tollgate-lock")
+        self.store.record_pass(second, self.pass_record(second, tier=1, ticket="T-2"))
+        self.store.record_pass(first, self.pass_record(first, tier=3))
+        with self.assertRaisesRegex(StoreError, "is not on main"):
+            self.store.merge(second)
+        self.approve(first)
+        self.store.merge(first)
+        self.assertTrue(self.store.merge(second))
+
     def test_refuses_with_no_pass(self):
         commit = self.change()
         with self.assertRaisesRegex(StoreError, "no verified pass record"):

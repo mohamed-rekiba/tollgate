@@ -152,6 +152,24 @@ class Store:
             raise mf.FreezeError(f"the ticket's commit does not build on {full[:12]}")
         return full
 
+    def _check_start(self, ticket: str, full: str) -> None:
+        """Refuse a ticket whose lock starts from a commit that is not on main yet. A
+        ticket in a task builds on the ready change before it, and its tier counts only
+        its own files, so it merges only after that change, with that change's own
+        tier and approval."""
+        path = fz.lock_path(self.project, ticket)
+        if not path.exists():
+            return
+        try:
+            lock = sign.read(path, fz.NAMESPACE, self._signers())
+        except sign.SignError as err:
+            raise StoreError(f"the lock of {ticket} does not verify: {err}") from None
+        start = lock.get("base_commit") or ""
+        if subprocess.run(["git", "-C", self.project, "merge-base", "--is-ancestor", start, MAIN],
+                          capture_output=True, check=False).returncode:
+            raise StoreError(f"{full[:12]} builds on {start[:12]}, which is not on {MAIN}; "
+                             "merge the ticket before it first")
+
     def _approved_ticket(self, ticket: str, commit: str, base: str) -> tuple:
         """Return (commit, {"files": {path: fingerprint}}) of the approved ticket file, for
         prepare.restore. The approved file is the one in the plan lock, else main's. Raise
@@ -378,6 +396,8 @@ class Store:
         if found["ticket"] and found["lock_sha256"] != fz.lock_sha256(self.project, found["ticket"]):
             raise StoreError(f"the pass record of {full[:12]} is not for the current lock of "
                              f"{found['ticket']}")
+        if found["ticket"]:
+            self._check_start(found["ticket"], full)
         folder = worktree_of(self.project, MAIN)
         if not folder:
             raise StoreError(f"no worktree of the project has {MAIN} checked out")
