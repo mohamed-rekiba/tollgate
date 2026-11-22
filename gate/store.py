@@ -93,9 +93,14 @@ class Store:
 
     # Locks.
 
-    def freeze(self, ticket: str) -> str:
+    def freeze(self, ticket: str, start: str | None = None) -> str:
         """Run the ticket's tests in a clean copy with main's harness; none may pass.
-        Write and sign locks/<ticket>.json. Return the lock's path."""
+        Write and sign locks/<ticket>.json. Return the lock's path.
+
+        start is the commit the ticket started from, when not main: in a task that
+        holds its merges, a ticket starts from the ready change before it. It must
+        have a verified pass record and be in the ticket's history; the lock records
+        it as the base, so the gate counts only this ticket's own change."""
         self._check_key()
         try:
             fz.check_id(ticket)
@@ -108,6 +113,7 @@ class Store:
             base = self._main()
             settings = self._settings()
             ticket_file = self._approved_ticket(ticket, commit, base)
+            started = self._start(start, commit) if start else base
             with tempfile.TemporaryDirectory() as d:
                 git(d, "clone", "-q", "--no-checkout", self.project, ".")
                 git(d, "checkout", "-q", "--detach", commit)
@@ -119,7 +125,7 @@ class Store:
                         raise mf.FreezeError(f"the setup command failed: {command}")
                 # UNFINISHED: the tests run here, not in the builder's isolation.
                 results = checks.run(settings, d, ["tests"])
-                lock = fz.record(d, ticket, commit, base, settings, results.tests, number)
+                lock = fz.record(d, ticket, commit, started, settings, results.tests, number)
         except (mf.FreezeError, pl.PlanError, st.SettingsError, sign.SignError, GitError,
                 ValueError) as err:
             raise StoreError(f"the ticket cannot be frozen: {err}") from None
@@ -132,6 +138,19 @@ class Store:
             Path(f"{path}.sig").replace(f"{old}.sig")
         self._sign(path, lock, fz.NAMESPACE)
         return str(path)
+
+    def _start(self, start: str, commit: str) -> str:
+        """The full commit a ticket started from. Raise FreezeError unless it passed the
+        gate and the ticket's commit builds on it."""
+        full = commit_of(self.project, start)
+        if not full:
+            raise mf.FreezeError(f"the project has no commit {start!r}")
+        if full != self._main() and not self.passed(full):
+            raise mf.FreezeError(f"the start {full[:12]} has no pass record")
+        if subprocess.run(["git", "-C", self.project, "merge-base", "--is-ancestor", full, commit],
+                          capture_output=True, check=False).returncode:
+            raise mf.FreezeError(f"the ticket's commit does not build on {full[:12]}")
+        return full
 
     def _approved_ticket(self, ticket: str, commit: str, base: str) -> tuple:
         """Return (commit, {"files": {path: fingerprint}}) of the approved ticket file, for
@@ -158,19 +177,42 @@ class Store:
         return (source, {"files": {path: approved}}) if source else (None, None)
 
     def lock_plan(self, task: str) -> str:
-        """Sign the approved plan of a task into plans/<task>.json. Return its path."""
+        """Sign the approved plan of a task into plans/<task>.json. Return its path.
+
+        A plan already locked may get a new version, from a new commit: the plan of
+        the fix round after the review of the whole task. The new version must keep every
+        ticket of the old one, unchanged; it may add tickets. The old record moves to
+        plans/replaced/<task>.<version>.json."""
         if not pl.ID.match(task or ""):
             raise StoreError(f"not a valid task id: {task!r}")
         path = state.path(self.project, "plans", f"{task}.json")
-        if path.exists():
-            raise StoreError(f"the plan of task {task} is already locked")
         commit = commit_of(self.project, f"refs/heads/tg-plan/{task}")
         if not commit:
             raise StoreError(f"the project has no branch tg-plan/{task}")
+        old = None
+        if path.exists():
+            try:
+                old = sign.read(path, "tollgate-plan", self._signers())
+            except sign.SignError as err:
+                raise StoreError(f"the plan lock of task {task} does not verify: {err}") from None
+            if old["commit"] == commit:
+                raise StoreError(f"the plan of task {task} is already locked at this commit")
         try:
             found = plantag.record(self.project, task, commit)
         except pl.PlanError as err:
             raise StoreError(f"the plan cannot be locked: {err}") from None
+        if old is not None:
+            plan_file = pl.plan_path(task)
+            for name, digest in old["files"].items():
+                if name != plan_file and found["files"].get(name) != digest:
+                    ticket = Path(name).parent.name
+                    raise StoreError(f"the new plan changes ticket {ticket}, which the old "
+                                     "plan locked; a new version may only add tickets")
+            found["version"] = old.get("version", 1) + 1
+            kept = state.path(self.project, "plans", "replaced", f"{task}.{old.get('version', 1)}.json")
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            path.replace(kept)
+            Path(f"{path}.sig").replace(f"{kept}.sig")
         found["at"] = _now()
         self._sign(path, found, "tollgate-plan")
         return str(path)

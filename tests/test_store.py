@@ -103,6 +103,21 @@ class FreezeTest(StoreCase):
                          ["tests.test_t1::test_c1_shout", "tests.test_t1::test_c2_greet"])
         self.assertEqual(lock["manifest"]["keeps_behavior"], ["tests.test_t1::test_c2_greet"])
 
+    def test_a_ticket_may_start_from_a_ready_change_that_passed(self):
+        start = self.change()
+        r = self.repo
+        r.git("checkout", "-q", "-b", "tg/T-1", start)
+        r.write(mf.ticket_path("T-1"), TICKET)
+        r.write("tests/test_t1.py", TESTS.replace('app.shout("ann"), "HELLO ANN"',
+                                                  'app.loud("ann"), "hello ann!"'))
+        r.commit("test(T-1): the ticket and its locked tests")
+        r.git("checkout", "-q", "main")
+        with self.assertRaisesRegex(StoreError, "no pass record"):
+            self.store.freeze("T-1", start=start)
+        self.store.record_pass(start, self.pass_record(start, ticket=""))
+        lock = sign.read(Path(self.store.freeze("T-1", start=start)), "tollgate-lock", [self.pub])
+        self.assertEqual(lock["base_commit"], start)
+
     def test_refuses_a_test_that_passes_before_the_build(self):
         self.ticket_branch(tests=TESTS.replace('app.shout("ann")', '"HELLO ANN"'))
         with self.assertRaisesRegex(StoreError, "passed before the build"):
@@ -174,6 +189,40 @@ class LockPlanTest(StoreCase):
         self.plan_branch()
         self.store.lock_plan("retries")
         with self.assertRaisesRegex(StoreError, "already locked"):
+            self.store.lock_plan("retries")
+
+    def amend(self, ticket_text=None, add=True):
+        """A new version of the plan on tg-plan/retries: a second ticket, T-2."""
+        r = self.repo
+        r.git("checkout", "-q", "tg-plan/retries")
+        plan = PLAN.replace("tickets: T-1", "tickets: T-1, T-2") if add else PLAN
+        r.write(pl.plan_path("retries"), plan.replace("## Tickets\n", "## Tickets\n- T-2: fix.\n")
+                if add else plan + "\n")
+        if ticket_text:
+            r.write(mf.ticket_path("T-1"), ticket_text)
+        if add:
+            r.write(mf.ticket_path("T-2"), TICKET.replace("plan: demo", "plan: retries")
+                    .replace("id: T-1", "id: T-2"))
+        commit = r.commit("the fix plan")
+        r.git("checkout", "-q", "main")
+        return commit
+
+    def test_a_new_version_of_the_plan_is_locked_and_the_old_one_kept(self):
+        self.plan_branch()
+        first = Path(self.store.lock_plan("retries")).read_bytes()
+        commit = self.amend()
+        found = sign.read(Path(self.store.lock_plan("retries")), "tollgate-plan", [self.pub])
+        self.assertEqual((found["commit"], found["version"]), (commit, 2))
+        self.assertIn(mf.ticket_path("T-2"), found["files"])
+        kept = state.path(str(self.repo.path), "plans", "replaced", "retries.1.json")
+        self.assertEqual(kept.read_bytes(), first)
+
+    def test_a_new_version_may_not_change_or_drop_a_locked_ticket(self):
+        self.plan_branch()
+        self.store.lock_plan("retries")
+        self.amend(ticket_text=TICKET.replace("plan: demo", "plan: retries")
+                   .replace("There is no shout.", "Shout exists."))
+        with self.assertRaisesRegex(StoreError, "changes ticket T-1"):
             self.store.lock_plan("retries")
 
 
