@@ -1,7 +1,7 @@
 {
  "type": "scene",
- "title": "How Tollgate works, with its three feedback loops",
- "desc": "An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are written and locked before any code. The AI builds in its own copy of the project. At the gate, the tests and reviewers check each try: below 70%, it goes back and the AI tries again from its best try; after 3 tries, the advisor decides; at 70% or more, the barrier lifts and the change goes into main. After the task, up to 3 lessons become rules for the next one. A dot shows one change travelling: it fails once, then passes.",
+ "title": "How Tollgate works, and where each rule holds",
+ "desc": "An isometric scene. You ask in plain words. The AI writes a plan of small tickets, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own copy, from its best try. The gate has no AI inside and opens at a score of 70%; below 70%, the AI tries again. After 3 tries, the advisor decides: a second AI, or you. A change that passes goes into main, and you merge tiers 3 and 4. After the task, at most 3 lessons become rules, and rules never get looser. Numbers 1 to 7 mark where each rule holds: 1 the plan, 2 the tests, 3 the build, 4 the gate, 5 the advisor, 6 main, 7 the lessons. Rule 8 holds everywhere: code enforces every rule, in plain words. A dot shows one change travelling: it fails once, then passes.",
  "size": [
   1180,
   720
@@ -37,7 +37,8 @@
     ]
    ],
    "label": "problems found",
-   "tone": "fail"
+   "tone": "fail",
+   "at": 0.78
   },
   {
    "path": [
@@ -255,94 +256,139 @@
  ],
  "labels": [
   {
-   "at": [
-    470,
-    -150,
-    0
+   "head": "You ask",
+   "sub": "in plain words",
+   "pin": [
+    10,
+    310,
+    16
    ],
-   "head": "Main branch",
-   "sub": "only changes that pass",
-   "anchor": "start"
+   "drop": 70,
+   "kind": "you"
   },
   {
-   "at": [
-    0,
-    -300,
-    165
-   ],
-   "head": "The AI builds",
-   "sub": "in its own copy",
-   "anchor": "middle"
-  },
-  {
-   "at": [
-    250,
-    -330,
-    40
-   ],
-   "head": "The gate",
-   "sub": "opens at a score of 70%",
-   "anchor": "start"
-  },
-  {
-   "at": [
-    240,
-    -20,
-    -18
-   ],
-   "head": "After 3 tries",
-   "sub": "the advisor: a second AI, or you",
-   "anchor": "middle"
-  },
-  {
-   "at": [
-    -90,
-    -125,
-    24
-   ],
-   "head": "Tests written and locked",
-   "sub": "before any code",
-   "anchor": "end"
-  },
-  {
-   "at": [
-    -150,
-    40,
-    40
-   ],
-   "head": "Review",
-   "sub": "fresh AIs check the plan",
-   "anchor": "end"
-  },
-  {
+   "n": 1,
+   "head": "The plan",
+   "sub": "small tickets",
    "at": [
     -150,
     190,
     20
    ],
-   "head": "The plan",
-   "sub": "small tickets",
-   "anchor": "end"
+   "anchor": "end",
+   "pin": [
+    0,
+    170,
+    26
+   ],
+   "kind": "ai"
   },
   {
+   "head": "Review",
+   "sub": "fresh AIs check the plan",
+   "pin": [
+    22,
+    62,
+    6
+   ],
+   "drop": 46,
+   "kind": "check"
+  },
+  {
+   "n": 2,
+   "head": "The tests",
+   "sub": "locked before any code",
    "at": [
+    -90,
+    -125,
+    24
+   ],
+   "anchor": "end",
+   "pin": [
+    0,
+    -90,
+    60
+   ],
+   "kind": "server"
+  },
+  {
+   "n": 3,
+   "head": "The AI builds",
+   "sub": "in its own copy, from its best try",
+   "at": [
+    0,
+    -300,
+    165
+   ],
+   "pin": [
+    0,
+    -220,
+    70
+   ],
+   "kind": "ai"
+  },
+  {
+   "n": 4,
+   "head": "The gate",
+   "sub": "no AI inside. Opens at 70%",
+   "at": [
+    250,
+    -330,
+    40
+   ],
+   "anchor": "start",
+   "pin": [
+    190,
+    -282,
+    78
+   ],
+   "kind": "check"
+  },
+  {
+   "n": 5,
+   "head": "The advisor",
+   "sub": "a second AI, or you",
+   "pin": [
+    205,
     -60,
-    330,
+    22
+   ],
+   "drop": 62,
+   "kind": "advisor"
+  },
+  {
+   "n": 6,
+   "head": "Main branch",
+   "sub": "you merge tiers 3 and 4",
+   "at": [
+    470,
+    -150,
     0
    ],
-   "head": "You ask",
-   "sub": "in plain words",
-   "anchor": "end"
+   "anchor": "start",
+   "pin": [
+    415,
+    -190,
+    40
+   ],
+   "kind": "you"
   },
   {
+   "n": 7,
+   "head": "Lessons",
+   "sub": "at most 3. Rules never get looser.",
    "at": [
-    540,
+    575,
     40,
     70
    ],
-   "head": "Mistakes become rules",
-   "sub": "at most 3 lessons",
-   "anchor": "start"
+   "anchor": "start",
+   "pin": [
+    470,
+    40,
+    62
+   ],
+   "kind": "ai"
   }
  ],
  "ticket": {
@@ -468,5 +514,11 @@
    }
   ],
   "lift": 7
+ },
+ "note": {
+  "n": 8,
+  "head": "Always",
+  "line": "code enforces every rule, in plain words",
+  "kind": "neutral"
  }
 }

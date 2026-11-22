@@ -389,6 +389,73 @@ class Scene:
                               f'fill="{self.c["sub"]}">{escape(line)}</text>')
         self.front.append("</g>")
 
+    def pinned(self, label):
+        """A label tied to its part by a stem: a flat ring on the part, a line
+        straight up or down, one rounded turn, then level to the label. A label
+        with "n" shows that number where the stem ends; one without shows a dot."""
+        n, kind = label.get("n"), label.get("kind", "neutral")
+        accent = self.c["kinds"][kind][0]
+        tx, ty = self.iso(*label["pin"])
+        anchor = label.get("anchor", "middle")
+        if "drop" in label:                      # under the part, right of the stem
+            anchor, px, py = "start", tx + PIN_GAP, ty + label["drop"]
+        else:
+            px, py = self.iso(*label["at"])
+            if anchor == "middle":
+                anchor, px = "start", tx + PIN_GAP
+        bx = px - PIN_GAP if anchor == "start" else px + PIN_GAP
+        if abs(bx - tx) < 2 * BADGE:             # a straight stem: the number sits on it
+            px, bx = px + tx - bx, tx
+        by = py - 4
+        r = BADGE + 2 if n else 3
+        d = f"M{tx:.1f},{ty - 4:.1f} "
+        if bx == tx:
+            d += f"L{tx:.1f},{by + (-r if by > ty else r):.1f}"
+        else:
+            side = 1 if bx > tx else -1
+            up = -1 if by < ty else 1
+            turn = min(10, abs(by - ty) / 2, abs(bx - tx) / 2)
+            d += (f"L{tx:.1f},{by - up * turn:.1f} Q{tx:.1f},{by:.1f} {tx + side * turn:.1f},"
+                  f"{by:.1f} L{bx - side * r:.1f},{by:.1f}")
+        self.front.append(f'<g class="pin" data-n="{n or ""}">')
+        self.front.append(f'<path d="{d}" fill="none" stroke="{accent}" stroke-width="1.3" '
+                          f'stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>')
+        # The ring lies flat on the part, at the scene's own angle.
+        ring = f'cx="{tx:.1f}" cy="{ty:.1f}" rx="7" ry="4"'
+        self.front.append(f'<ellipse {ring} fill="{accent}" fill-opacity="0.25" '
+                          f'stroke="{accent}" stroke-width="1.6"/>')
+        self.front.append(f'<circle cx="{tx:.1f}" cy="{ty:.1f}" r="1.8" fill="{accent}"/>')
+        if n:
+            # The rings pulse in the order of their numbers.
+            self.front.append(f'<ellipse class="pulse" {ring} fill="none" stroke="{accent}" '
+                              f'stroke-width="1.2" style="animation-delay:{(n - 1) * 0.6:.1f}s"/>')
+            self.number(bx, by, n, accent)
+        else:
+            self.front.append(f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="2.5" fill="{accent}"/>')
+        self.front.append(f'<text x="{px:.1f}" y="{py:.1f}" text-anchor="{anchor}" font-size="12" '
+                          f'font-weight="700" letter-spacing="1.4" fill="{self.c["text"]}">'
+                          f'{escape(label["head"].upper())}</text>')
+        for k, line in enumerate([label["sub"]] if isinstance(label.get("sub"), str)
+                                 else label.get("sub") or []):
+            self.front.append(f'<text x="{px:.1f}" y="{py + STEP * (k + 1):.1f}" '
+                              f'text-anchor="{anchor}" font-size="12" '
+                              f'fill="{self.c["sub"]}">{escape(line)}</text>')
+        self.front.append("</g>")
+
+    def note(self, x, y, c):
+        """A numbered line under the caption, for a rule that holds for the whole picture."""
+        accent = self.c["kinds"][c.get("kind", "neutral")][0]
+        self.front.append(f'<g class="pin" data-n="{c["n"]}">')
+        self.number(x + BADGE, y - 4, c["n"], accent)
+        hx = x + 2 * BADGE + 8
+        self.front.append(f'<text x="{hx:.1f}" y="{y:.1f}" font-size="12" font-weight="700" '
+                          f'letter-spacing="1.4" fill="{self.c["text"]}">'
+                          f'{escape(c["head"].upper())}</text>')
+        lx = hx + len(c["head"]) * HEAD_CHAR + 14
+        self.front.append(f'<text x="{lx:.1f}" y="{y:.1f}" font-size="12" '
+                          f'fill="{self.c["sub"]}">{escape(c["line"])}</text>')
+        self.front.append("</g>")
+
     def callout_under(self, c, cx, cy):
         """A numbered label on one line, centered under the scene, with no leader."""
         accent = self.c["kinds"][c.get("kind", "neutral")][0]
@@ -434,7 +501,11 @@ class Scene:
                  ".side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}"
                  "@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}"
                  ".still-arm{display:none}"
-                 "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}"
+                 ".pulse{transform-box:fill-box;transform-origin:center;opacity:0;"
+                 "animation:pulse 4.2s ease-out infinite}"
+                 "@keyframes pulse{0%{transform:scale(1);opacity:.8}25%{transform:scale(2.5);"
+                 "opacity:0}100%{opacity:0}}"
+                 "@media (prefers-reduced-motion:reduce){.main,.side,.pulse{animation:none}"
                  ".ticket,.moving-arm{display:none}.still-arm{display:inline}}")
         lifts = getattr(self, "lifts", {})
         self.out = [re.sub(r"<!--lift:([\w-]+)-->", lambda m: lifts.get(m.group(1), ""), s)
@@ -471,6 +542,7 @@ INSET = 28         # from the inner edge of a column to the start of its text
 HEAD_CHAR = 8.6    # the width of one character of a head: 12 px mono, spaced 1.4
 LINE_CHAR = 7.2    # the width of one character of a line: 12 px mono
 STEP = 16          # from one line of text to the next
+PIN_GAP = 20       # from a pinned label's number to the start of its words
 GAP = 14           # the least space between two callouts in a column
 
 
@@ -627,6 +699,8 @@ def from_spec(spec: dict, theme: str) -> str:
     s.grid(spec.get("grid", 460))
     if spec.get("caption"):
         s.caption(40, 48, spec["caption"][0].upper(), spec["caption"][1])
+    if spec.get("note"):
+        s.note(40, 102, spec["note"])
     for zone in spec.get("zones", []):
         x0, y0, x1, y1 = zone["at"]
         s.platform(x0, y0, x1, y1, zone.get("kind", "neutral"))
@@ -666,6 +740,11 @@ def from_spec(spec: dict, theme: str) -> str:
         else:
             raise ValueError(f"unknown object '{what}'; use one of {', '.join(OBJECTS)}")
     for label in spec.get("labels", []):
+        if "pin" in label:
+            if "at" not in label and "drop" not in label:
+                raise ValueError(f"the label '{label['head']}' has a pin: give it 'at' or 'drop'")
+            s.pinned(label)
+            continue
         x, y, z = (label["at"] + [0])[:3]
         s.text(x, y, z, label["head"].upper(), label.get("sub"), label.get("anchor", "middle"))
     ticket = spec.get("ticket")

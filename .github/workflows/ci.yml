@@ -22,9 +22,3 @@ jobs:
         run: |
           pip install pyyaml
           python -m unittest discover -s tests -t . -v
-      - name: Stage 2 proof
-        run: python -m unittest tests.proof_stage2 -v
-      - name: Stage 3 proof
-        run: python -m unittest tests.proof_stage3 -v
-      - name: Stage 4 proof
-        run: python -m unittest tests.proof_stage4 -v

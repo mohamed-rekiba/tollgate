@@ -14,7 +14,7 @@ from gate import plan as pl
 from gate.store import Store, StoreError
 from tests.fakes import RUN_TESTS, TICKET
 from tests.helpers import Repo
-from tests.test_stage3_action import PLAN
+from tests.test_plan_review import PLAN
 
 TESTS = '''import unittest
 import app

@@ -6,16 +6,10 @@
 Two kinds of diagram:
 - Written: a spec in docs/diagrams/src/<name>.json, a flow or a scene. The
   formats are in diagram/__init__.py and diagram/flow.py.
-- Read from the code: the spec is made here, from a file of the project, each
-  time. When that file changes and the picture does not, --check fails, so
-  the picture cannot drift from the code.
-- A view: another picture of a written spec. "how-it-works-rules" is the
-  objects of how-it-works.json with the callouts of how-it-works-rules.json.
 - Art: a picture drawn in its own code, such as the README banner in hero.py.
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -26,7 +20,6 @@ sys.path.insert(0, str(HERE))
 
 import hero
 
-from diagram import draw
 from diagram.__main__ import build as build_folder
 from diagram.flow import MONO, THEMES
 
@@ -74,32 +67,13 @@ def icons_sheet(theme: str) -> str:
     return "\n".join([*out, "</svg>"]) + "\n"
 
 
-def rules_spec() -> dict:
-    """The rules view: the objects of how-it-works.json, with no labels of its own,
-    framed smaller, and the numbered callouts of how-it-works-rules.json."""
-    base = json.loads((HERE / "src" / "how-it-works.json").read_text())
-    rules = json.loads((HERE / "src" / "how-it-works-rules.json").read_text())
-    view = {k: v for k, v in base.items() if k not in ("labels", "caption", "title", "desc")}
-    # The callouts carry the words here, so the lanes keep no labels.
-    view["lanes"] = [{k: v for k, v in lane.items() if k != "label"} for lane in base["lanes"]]
-    view.update(RULES_FRAME)
-    view.update(rules)
-    return view
-
-
-# The frame of the rules view, before the callout columns widen it.
-RULES_FRAME = {"size": [700, 420], "origin": [254, 214], "scale": 0.72}
-
-GENERATED = {"how-it-works-rules": rules_spec}
 # Drawn by hand in code, not from a spec.
 ART = {"hero": hero.draw, "icons": icons_sheet}
 
 
 def build(check=False) -> list:
-    """Draw every diagram: the specs in src/, the ones from the code, and the art."""
-    extra = {name: (lambda theme, make=make: draw(make(), theme)) for name, make in GENERATED.items()}
-    extra.update(ART)
-    return build_folder(str(HERE), check, extra)
+    """Draw every diagram: the specs in src/ and the art."""
+    return build_folder(str(HERE), check, dict(ART))
 
 
 def main(argv=None) -> int:

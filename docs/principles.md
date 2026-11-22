@@ -230,8 +230,8 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 **Where it stops.**
 
 - A person who runs `git commit --no-verify` or `git push --no-verify` skips pre-commit and can change main by hand.
-- A Bash command such as `python -c` can write a file that a permission rule forbids. The container stops it, because only the copy is mounted. The sandbox should stop it, but experiment L2 did not run.
-- Experiment L1, which checks that a role obeys its policy, did not run either.
+- A Bash command such as `python -c` can write a file that a permission rule forbids. The container stops it, because only the copy is mounted. The sandbox should stop it, but this is untested.
+- Nobody has tested that a real role obeys its policy.
 
 ### Rule 14. Plain words, for people
 

@@ -33,21 +33,18 @@ Tollgate keeps 14 rules, in 8 groups.
 7. **Mistakes become rules.** A task gives at most 3 lessons. Rules never get looser.
 8. **Always.** Code enforces the rules. Every word is plain, for people.
 
+Each number on the picture marks the part where that rule holds.
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-rules-dark.svg">
-  <img alt="Tollgate's rules, numbered on the picture of how it works: 1 plan first, 2 tests first, 3 build from the best try, 4 the gate judges, 5 stop when stuck, 6 risk sets the checks, 7 mistakes become rules, 8 code enforces every rule, in plain words" src="docs/diagrams/how-it-works-rules.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
+  <img alt="How Tollgate works, with each rule numbered where it holds: 1 the plan, 2 the locked tests, 3 the AI builds from its best try, 4 the gate opens at 70%, 5 the advisor decides after 3 tries, 6 you merge tiers 3 and 4 into main, 7 at most 3 lessons become rules, 8 code enforces every rule, in plain words" src="docs/diagrams/how-it-works.svg">
 </picture>
 
 [docs/principles.md](docs/principles.md) explains each rule: what it means, why, how Tollgate does it, and where it stops.
 
 ## How it works
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/how-it-works-dark.svg">
-  <img alt="How Tollgate works, with its three loops" src="docs/diagrams/how-it-works.svg">
-</picture>
-
-Three loops send each problem back to the step that can fix it:
+In the picture above, three loops send each problem back to the step that can fix it:
 
 1. **The plan loop.** Three reviewers read the plan before any code exists. For each finding, the builder fixes it, argues against it with evidence, or asks the advisor. This repeats for up to 4 rounds. Then the advisor approves the plan, and the store signs a plan lock.
 2. **The build loop.** The gate checks each try. Below 70%, the builder gets the reasons and tries again from its best try. After 3 tries, the advisor decides.
@@ -111,33 +108,29 @@ A task runs in the background, so you can close Claude Code. A stopped task pick
 
 ## Cost, and when to use it
 
-On ten small tickets, Tollgate cost about 10 times as much as Claude Code alone, and took 2 to 4 times as long: about 0.7 USD and 3 minutes a ticket. In return, every change it finished passed its checks. We do not know yet whether it also needs fewer fixes after the merge. See [the comparison](docs/experiments/e310/results.md). That run used hosted machines, not the local driver. The local driver has no cost numbers of its own yet.
+Each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. The stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. Tollgate has no measured cost numbers yet.
 
 Use Tollgate when an AI writes most of each change, and the change must be right. For a quick change where a mistake is cheap, use Claude Code alone. It is faster and cheaper.
 
 ## Status
 
-Verified with unit tests and fake roles: the store, the signed records, the gate, the driver loop for a task and a ticket, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home. Experiment L3 confirmed when pre-commit runs.
+Unit tests with fake roles cover the store, the signed records, the gate, the driver loop for a task and a ticket, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home.
 
-Not verified:
+Untested:
 
-- L1 and L2 did not run: `claude -p` has no model access on the build machine. So nobody has seen a real role obey its policy, or the sandbox stop a write through Python.
-- The `sandbox` isolation is untested.
-- A real Docker run of a role through the local driver is untested.
-- The store runs the tests for a lock on your machine, not in the role's isolation.
-- The roadmap and the retro have no passing test: their only tests, in `tests/proof_stage4.py`, do not match the local design.
-- No task has run end to end with real models through the local driver.
+- A real role obeying its policy inside Claude Code.
+- The `sandbox` isolation. So the default isolation is `container`.
+- A role in Docker through the driver.
+- A task end to end with real models.
+- The roadmap and the retro.
 
-[docs/status.md](docs/status.md) has the details.
+The store runs the tests for a lock on your machine, not in the role's isolation.
 
 ## Read more
 
 - [docs/principles.md](docs/principles.md): each rule in detail.
-- [docs/plan.md](docs/plan.md): the design, in plain words first and in detail after.
-- [docs/decisions.md](docs/decisions.md): each decision, its reason, and its limit.
-- [docs/status.md](docs/status.md): what is built, verified, and not verified.
+- [docs/design.md](docs/design.md): the design, in plain words first and in detail after.
 - [CONTEXT.md](CONTEXT.md): the words this project uses, one for each thing.
-- [docs/experiments/](docs/experiments/): what was tried, and what happened.
 
 ## License
 
