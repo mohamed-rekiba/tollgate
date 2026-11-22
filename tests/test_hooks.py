@@ -43,11 +43,14 @@ class Env(unittest.TestCase):
                                               "tests": [], "keeps_behavior": []}}
         state.path(str(self.project), "locks", "T-1.json").write_text(json.dumps(lock))
 
-    def guard(self, tool, tool_input, role="builder", cwd=None):
-        """Run the hook. Return (exit code, standard error)."""
+    def guard(self, tool, tool_input, role="builder", cwd=None, agent_type=None):
+        """Run the hook. Return (exit code, standard error). agent_type is what
+        Claude Code sends when the call comes from a subagent."""
         cwd = str(cwd or (self.copy if role else self.project))
         call = {"session_id": "s", "transcript_path": "/tmp/t.jsonl", "cwd": cwd,
                 "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input}
+        if agent_type:
+            call.update(agent_id="a1", agent_type=agent_type)
         args = [sys.executable, GUARD, "--project", str(self.project)]
         if role:
             args += ["--role", role, "--copy", str(self.copy)]
@@ -120,6 +123,44 @@ class PersonTest(Env):
                            {"file_path": str(self.project / "tests/test_t1.py")}, role="")
         self.assertRefuses("in the state folder", "Edit",
                            {"file_path": str(self.copy / "app.py")}, role="")
+
+
+class YourPushTest(Env):
+    """Your own session may push a branch for review, but never main."""
+
+    def test_you_push_a_branch(self):
+        subprocess.run(["git", "-C", str(self.project), "switch", "-q", "-c", "fix-x"], check=True)
+        for command in ("git push -u origin fix-x", "git push", "git push origin",
+                        "git push origin HEAD", "git push --force-with-lease origin fix-x"):
+            self.assertLets("Bash", {"command": command}, role="")
+
+    def test_you_do_not_push_main(self):
+        for command in ("git push origin main", "git push origin HEAD:main",
+                        "git push origin fix-x:refs/heads/main", "git push --all",
+                        "git push --mirror", "git push origin +main"):
+            self.assertRefuses("main", "Bash", {"command": command}, role="")
+        # On main, a push with no branch named pushes main.
+        self.assertRefuses("main", "Bash", {"command": "git push"}, role="")
+
+
+class AgentTypeTest(Env):
+    """A Tollgate subagent gets its role's rules from the agent type Claude Code sends."""
+
+    def test_a_tollgate_subagent_is_its_role(self):
+        for agent_type in ("builder", "tollgate:builder"):
+            self.assertRefuses("no role pushes", "Bash", {"command": "git push origin fix-x"},
+                               role="", agent_type=agent_type)
+        self.assertRefuses("reads only", "Bash", {"command": "ls"}, role="",
+                           agent_type="tollgate:reviewer")
+        self.assertRefuses("reads only", "Edit", {"file_path": str(self.project / "app.py")},
+                           role="", agent_type="tollgate:analyst")
+
+    def test_another_subagent_keeps_your_session_s_rules(self):
+        self.assertLets("Edit", {"file_path": str(self.project / "app.py")}, role="",
+                        agent_type="Explore")
+        self.assertRefuses("locked by ticket T-1", "Edit",
+                           {"file_path": str(self.project / "tests/test_t1.py")}, role="",
+                           agent_type="general-purpose")
 
 
 class ReadOnlyTest(Env):

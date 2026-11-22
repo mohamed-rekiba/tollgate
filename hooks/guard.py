@@ -19,8 +19,13 @@ It refuses an edit (Edit, Write, MultiEdit, NotebookEdit) of:
 - any file at all, for a reviewer, the advisor, or the analyst,
 - a file outside the role's own copy, for a role.
 
-It refuses a Bash command that pushes, merges into main, uses
-`--no-verify`, or changes `core.hooksPath`.
+It refuses a Bash command that merges into main, uses `--no-verify`, or
+changes `core.hooksPath`. A role never pushes. Your own session may push a
+branch for review, but never main.
+
+A call from one of Tollgate's subagents carries its agent type, such as
+"tollgate:builder". The hook applies that role's rules, as if the driver had
+named the role. A call from any other subagent gets your own session's rules.
 
 This hook is one layer. The gate and the signed records hold even when a role
 gets past it, for example by writing a file from a Bash command.
@@ -44,6 +49,8 @@ READ_ONLY = ("reviewer", "advisor", "analyst")   # the one list; policy and role
 # What a planner, and your own session, may write under .tollgate/.
 DRAFTS = (".tollgate/plans/", ".tollgate/tickets/", ".tollgate/roadmaps/")
 MAIN = {"main", "master", "refs/heads/main", "refs/heads/master"}
+# The roles a Tollgate subagent can be. The plugin names them "tollgate:<role>".
+ROLES = ("analyst", "test_writer", "builder", "reviewer", "advisor", "planner")
 SPLIT = re.compile(r"\|\||&&|[;&|\n()`]|\$\(")
 # Short options of git commit that take a value, so "-m -n" is a message, not --no-verify.
 TAKES_VALUE = {"-m", "-F", "-C", "-c", "-t", "--author", "--message", "--file", "--date"}
@@ -140,7 +147,30 @@ def is_sync(rest: list, cwd: str) -> bool:
     return True
 
 
-def check_git(words: list, cwd: str, on_main: bool = False) -> str:
+def role_of(call: dict, role: str = "") -> str:
+    """The role the driver named, or else the role of the Tollgate subagent that
+    made the call, or "" for your own session and for any other subagent."""
+    if role:
+        return role
+    name = str(call.get("agent_type") or "").removeprefix("tollgate:")
+    return name if name in ROLES else ""
+
+
+def pushes_main(rest: list, cwd: str) -> bool:
+    """rest follows "git push". True when it would update main on the remote."""
+    if {"--all", "--mirror"} & set(rest):
+        return True
+    targets = [w for w in rest if not w.startswith("-")][1:]   # after the remote
+    if not targets:
+        return _branch(cwd) in MAIN   # git push, or git push <remote>: the current branch
+    for target in targets:
+        dest = target.lstrip("+").split(":")[-1]
+        if (_branch(cwd) if dest == "HEAD" else dest) in MAIN:
+            return True
+    return False
+
+
+def check_git(words: list, cwd: str, on_main: bool = False, role: str = "") -> str:
     """words start at a git command. on_main is true when an earlier part of the
     command checked out main. The reason to refuse it, or ""."""
     i, configs = 1, []
@@ -157,8 +187,10 @@ def check_git(words: list, cwd: str, on_main: bool = False) -> str:
         return "the command changes core.hooksPath"
     sub, rest = (words[i], words[i + 1:]) if i < len(words) else ("", [])
     lowered = [w.lower() for w in rest]
-    if sub == "push":
+    if sub == "push" and role:
         return "no role pushes; the store merges a ready change"
+    if sub == "push" and pushes_main(rest, cwd):
+        return "the push would change main; main changes only through a reviewed pull request"
     if sub == "config" and any(w.startswith("core.hookspath") for w in lowered):
         return "the command changes core.hooksPath"
     into_main = MAIN & set(rest) or on_main or _branch(cwd) in MAIN
@@ -176,7 +208,7 @@ def check_git(words: list, cwd: str, on_main: bool = False) -> str:
     return ""
 
 
-def check_bash(command: str, cwd: str) -> str:
+def check_bash(command: str, cwd: str, role: str = "") -> str:
     """The reason to refuse a Bash command, or ""."""
     if "--no-verify" in command:
         return "--no-verify skips the checks before a commit or a push"
@@ -187,7 +219,7 @@ def check_bash(command: str, cwd: str) -> str:
         words = _words(part)
         for n, word in enumerate(words):
             if Path(word).name == "git":
-                reason = check_git(words[n:], cwd, on_main)
+                reason = check_git(words[n:], cwd, on_main, role)
                 if reason:
                     return reason
                 if set(words[n + 1:n + 2]) & {"checkout", "switch"}:
@@ -200,6 +232,7 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
     """The reason to refuse the tool call, or "" to let it run."""
     tool = call.get("tool_name", "")
     data = call.get("tool_input") or {}
+    role = role_of(call, role)
     cwd = call.get("cwd") or os.getcwd()
     project = project or os.environ.get("CLAUDE_PROJECT_DIR") or cwd
     if tool in EDITS:
@@ -210,7 +243,7 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
     if tool == "Bash":
         if role in READ_ONLY:
             return f"the {role} reads only; it may not run commands"
-        return check_bash(data.get("command", ""), cwd)
+        return check_bash(data.get("command", ""), cwd, role)
     return ""
 
 
