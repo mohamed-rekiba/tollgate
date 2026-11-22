@@ -171,6 +171,29 @@ class LockedFilesTest(GateCase):
                          [("locked_files", "tests/test_t1.py", True)])
 
 
+class ChainTest(GateCase):
+    """A ticket in a task starts from the ready change before it, before that merges."""
+
+    def test_a_later_ticket_may_not_change_an_earlier_ticket_s_locked_test(self):
+        r = self.repo
+        start = r.git("rev-parse", "HEAD").strip()
+        r.git("checkout", "-q", "-b", "tg/T-2")
+        r.write(".tollgate/tickets/T-2/ticket.md", TICKET.replace("id: T-1", "id: T-2"))
+        r.write("tests/test_t2.py", "# locked tests of T-2\n")
+        commit = r.commit("lock T-2")
+        sign.write(state.path(self.project, "locks", "T-2.json"),
+                   {"ticket": "T-2", "base_commit": start, "commit": commit,
+                    "manifest": {"files": self.prints(commit, ".tollgate/tickets/T-2/ticket.md",
+                                                      "tests/test_t2.py"),
+                                 "tests": [], "keeps_behavior": []},
+                    "number": 1, "at": "2026-11-22T10:00:00Z"}, "tollgate-lock")
+        self.build("# weakened\n", "tests/test_t1.py")
+        facts = gate.collect(self.project, self.project, "main", "HEAD", "T-2",
+                             passing_results(), None, start=start)
+        changed = [(f["check"], f["file"]) for f in gate.evaluate(facts)]
+        self.assertIn(("locked_files", "tests/test_t1.py"), changed)
+
+
 class TierTest(GateCase):
     def test_a_small_change_is_tier_1_and_locked_files_do_not_count(self):
         self.assertEqual(gate.tier_of(self.facts())[0], 1)

@@ -204,6 +204,37 @@ def _differ(repo, ref: str, files: dict) -> list:
     return out
 
 
+def _is_ancestor(repo, commit: str, head: str) -> bool:
+    try:
+        git(repo, "merge-base", "--is-ancestor", commit, head)
+    except GitError:
+        return False
+    return True
+
+
+def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
+                   signers: list) -> list:
+    """The locked files of the other tickets this try builds on, and that are not on main
+    yet, which differ at the try. In a task each ticket starts from the ready change
+    before it, so its try holds the earlier tickets' locked tests too."""
+    out = []
+    folder = state.state_dir(project) / "locks"
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        if path.stem == ticket:
+            continue
+        try:
+            commit = json.loads(path.read_text()).get("commit") or ""
+        except (OSError, ValueError, AttributeError):
+            continue
+        if not commit or not _is_ancestor(repo, commit, head_sha) or _is_ancestor(repo, commit,
+                                                                                    base):
+            continue
+        other, _, _ = _read(project, "locks", path.stem, "tollgate-lock", signers)
+        if other:
+            out += _differ(repo, head_sha, other["manifest"]["files"])
+    return out
+
+
 def collect(project: str, repo, base: str, head: str, ticket: str, results: Results,
             review_passed: bool | None = None, start: str | None = None) -> Facts:
     """Gather the facts.
@@ -238,6 +269,9 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
     except GitError as err:
         facts.lock_error = f"the lock commit cannot be compared to its base: {err}"
     facts.locked_now_changed = _differ(repo, head_sha, files)
+    facts.locked_now_changed += [p for p in _chain_changed(project, repo, base, head_sha, ticket,
+                                                           signers)
+                                 if p not in facts.locked_now_changed]
 
     data = show_bytes(repo, commit, ticket_path(ticket))
     if data is not None:
