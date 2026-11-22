@@ -30,7 +30,7 @@ Think of an exam. The questions are set and sealed before the student starts. Th
   <img alt="A task from start to finish" src="diagrams/a-task.svg">
 </picture>
 
-Before the plan, the analyst reads the project and reports how it is built: each finding confirmed, with a citation to the code, or marked assumed. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. The plan writer and the plan reviewers read the analysis. A plan that asks a question under Assumptions goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
+Before the plan, the analyst reads the project and reports how it is built: each fact confirmed, with a citation to the code, or marked assumed. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. The plan writer and the plan reviewers read the analysis. A plan that lists an assumption goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
 
 Steps 4 to 6 repeat for each ticket. With `auto_merge` on, the store merges a tier 1 or 2 change. You merge tiers 3 and 4, and every change when `auto_merge` is off.
 
@@ -48,7 +48,7 @@ Steps 4 to 6 repeat for each ticket. With `auto_merge` on, the store merges a ti
 3. The driver fetches the ticket and its tests into the branch `tg/<ticket id>` of your project. The store locks them: it runs the tests once in a clean clone with main's harness, confirms that none passes yet, and signs the lock.
 4. The builder builds in its copy, from the best try so far. It writes its own smaller tests as it goes.
 5. The driver puts back main's harness and the locked files, runs the checks, and runs the gate. If a locked test or a check fails, the findings go to the builder and step 4 repeats.
-6. A reviewer scores the checklist items that have no test. From tier 2, another reviewer reads the change through the review lens. For tier 3 and 4, a third reads it through the security lens. A finding counts only when it points to a line inside the change. A low score or a blocking finding goes to the builder, and step 4 repeats.
+6. A reviewer scores the checklist items that have no test. From tier 2, another reviewer reads the change through the review lens. For tier 3 and 4, a third reads it through the security lens. A finding counts only when it points to a line inside the change. A reviewer that answers fail with no blocking finding at all still fails the try. A low score or a blocking finding goes to the builder, and step 4 repeats.
 7. The store signs a pass record. The driver fetches the try into `tg/<ticket id>`, and the store marks it as a ready change.
 8. With `auto_merge` on, the store merges a tier 1 or 2 change. You merge the rest with `/tollgate:merge`.
 
@@ -182,7 +182,7 @@ No AI picks the tier. Path rules in the settings on main map paths to tiers, and
 
 ## The advisor
 
-The driver asks the advisor when a plan needs approval, when the tries stopped, and at each checkpoint. The setting `checkpoints` lists them: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`. A plan that asks a question, and a task review with a blocking finding, go to the advisor even when their checkpoint is off.
+The driver asks the advisor when a plan needs approval, when the tries stopped, and at each checkpoint. The setting `checkpoints` lists them: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`. A plan with an assumption, and a task review with a blocking finding, go to the advisor even when their checkpoint is off.
 
 The advisor chain is `ai.advisor` in the settings: a list of commands and the word `person`, asked in order. The default is `["person"]`. For a person, the store writes a question in the state folder, and the ticket waits. The driver moves on to other tickets, and reads the answer when it starts again. You answer with `/tollgate:inbox`.
 
@@ -265,7 +265,7 @@ The machine needs Python 3.11, git, `ssh-keygen`, pre-commit, and Docker for the
 
 | You type in Claude Code | What happens |
 | --- | --- |
-| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each finding. It changes no file. |
+| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
 | `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, makes the machine key, adds your SSH key to `owners`, and installs pre-commit. |
 | `/tollgate:task Add retries to webhook delivery` | Starts a task. The driver runs in the background, so you can close Claude Code. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
@@ -492,7 +492,7 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | It reuses what the code already has, and names it under Reuse. | Simplicity lens |
 | It fits the architecture the analysis found, unless the request asks for a new one. | Simplicity lens |
 | It names each edge case, failure, and security, speed, or compatibility risk under Risks, and each edge case and failure becomes a checklist item. | Readiness lens |
-| It asks each unclear point as a question under Assumptions, and waits for the advisor. | `gate/plan.py` and the driver |
+| It lists each unclear point under Assumptions, asked as a question, and waits for the advisor. | `gate/plan.py` and the driver |
 | A reader with no context can restate it. | Fresh reader lens |
 | It marks each assumption about an outside system that nobody has checked. | Readiness lens |
 

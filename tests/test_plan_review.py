@@ -64,15 +64,15 @@ class PlanFormatTest(unittest.TestCase):
         plan = pl.parse(PLAN.replace("modify src/retry.py", "create src/retry.py\ndelete src/old.py"))
         self.assertEqual(plan.files, {"src/retry.py": "create", "src/old.py": "delete"})
 
-    def test_no_assumptions_means_no_questions(self):
-        self.assertEqual(pl.parse(PLAN).questions, [])
+    def test_none_means_no_assumptions(self):
+        self.assertEqual(pl.parse(PLAN).assumptions, [])
 
-    def test_each_assumption_asks_a_question(self):
+    def test_each_assumption_ends_with_a_question_mark(self):
         asks = PLAN.replace("## Assumptions\nnone", "## Assumptions\n- Is three tries enough?\n"
                             "- Should a failure write to the log?")
-        self.assertEqual(pl.parse(asks).questions,
+        self.assertEqual(pl.parse(asks).assumptions,
                          ["Is three tries enough?", "Should a failure write to the log?"])
-        with self.assertRaisesRegex(pl.PlanError, "ask a question: Three tries is enough."):
+        with self.assertRaisesRegex(pl.PlanError, "end with a question mark: Three tries is enough."):
             pl.parse(PLAN.replace("## Assumptions\nnone", "## Assumptions\n- Three tries is enough."))
 
     def test_refuses_a_ticket_the_tickets_section_does_not_describe(self):
@@ -175,6 +175,13 @@ class LocalReviewTest(unittest.TestCase):
                                   "findings": [finding("minor", "src/auth/login.py", 10)]})
         self.assertTrue(passed)
         self.assertTrue(text.startswith("Passed. Tier 3."))
+
+    def test_findings_come_worst_first(self):
+        found = [finding("minor", "src/auth/login.py", 10, "small"),
+                 finding("blocking", "src/auth/login.py", 11, "bad"),
+                 finding("major", "src/auth/login.py", 12, "middle")]
+        _, findings, _ = review.review(2, TICKET, DIFF, lambda lens, i: {"findings": found})
+        self.assertEqual([f["text"] for f in findings], ["bad", "middle", "small"])
 
     def test_the_diff_is_the_change_from_main(self):
         repo = Repo()

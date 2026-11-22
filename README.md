@@ -24,7 +24,7 @@ Telling it not to does not stop these mistakes. A review by the same AI does not
 
 Tollgate keeps 18 rules, in 8 groups.
 
-1. **Plan first.** An analyst reads the project first, and each finding cites the code or is marked assumed. Fresh reviewers check the plan, for up to 4 rounds, before any code. A question the plan cannot settle waits for the advisor. A large request starts with the base, then one thin path, then one feature at a time. Each ticket has a checklist, and a must-have item cannot fail.
+1. **Plan first.** An analyst reads the project first, and each fact cites the code or is marked assumed. Fresh reviewers check the plan, for up to 4 rounds, before any code. An assumption the plan cannot settle waits for the advisor. A large request starts with the base, then one thin path, then one feature at a time. Each ticket has a checklist, and a must-have item cannot fail.
 2. **Tests first.** The test writer writes one test for each must-have item, and the store locks it before any code. The AI cannot change a locked test.
 3. **Build from the best try.** Below 70%, the AI gets the reasons and tries again from its best try so far.
 4. **The gate judges.** The gate is a program with no AI. It checks every try, and the AI never grades its own work. The score is the share of checklist items that pass. 70% passes. A failed must-have item fails the try. From tier 2, a reviewer reads each change, and at the end the whole task. A finding must point to a line in the change. Only the gate says a try is done.
@@ -95,7 +95,7 @@ Then, inside your project, on the branch `main`:
 
 | You type | What happens |
 | --- | --- |
-| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each finding. It changes no file. |
+| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
 | `/tollgate:task` | Starts a task from your request. It runs in the background. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, across projects, and records your answer. |

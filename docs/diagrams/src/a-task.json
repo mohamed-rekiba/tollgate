@@ -1,6 +1,6 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI reads the project first, and each finding cites the code. It writes a plan, which fresh AIs check; a question in the plan goes to the advisor. It cuts the plan into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. The gate passes the change, and it is merged; you merge the risky ones. After the last ticket, a review reads the whole task. You read the report, and up to 3 lessons become rules for the next task.",
+ "desc": "You say what you want. The AI reads the project first, and each fact cites the code. It writes a plan, which fresh AIs check; an assumption in the plan goes to the advisor. It cuts the plan into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. The gate passes the change, and it is merged; you merge the risky ones. After the last ticket, a review reads the whole task. You read the report, and up to 3 lessons become rules for the next task.",
  "nodes": [
   {
    "id": "s1",
@@ -14,7 +14,7 @@
   },
   {
    "id": "s2",
-   "text": "The AI reads the project\nEach finding cites the code",
+   "text": "The AI reads the project\nEach fact cites the code",
    "col": 0,
    "row": 1,
    "kind": "ai",
@@ -90,7 +90,7 @@
   },
   {
    "id": "ask",
-   "text": "Ask the advisor\nThe plan's questions",
+   "text": "Ask the advisor\nThe plan's assumptions",
    "col": 1,
    "row": 2,
    "kind": "advisor",
@@ -156,7 +156,7 @@
   {
    "from": "s3",
    "to": "ask",
-   "label": "a question",
+   "label": "an assumption",
    "dashed": true
   },
   {

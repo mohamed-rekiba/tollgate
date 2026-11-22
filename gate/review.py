@@ -14,6 +14,7 @@ from gate.gitio import git
 
 LENSES_BY_TIER = {1: (), 2: ("review",), 3: ("review", "security"), 4: ("review", "security")}
 DIFF_LIMIT = 120000
+LEVELS = ("blocking", "major", "minor")   # the worst first
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
@@ -63,6 +64,8 @@ def review(level: int, ticket: str, change: str, run_role, lenses=None) -> tuple
         findings += [{**f, "lens": lens} for f in kept]
         if data.get("verdict") == "fail" and not any(f.get("level") == "blocking" for f in found):
             findings.append({"lens": lens, "level": "blocking", "text": "the reviewer failed it"})
+    findings.sort(key=lambda f: LEVELS.index(f.get("level")) if f.get("level") in LEVELS
+                  else len(LEVELS))
     blocking = [f for f in findings if f.get("level") == "blocking"]
     out = [f"- {f.get('level')} ({f['lens']}): {f.get('text', '')}"
            + (f" {f['file']}:{f.get('line', '')}" if f.get("file") else "") for f in findings]

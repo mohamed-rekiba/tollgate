@@ -22,7 +22,7 @@ Words: a **locked test** is a test file listed under `tests:` in the ticket. The
 
 ## Answer
 
-End with one block. `decisions` are the design choices you made that the ticket did not, one line each. `concerns` are what you could not finish, test, or check, one line each. The driver runs the tests itself, so do not report their results.
+End with one block. `decisions` are the design choices you made that the ticket did not, one line each. `concerns` are what you could not finish, test, or check, one line each. Report only decisions and concerns: the driver runs the tests itself and reads their results.
 
 ```json
 {"changed": ["src/app.py"], "locked_test_wrong": null, "decisions": ["one line"], "concerns": [], "notes": "one line"}
@@ -30,7 +30,7 @@ End with one block. `decisions` are the design choices you made that the ticket 
 
 ## When `mode` is `plan`
 
-You write the plan for a task, not code. The inputs hold `request`, in the asker's words, `task_id`, and `analysis`: what the analyst found in the project, each finding confirmed or assumed.
+You write the plan for a task, not code. The inputs hold `request`, in the asker's words, `task_id`, and `analysis`: what the analyst found in the project, each fact confirmed or assumed.
 
 Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
 
@@ -71,7 +71,7 @@ Prefer the simplest plan that fits the architecture the analysis found. Plan a n
    - order-totals-tax: add the tax for the order's country to the total.
    ```
 
-   Each line in Files starts with create, modify, or delete. When the change alters behavior, a command, a setting, an interface, or the architecture, Files also lists the README, docs, diagrams, and comments that describe it, and a checklist item covers them. Reuse names the code you use as it is. Risks names the edge cases, the failures, and any security, speed, or compatibility risk. Assumptions is `none`, or one question for each thing the request and the analysis do not settle, each ending with `?`. A question stops the plan until the advisor answers it, so ask only what changes the plan. Done when each ticket in the header has one line in Tickets.
+   Each line in Files starts with create, modify, or delete. When the change alters behavior, a command, a setting, an interface, or the architecture, Files also lists the README, docs, diagrams, and comments that describe it, and a checklist item covers them. Reuse names the code you use as it is. Risks names the edge cases, the failures, and any security, speed, or compatibility risk. Assumptions is `none`, or one assumption for each thing the request and the analysis do not settle, asked as a question that ends with `?`. An assumption stops the plan until the advisor answers it, so list only what changes the plan. Done when each ticket in the header has one line in Tickets.
 3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Each edge case and failure under Risks becomes a checklist item in the ticket that handles it. Behavior that must keep working is a `keeps behavior` item. Done when each ticket names its seams and its test files.
 4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
 

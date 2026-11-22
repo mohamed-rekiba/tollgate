@@ -10,7 +10,7 @@ parked does not stop the others: the report says why.
 
 The setting `checkpoints` names where the advisor decides whether the task goes
 on: "plan" (the approval of the plan), "ticket" (after each ready ticket), and
-"task" (after the review of the whole task). A plan that asks a question, a plan
+"task" (after the review of the whole task). A plan with an assumption, a plan
 review with open findings, and a task review that blocks go to the advisor even
 when their checkpoint is off.
 
@@ -19,6 +19,7 @@ advisor, 4 another driver holds the task, 1 an error.
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -38,6 +39,7 @@ from gate.store import Store, StoreError
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
 MAX_ROUNDS = 4
 OPEN_LEVELS = ("blocking", "major")
+TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the review lens only
 
 
 class Task:
@@ -112,7 +114,7 @@ class Task:
             self.log.add("analysis_written", text=an.render(found), not_found=missing,
                          cost_usd=answer.cost_usd)
             return
-        raise an.AnalysisError("; ".join(problems))
+        raise Parked("the analysis could not be read: " + "; ".join(problems))
 
     def write_plan(self, problems=None, hint=""):
         answer = self.role("builder", {"mode": "plan", "task_id": self.id, "request": self.request,
@@ -176,15 +178,15 @@ class Task:
 
     def approve(self, open_findings: list) -> dict:
         plan = self.read_copy(pl.plan_path(self.id))
-        questions = pl.parse(plan).questions
-        if "plan" not in self.settings["checkpoints"] and not open_findings and not questions:
+        assumptions = pl.parse(plan).assumptions
+        if "plan" not in self.settings["checkpoints"] and not open_findings and not assumptions:
             self.log.add("plan_approved", by="no checkpoint")
             return {"decision": "approve", "hint": ""}
         reason = ("The plan review is clean." if not open_findings
                   else f"{len(open_findings)} findings are open after the review.")
-        if questions:
-            reason += ("\n\nThe plan asks these questions. Send it back with your answers, or "
-                       "approve it as it is:\n\n" + "\n".join(f"- {q}" for q in questions))
+        if assumptions:
+            reason += ("\n\nThe plan lists these assumptions. Send it back with your answers, "
+                       "or approve it as it is:\n\n" + "\n".join(f"- {a}" for a in assumptions))
         for entry in self.settings["ai"]["advisor"]:
             if entry == "person":
                 return advisor.ask_person(self.store, self.log, self.log_path, f"plan {self.id}",
@@ -206,6 +208,8 @@ class Task:
         """Ask the advisor whether the task goes on. Return when it does; raise Parked
         when the advisor stops it or a person has not answered yet. A checkpoint does
         not count against the AI advisor's limit of decisions."""
+        if self.stopped_at(name, key):
+            raise Parked(f"the advisor stopped the task at the {name} checkpoint")
         subject = f"task {self.id}, {name} checkpoint" + (f" after {key}" if key else "")
         decision = None
         for entry in self.settings["ai"]["advisor"]:
@@ -220,7 +224,8 @@ class Task:
                                command=entry)
             decision = {"decision": answer.data.get("decision"),
                         "hint": answer.data.get("hint", "")}
-            self.log.add("advisor_decided", by="ai", cost_usd=answer.cost_usd, **decision)
+            self.log.add("advisor_decided", by="ai", cost_usd=answer.cost_usd, checkpoint=name,
+                         **decision)
             if decision["decision"] in ("continue", "stop"):
                 break
             decision = None
@@ -230,6 +235,11 @@ class Task:
             self.log.add("checkpoint_stopped", name=name, key=key, hint=decision["hint"])
             raise Parked(f"the advisor stopped the task at the {name} checkpoint")
         self.log.add("checkpoint_passed", name=name, key=key)
+
+    def stopped_at(self, name: str, key: str = "") -> bool:
+        """A stop holds: the task stays parked at that checkpoint when it starts again."""
+        return any(e["event"] == "checkpoint_stopped" and e.get("name") == name
+                   and e.get("key", "") == key for e in read(self.log_path))
 
     def passed_checkpoint(self, name: str, key: str = "") -> bool:
         return any(e["event"] == "checkpoint_passed" and e.get("name") == name
@@ -284,12 +294,16 @@ class Task:
             passed, text = found[-1]["passed"], found[-1]["text"]
         else:
             plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
-            parts = []
+            parts, reviewed = [], []
             for tid in plan.tickets:
                 ready = [e for e in read(str(Path(self.logs, f"{tid}.jsonl")))
                          if e["event"] == "ready"]
-                if ready:
-                    parts.append(reviewlib.diff(self.project, self.base, ready[-1]["commit"]))
+                lock = state.path(self.project, "locks", f"{tid}.json")
+                if ready and lock.exists():
+                    # From the commit the ticket started on, so a merged ticket still counts.
+                    start = json.loads(lock.read_text())["base_commit"]
+                    parts.append(reviewlib.diff(self.project, start, ready[-1]["commit"]))
+                    reviewed.append(tid)
             change = "\n".join(parts)[:reviewlib.DIFF_LIMIT]
             cost = []
 
@@ -299,9 +313,10 @@ class Task:
                 return answer.data
 
             passed, findings, text = reviewlib.review(
-                2, self.read_copy(pl.plan_path(self.id)), change, run_role, lenses=("review",))
+                TASK_TIER, self.read_copy(pl.plan_path(self.id)), change, run_role,
+                lenses=("review",))
             self.log.add("task_reviewed", passed=passed, findings=findings, text=text,
-                         cost_usd=sum(cost))
+                         tickets=reviewed, cost_usd=sum(cost))
         if (not passed or "task" in self.settings["checkpoints"]) \
                 and not self.passed_checkpoint("task"):
             self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
@@ -312,8 +327,8 @@ class Task:
         try:
             events = read(self.log_path)
             kinds = {e["event"] for e in events}
-            self.ai_decisions = sum(1 for e in events
-                                    if e["event"] == "advisor_decided" and e.get("by") == "ai")
+            self.ai_decisions = sum(1 for e in events if e["event"] == "advisor_decided"
+                                    and e.get("by") == "ai" and "checkpoint" not in e)
             with Log(self.log_path, task=self.id) as self.log:
                 self.copy = roles.make_copy(self.project, f"task-{self.id}")
                 self.settings = st.load_from_ref(self.copy, self.base)

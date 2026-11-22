@@ -63,8 +63,8 @@ DEFAULTS = {
     "isolation": "container",
     "require_plan": True,
     "auto_merge": False,
-    # Where the driver stops and asks the advisor before it goes on: after the plan,
-    # after each ticket, and after the whole task.
+    # Where the driver asks the advisor before it goes on. The names are "plan",
+    # "ticket" (after each ready ticket), and "task" (after the review of the whole task).
     "checkpoints": ["plan", "task"],
     # The time limit of a check that sets no "minutes" of its own.
     "check_minutes": 20,

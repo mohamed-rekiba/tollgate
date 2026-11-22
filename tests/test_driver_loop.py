@@ -242,14 +242,14 @@ class TaskTest(LoopCase):
         written = next(e for e in s.log("task-demo") if e["event"] == "analysis_written")
         self.assertEqual(written["not_found"], ["app.py::nope"])
 
-    def test_a_plan_with_no_checkpoint_and_no_questions_needs_no_advisor(self):
+    def test_a_plan_with_no_checkpoint_and_no_assumptions_needs_no_advisor(self):
         s, task = self.task(checkpoints=[])
         self.assertEqual(task.run(), 0)
         events = s.events("task-demo")
         self.assertIn("plan_approved", events)
         self.assertNotIn("advisor_decided", events[:events.index("plan_locked")])
 
-    def test_a_plan_that_asks_a_question_always_goes_to_the_advisor(self):
+    def test_a_plan_with_an_assumption_always_goes_to_the_advisor(self):
         s, task = self.task(builder="pass2 ask=1", checkpoints=[], advisor="ok plan_decision=send_back")
         self.assertEqual(task.run(), 3)
         log = s.log("task-demo")
@@ -284,6 +284,30 @@ class TaskTest(LoopCase):
         reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
         self.assertFalse(reviewed["passed"])
         self.assertIn("checkpoint_stopped", s.events("task-demo"))
+
+
+    def test_an_analysis_that_cannot_be_read_parks_the_task(self):
+        s, task = self.task(reviewer="ok badanalysis")
+        self.assertEqual(task.run(), 3)
+        events = s.events("task-demo")
+        self.assertEqual(events.count("analysis_invalid"), 3)
+        self.assertIn("task_waiting", events)
+        self.assertNotIn("plan_written", events)
+
+    def test_a_stop_holds_when_the_task_starts_again(self):
+        s, task = self.task(checkpoints=["ticket"], advisor="ok checkpoint=stop")
+        self.assertEqual(task.run(), 3)
+        self.assertEqual(task.run(), 3)
+        log = s.log("task-demo")
+        self.assertEqual([e["event"] for e in log].count("checkpoint_stopped"), 1)
+        self.assertEqual(len([e for e in log if e["event"] == "advisor_decided"]), 1)
+
+    def test_a_merged_ticket_stays_in_the_review_of_the_whole_task(self):
+        s, task = self.task(checkpoints=[], auto_merge=True)
+        self.assertEqual(task.run(), 0)
+        reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
+        self.assertIn("demo-2", reviewed.get("tickets", []))
+        self.assertIn("demo-1", reviewed.get("tickets", []))
 
 
 if __name__ == "__main__":

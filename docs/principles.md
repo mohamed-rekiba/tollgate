@@ -11,16 +11,16 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 1. Plan first
 
-### Rule 1. The analysis comes first, and every finding cites the code
+### Rule 1. The analysis comes first, and every fact cites the code
 
-**What it means.** Before the plan, an analyst reads the project and reports how it is built: its structure, entry points, frameworks, similar features, tests, and standards. Each finding is confirmed, with a citation to the code, or marked assumed.
+**What it means.** Before the plan, an analyst reads the project and reports how it is built: its structure, entry points, frameworks, similar features, tests, and standards. Each fact is confirmed, with a citation to the code, or marked assumed.
 
 **Why.** A plan written from a guess about the code builds on things that do not exist.
 
 **How Tollgate does it.**
 
 - `driver/task.py` runs the analyst before the plan. The analyst is read-only: its policy denies every edit and every command.
-- `gate/analysis.py` reads the analysis and checks each citation, `[path:line]` or `[path::name]`, against the commit it read. A finding whose citation does not exist becomes an assumption.
+- `gate/analysis.py` reads the analysis and checks each citation, `[path:line]` or `[path::name]`, against the commit it read. A fact whose citation does not exist becomes an assumption.
 - The driver keeps the checked analysis and puts it on the plan branch with the plan. The plan writer and the plan reviewers read it.
 - `/tollgate:analyze` runs the same analysis by hand, and changes no file.
 
@@ -44,17 +44,17 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ### Rule 3. An assumption waits for an answer
 
-**What it means.** The plan lists, as questions, what the request and the analysis do not settle. A plan with a question goes to the advisor before it is locked.
+**What it means.** The plan lists what the request and the analysis do not settle, each as an assumption asked as a question. A plan with an assumption goes to the advisor before it is locked.
 
 **Why.** A builder that guesses an unclear requirement builds the wrong thing well.
 
 **How Tollgate does it.**
 
 - `gate/plan.py` requires the sections Reuse, Risks, and Assumptions. Each assumption ends with a question mark.
-- `driver/task.py` sends a plan with questions to the advisor, even when the plan checkpoint is off. The advisor answers them and sends the plan back, or approves it as it is.
-- The readiness lens reports a part of the plan that rests on an assumed finding and asks nothing about it.
+- `driver/task.py` sends a plan with assumptions to the advisor, even when the plan checkpoint is off. The advisor answers them and sends the plan back, or approves it as it is.
+- The readiness lens reports a part of the plan that rests on an assumed fact and asks nothing about it.
 
-**Where it stops.** The plan writer decides what is unclear. A question it does not ask is not caught until the review.
+**Where it stops.** The plan writer decides what is unclear. An assumption it does not list is caught only by the readiness lens, or not at all.
 
 ### Rule 4. A large request grows one step at a time
 
@@ -196,7 +196,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 Then the driver asks the advisors in `ai.advisor`, in order. The default is you. The advisor can give one more try with a hint, give one more try with a stronger model, split the ticket, or park it. You answer with `/tollgate:inbox`.
 
-The setting `checkpoints` adds the places where the advisor decides whether the task goes on: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`.
+The setting `checkpoints` adds the places where the advisor decides whether the task goes on: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`. A stop holds: when the task starts again, it stays parked at that checkpoint.
 
 **Where it stops.** No advisor can make the gate pass. A cost stop parks the ticket, and no advisor can lift it. A checkpoint does not count against the AI advisor's limit. An AI advisor decides at most 2 times for one ticket, then only you decide. A split parks the ticket: the driver does not cut it into new tickets.
 

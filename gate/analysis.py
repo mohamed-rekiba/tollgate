@@ -1,7 +1,7 @@
 """Read and check an analysis: .tollgate/analysis/<task id>.md.
 
 The analyst writes it before the plan, from the code alone. It has a header and
-six sections, and each finding is one line that is confirmed or assumed:
+six sections, and each fact is one line that is confirmed or assumed:
 
     ---
     task: retries
@@ -18,8 +18,8 @@ six sections, and each finding is one line that is confirmed or assumed:
     - confirmed: the handler calls it [src/web.py::deliver]
     - assumed: the project runs on Python 3.11
 
-A confirmed finding cites the code: [path:line] or [path::name]. verify() checks
-each citation against the commit the analysis read, and makes a finding whose
+A confirmed fact cites the code: [path:line] or [path::name]. verify() checks
+each citation against the commit the analysis read, and makes a fact whose
 citation does not exist an assumption.
 """
 
@@ -39,7 +39,7 @@ class AnalysisError(ValueError):
 
 
 @dataclass
-class Finding:
+class Fact:
     status: str
     text: str
     cites: list = field(default_factory=list)   # (path, line or None, name or None)
@@ -49,7 +49,7 @@ class Finding:
 class Analysis:
     task: str
     commit: str
-    sections: dict = field(default_factory=dict)   # section name -> [Finding]
+    sections: dict = field(default_factory=dict)   # section name -> [Fact]
 
 
 def analysis_path(task_id: str) -> str:
@@ -88,12 +88,12 @@ def parse(text: str) -> Analysis:
             continue
         status, sep, claim = item.partition(":")
         if not sep or status.strip() not in STATUSES:
-            raise AnalysisError(f"each finding starts with confirmed or assumed: {item}")
+            raise AnalysisError(f"each fact starts with confirmed or assumed: {item}")
         status, claim = status.strip(), claim.strip()
         cites = [(m[1], int(m[2]) if m[2] else None, m[3] or None) for m in CITE.finditer(claim)]
         if status == "confirmed" and not cites:
-            raise AnalysisError(f"a confirmed finding cites no code: {claim}")
-        sections[current].append(Finding(status, claim, cites))
+            raise AnalysisError(f"a confirmed fact cites no code: {claim}")
+        sections[current].append(Fact(status, claim, cites))
     missing = [s for s in SECTIONS if not sections.get(s)]
     if missing:
         raise AnalysisError(f"the analysis has empty or missing sections: {', '.join(missing)}")
@@ -101,11 +101,11 @@ def parse(text: str) -> Analysis:
 
 
 def verify(analysis: Analysis, root: str) -> list:
-    """Check every citation of a confirmed finding against the files under root.
-    A finding with a citation that does not exist becomes assumed. Return those citations."""
+    """Check every citation of a confirmed fact against the files under root.
+    A fact with a citation that does not exist becomes assumed. Return those citations."""
     missing = []
-    for findings in analysis.sections.values():
-        for f in findings:
+    for facts in analysis.sections.values():
+        for f in facts:
             if f.status != "confirmed":
                 continue
             gone = [c for c in f.cites
@@ -120,9 +120,9 @@ def verify(analysis: Analysis, root: str) -> list:
 
 def render(analysis: Analysis) -> str:
     out = ["---", f"task: {analysis.task}", f"commit: {analysis.commit}", "---"]
-    for name, findings in analysis.sections.items():
+    for name, facts in analysis.sections.items():
         out.append(f"## {name}")
-        out += [f"- {f.status}: {f.text}" for f in findings]
+        out += [f"- {f.status}: {f.text}" for f in facts]
     return "\n".join(out) + "\n"
 
 

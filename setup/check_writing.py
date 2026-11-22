@@ -295,7 +295,7 @@ def _refs(doc: str, text: str):
             yield n, "links to", [os.path.normpath(path)], None
         for m in TICKED.finditer(line):
             token = m.group(1)
-            if any(t in token for t in NOT_A_PATH) or token.startswith(("-", "/", ".")):
+            if any(t in token for t in NOT_A_PATH) or token.startswith(("-", "/", "..")):
                 continue
             path, _, name = token.partition("::")
             path = re.sub(r":\d+$", "", path)
@@ -336,8 +336,8 @@ def check_docs(root: Path, base: str, staged: bool = False) -> list:
                 seen.add((n, label))
                 found.append(f"{doc}:{n}: {kind} {label}, which this change removes. "
                              "Update the doc.")
-            elif not was and kind == "links to" and not any(p in new for p in paths) \
-                    and n in added.get(doc, ()):
+            elif (not was and kind == "links to" and not any(p in new for p in paths)
+                  and n in added.get(doc, ())):
                 seen.add((n, label))
                 found.append(f"{doc}:{n}: {kind} {label}, which does not exist.")
     return found

@@ -128,6 +128,16 @@ class DocsTest(unittest.TestCase):
         self.repo.commit("fix(send): return a value")
         self.assertEqual(self.repo.check(), (0, ""))
 
+    def test_a_path_that_starts_with_a_dot_is_checked(self):
+        self.repo.write(".tool/run.py", "x = 1\n")
+        self.repo.write("docs/tool.md", "Run `.tool/run.py`.\n")
+        self.repo.commit("docs(tool): add the tool")
+        sh(self.repo.root, "git", "update-ref", "refs/heads/main", "HEAD")
+        (self.repo.root / ".tool/run.py").unlink()
+        self.repo.commit("refactor(tool): remove the tool")
+        self.assertIn("docs/tool.md:1: names .tool/run.py, which this change removes.",
+                      self.repo.check()[1])
+
     def test_the_staged_change_is_checked_before_a_commit(self):
         sh(self.repo.root, "git", "rm", "-q", "src/send.py")
         code, out = self.repo.check(staged=True)

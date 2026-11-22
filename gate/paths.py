@@ -27,13 +27,18 @@ def line_exists(root: str, file: str, line) -> bool:
     return text is not None and isinstance(line, int) and 1 <= line <= len(text.splitlines())
 
 
+# A name is defined when a line starts with one of these words and the name, or
+# assigns to it. setup/check_writing.py carries the same pattern, because it runs
+# alone in a project; tests/test_analysis.py keeps the two the same.
+DEFINES = (r"^\s*(?:async\s+def|def|class|func|fn|function|const|let|var)\s+{0}\b"
+           r"|^\s*{0}\s*=")
+
+
 def name_exists(root: str, file: str, name: str) -> bool:
     """True when root/file defines `name`: a function, a class, or an assignment."""
     text = read_inside(root, file)
-    last = name.rsplit(".", 1)[-1]
-    return text is not None and bool(
-        re.search(rf"^\s*(?:async\s+def|def|class)\s+{re.escape(last)}\b"
-                  rf"|^\s*{re.escape(last)}\s*=", text, re.MULTILINE))
+    last = re.escape(name.rsplit(".", 1)[-1])
+    return text is not None and bool(re.search(DEFINES.format(last), text, re.MULTILINE))
 
 
 @lru_cache(maxsize=512)

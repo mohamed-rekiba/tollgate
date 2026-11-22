@@ -10,7 +10,7 @@ way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
 function that does not exist), block=<lens> (that lens finds a blocking problem).
-Builder options: ask=1 (the plan asks a question). Advisor options: plan_decision=<d>,
+Builder options: ask=1 (the plan lists an assumption). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
@@ -175,6 +175,9 @@ def main() -> int:
     if first == "# Role: analyst":
         commit = data["commit"]
         bad = "\n- confirmed: shout already exists [app.py::nope]" if "badcite" in sys.argv else ""
+        if "badanalysis" in sys.argv:
+            answer({"analysis": "no header"}, cost)
+            return 0
         answer({"analysis": ANALYSIS.format(task=data["task_id"], commit=commit, bad=bad)}, cost)
         return 0
     if first == "# Role: test writer":

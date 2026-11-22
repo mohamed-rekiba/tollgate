@@ -14,7 +14,8 @@ A plan has a header between two --- lines, like a ticket, and eight sections:
     ## Reuse         the code the plan uses as it is, one per line
     ## Risks         edge cases, failures, security, speed, and what must keep
                      working, one per line
-    ## Assumptions   "none", or one question per line that a person must answer
+    ## Assumptions   "none", or one assumption per line, asked as a question for
+                     the advisor to answer
     ## Tickets       one line for each ticket id, in build order, with one sentence
 
 Each ticket in the header has a file .tollgate/tickets/<id>/ticket.md whose
@@ -44,7 +45,7 @@ class Plan:
     tickets: list
     sections: dict = field(default_factory=dict)
     files: dict = field(default_factory=dict)       # path -> create, modify, or delete
-    questions: list = field(default_factory=list)   # the assumptions a person must answer
+    assumptions: list = field(default_factory=list)  # each asks the advisor a question
 
 
 def plan_path(task_id: str) -> str:
@@ -95,7 +96,7 @@ def parse(text: str) -> Plan:
         if t not in listed:
             raise PlanError(f"the Tickets section does not describe {t}")
     return Plan(header["id"], tickets, {k: "\n".join(v).strip() for k, v in sections.items()},
-                _files(sections["Files"]), _questions(sections["Assumptions"]))
+                _files(sections["Files"]), _assumptions(sections["Assumptions"]))
 
 
 def _items(lines: list) -> list:
@@ -112,13 +113,13 @@ def _files(lines: list) -> dict:
     return files
 
 
-def _questions(lines: list) -> list:
+def _assumptions(lines: list) -> list:
     items = _items(lines)
     if [i.lower().rstrip(".") for i in items] == ["none"]:
         return []
     for item in items:
         if not item.endswith("?"):
-            raise PlanError(f"each assumption must ask a question: {item}")
+            raise PlanError(f"each assumption must end with a question mark: {item}")
     return items
 
 

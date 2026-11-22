@@ -87,6 +87,13 @@ class VerifyTest(unittest.TestCase):
 
 
 
+class SameRuleTest(unittest.TestCase):
+    def test_the_copied_check_and_the_gate_find_a_name_the_same_way(self):
+        from gate import paths
+        from setup import check_writing
+        self.assertEqual(paths.DEFINES, check_writing.DEFINES)
+
+
 class CommandTest(unittest.TestCase):
     def run_main(self, text, root):
         import io
