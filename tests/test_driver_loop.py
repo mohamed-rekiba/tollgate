@@ -4,6 +4,7 @@ Each case builds ticket T-1 of a sample project: shout returns the greeting in
 capitals. The fake builder's mode decides how each try goes.
 """
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -422,6 +423,71 @@ class TaskTest(LoopCase):
         reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
         self.assertIn("demo-2", reviewed.get("tickets", []))
         self.assertIn("demo-1", reviewed.get("tickets", []))
+
+
+
+class FixRoundTest(LoopCase):
+    """The review of the whole task finds a problem: one fix round, then merges in order."""
+
+    def task(self, advisor="ok", **settings_args):
+        from driver.task import Task
+        from tests.driver_fakes import gate_api, review_api
+        s = Sample(ticket=False, advisor=(f"{sys.executable} {FAKE_ROLE} {advisor}",),
+                   **settings_args)
+        self.addCleanup(s.close)
+        store = FakeStore(s.project)
+        task = Task(str(s.project), "demo", "Add shout and whisper.", store,
+                    driver_args={"gate_api": gate_api(), "review_api": review_api()})
+        return s, store, task
+
+    def ready(self, s, tid):
+        return [e for e in s.log(tid) if e["event"] == "ready"][-1]["commit"]
+
+    def test_a_failed_task_review_runs_one_fix_round_then_merges_in_plan_order(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1", auto_merge=True)
+        self.assertEqual(task.run(), 0)
+        events = s.events("task-demo")
+        self.assertEqual(events.count("fix_round"), 1)
+        rounds = [e.get("round") for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual(rounds, [0, 1])
+        self.assertEqual([m[1] for m in store.ready_marks], ["demo-1", "demo-2", "demo-3"])
+        self.assertEqual(store.merged, [self.ready(s, t) for t in ("demo-1", "demo-2", "demo-3")])
+        plan = json.loads(state.path(str(s.project), "plans", "demo.json").read_text())
+        self.assertIn(".tollgate/tickets/demo-3/ticket.md", plan["files"])
+
+    def test_each_ticket_starts_from_the_ready_change_before_it(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1")
+        self.assertEqual(task.run(), 0)
+        self.assertEqual(store.starts["demo-1"], None)
+        self.assertEqual(store.starts["demo-2"], self.ready(s, "demo-1"))
+        self.assertEqual(store.starts["demo-3"], self.ready(s, "demo-2"))
+        lock = json.loads(state.path(str(s.project), "locks", "demo-3.json").read_text())
+        self.assertEqual(lock["base_commit"], self.ready(s, "demo-2"))
+
+    def test_a_second_failure_parks_at_the_checkpoint_and_nothing_merges(self):
+        s, store, task = self.task(reviewer="ok taskmajor=2", advisor="ok checkpoint=stop",
+                                   auto_merge=True)
+        self.assertEqual(task.run(), 3)
+        events = s.events("task-demo")
+        self.assertEqual(events.count("fix_round"), 1)
+        self.assertIn("checkpoint_stopped", events)
+        self.assertEqual(store.merged, [])
+        for tid in ("demo-1", "demo-2", "demo-3"):
+            self.assertEqual(s.events(tid)[-1], "waiting_for_merge")
+
+    def test_no_ticket_merges_before_the_task_review_passes(self):
+        s, store, task = self.task(reviewer="ok taskmajor=1", auto_merge=True)
+        merged_at = []
+        real = store.merge
+
+        def merge(commit):
+            merged_at.append([e["event"] for e in s.log("task-demo")])
+            return real(commit)
+        store.merge = merge
+        self.assertEqual(task.run(), 0)
+        for seen in merged_at:
+            self.assertIn("checkpoint_passed", seen)
+            self.assertEqual([e for e in seen if e == "task_reviewed"], ["task_reviewed"] * 2)
 
 
 if __name__ == "__main__":

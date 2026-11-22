@@ -9,7 +9,9 @@ Builder modes: pass2 (fails attempt 1, passes attempt 2), same (fails the same
 way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
-function that does not exist), block=<lens> (that lens finds a blocking problem).
+function that does not exist), block=<lens> (that lens finds a blocking problem),
+taskmajor=<n> (the first n reviews of the whole task find a major problem).
+A plan written with a hint from the review of the whole task adds a third ticket, loud.
 Builder options: ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
@@ -43,6 +45,24 @@ class T(unittest.TestCase):
     def test_c2_greet_kept(self):
         self.assertEqual(app.greet("ann"), "hello ann")
 '''
+
+
+TESTS_T3 = '''import unittest
+
+import app
+
+
+class T(unittest.TestCase):
+    def test_c1_loud(self):
+        self.assertEqual(app.loud("ann"), "hello ann!")
+
+    def test_c2_greet_kept(self):
+        self.assertEqual(app.greet("ann"), "hello ann")
+'''
+
+LOUD = '\n\ndef loud(name):\n    """Return the greeting with a mark."""\n    return greet(name) + "!"\n'
+LOUD_BAD = '\n\ndef loud(name):\n    """Return the greeting with a mark."""\n    return greet(name)\n'
+FIX_HINT = "review of the whole task"
 
 
 TESTS_T2 = '''import unittest
@@ -149,6 +169,40 @@ Other languages.
 """
 
 
+TICKET_T3 = """---
+id: {task}-3
+plan: {task}
+seams: app.loud
+tests: tests/test_t3.py
+---
+## Current behavior
+There is no loud.
+
+## Desired behavior
+loud returns the greeting with a mark.
+
+## Checklist
+- [C1, must] loud("ann") returns "hello ann!".
+- [C2, must, keeps behavior] greet("ann") still returns "hello ann".
+- [C3] loud has a docstring.
+
+## Out of scope
+Other marks.
+"""
+
+
+def first_changed_line(diff: str) -> tuple:
+    """(file, line) of the first line a diff adds, for a finding inside the change."""
+    path = None
+    for line in diff.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[6:]
+        m = re.match(r"^@@ -\S+ \+(\d+)", line)
+        if path and m:
+            return path, int(m.group(1))
+    return "app.py", 1
+
+
 def count_marker(name: str) -> int:
     """Count calls across processes with a file in the working folder."""
     path = Path(name)
@@ -183,6 +237,12 @@ def main() -> int:
         return 0
     if first == "# Role: test writer":
         Path("tests").mkdir(exist_ok=True)
+        if data.get("ticket_id", "").endswith("-3"):
+            Path("tests/test_t3.py").write_text(TESTS_T3)
+            answer({"tests": [{"item": "C1", "file": "tests/test_t3.py", "name": "test_c1_loud"},
+                              {"item": "C2", "file": "tests/test_t3.py",
+                               "name": "test_c2_greet_kept"}]}, cost)
+            return 0
         if data.get("ticket_id", "").endswith("-2"):
             Path("tests/test_t2.py").write_text(TESTS_T2)
             answer({"tests": [{"item": "C1", "file": "tests/test_t2.py", "name": "test_c1_whisper"},
@@ -200,8 +260,13 @@ def main() -> int:
         plan = PLAN.format(task=task, request=data["request"])
         if opts.get("ask") and not data.get("hint"):
             plan = plan.replace("## Assumptions\nnone", "## Assumptions\n- Should whisper keep accents?")
+        written = [(f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)]
+        if FIX_HINT in data.get("hint", ""):
+            plan = plan.replace(f"tickets: {task}-1, {task}-2", f"tickets: {task}-1, {task}-2, {task}-3")
+            plan = plan.rstrip("\n") + f"\n- {task}-3: loud returns the greeting with a mark.\n"
+            written.append((f"{task}-3", TICKET_T3))
         Path(f".tollgate/plans/{task}.md").write_text(plan)
-        for tid, text in ((f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)):
+        for tid, text in written:
             Path(f".tollgate/tickets/{tid}").mkdir(parents=True, exist_ok=True)
             Path(f".tollgate/tickets/{tid}/ticket.md").write_text(text.format(task=task))
         answer({"plan": f".tollgate/plans/{task}.md", "tickets": [f"{task}-1", f"{task}-2"]},
@@ -222,7 +287,10 @@ def main() -> int:
         if mode == "slow":
             time.sleep(30)
         good = (mode == "pass2" and n >= 2) or mode == "pass1"
-        if "seams: app.whisper" in data.get("ticket", ""):
+        if "seams: app.loud" in data.get("ticket", ""):
+            kept = Path("app.py").read_text().split("\n\ndef loud(")[0]
+            Path("app.py").write_text(kept + (LOUD if good else LOUD_BAD))
+        elif "seams: app.whisper" in data.get("ticket", ""):
             # The whisper ticket builds on what main has, which may hold shout already.
             kept = Path("app.py").read_text().split("\n\ndef whisper(")[0]
             Path("app.py").write_text(kept + (WHISPER if good else WHISPER_BAD))
@@ -265,6 +333,13 @@ def main() -> int:
     elif first == "# Role: reviewer" and ("# Lens: review" in prompt or "# Lens: security" in prompt):
         lens = "security" if "# Lens: security" in prompt else "review"
         block = opts.get("block") == lens
+        whole_task = "\ntickets: " in data.get("ticket", "")
+        if whole_task and lens == "review" and opts.get("taskmajor") and \
+                count_marker(".fake-taskreview") <= int(opts["taskmajor"]):
+            path, line = first_changed_line(data.get("diff", ""))
+            answer({"verdict": "pass", "findings": [{"level": "major", "file": path, "line": line,
+                                                     "text": "loud is missing"}]}, cost)
+            return 0
         answer({"verdict": "fail" if block else "pass", "findings": [
             {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]
             if block else []}, cost)

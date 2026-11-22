@@ -205,22 +205,27 @@ def _differ(repo, ref: str, files: dict) -> list:
 
 
 def collect(project: str, repo, base: str, head: str, ticket: str, results: Results,
-            review_passed: bool | None = None) -> Facts:
+            review_passed: bool | None = None, start: str | None = None) -> Facts:
     """Gather the facts.
 
     project names the state folder. repo is the copy that holds the try.
     base names the main branch: the settings, and so the signers, come from there.
+    start is the commit the ticket started from, when not base: the tier counts only
+    the files changed since then. It must be the base the store recorded in the lock.
     """
     settings = st.load_from_ref(repo, base)
     signers = settings["signers"]
     head_sha = git(repo, "rev-parse", head).strip()
-    facts = Facts(settings, ticket, head_sha, changed_files(repo, base, head), results,
+    facts = Facts(settings, ticket, head_sha, changed_files(repo, start or base, head), results,
                   review_passed=review_passed)
     lock, digest, error = _read(project, "locks", ticket, "tollgate-lock", signers)
     if lock is None:
         facts.lock_error = f"the lock of ticket {ticket} does not verify: {error}"
         return facts
     facts.lock, facts.lock_sha256 = lock, digest
+    if start and git(repo, "rev-parse", start).strip() != lock.get("base_commit"):
+        # The store checked the start of the lock; any other start is not trusted.
+        facts.lock_error = f"the ticket's start {start[:12]} is not the base of its lock"
     files = lock["manifest"]["files"]
     commit = lock["commit"]
     try:

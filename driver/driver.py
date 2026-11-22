@@ -217,13 +217,19 @@ class Driver:
     """gate_api and review_api default to gate.gate and gate.review. Tests pass fakes."""
 
     def __init__(self, project: str, ticket_id: str, store=None, ticket_text: str | None = None,
-                 gate_api=None, review_api=None, runner: str | None = None, caller=None):
+                 gate_api=None, review_api=None, runner: str | None = None, caller=None,
+                 base: str | None = None, hold: bool = False):
+        """base is the commit the ticket starts from, main by default; in a task, the
+        ready change of the ticket before it. hold=True leaves the merge to the task:
+        the ticket ends at waiting_for_merge, even with auto_merge on."""
         self.project = os.path.abspath(project)
         self.ticket_id = ticket_id
         self.store = store or Store(self.project)
         self.gate = gate_api or gatelib
         self.review = review_api or reviewlib
-        self.base = BASE
+        self.base = BASE         # main: the settings, the harness, and the signers come from here
+        self.start = base or BASE
+        self.hold = hold
         self.branch = f"tg/{ticket_id}"
         self.logs = state.path(self.project, "logs")
         self.log_path = str(self.logs / f"{ticket_id}.jsonl")
@@ -322,7 +328,10 @@ class Driver:
         commit = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
         fetch_branch(self.project, self.copy, self.branch)
         try:
-            self.store.freeze(self.ticket_id)
+            if self.start == self.base:
+                self.store.freeze(self.ticket_id)
+            else:
+                self.store.freeze(self.ticket_id, start=self.start)
         except (StoreError, mf.FreezeError) as err:
             st_.rejections += 1
             st_.tests_done = False
@@ -372,7 +381,7 @@ class Driver:
         commit = self.commit(f"feat({self.ticket_id}): try {n}")
         results = self.checks()
         facts = self.gate.collect(self.project, self.copy, self.base, "HEAD", self.ticket_id,
-                                  results)
+                                  results, start=None if self.start == self.base else self.start)
         findings = self.gate.evaluate(facts)
         tier = self.gate.tier_of(facts)[0]
         lock = facts.lock or self.lock() or {"manifest": {"tests": []}}
@@ -411,7 +420,7 @@ class Driver:
                 spent.append(answer.cost_usd)
                 return answer.data
             facts.review_passed, found, _ = self.review.review(
-                tier, self.ticket_text, self.review.diff(self.copy, self.base, "HEAD"), run_role)
+                tier, self.ticket_text, self.review.diff(self.copy, self.start, "HEAD"), run_role)
             cost = roles.add_cost(cost, *spent)
             blocking += [f for f in found if f.get("level") == "blocking"]
             findings = self.gate.evaluate(facts)
@@ -453,7 +462,7 @@ class Driver:
     def finish(self, st_: history.Ticket) -> int:
         # A person merges tier 3 and 4, and any change whose tier the log does not show.
         tier = history.replay(read(self.log_path)).tier
-        if not self.settings["auto_merge"] or tier is None or tier >= 3:
+        if self.hold or not self.settings["auto_merge"] or tier is None or tier >= 3:
             self.log.add("waiting_for_merge", branch=self.branch, commit=st_.ready, tier=tier)
             return 0
         try:
@@ -519,7 +528,11 @@ class Driver:
             with Log(self.log_path, ticket=self.ticket_id, task=self.ticket.plan) as self.log:
                 self.copy = roles.make_copy(self.project, self.ticket_id)
                 if not st_.tests_done and not st_.frozen:
-                    git(self.copy, "checkout", "-q", "-B", self.branch, self.base)
+                    if self.start != self.base:
+                        # The ready change this ticket builds on lives in the project.
+                        git(self.copy, "fetch", "-q", self.project,
+                            "+refs/heads/tg/*:refs/tollgate/tickets/*")
+                    git(self.copy, "checkout", "-q", "-B", self.branch, self.start)
                     path = Path(self.copy, mf.ticket_path(self.ticket_id))
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(self.ticket_text)

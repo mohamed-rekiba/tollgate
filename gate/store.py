@@ -204,7 +204,8 @@ class Store:
         if old is not None:
             plan_file = pl.plan_path(task)
             for name, digest in old["files"].items():
-                if name != plan_file and found["files"].get(name) != digest:
+                if name != plan_file and name.endswith("/ticket.md") and \
+                        found["files"].get(name) != digest:
                     ticket = Path(name).parent.name
                     raise StoreError(f"the new plan changes ticket {ticket}, which the old "
                                      "plan locked; a new version may only add tickets")
