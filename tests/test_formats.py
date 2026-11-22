@@ -35,6 +35,12 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "isolation must be"):
             settings.parse('{"isolation": "none"}')
 
+    def test_the_runner_is_session_or_background_and_session_by_default(self):
+        self.assertEqual(settings.parse("{}")["runner"], "session")
+        self.assertEqual(settings.parse('{"runner": "background"}')["runner"], "background")
+        with self.assertRaisesRegex(settings.SettingsError, "runner must be"):
+            settings.parse('{"runner": "docker"}')
+
     def test_each_signer_is_a_public_key_line(self):
         import base64
         blob = base64.b64encode(b"\x00\x00\x00\x0bssh-ed25519" + b"\x00" * 36).decode()

@@ -68,9 +68,12 @@ def docker_ready(which=shutil.which) -> str:
 
 
 def check_isolation(root: Path, which=shutil.which) -> str:
-    """Refuse the container isolation when Docker cannot run. Return one line."""
+    """Refuse the container isolation of the background driver when Docker cannot run.
+    Session mode uses no isolation of the driver's, so it needs no Docker. Return one line."""
     path = root / st.PATH
     settings = json.loads(path.read_text()) if path.exists() else {}
+    if settings.get("runner", "session") != "background":
+        return "runner: session, Docker not needed"
     isolation = settings.get("isolation", "container")
     if isolation != "container":
         return f"isolation: {isolation}, Docker not needed"

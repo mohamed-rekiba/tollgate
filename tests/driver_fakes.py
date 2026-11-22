@@ -41,6 +41,7 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), signer="", **e
         "checks": {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"}},
         "harness": ["run_tests.py"],
         "require_plan": False,
+        "runner": "background",
         "isolation": "sandbox",
         "signers": [signer] if signer else [],
         "ai": {"builder": f"{role} {builder}", "reviewer": f"{role} {reviewer}",

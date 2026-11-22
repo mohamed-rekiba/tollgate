@@ -390,7 +390,8 @@ REAL_DOCKER_READY = setup_init.docker_ready
 class DockerCheckTest(Env):
     def write(self, root, isolation):
         Path(root, ".tollgate").mkdir(exist_ok=True)
-        Path(root, ".tollgate/settings.json").write_text(json.dumps({"isolation": isolation}))
+        Path(root, ".tollgate/settings.json").write_text(json.dumps(
+            {"runner": "background", "isolation": isolation}))
 
     def test_the_container_isolation_needs_docker(self):
         root = self.repo()
@@ -407,11 +408,16 @@ class DockerCheckTest(Env):
                 self.assertEqual(setup_init.check_isolation(root, which=lambda t: "/bin/" + t),
                                  "isolation: container, Docker is running")
 
-    def test_no_settings_means_container(self):
+    def test_session_mode_needs_no_docker(self):
+        # No settings means session mode: your own session runs each role.
         root = self.repo()
-        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY), \
-                self.assertRaisesRegex(setup_init.InitError, "docker is not installed"):
-            setup_init.check_isolation(root, which=lambda t: None)
+        with mock.patch.object(setup_init, "docker_ready", REAL_DOCKER_READY):
+            self.assertEqual(setup_init.check_isolation(root, which=lambda t: None),
+                             "runner: session, Docker not needed")
+            Path(root, ".tollgate").mkdir(exist_ok=True)
+            Path(root, ".tollgate/settings.json").write_text(json.dumps({"isolation": "container"}))
+            self.assertEqual(setup_init.check_isolation(root, which=lambda t: None),
+                             "runner: session, Docker not needed")
 
     def test_the_sandbox_isolation_skips_the_check(self):
         root = self.repo()
