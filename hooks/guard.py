@@ -25,9 +25,14 @@ branch for review, but never main.
 
 For a role, it also refuses a Read, Grep, or Glob of the key folder, or of the
 state folder outside the role's own copy; a Bash command whose text names the
-key folder or the state folder, or climbs with `..`; and a command that runs
-Tollgate's own code: `python -m driver.step`, a path to one of its files, or an
-import of it. A command can still hide a path, for
+key folder, the state folder, or a `.git` folder; an edit under the copy's
+`.git`; and a plain run of a Tollgate command that changes its state, such as
+`python3 -m driver.step`.
+
+The threat model: this hook stops a role's mistakes and shortcuts, not a role
+that deliberately attacks your machine. A role and the code it writes run as you
+and can reach your machine key, for example from a command that hides a path.
+Background mode with a container is the mode for that. A command can still hide a path, for
 example by building it from parts, so this rule is one layer, not a wall.
 
 A call from one of Tollgate's subagents carries its agent type, such as
@@ -35,11 +40,9 @@ A call from one of Tollgate's subagents carries its agent type, such as
 named the role. A call from any other subagent gets your own session's rules.
 In session mode no driver names the copy, so the hook reads it from the step
 file, run/step.json in the state folder, and only when the step is for that
-same role. The hook refuses a role's edit of the state folder, its read of it, a
-command that names it or climbs out of the copy with `..`, and any command that
-runs Tollgate's own code, such as `driver.step answer`. A command can still hide
-a path, so this is one layer; the step file holds only a hash of the nonce that
-`answer` needs, and saved answers carry a code made with the machine key.
+same role. The hook keeps a role's plain edits, reads, and commands out of the
+state folder. As defense in depth, the step file holds only a hash of the nonce
+that `answer` needs, and saved answers carry a code made with the machine key.
 
 This hook is one layer. The gate and the signed records hold even when a role
 gets past it, for example by writing a file from a Bash command.
@@ -108,6 +111,8 @@ def check_edit(path: str, cwd: str, role: str, copy: str, project: str) -> str:
         return f"{target} is in the state folder, outside the role's own copy"
     if role and not in_copy:
         return f"{target} is outside the role's own copy"
+    if role and _under(target, own / ".git"):
+        return f"{target} is in the copy's .git folder; git there must run no role's code"
     base = own if in_copy else Path(os.path.realpath(project))
     if not _under(target, base):
         return ""
@@ -180,37 +185,31 @@ def check_names(command: str, copy: str, project: str) -> str:
     return ""
 
 
-ROOT = Path(__file__).resolve().parent.parent
-PACKAGES = ("driver", "gate", "setup")
-MODULES = sorted({p.stem for pkg in PACKAGES for p in (ROOT / pkg).glob("*.py")} - {"__init__"})
-_MODS = "|".join(MODULES)
-TOLLGATE_CODE = [
-    re.compile(rf"\b({'|'.join(PACKAGES)})\.({_MODS})\b"),            # -m, import, import_module
-    re.compile(rf"\bfrom\s+({'|'.join(PACKAGES)})\s+import\b"),
-    re.compile(rf"\bimport\s+({'|'.join(PACKAGES)})\b"),
-]
-TOLLGATE_FILE = re.compile(rf"(^|[\s/'\"=])({'|'.join(PACKAGES)})/({_MODS})\.py\b")
-CLIMB = re.compile(r"(^|[\s/'\"=:(])\.\.(?=$|[/\s'\");])")
+# Tollgate's commands that change its state: they answer steps, record your answers,
+# lock, sign, and merge. Only your own session runs them. The hook refuses them as a
+# role would write them plainly; it is not a wall against a role that hides one.
+STATEFUL = ("driver.step", "driver.task", "driver.driver", "driver.roadmap", "driver.retro",
+            "driver.report", "setup.merge", "setup.inbox", "setup.init", "setup.home",
+            "setup.sync_rules", "gate.store", "gate.gate")
+_RUN_MODULE = re.compile(r"-m\s+(" + "|".join(re.escape(m) for m in STATEFUL) + r")\b")
+_RUN_FILE = re.compile(r"(^|[\s/'\"])(" + "|".join(m.replace(".", "/") for m in STATEFUL)
+                       + r")\.py\b")
+GIT_FOLDER = re.compile(r"(^|[\s/'\"=>])\.git/")
 
 
 def check_tollgate(command: str) -> str:
-    """For a role: the reason to refuse a command that runs Tollgate's own code, or "".
-    Tollgate's commands answer steps, record your answers, sign, lock, and merge: only
-    your own session runs them. A role may still read Tollgate's files."""
-    if str(ROOT) in command or os.path.realpath(ROOT) in command:
-        return "the command names Tollgate's own folder; no role runs a Tollgate command"
-    if any(p.search(command) for p in TOLLGATE_CODE):
-        return "the command runs Tollgate's own code; no role runs a Tollgate command"
-    if "python" in command and TOLLGATE_FILE.search(command):
-        return "the command runs a file of Tollgate's; no role runs a Tollgate command"
+    """For a role: the reason to refuse a plain run of a Tollgate command that changes
+    its state, such as `python3 -m driver.step answer`, or ""."""
+    if _RUN_MODULE.search(command) or ("python" in command and _RUN_FILE.search(command)):
+        return "the command runs a Tollgate command; only your own session runs it"
     return ""
 
 
-def check_climb(command: str) -> str:
-    """For a role: refuse a command that climbs with .. , which could reach the state
-    folder from inside the copy, since the copy is in it."""
-    if CLIMB.search(command):
-        return "the command climbs out of the role's copy with .. ; name paths inside the copy"
+def check_git_folder(command: str) -> str:
+    """For a role: refuse a command that names the copy's .git folder, where a hook or a
+    config line would run code when the driver calls git."""
+    if GIT_FOLDER.search(command):
+        return "the command names a .git folder; no role writes there"
     return ""
 
 
@@ -377,7 +376,7 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
             return f"the {role} reads only; it may not run commands"
         if role:
             command = data.get("command", "")
-            reason = (check_tollgate(command) or check_climb(command)
+            reason = (check_tollgate(command) or check_git_folder(command)
                       or check_names(command, copy, project))
             if reason:
                 return reason

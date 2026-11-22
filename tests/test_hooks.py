@@ -242,33 +242,32 @@ class KeyAndStateReadTest(Env):
                            {"command": f"ls {self.keys}"})
         self.assertLets("Bash", {"command": f"cd {self.copy} && ls"})
 
-    def test_a_role_may_not_run_a_tollgate_command(self):
+    def test_a_role_may_not_run_a_tollgate_command_written_plainly(self):
         root = Path(GUARD).resolve().parent.parent
         for command in ("python3 -m driver.step answer --project . --key k --nonce n",
                         'PYTHONPATH="/x" python3 -P -m setup.inbox --project . answer 1 approve',
                         "python3 -m gate.store", "python3 -m setup.merge",
-                        f"python3 {root}/driver/step.py next --task demo",
-                        "cd /tmp && python3 driver/task.py",
-                        "python3 -c 'from driver import step; step.main()'",
-                        'python3 -c "import gate.store"',
-                        "python3 -c 'import importlib; importlib.import_module(\"driver.step\")'",
-                        "python3 - <<EOF\nfrom setup.inbox import main\nEOF"):
+                        f"python3 {root}/driver/step.py next --task demo"):
             with self.subTest(command=command):
                 self.assertRefuses("tollgate command", "Bash", {"command": command})
                 self.assertRefuses("tollgate command", "Bash", {"command": command}, role="",
                                    agent_type="tollgate:builder")
-        for command in ("python3 -m unittest", "ruff check gate/store.py", "pytest tests"):
-            self.assertLets("Bash", {"command": command})
         # Your own session runs them.
         self.assertLets("Bash", {"command": "python3 -m driver.step next --task demo"}, role="")
 
-    def test_a_role_s_command_may_not_climb_out_of_its_copy(self):
-        for command in (f"cat {self.copy}/../../logs/T-1.jsonl", "cat ../../run/step.json",
-                        "cd .. && ls", f"echo x > {self.copy}/../../run/step.json",
-                        "ls ..", "python3 -c 'open(\"../../run/step.json\")'"):
+    def test_a_role_s_ordinary_commands_run(self):
+        for command in ("cd src && make && cd ..", "pytest ../tests", "grep -rn driver.session src",
+                        "python3 -c 'from setup import x'", "python3 -m unittest",
+                        "ruff check gate/store.py", "git status && git log -1"):
             with self.subTest(command=command):
-                self.assertRefuses("..", "Bash", {"command": command})
-        self.assertLets("Bash", {"command": "ls ./tests && echo ...done"})
+                self.assertLets("Bash", {"command": command})
+
+    def test_a_role_may_not_write_under_the_copy_s_git_folder(self):
+        self.assertRefuses(".git", "Write", {"file_path": str(self.copy / ".git/hooks/pre-commit"),
+                                             "content": "x"})
+        for command in ("echo x > .git/hooks/pre-commit", f"cp evil {self.copy}/.git/config"):
+            self.assertRefuses(".git", "Bash", {"command": command})
+        self.assertLets("Bash", {"command": "git status && git log -1"})
 
     def test_your_own_session_may_still_read_the_state_folder(self):
         self.assertLets("Read", {"file_path": str(self.lock)}, role="")
