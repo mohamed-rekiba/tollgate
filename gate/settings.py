@@ -163,9 +163,11 @@ def parse(text: str) -> dict:
 
 def load_from_ref(repo: str, ref: str) -> dict:
     """Read the settings file as it is at a git ref, for example origin/main."""
+    from gate.gitio import safe_env
+    # With no replace refs: a role can write them in its copy, and this reads the copy.
     result = subprocess.run(
-        ["git", "-C", repo, "show", f"{ref}:{PATH}"], capture_output=True, text=True, check=False
-    )
+        ["git", "-C", repo, "show", f"{ref}:{PATH}"], capture_output=True, text=True, check=False,
+        env=safe_env())
     if result.returncode != 0:
         raise SettingsError(f"{PATH} not found at {ref}")
     return parse(result.stdout)

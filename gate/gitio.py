@@ -52,7 +52,7 @@ def changed_files(repo, base, head) -> dict:
 def commit_of(repo, ref) -> str | None:
     """The full commit id that ref names, or None when ref names no commit."""
     proc = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"{ref}^{{commit}}"],
-                          capture_output=True, text=True, check=False)
+                          capture_output=True, text=True, check=False, env=safe_env())
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 

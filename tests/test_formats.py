@@ -35,6 +35,18 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "isolation must be"):
             settings.parse('{"isolation": "none"}')
 
+    def test_the_settings_on_a_ref_ignore_replace_refs(self):
+        repo = Repo()
+        self.addCleanup(repo.close)
+        repo.write(".tollgate/settings.json", '{"pass_score": 70}')
+        real = repo.commit("settings")
+        repo.git("checkout", "-q", "-b", "other")
+        repo.write(".tollgate/settings.json", '{"pass_score": 1}')
+        evil = repo.commit("loose settings")
+        repo.git("checkout", "-q", "main")
+        repo.git("replace", real, evil)
+        self.assertEqual(settings.load_from_ref(str(repo.path), "main")["pass_score"], 70)
+
     def test_the_runner_is_session_or_background_and_session_by_default(self):
         self.assertEqual(settings.parse("{}")["runner"], "session")
         self.assertEqual(settings.parse('{"runner": "background"}')["runner"], "background")
