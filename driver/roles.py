@@ -141,7 +141,9 @@ def command_line(command: str, role: str, isolation: str = "sandbox", image: str
     access = [x for name in model_access() for x in ("-e", name)]
     mount = f"{os.path.abspath(workdir)}:/work" + (":ro" if policy in READ_ONLY else "")
     return [tool, "run", "--rm", "-i", "--user", f"{os.getuid()}:{os.getgid()}",
-            "-v", mount, "-w", "/work", *access, "-e", "HOME=/tmp", image, *args]
+            "-v", mount, "-w", "/work", *access,
+            # A fresh, empty /tmp is the role's home: no file an image ships there reaches it.
+            "--tmpfs", "/tmp", "-e", "HOME=/tmp", image, *args]
 
 
 def model_access() -> list:

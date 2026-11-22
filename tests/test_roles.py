@@ -87,6 +87,12 @@ class ContainerTest(StateEnv):
         self.assertNotIn(os.environ["TOLLGATE_KEYS"], docker)
         self.assertNotIn(".ssh", docker)
 
+    def test_the_role_s_home_is_a_fresh_empty_tmp(self):
+        # An image may ship files in /tmp; the role starts with none of them.
+        args = self.args()
+        self.assertEqual(args[args.index("--tmpfs") + 1], "/tmp")
+        self.assertIn("HOME=/tmp", args)
+
     def test_a_reviewer_and_the_advisor_mount_it_read_only(self):
         for role in ("reviewer", "advisor", "analyst"):
             mounts = [a for a in self.args(role) if a.endswith(":/work:ro")]

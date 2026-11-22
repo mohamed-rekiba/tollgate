@@ -43,6 +43,13 @@ BUILT_IN_HARNESS = [
     "**/pnpm-lock.yaml",
 ]
 
+# The image a role runs in for background mode with the container isolation: Docker's
+# own Claude Code image, with git, Python, Node, and Go, pinned to one build by its
+# digest. A weekly workflow (.github/workflows/image-bump.yml) proposes a newer build
+# once it passes tests/proof_container.py. Set "container_image" to use another image.
+DEFAULT_IMAGE = ("docker/sandbox-templates:claude-code@sha256:"
+                 "30ec2b1bb76e3993aff912c553a5c249ad95b595249a32fde7158eafb71bda25")
+
 DEFAULTS = {
     "setup": [],
     "checks": {},
@@ -51,7 +58,7 @@ DEFAULTS = {
     "tier1": {"max_files": 3, "max_lines": 50},
     "ai": {"builder": "claude -p", "reviewer": "claude -p", "advisor": ["person"],
            "stronger_builder": ""},
-    "container_image": "",
+    "container_image": DEFAULT_IMAGE,
     "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10.0, "task_usd": 60.0},
     "pass_score": 70,
     # The public keys that may sign locks, pass records, and approvals.

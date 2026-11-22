@@ -2,8 +2,9 @@
 
     TOLLGATE_TEST_IMAGE=<image with python3 and git> python3 -m unittest tests.proof_container -v
 
-It skips when there is no image or no container daemon. A model is not needed:
-the roles are fake roles with the same contract.
+It skips when there is no image or no container daemon, unless TOLLGATE_TEST_IMAGE_REQUIRED
+is set: then it fails, so CI cannot pass by skipping. A model is not needed: the roles are
+fake roles with the same contract, and the Claude Code test runs claude --version only.
 """
 
 import os
@@ -17,6 +18,7 @@ from tests.driver_fakes import FAKE_ROLE
 from tests.proof_common import Project, events, tries
 
 IMAGE = os.environ.get("TOLLGATE_TEST_IMAGE", "")
+REQUIRED = bool(os.environ.get("TOLLGATE_TEST_IMAGE_REQUIRED"))
 
 
 def daemon_up() -> bool:
@@ -41,7 +43,20 @@ print(json.dumps({"result": "```json\n" + json.dumps(data) + "\n```", "total_cos
 '''
 
 
-@unittest.skipUnless(IMAGE and daemon_up(), "needs TOLLGATE_TEST_IMAGE and a container daemon")
+READY = bool(IMAGE) and daemon_up()
+if REQUIRED and not READY:
+    raise RuntimeError("TOLLGATE_TEST_IMAGE_REQUIRED is set, but there is no image or no daemon")
+
+# Run as the role's shell: claude is found, HOME is writable, and the copy is writable
+# for a builder. Each line prints what it checked, so a failure says which one.
+CLAUDE_PROBE = (
+    "sh -c 'set -e; command -v claude; claude --version; "
+    "touch \"$HOME/home-ok\" && echo home-ok; "
+    "touch /work/work-ok && echo work-ok'"
+)
+
+
+@unittest.skipUnless(READY, "needs TOLLGATE_TEST_IMAGE and a container daemon")
 class ContainerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -73,6 +88,25 @@ class ContainerTest(unittest.TestCase):
         refs = subprocess.run(["git", "-C", str(self.server), "for-each-ref"],
                               capture_output=True, text=True, check=True).stdout
         self.assertNotIn("escape", refs)
+
+    def run_as(self, role: str) -> subprocess.CompletedProcess:
+        args = roles.command_line(CLAUDE_PROBE, role, isolation="container", image=IMAGE,
+                                  workdir=str(self.copy))
+        return subprocess.run(args, capture_output=True, text=True, timeout=300, check=False)
+
+    def test_claude_code_runs_in_the_image_with_tollgate_s_own_docker_arguments(self):
+        result = self.run_as("builder")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertRegex(result.stdout, r"\d+\.\d+\.\d+")
+        self.assertIn("home-ok", result.stdout)
+        self.assertIn("work-ok", result.stdout)
+        self.assertTrue(Path(self.copy, "work-ok").exists())
+
+    def test_a_reviewer_in_the_image_cannot_write_the_copy(self):
+        result = self.run_as("reviewer")
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("home-ok", result.stdout)
+        self.assertFalse(Path(self.copy, "work-ok").exists())
 
     def test_the_driver_builds_a_ticket_with_every_role_in_a_container(self):
         role = "python3 fake_role.py"
