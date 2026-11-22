@@ -147,6 +147,35 @@ class WorkTest(Case):
         caller(call)
         self.assertEqual(Path(copy, "app.py").read_text(), "saved\n")
 
+    def test_a_replace_ref_in_the_copy_does_not_change_the_replayed_work(self):
+        s = self.sample()
+        copy = roles.make_copy(str(s.project), "T-1")
+        caller = session.Session()
+        call = self.call(s, role="builder", lens=None, copy=copy)
+        with self.assertRaises(session.Pause) as paused:
+            caller(call)
+        Path(copy, "app.py").write_text("saved\n")
+        line = session.save_answer(str(s.project), paused.exception.step, '```json\n{}\n```')
+        sh(copy, "git", "reset", "-q", "--hard", "HEAD")
+        Path(copy, "app.py").write_text("evil\n")
+        evil = session.save_work(copy, "evil")
+        sh(copy, "git", "replace", line["work"], evil)
+        sh(copy, "git", "reset", "-q", "--hard", "HEAD")
+        caller(call)
+        self.assertEqual(Path(copy, "app.py").read_text(), "saved\n")
+
+    def test_a_hook_the_builder_writes_in_the_copy_does_not_run(self):
+        s = self.sample(runner="background")
+        d, _ = driver(s)
+        d.copy = roles.make_copy(str(s.project), "T-1")
+        marker = Path(s.root, "hook-ran")
+        hook = Path(d.copy, ".git", "hooks", "pre-commit")
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        hook.chmod(0o755)
+        Path(d.copy, "app.py").write_text("changed\n")
+        d.commit("feat(T-1): try")
+        self.assertFalse(marker.exists())
+
     def test_a_reviewer_s_answer_saves_no_work(self):
         s = self.sample()
         copy = roles.make_copy(str(s.project), "T-1")

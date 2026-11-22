@@ -37,6 +37,7 @@ from pathlib import Path
 from driver import roles
 from gate import settings as st
 from gate import sign, state
+from gate.gitio import SAFE, safe_env
 
 WRITERS = ("builder", "test_writer")
 ANSWERS = ".answers.jsonl"
@@ -155,8 +156,8 @@ def saved(project: str, log: str, found_key: str) -> dict | None:
 
 
 def _git(cwd: str, *args, env=None) -> str:
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True,
-                          env=env).stdout.strip()
+    return subprocess.run(["git", *SAFE, *args], cwd=cwd, check=True, capture_output=True,
+                          text=True, env=safe_env(env)).stdout.strip()
 
 
 def work_ref(found_key: str) -> str:
@@ -182,7 +183,8 @@ def restore_work(copy: str, commit: str) -> bool:
     one the saved answer names, not the ref, which a role in the copy could move.
     False when the copy holds no such commit, for example a copy made again."""
     ref = commit
-    done = subprocess.run(["git", "rev-parse", "-q", "--verify", f"{ref}^{{tree}}"], cwd=copy,
+    done = subprocess.run(["git", *SAFE, "rev-parse", "-q", "--verify", f"{ref}^{{tree}}"],
+                          cwd=copy, env=safe_env(),
                           capture_output=True, text=True, check=False)
     if done.returncode:
         return False

@@ -41,6 +41,7 @@ from gate import gate as gatelib
 from gate import manifest as mf
 from gate import review as reviewlib
 from gate import settings as st
+from gate.gitio import SAFE, safe_env
 from gate.paths import line_exists
 from gate.store import Store, StoreError
 from gate.tickets import item_of_test
@@ -221,7 +222,10 @@ def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict) -> str
 # Git.
 
 def git(cwd, *args) -> str:
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True,
+    """git in the project or a copy, with no hooks, no file system monitor, and no
+    replace refs, since a role can write in its copy."""
+    return subprocess.run(["git", *SAFE, *args], cwd=cwd, check=True, capture_output=True,
+                          env=safe_env(),
                           text=True).stdout.strip()
 
 
