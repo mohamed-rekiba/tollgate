@@ -534,6 +534,20 @@ class HomeTest(Env):
         self.assertEqual(sync_rules.sync(str(folder), store)[0]["result"],
                          "already a ready change on the branch tollgate-sync")
 
+    def test_the_home_does_not_track_which_commit_a_project_is_on(self):
+        project = self.setup_project("shop")
+        folder = self.tmp / "home"
+        folder.mkdir()
+        home.init(str(folder))
+        home.add(str(folder), str(project))
+        ignore = sh(folder, "git", "config", "-f", ".gitmodules",
+                    "submodule.projects/shop.ignore").stdout.strip()
+        self.assertEqual(ignore, "all")
+        # The project moves to a new commit; the home stays clean.
+        sh(folder / "projects/shop", "git", "commit", "-q", "--allow-empty", "-m",
+           "chore(x): move on")
+        self.assertEqual(sh(folder, "git", "status", "--porcelain").stdout, "")
+
     def test_a_home_needs_an_empty_folder(self):
         folder = self.tmp / "home"
         folder.mkdir()

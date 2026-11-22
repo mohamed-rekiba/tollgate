@@ -6,7 +6,8 @@
 
 `init` makes the current empty folder a home: home.json, rules/lenses/, and a
 README. `add` adds a project as a submodule under projects/<name> and says
-whether it has Tollgate settings yet. The home never weakens a project: each
+whether it has Tollgate settings yet. The home does not track which commit a
+project is on, so a project's own commits never show the home as changed. The home never weakens a project: each
 project keeps its own settings, and the gate reads them from the project's main.
 """
 
@@ -69,6 +70,9 @@ def add(home: str, source: str, name: str | None = None) -> dict:
     if added:
         url = str(Path(source).resolve()) if Path(source).exists() else source
         git(home, "-c", "protocol.file.allow=always", "submodule", "add", "-q", url, path)
+        # A home groups projects; it does not pin them. Without this, each new
+        # commit in a project shows the home as changed.
+        git(home, "config", "-f", ".gitmodules", f"submodule.{path}.ignore", "all")
         data["projects"].append({"name": name, "path": path})
         Path(home, HOME_FILE).write_text(json.dumps(data, indent=2) + "\n")
         git(home, "add", "-A")
