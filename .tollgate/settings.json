@@ -1,6 +1,6 @@
 {
   "setup": [
-    "python3 -m pip install --quiet --user pytest pyyaml || python3 -m pip install --quiet --break-system-packages pytest pyyaml"
+    "python3 -m pip install --quiet --user -r requirements-dev.txt || python3 -m pip install --quiet --break-system-packages -r requirements-dev.txt"
   ],
   "checks": {
     "tests": {
@@ -9,7 +9,7 @@
       "minutes": 15
     },
     "style": {
-      "run": "pipx run ruff check ."
+      "run": "ruff check ."
     },
     "writing": {
       "run": "python3 setup/check_writing.py"

@@ -553,3 +553,14 @@ class HealthTest(Env):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OwnChecksTest(unittest.TestCase):
+    def test_this_repository_carries_the_same_checks_it_copies_into_a_project(self):
+        root = Path(__file__).resolve().parent.parent
+        for name in ("check_locked.py", "check_writing.py", "check_commit_msg.py",
+                     "check_merge.py"):
+            with self.subTest(check=name):
+                self.assertEqual((root / ".tollgate/checks" / name).read_text(),
+                                 (root / "setup" / name).read_text(),
+                                 "run python3 -m setup.precommit after changing a check")

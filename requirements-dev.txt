@@ -2,3 +2,4 @@
 # standard library. Dependabot keeps these versions current.
 ruff==0.17.6
 pyyaml==6.0.4
+pytest==9.2.0
