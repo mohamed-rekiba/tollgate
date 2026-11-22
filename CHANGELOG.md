@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/tollgate-ai/tollgate/compare/v0.2.0...v0.3.0) (2026-11-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **driver:** run Tollgate's roles as subagents in your own session ([#115](https://github.com/tollgate-ai/tollgate/issues/115))
+
+### Features
+
+* **agents:** ship each role as a Claude Code subagent ([#111](https://github.com/tollgate-ai/tollgate/issues/111)) ([4728621](https://github.com/tollgate-ai/tollgate/commit/4728621a80a27fe8c5fd2efe31e8dfc59b9000b9))
+* **driver:** run Tollgate's roles as subagents in your own session ([#115](https://github.com/tollgate-ai/tollgate/issues/115)) ([db50916](https://github.com/tollgate-ai/tollgate/commit/db50916f88751370a26dbe28ea618a1587af8c1e))
+* **hooks:** apply each role's rules by agent type, and let your session push a branch ([#113](https://github.com/tollgate-ai/tollgate/issues/113)) ([72a6148](https://github.com/tollgate-ai/tollgate/commit/72a614848a6741942b6b26fdc97e6b1c0e4654a1))
+
+
+### Bug Fixes
+
+* **setup:** stop a home from showing a change each time a project moves on ([#114](https://github.com/tollgate-ai/tollgate/issues/114)) ([970a3d3](https://github.com/tollgate-ai/tollgate/commit/970a3d34c0681e3978627a118e56da998a4d337a))
+
 ## [0.2.0](https://github.com/tollgate-ai/tollgate/compare/v0.1.1...v0.2.0) (2026-11-22)
 
 
