@@ -1,13 +1,13 @@
 {
  "type": "scene",
  "title": "How Tollgate works, and where each rule holds",
- "desc": "An isometric scene. You ask in plain words. The AI writes a plan of small tickets, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own copy, from its best try. The gate has no AI inside and opens at a score of 70%; below 70%, the AI tries again. After 3 tries, the advisor decides: a second AI, or you. A change that passes goes into main, and you merge tiers 3 and 4. After the task, at most 3 lessons become rules, and rules never get looser. Numbers 1 to 7 mark where each rule holds: 1 the plan, 2 the tests, 3 the build, 4 the gate, 5 the advisor, 6 main, 7 the lessons. Rule 8 holds everywhere: code enforces every rule, in plain words. A dot shows one change travelling: it fails once, then passes.",
+ "desc": "An isometric scene. You ask in plain words. The AI reads the project first, and each finding cites the code. It writes a plan of small tickets, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own copy, from its best try. The gate has no AI inside and opens at a score of 70%; below 70%, the AI tries again. After 3 tries, the advisor decides: a second AI, or you. A change that passes goes into main, and you merge tiers 3 and 4. After the task, at most 3 lessons become rules, and rules never get looser. Numbers 1 to 7 mark where each rule holds: 1 the analysis, 2 the tests, 3 the build, 4 the gate, 5 the advisor, 6 main, 7 the lessons. Rule 8 holds everywhere: code enforces every rule, in plain words. A dot shows one change travelling: it fails once, then passes.",
  "size": [
-  1180,
+  1260,
   720
  ],
  "origin": [
-  470,
+  550,
   400
  ],
  "scale": 0.9,
@@ -123,18 +123,6 @@
    "path": [
     [
      0,
-     258
-    ],
-    [
-     0,
-     214
-    ]
-   ]
-  },
-  {
-   "path": [
-    [
-     0,
      128
     ],
     [
@@ -178,6 +166,30 @@
     [
      323,
      -220
+    ]
+   ]
+  },
+  {
+   "path": [
+    [
+     0,
+     388
+    ],
+    [
+     0,
+     324
+    ]
+   ]
+  },
+  {
+   "path": [
+    [
+     0,
+     278
+    ],
+    [
+     0,
+     214
     ]
    ]
   }
@@ -250,8 +262,17 @@
    "type": "laptop",
    "at": [
     0,
-    300
+    430
    ]
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    0,
+    300
+   ],
+   "kind": "ai",
+   "icon": "search"
   }
  ],
  "labels": [
@@ -260,7 +281,7 @@
    "sub": "in plain words",
    "pin": [
     10,
-    310,
+    440,
     16
    ],
    "drop": 70,
@@ -268,6 +289,22 @@
   },
   {
    "n": 1,
+   "head": "The analysis",
+   "sub": "the code, with proof",
+   "at": [
+    -150,
+    330,
+    30
+   ],
+   "anchor": "end",
+   "pin": [
+    -28,
+    300,
+    12
+   ],
+   "kind": "ai"
+  },
+  {
    "head": "The plan",
    "sub": "small tickets",
    "at": [
@@ -397,7 +434,19 @@
     "path": [
      [
       0,
-      258
+      388
+     ],
+     [
+      0,
+      324
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      278
      ],
      [
       0,
@@ -513,7 +562,7 @@
     "wait": 0.6
    }
   ],
-  "lift": 7
+  "lift": 8
  },
  "note": {
   "n": 8,

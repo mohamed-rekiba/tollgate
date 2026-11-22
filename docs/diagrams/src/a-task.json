@@ -1,6 +1,6 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. The gate passes the change, and it is merged; you merge the risky ones. You read the report, and up to 3 lessons become rules for the next task.",
+ "desc": "You say what you want. The AI reads the project first, and each finding cites the code. It writes a plan, which fresh AIs check; a question in the plan goes to the advisor. It cuts the plan into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. The gate passes the change, and it is merged; you merge the risky ones. After the last ticket, a review reads the whole task. You read the report, and up to 3 lessons become rules for the next task.",
  "nodes": [
   {
    "id": "s1",
@@ -14,67 +14,93 @@
   },
   {
    "id": "s2",
-   "text": "The AI writes a plan\nFresh AIs check it",
+   "text": "The AI reads the project\nEach finding cites the code",
    "col": 0,
    "row": 1,
    "kind": "ai",
-   "icon": "plan",
-   "step": 2,
-   "shape": "document"
+   "icon": "search",
+   "step": 2
   },
   {
    "id": "s3",
-   "text": "It cuts the plan into tickets\nEach one small",
+   "text": "The AI writes a plan\nFresh AIs check it",
    "col": 0,
    "row": 2,
    "kind": "ai",
-   "icon": "ticket",
-   "step": 3
+   "icon": "plan",
+   "step": 3,
+   "shape": "document"
   },
   {
    "id": "s4",
-   "text": "Tests are written, then locked\nBefore any code",
+   "text": "It cuts the plan into tickets\nEach one small",
    "col": 0,
    "row": 3,
-   "kind": "server",
-   "icon": "lock",
-   "step": 4,
-   "shape": "data"
+   "kind": "ai",
+   "icon": "ticket",
+   "step": 4
   },
   {
    "id": "s5",
-   "text": "The AI builds\nUntil it scores 70%,\nfrom its best try",
+   "text": "Tests are written, then locked\nBefore any code",
    "col": 0,
    "row": 4,
-   "kind": "ai",
-   "icon": "ai",
+   "kind": "server",
+   "icon": "lock",
    "step": 5,
-   "shape": "subprocess"
+   "shape": "data"
   },
   {
    "id": "s6",
-   "text": "The gate passes it\nThen it is merged.\nYou merge the risky ones.",
+   "text": "The AI builds\nUntil it scores 70%,\nfrom its best try",
    "col": 0,
    "row": 5,
-   "kind": "server",
-   "icon": "merge",
-   "step": 6
+   "kind": "ai",
+   "icon": "ai",
+   "step": 6,
+   "shape": "subprocess"
   },
   {
    "id": "s7",
-   "text": "You read the report\nDone, and still to do",
+   "text": "The gate passes it\nThen it is merged.\nYou merge the risky ones.",
    "col": 0,
    "row": 6,
+   "kind": "server",
+   "icon": "merge",
+   "step": 7
+  },
+  {
+   "id": "s8",
+   "text": "A review reads the whole task\nThen the advisor decides",
+   "col": 0,
+   "row": 7,
+   "kind": "check",
+   "icon": "check",
+   "step": 8
+  },
+  {
+   "id": "s9",
+   "text": "You read the report\nDone, and still to do",
+   "col": 0,
+   "row": 8,
    "kind": "you",
    "icon": "retro",
-   "step": 7,
+   "step": 9,
    "shape": "end"
+  },
+  {
+   "id": "ask",
+   "text": "Ask the advisor\nThe plan's questions",
+   "col": 1,
+   "row": 2,
+   "kind": "advisor",
+   "shape": "wait"
   },
   {
    "id": "adv",
    "text": "Ask the advisor\nA second AI, or you",
    "col": 1,
-   "row": 4,
+   "row": 5,
    "kind": "advisor",
    "shape": "wait"
   },
@@ -82,7 +108,7 @@
    "id": "learn",
    "text": "Mistakes become rules\nUp to 3 lessons,\nfor the next task",
    "col": 1,
-   "row": 6,
+   "row": 8,
    "kind": "check",
    "icon": "retry",
    "shape": "document"
@@ -114,19 +140,33 @@
    "to": "s7"
   },
   {
-   "from": "s6",
-   "to": "s4",
+   "from": "s7",
+   "to": "s8"
+  },
+  {
+   "from": "s8",
+   "to": "s9"
+  },
+  {
+   "from": "s7",
+   "to": "s5",
    "label": "next ticket",
    "loop": "left"
   },
   {
-   "from": "s5",
+   "from": "s3",
+   "to": "ask",
+   "label": "a question",
+   "dashed": true
+  },
+  {
+   "from": "s6",
    "to": "adv",
    "label": "after 3 tries",
    "dashed": true
   },
   {
-   "from": "s7",
+   "from": "s9",
    "to": "learn",
    "label": "after the task",
    "dashed": true
@@ -136,9 +176,9 @@
   {
    "label": "For each ticket",
    "nodes": [
-    "s4",
     "s5",
-    "s6"
+    "s6",
+    "s7"
    ],
    "kind": "neutral",
    "icon": "retry"
