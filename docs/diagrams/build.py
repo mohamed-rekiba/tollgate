@@ -4,8 +4,9 @@
     python3 docs/diagrams/build.py --check  # end with 1 if a drawn file is out of date
 
 Two kinds of diagram:
-- Written: a spec in docs/diagrams/src/<name>.json, a flow or a scene. The
-  formats are in diagram/__init__.py and diagram/flow.py.
+- Written: a spec in docs/diagrams/src/<name>.json: a flow, a sequence, a state
+  machine, or a scene. The formats are in diagram/__init__.py, diagram/flow.py,
+  diagram/sequence.py, and diagram/state.py.
 - Art: a picture drawn in its own code, such as the README banner in hero.py.
 """
 
