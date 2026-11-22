@@ -44,6 +44,8 @@ import tokenize
 from pathlib import Path
 
 DOCS = (".md", ".markdown", ".txt", ".rst")
+# pip's requirements and constraints files end in .txt but hold package pins, not prose.
+PINS = re.compile(r"(^|/)(requirements|constraints)[\w.-]*\.txt$")
 SLASH_COMMENTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs")
 SOURCES = (".py",) + SLASH_COMMENTS
 WORD_LIST = "CONTEXT.md"
@@ -130,10 +132,15 @@ def diff_lines(root: Path, base: str, staged: bool) -> dict:
     return files
 
 
+def is_doc(name: str) -> bool:
+    """True for a file of prose that the writing rules apply to."""
+    return name.endswith(DOCS) and not PINS.search(name)
+
+
 def added_lines(root: Path, base: str, staged: bool = False) -> dict:
     """{file: [(line number, text)]} for each line the change adds to a document."""
     files = {name: lines for name, lines in diff_lines(root, base, staged).items()
-             if name.endswith(DOCS) and name != WORD_LIST}
+             if is_doc(name) and name != WORD_LIST}
     # Lines inside a fenced code block are code. Read each file to know where they are.
     for name, lines in files.items():
         fenced, inside = set(), False
@@ -323,8 +330,8 @@ def check_docs(root: Path, base: str, staged: bool = False) -> list:
     added = {name: {n for n, _ in lines} for name, lines in diff_lines(root, base, staged).items()}
     # Only a removed file or a changed source can break a reference in a doc the
     # change does not touch. Otherwise, check only the docs the change touches.
-    reach = old - new or any(not c.endswith(DOCS) for c in changed)
-    docs = sorted(d for d in new if d.endswith(DOCS) and (reach or d in changed))
+    reach = old - new or any(not is_doc(c) for c in changed)
+    docs = sorted(d for d in new if is_doc(d) and (reach or d in changed))
     found = []
     for doc in docs:
         seen = set()
@@ -349,7 +356,7 @@ def check_mermaid(root: Path, base: str, staged: bool = False) -> list:
     """Each Mermaid block that the change adds to a document."""
     found = []
     for name, lines in diff_lines(root, base, staged).items():
-        if name.endswith(DOCS):
+        if is_doc(name):
             found += [f"{name}:{n}: a Mermaid block. Draw the diagram with the diagram skill: "
                       "a spec in a src folder, drawn as SVG."
                       for n, text in lines if text.strip().startswith(("```mermaid", "~~~mermaid"))]
