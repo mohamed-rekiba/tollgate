@@ -1,6 +1,6 @@
 # Repository settings
 
-This folder holds the GitHub settings for this repository. The JSON files are the source. Change a file here first, then apply it.
+This folder holds the GitHub settings for this repository. A script applies all of them through the GitHub API. The JSON files are the source. Change a file here first, then apply it.
 
 ## What each file enforces
 
@@ -18,22 +18,14 @@ An owner runs this from the repository folder:
 docs/rulesets/apply.sh
 ```
 
-The script needs `gh`, signed in as an owner of the repository, and `jq`. It does two things:
+The script needs `gh`, signed in as an owner of the repository, and `jq`. It does these things, in order:
 
 1. It sets the merge options: squash only, the title and description as the commit message, and branches deleted after a merge.
-2. It applies each JSON file. It finds a ruleset by its name, updates it when it exists, and creates it when not.
+2. It turns on private vulnerability reporting, Dependabot alerts and security updates, secret scanning with push protection, and CodeQL's default setup.
+3. It applies each ruleset file. It finds a ruleset by its name, updates it when it exists, and creates it when not.
 
 To check the result:
 
 ```sh
 gh api repos/tollgate-ai/tollgate/rulesets --jq '.[].name'
 ```
-
-## Settings with no file
-
-Set these by hand in Settings → Advanced Security:
-
-- Private vulnerability reporting
-- Dependabot alerts and Dependabot security updates
-- Secret scanning with push protection
-- CodeQL, default setup
