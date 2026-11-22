@@ -18,10 +18,19 @@ Retry failed deliveries.
 Wrap the sender in a loop with a fixed wait.
 
 ## Files
-src/retry.py
+modify src/retry.py
 
 ## Seams
 POST /deliver
+
+## Reuse
+src/send.py: send, unchanged.
+
+## Risks
+- A wait that never ends: the loop stops after three tries.
+
+## Assumptions
+none
 
 ## Tickets
 - T-1: retry a failed delivery up to three times.
@@ -41,6 +50,30 @@ class PlanFormatTest(unittest.TestCase):
     def test_refuses_a_plan_with_a_missing_section(self):
         with self.assertRaisesRegex(pl.PlanError, "Seams"):
             pl.parse(PLAN.replace("## Seams\nPOST /deliver\n", ""))
+
+    def test_refuses_a_plan_with_no_reuse_risks_or_assumptions(self):
+        for name in ("Reuse", "Risks", "Assumptions"):
+            start = PLAN.index(f"## {name}")
+            end = PLAN.index("## ", start + 3)
+            with self.subTest(section=name), self.assertRaisesRegex(pl.PlanError, name):
+                pl.parse(PLAN[:start] + PLAN[end:])
+
+    def test_each_file_says_create_modify_or_delete(self):
+        with self.assertRaisesRegex(pl.PlanError, "create, modify, or delete: src/retry.py"):
+            pl.parse(PLAN.replace("modify src/retry.py", "src/retry.py"))
+        plan = pl.parse(PLAN.replace("modify src/retry.py", "create src/retry.py\ndelete src/old.py"))
+        self.assertEqual(plan.files, {"src/retry.py": "create", "src/old.py": "delete"})
+
+    def test_no_assumptions_means_no_questions(self):
+        self.assertEqual(pl.parse(PLAN).questions, [])
+
+    def test_each_assumption_asks_a_question(self):
+        asks = PLAN.replace("## Assumptions\nnone", "## Assumptions\n- Is three tries enough?\n"
+                            "- Should a failure write to the log?")
+        self.assertEqual(pl.parse(asks).questions,
+                         ["Is three tries enough?", "Should a failure write to the log?"])
+        with self.assertRaisesRegex(pl.PlanError, "ask a question: Three tries is enough."):
+            pl.parse(PLAN.replace("## Assumptions\nnone", "## Assumptions\n- Three tries is enough."))
 
     def test_refuses_a_ticket_the_tickets_section_does_not_describe(self):
         with self.assertRaisesRegex(pl.PlanError, "does not describe T-2"):
@@ -74,32 +107,62 @@ class PlanLockTest(unittest.TestCase):
             plantag.record(str(repo.path), "retries", commit)
 
 
+DIFF = """diff --git a/src/auth/login.py b/src/auth/login.py
+--- a/src/auth/login.py
++++ b/src/auth/login.py
+@@ -10,3 +10,4 @@ def login(user):
+     name = user.name
+-    check(user)
++    if user.admin:
++        check(user)
+     return name
+"""
+
+
+def finding(level, file, line, text="x"):
+    return {"level": level, "file": file, "line": line, "text": text}
+
+
 class LocalReviewTest(unittest.TestCase):
-    def test_tier_1_and_2_pass_without_the_reviewer(self):
+    def test_tier_1_passes_without_the_reviewer(self):
         def never(lens, inputs):
             raise AssertionError("the reviewer ran")
-        for level in (1, 2):
-            passed, findings, text = review.review(level, TICKET, "diff", never)
-            self.assertEqual((passed, findings), (True, []))
-            self.assertEqual(text, f"Not needed for tier {level}.")
+        passed, findings, text = review.review(1, TICKET, DIFF, never)
+        self.assertEqual((passed, findings), (True, []))
+        self.assertEqual(text, "Not needed for tier 1.")
 
-    def test_tier_3_runs_both_lenses_and_fails_on_a_blocking_finding(self):
-        seen = []
+    def test_each_tier_runs_its_lenses(self):
+        for level, lenses in ((2, ["review"]), (3, ["review", "security"]),
+                              (4, ["review", "security"])):
+            seen = []
+            review.review(level, TICKET, DIFF,
+                          lambda lens, inputs, seen=seen: seen.append(lens) or {"verdict": "pass"})
+            with self.subTest(tier=level):
+                self.assertEqual(seen, lenses)
 
+    def test_tier_3_fails_on_a_blocking_finding_in_the_change(self):
         def fake(lens, inputs):
-            seen.append(lens)
-            self.assertEqual(inputs["diff"], "the diff")
+            self.assertEqual(inputs["diff"], DIFF)
             if lens == "security":
                 return {"verdict": "fail", "findings": [
-                    {"level": "blocking", "file": "src/auth/login.py", "line": 1,
-                     "text": "the login check is gone"}]}
+                    finding("blocking", "src/auth/login.py", 12, "the login check is skipped")]}
             return {"verdict": "pass", "findings": []}
 
-        passed, findings, text = review.review(3, TICKET, "the diff", fake)
-        self.assertEqual(seen, ["change", "security"])
+        passed, findings, text = review.review(3, TICKET, DIFF, fake)
         self.assertFalse(passed)
         self.assertEqual(findings[0]["lens"], "security")
-        self.assertIn("the login check is gone", text)
+        self.assertIn("the login check is skipped", text)
+
+    def test_a_finding_outside_the_change_is_dropped(self):
+        found = [finding("blocking", "src/auth/login.py", 90),   # a line the change does not touch
+                 finding("blocking", "src/other.py", 1),         # a file the change does not touch
+                 {"level": "blocking", "text": "no place given"},
+                 finding("major", "src/auth/login.py", 11, "kept")]
+        passed, findings, text = review.review(
+            2, TICKET, DIFF, lambda lens, inputs: {"verdict": "fail", "findings": found})
+        self.assertTrue(passed, "every blocking finding pointed outside the change")
+        self.assertEqual([f["text"] for f in findings], ["kept"])
+        self.assertIn("dropped 3 finding(s) that point outside the change", text)
 
     def test_a_fail_verdict_with_no_blocking_finding_still_fails(self):
         passed, _, _ = review.review(4, TICKET, "d", lambda lens, i: {"verdict": "fail"})
@@ -107,8 +170,9 @@ class LocalReviewTest(unittest.TestCase):
 
     def test_tier_3_passes_when_no_finding_blocks(self):
         passed, _, text = review.review(
-            3, TICKET, "d",
-            lambda lens, inputs: {"verdict": "pass", "findings": [{"level": "minor", "text": "x"}]})
+            3, TICKET, DIFF,
+            lambda lens, inputs: {"verdict": "pass",
+                                  "findings": [finding("minor", "src/auth/login.py", 10)]})
         self.assertTrue(passed)
         self.assertTrue(text.startswith("Passed. Tier 3."))
 

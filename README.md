@@ -22,13 +22,13 @@ Telling it not to does not stop these mistakes. A review by the same AI does not
 
 ## The principles
 
-Tollgate keeps 14 rules, in 8 groups.
+Tollgate keeps 17 rules, in 8 groups.
 
-1. **Plan first.** Fresh reviewers check the plan, for up to 4 rounds, before any code. A large request starts with the base, then one thin path, then one feature at a time. Each ticket has a checklist, and a must-have item cannot fail.
+1. **Plan first.** An analyst reads the project first, and each finding cites the code or is marked assumed. Fresh reviewers check the plan, for up to 4 rounds, before any code. A question the plan cannot settle waits for the advisor. A large request starts with the base, then one thin path, then one feature at a time. Each ticket has a checklist, and a must-have item cannot fail.
 2. **Tests first.** The test writer writes one test for each must-have item, and the store locks it before any code. The AI cannot change a locked test.
 3. **Build from the best try.** Below 70%, the AI gets the reasons and tries again from its best try so far.
-4. **The gate judges.** The gate is a program with no AI. It checks every try, and the AI never grades its own work. The score is the share of checklist items that pass. 70% passes. A failed must-have item fails the try. Only the gate says a try is done.
-5. **Stop when stuck.** After 3 tries, or the same failure twice, the advisor decides: a second AI, or you.
+4. **The gate judges.** The gate is a program with no AI. It checks every try, and the AI never grades its own work. The score is the share of checklist items that pass. 70% passes. A failed must-have item fails the try. From tier 2, a reviewer reads each change, and at the end the whole task. A finding must point to a line in the change. Only the gate says a try is done.
+5. **Stop when stuck.** After 3 tries, or the same failure twice, the advisor decides: a second AI, or you. The advisor also decides at each checkpoint: after the plan and after the whole task, by default.
 6. **Risk sets the checks.** The files a change touches give it a tier from 1 to 4. You merge tiers 3 and 4.
 7. **Mistakes become rules.** A task gives at most 3 lessons. Rules never get looser.
 8. **Always.** Code enforces the rules. Every word is plain, for people.
@@ -46,7 +46,7 @@ Each number on the picture marks the part where that rule holds.
 
 In the picture above, three loops send each problem back to the step that can fix it:
 
-1. **The plan loop.** Three reviewers read the plan before any code exists. For each finding, the builder fixes it, argues against it with evidence, or asks the advisor. This repeats for up to 4 rounds. Then the advisor approves the plan, and the store signs a plan lock.
+1. **The plan loop.** The analyst reads the project, then three reviewers read the plan and the analysis before any code exists. For each finding, the builder fixes it, argues against it with evidence, or asks the advisor. This repeats for up to 4 rounds. Then the advisor approves the plan, and the store signs a plan lock.
 2. **The build loop.** The gate checks each try. Below 70%, the builder gets the reasons and tries again from its best try. After 3 tries, the advisor decides.
 3. **The learning loop.** After a task, `/tollgate:retro` turns up to 3 lessons into tickets: a new test, a new check, a new question for the reviewers, or a stricter rule.
 
@@ -95,6 +95,7 @@ Then, inside your project, on the branch `main`:
 
 | You type | What happens |
 | --- | --- |
+| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each finding. It changes no file. |
 | `/tollgate:task` | Starts a task from your request. It runs in the background. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, across projects, and records your answer. |
@@ -108,7 +109,7 @@ A task runs in the background, so you can close Claude Code. A stopped task pick
 
 ## Cost, and when to use it
 
-Each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. The stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. Tollgate has no measured cost numbers yet.
+Each task runs an analyst and a review of the whole task, and each ticket runs several AI roles: a test writer, a builder, and reviewers. So Tollgate costs more and takes longer than Claude Code alone. The stop rules cap the cost: by default, 10 USD a ticket and 60 USD a task. Tollgate has no measured cost numbers yet.
 
 Use Tollgate when an AI writes most of each change, and the change must be right. For a quick change where a mistake is cheap, use Claude Code alone. It is faster and cheaper.
 

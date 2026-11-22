@@ -1,6 +1,6 @@
 """Read and check a plan: .tollgate/plans/<task id>.md.
 
-A plan has a header between two --- lines, like a ticket, and five sections:
+A plan has a header between two --- lines, like a ticket, and eight sections:
 
     ---
     id: retries
@@ -8,8 +8,13 @@ A plan has a header between two --- lines, like a ticket, and five sections:
     ---
     ## Task          what was asked, in the asker's words
     ## Design        the approach, in a few paragraphs
-    ## Files         every file that changes, one per line
+    ## Files         every file that changes, one per line: create, modify, or
+                     delete, then the path
     ## Seams         every seam that a test observes, one per line
+    ## Reuse         the code the plan uses as it is, one per line
+    ## Risks         edge cases, failures, security, speed, and what must keep
+                     working, one per line
+    ## Assumptions   "none", or one question per line that a person must answer
     ## Tickets       one line for each ticket id, in build order, with one sentence
 
 Each ticket in the header has a file .tollgate/tickets/<id>/ticket.md whose
@@ -23,7 +28,8 @@ from gate.tickets import TicketError
 from gate.tickets import parse as parse_ticket
 
 PLANS = ".tollgate/plans"
-SECTIONS = ("Task", "Design", "Files", "Seams", "Tickets")
+SECTIONS = ("Task", "Design", "Files", "Seams", "Reuse", "Risks", "Assumptions", "Tickets")
+ACTIONS = ("create", "modify", "delete")
 KEYS = {"id", "tickets"}
 ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
@@ -37,6 +43,8 @@ class Plan:
     id: str
     tickets: list
     sections: dict = field(default_factory=dict)
+    files: dict = field(default_factory=dict)       # path -> create, modify, or delete
+    questions: list = field(default_factory=list)   # the assumptions a person must answer
 
 
 def plan_path(task_id: str) -> str:
@@ -86,7 +94,32 @@ def parse(text: str) -> Plan:
     for t in tickets:
         if t not in listed:
             raise PlanError(f"the Tickets section does not describe {t}")
-    return Plan(header["id"], tickets, {k: "\n".join(v).strip() for k, v in sections.items()})
+    return Plan(header["id"], tickets, {k: "\n".join(v).strip() for k, v in sections.items()},
+                _files(sections["Files"]), _questions(sections["Assumptions"]))
+
+
+def _items(lines: list) -> list:
+    return [line.strip().removeprefix("- ").strip() for line in lines if line.strip()]
+
+
+def _files(lines: list) -> dict:
+    files = {}
+    for item in _items(lines):
+        action, _, path = item.partition(" ")
+        if action not in ACTIONS or not path.strip():
+            raise PlanError(f"a line in Files starts with create, modify, or delete: {item}")
+        files[path.strip()] = action
+    return files
+
+
+def _questions(lines: list) -> list:
+    items = _items(lines)
+    if [i.lower().rstrip(".") for i in items] == ["none"]:
+        return []
+    for item in items:
+        if not item.endswith("?"):
+            raise PlanError(f"each assumption must ask a question: {item}")
+    return items
 
 
 def check_tickets(plan: Plan, read) -> list:

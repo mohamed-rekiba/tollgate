@@ -22,17 +22,19 @@ Words: a **locked test** is a test file listed under `tests:` in the ticket. The
 
 ## Answer
 
-End with one block:
+End with one block. `decisions` are the design choices you made that the ticket did not, one line each. `concerns` are what you could not finish, test, or check, one line each. The driver runs the tests itself, so do not report their results.
 
 ```json
-{"changed": ["src/app.py"], "locked_test_wrong": null, "notes": "one line"}
+{"changed": ["src/app.py"], "locked_test_wrong": null, "decisions": ["one line"], "concerns": [], "notes": "one line"}
 ```
 
 ## When `mode` is `plan`
 
-You write the plan for a task, not code. The inputs hold `request`, in the asker's words, and `task_id`.
+You write the plan for a task, not code. The inputs hold `request`, in the asker's words, `task_id`, and `analysis`: what the analyst found in the project, each finding confirmed or assumed.
 
-1. Read the project until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
+Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
+
+1. Read the analysis, then the project, until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
 2. Write `.tollgate/plans/<task_id>.md` in your copy, in exactly this shape. When you write a plan, you may write under `.tollgate/plans/` and `.tollgate/tickets/`, and nowhere else under `.tollgate/`. The first line is `---`. Ticket ids are plain words joined by `-`, with commas between them and no brackets:
 
    ```
@@ -47,18 +49,30 @@ You write the plan for a task, not code. The inputs hold `request`, in the asker
    The approach, in a few sentences.
 
    ## Files
-   app/orders.py
+   modify app/orders.py
+   create app/tax.py
 
    ## Seams
    app.orders.total
+
+   ## Reuse
+   app/money.py: round_cents, unchanged.
+
+   ## Risks
+   - An order with no lines: the total is 0.
+   - A country with no tax rate: the order is refused with a clear error.
+   - Speed: one query for the rates, not one for each line.
+
+   ## Assumptions
+   - Is the tax rounded for each line, or once for the order?
 
    ## Tickets
    - order-totals: total an order from its lines.
    - order-totals-tax: add the tax for the order's country to the total.
    ```
 
-   Done when each ticket in the header has one line in Tickets.
-3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Done when each ticket names its seams and its test files.
+   Each line in Files starts with create, modify, or delete. Reuse names the code you use as it is. Risks names the edge cases, the failures, and any security, speed, or compatibility risk. Assumptions is `none`, or one question for each thing the request and the analysis do not settle, each ending with `?`. A question stops the plan until the advisor answers it, so ask only what changes the plan. Done when each ticket in the header has one line in Tickets.
+3. Write one file `.tollgate/tickets/<ticket id>/ticket.md` for each ticket, with `plan: <task_id>`. Each ticket fits one session, has 3 to 7 checklist items, and at least one must-have item. Each edge case and failure under Risks becomes a checklist item in the ticket that handles it. Behavior that must keep working is a `keeps behavior` item. Done when each ticket names its seams and its test files.
 4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
 
 End with:

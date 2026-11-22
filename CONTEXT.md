@@ -12,8 +12,17 @@ _Avoid_: user story, epic
 **roadmap**: An ordered list of tasks, for a request too large for one plan: the base, the skeleton, then the features. It has its own checklist.
 _Avoid_: backlog, milestone plan
 
-**plan**: The design for a task. It names every file that changes, every seam, and every ticket.
+**analysis**: What the analyst found in the project before the plan, in six sections. Each finding is confirmed, with a citation to the code, or assumed.
+_Avoid_: survey, discovery, research
+
+**citation**: The code that proves a finding: `[path:line]` or `[path::name]`. The driver checks that it exists.
+_Avoid_: reference, source
+
+**plan**: The design for a task. It names every file that changes, every seam, the code it reuses, the risks, the assumptions, and every ticket.
 _Avoid_: design doc, PRD
+
+**assumption**: A point that the request and the analysis do not settle, written in the plan as a question. A plan with one waits for the advisor.
+_Avoid_: open question, unknown
 
 **ticket**: One small part of a plan, sized for one AI session. It has an id.
 _Avoid_: user story, work item
@@ -35,8 +44,11 @@ _Avoid_: rating, grade
 
 ### Roles
 
-**role**: One job for an AI session: builder, test writer, reviewer, or advisor.
+**role**: One job for an AI session: analyst, builder, test writer, reviewer, or advisor.
 _Avoid_: agent, persona
+
+**analyst**: The role that reads the project before the plan and writes the analysis. It can only read.
+_Avoid_: explorer, scout
 
 **builder**: The role that writes plans, tickets, and code.
 _Avoid_: implementer, coder, developer
@@ -54,6 +66,9 @@ _Avoid_: rubric
 _Avoid_: defect, nit
 
 **advisor**: Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder. The settings list the advisors in order.
+
+**checkpoint**: A place where the advisor decides whether the task goes on: after the plan, after each ticket, or after the whole task. The setting `checkpoints` lists them.
+_Avoid_: gate, approval step
 _Avoid_: human in the loop, escalation
 
 **owner**: A person whose SSH public key is in `owners` in the settings on main. Only an owner signs an approval.

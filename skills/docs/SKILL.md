@@ -5,11 +5,11 @@ description: Write or update a README, a document, code comments, or a commit me
 
 # Write for people
 
-`TG` is the plugin root: two folders above this skill's base directory. The writing rules are in `$TG/lenses/change.md`, under "Writing". They ask you to write like a plain-spoken senior engineer, in the spirit of Simplified Technical English (ASD-STE100), with only the rules listed there. The reviewer reads the same file, so follow it as written.
+`TG` is the plugin root: two folders above this skill's base directory. The writing rules are in `$TG/lenses/review.md`, under "Writing". They ask you to write like a plain-spoken senior engineer, in the spirit of Simplified Technical English (ASD-STE100), with only the rules listed there. The reviewer reads the same file, so follow it as written.
 
 ## Before you write
 
-1. Read the rules in `$TG/lenses/change.md`. Done when you can name the four questions a README answers.
+1. Read the rules in `$TG/lenses/review.md`. Done when you can name the four questions a README answers.
 2. Read the project's word list, `CONTEXT.md`. If there is none, write one: each term in bold, a one-line meaning, then `_Avoid_:` and the words a reader might use instead. Start with the words of this task. Done when every term you will use has an entry.
 
 ## Write

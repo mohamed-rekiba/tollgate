@@ -1,6 +1,6 @@
 ---
 name: task
-description: Start a Tollgate task in this project. It plans the task, has the plan reviewed, locks the tests, and builds each ticket until its tests pass. It runs in the background. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
+description: Start a Tollgate task in this project. It analyzes the project, plans the task, has the plan reviewed, locks the tests, builds each ticket until its tests pass, and reviews the whole task. It runs in the background. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
 ---
 
 # Start a task
@@ -9,7 +9,7 @@ You start the driver for one task and return. The driver keeps running after thi
 
 `TG` is the plugin root: two folders above this skill's base directory.
 
-Words: a **task** is what the user asks for, in their own words. The **driver** plans it, cuts it into tickets, and builds each ticket behind the gate. A **roadmap** is an ordered list of tasks, for a request too large for one plan.
+Words: a **task** is what the user asks for, in their own words. The **driver** analyzes the project, plans the task, cuts it into tickets, builds each ticket behind the gate, and reviews the whole task at the end. A **roadmap** is an ordered list of tasks, for a request too large for one plan.
 
 ## 1. Check the project
 

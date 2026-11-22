@@ -16,7 +16,7 @@ It refuses an edit (Edit, Write, MultiEdit, NotebookEdit) of:
   tickets, and roadmaps there),
 - a file in the state folder, except in the role's own copy,
 - a file in the key folder,
-- any file at all, for a reviewer or the advisor,
+- any file at all, for a reviewer, the advisor, or the analyst,
 - a file outside the role's own copy, for a role.
 
 It refuses a Bash command that pushes, merges into main, uses
@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from gate import state
 
 EDITS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-READ_ONLY = {"reviewer", "advisor"}
+READ_ONLY = ("reviewer", "advisor", "analyst")   # the one list; policy and roles read it
 # What a planner, and your own session, may write under .tollgate/.
 DRAFTS = (".tollgate/plans/", ".tollgate/tickets/", ".tollgate/roadmaps/")
 MAIN = {"main", "master", "refs/heads/main", "refs/heads/master"}

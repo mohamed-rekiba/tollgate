@@ -45,6 +45,17 @@ class SettingsTest(unittest.TestCase):
             with self.assertRaisesRegex(settings.SettingsError, "not an SSH public key"):
                 settings.parse(json.dumps({"signers": [bad]}))
 
+    def test_checkpoints_default_to_the_plan_and_the_task(self):
+        self.assertEqual(settings.parse("{}")["checkpoints"], ["plan", "task"])
+        self.assertEqual(settings.parse('{"checkpoints": ["plan", "ticket", "task"]}')["checkpoints"],
+                         ["plan", "ticket", "task"])
+        self.assertEqual(settings.parse('{"checkpoints": []}')["checkpoints"], [])
+
+    def test_an_unknown_checkpoint_is_refused(self):
+        for bad in ('["plan", "tikcet"]', '"plan"', '[1]'):
+            with self.subTest(bad=bad), self.assertRaisesRegex(settings.SettingsError, "checkpoints"):
+                settings.parse(f'{{"checkpoints": {bad}}}')
+
     def test_an_unknown_key_is_refused(self):
         for key in ("action", "version", "approvers", "sandbox"):
             with self.assertRaisesRegex(settings.SettingsError, f"unknown key: {key}"):

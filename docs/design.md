@@ -17,7 +17,7 @@ Think of an exam. The questions are set and sealed before the student starts. Th
 
 **The problem.** An AI that writes code makes four kinds of mistake. It invents things: a function, a file, a fact. It pads its work. It stops before the work is done. It weakens a test to make the test pass. Written instructions do not stop these mistakes, because the AI can ignore them. A review by the same AI does not stop them either, because it defends its own work.
 
-**The answer.** Tollgate does not ask the AI to behave. The store locks the tests before the AI builds, and signs the lock. The gate, a program with no AI in it, checks each try. Two layers stop a change that skips the gate: Claude Code hooks and policies, and pre-commit in git. The 14 rules in [principles.md](principles.md) say what Tollgate holds to, and why.
+**The answer.** Tollgate does not ask the AI to behave. The store locks the tests before the AI builds, and signs the lock. The gate, a program with no AI in it, checks each try. Two layers stop a change that skips the gate: Claude Code hooks and policies, and pre-commit in git. The 17 rules in [principles.md](principles.md) say what Tollgate holds to, and why.
 
 **The limit.** Tollgate stops an AI that takes a shortcut. It does not stop code written to attack the test tools themselves. It does not stop a person who skips pre-commit with `--no-verify`.
 
@@ -29,6 +29,8 @@ Think of an exam. The questions are set and sealed before the student starts. Th
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/a-task-dark.svg">
   <img alt="A task from start to finish" src="diagrams/a-task.svg">
 </picture>
+
+Before the plan, the analyst reads the project and reports how it is built: each finding confirmed, with a citation to the code, or marked assumed. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. The plan writer and the plan reviewers read the analysis. A plan that asks a question under Assumptions goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
 
 Steps 4 to 6 repeat for each ticket. With `auto_merge` on, the store merges a tier 1 or 2 change. You merge tiers 3 and 4, and every change when `auto_merge` is off.
 
@@ -46,7 +48,7 @@ Steps 4 to 6 repeat for each ticket. With `auto_merge` on, the store merges a ti
 3. The driver fetches the ticket and its tests into the branch `tg/<ticket id>` of your project. The store locks them: it runs the tests once in a clean clone with main's harness, confirms that none passes yet, and signs the lock.
 4. The builder builds in its copy, from the best try so far. It writes its own smaller tests as it goes.
 5. The driver puts back main's harness and the locked files, runs the checks, and runs the gate. If a locked test or a check fails, the findings go to the builder and step 4 repeats.
-6. A reviewer scores the checklist items that have no test. For tier 3 and 4, two more reviewers read the change through the change lens and the security lens. A low score or a blocking finding goes to the builder, and step 4 repeats.
+6. A reviewer scores the checklist items that have no test. From tier 2, another reviewer reads the change through the review lens. For tier 3 and 4, a third reads it through the security lens. A finding counts only when it points to a line inside the change. A low score or a blocking finding goes to the builder, and step 4 repeats.
 7. The store signs a pass record. The driver fetches the try into `tg/<ticket id>`, and the store marks it as a ready change.
 8. With `auto_merge` on, the store merges a tier 1 or 2 change. You merge the rest with `/tollgate:merge`.
 
@@ -101,7 +103,7 @@ The gate uses no AI, so it gives the same answer every time. The driver runs it 
 3. **Locked files.** Every locked file has its fingerprint at the try.
 4. **Tier.** The gate works out the tier from the files the try changes.
 5. **Tests.** Every check passes. Every locked test ran and passed. No locked test was skipped.
-6. **Review.** A tier 3 or 4 try has a passed review.
+6. **Review.** A try of tier 2 or more has a passed review.
 
 Then the score decides: a try needs 70 or more. The builder can fix a failure of checks 3 and 5. A failure of any other check goes to the advisor.
 
@@ -136,16 +138,16 @@ A merge may change locked files when the commit it merges passed the gate. Commi
 
 ## The reviewers
 
-Every reviewer is the same role with a different lens.
+Every reviewer is the same role with a different lens. The analyst, a separate read-only role, reads the project before the plan.
 
 | Lens | Reads | When | Looks for |
 | --- | --- | --- | --- |
-| Simplicity | The whole plan | Plan review | Is this needed? Does the code already have it? Is anything built for a need nobody has? |
+| Simplicity | The whole plan and the analysis | Plan review | Is this needed? Does the code already have it? Is anything built for a need nobody has? Does it fit the architecture the analysis found? |
 | Fresh reader | The plan alone | Plan review | It writes in its own words what the plan proposes. A part it cannot restate is a blocking finding. |
-| Readiness | The plan and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? |
+| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? |
 | Test fit | A ticket and its tests | Before the lock | The three points in step 2. |
 | Checklist | A ticket and the change | Step 6, every tier | Each item with no test. |
-| Change | The ticket, the change, the project's own standards | Step 6, tier 3 and 4 | Behavior nobody asked for. Errors at the edges. New logic with no test. Broken project rules. |
+| Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity. |
 | Security | The change | Step 6, tier 3 and 4 | Ways to misuse the change. |
 
 ### Plan review
@@ -172,15 +174,15 @@ No AI picks the tier. Path rules in the settings on main map paths to tiers, and
 | Tier | When | Plan lock | Review | Who merges |
 | --- | --- | --- | --- | --- |
 | 1 | At most 3 files and 50 lines, and no path rule matches | No | Checklist | The store, when `auto_merge` is on |
-| 2 | Every other change | Yes | Checklist | The store, when `auto_merge` is on |
-| 3 | A path under `tiers.3`. Examples: login, payments, user data | Yes | Checklist, change, security | You, with your approval |
-| 4 | Harness, or a path under `tiers.4`. Examples: database changes, production settings, Tollgate's own rules | Yes | Checklist, change, security | You, with your approval |
+| 2 | Every other change | Yes | Checklist, review | The store, when `auto_merge` is on |
+| 3 | A path under `tiers.3`. Examples: login, payments, user data | Yes | Checklist, review, security | You, with your approval |
+| 4 | Harness, or a path under `tiers.4`. Examples: database changes, production settings, Tollgate's own rules | Yes | Checklist, review, security | You, with your approval |
 
 `auto_merge` is off by default. Then you merge every change.
 
 ## The advisor
 
-The driver asks the advisor in two cases: a plan needs approval, or the tries stopped.
+The driver asks the advisor when a plan needs approval, when the tries stopped, and at each checkpoint. The setting `checkpoints` lists them: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`. A plan that asks a question, and a task review with a blocking finding, go to the advisor even when their checkpoint is off.
 
 The advisor chain is `ai.advisor` in the settings: a list of commands and the word `person`, asked in order. The default is `["person"]`. For a person, the store writes a question in the state folder, and the ticket waits. The driver moves on to other tickets, and reads the answer when it starts again. You answer with `/tollgate:inbox`.
 
@@ -192,12 +194,14 @@ The advisor chain is `ai.advisor` in the settings: a list of commands and the wo
 | Stronger | Runs one more try with `ai.stronger_builder`. |
 | Split | Parks the ticket. The driver does not cut it into new tickets. |
 | Park | Parks the ticket. |
+| Continue | At a checkpoint: the task goes on. |
+| Stop | At a checkpoint: parks the task. |
 
 Three limits:
 
 - No advisor can make the gate pass.
 - No advisor can lift a cost stop.
-- An AI advisor decides at most 2 times for one ticket. After that, only a person decides.
+- An AI advisor decides at most 2 times for one ticket. After that, only a person decides. A checkpoint does not count against this limit.
 
 ## Large requests
 
@@ -261,6 +265,7 @@ The machine needs Python 3.11, git, `ssh-keygen`, pre-commit, and Docker for the
 
 | You type in Claude Code | What happens |
 | --- | --- |
+| `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each finding. It changes no file. |
 | `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, makes the machine key, adds your SSH key to `owners`, and installs pre-commit. |
 | `/tollgate:task Add retries to webhook delivery` | Starts a task. The driver runs in the background, so you can close Claude Code. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
@@ -289,8 +294,8 @@ When a task ends, you read the report. It has:
 | State | `gate/state.py` | The paths of the state folder and the key folder. |
 | Signatures | `gate/sign.py` | Sign and verify a record with `ssh-keygen -Y`, in one namespace for each kind. |
 | Store | `gate/store.py`, `gate/freeze.py`, `gate/plantag.py`, `gate/prepare.py` | Lock tests, lock plans, write questions, sign pass records, mark ready changes, merge. |
-| Gate | `gate/gate.py`, `gate/tiers.py`, `gate/review.py`, `gate/checks.py` | The six checks, the tier, the tier 3 and 4 review, and running the checks. |
-| Formats | `gate/settings.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
+| Gate | `gate/gate.py`, `gate/tiers.py`, `gate/review.py`, `gate/checks.py` | The six checks, the tier, the review from tier 2, and running the checks. |
+| Formats | `gate/settings.py`, `gate/analysis.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
 | Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py` | Run one ticket, one task, one roadmap. |
 | Stop and advisor | `driver/stop.py`, `driver/advisor.py` | When to stop, and how to ask. |
 | Roles | `driver/roles.py`, `roles/`, `lenses/` | Run one AI session in its copy and its isolation. |
@@ -342,6 +347,7 @@ Each setup script does one step, can run twice without harm, and prints one line
   checks/                    committed: Tollgate's checks, copied by init
   lenses/                    committed, only for lenses the project changes
   requests/<task>.md         the request, in your words
+  analysis/<task>.md         the analysis as the driver checked it, on tg-plan/<task>
   plans/<task>.md            the plan, on tg-plan/<task>
   tickets/<id>/ticket.md     a ticket, on tg/<id>
   roadmaps/<id>.md           a roadmap
@@ -437,6 +443,7 @@ A ticket describes behavior and seams. `tests` lists every file the locked tests
   "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10, "task_usd": 60},
   "pass_score": 70,
   "require_plan": true,
+  "checkpoints": ["plan", "task"],
   "auto_merge": false,
   "signers": ["ssh-ed25519 AAAA... tollgate"],
   "owners": ["ssh-ed25519 AAAA... you@laptop"]
@@ -479,10 +486,13 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | Rule | Enforced by |
 | --- | --- |
 | It states the problem, the goals, what it will not do, the design, and the options it rejected, each with a concrete reason. | Simplicity lens |
-| It lists every file, marked create, modify, or delete. Every file marked modify or delete exists. | Readiness lens |
+| It lists every file, marked create, modify, or delete. Every file marked modify or delete exists. | `gate/plan.py` for the marks, the readiness lens for the files |
 | It leaves no design decision to the builder: no data shape, no API path, no dependency, no way to handle an error. | Readiness lens |
 | It names every seam. It prefers a seam that exists, and the highest one. | Readiness lens |
-| It reuses what the code already has. | Simplicity lens |
+| It reuses what the code already has, and names it under Reuse. | Simplicity lens |
+| It fits the architecture the analysis found, unless the request asks for a new one. | Simplicity lens |
+| It names each edge case, failure, and security, speed, or compatibility risk under Risks, and each edge case and failure becomes a checklist item. | Readiness lens |
+| It asks each unclear point as a question under Assumptions, and waits for the advisor. | `gate/plan.py` and the driver |
 | A reader with no context can restate it. | Fresh reader lens |
 | It marks each assumption about an outside system that nobody has checked. | Readiness lens |
 
@@ -511,12 +521,12 @@ These rules live in the role files and the lens files. Each rule names what enfo
 
 | Rule | Enforced by |
 | --- | --- |
-| It touches only the files that the plan lists. | Change lens |
+| It touches only the files that the plan lists. | Review lens |
 | It adds no dependency that the plan does not name. | The tier: the dependency list is harness, so the change is tier 4 |
-| It does only what the ticket asks. | Change lens |
-| It has no stub, no unfinished marker, and no hidden error. | Change lens |
-| New logic has a test. | Change lens |
-| It follows the project's own written standards. | Change lens |
+| It does only what the ticket asks. | Review lens |
+| It has no stub, no unfinished marker, and no hidden error. | Review lens |
+| New logic has a test. | Review lens |
+| It follows the project's own written standards. | Review lens |
 
 ### A bug fix
 
@@ -524,7 +534,7 @@ A ticket for a bug adds one rule: its first must-have item is a test that fails 
 
 ### Writing
 
-These rules cover documents, code comments, and commit messages. The change lens reads for them. `check_writing.py` and `check_commit_msg.py` find the ones a script can find.
+These rules cover documents, code comments, and commit messages. The review lens reads for them. `check_writing.py` and `check_commit_msg.py` find the ones a script can find.
 
 - Lead with the answer or the action.
 - One instruction for each sentence. One topic for each paragraph.
@@ -564,6 +574,7 @@ Product management documents, deployment to production, a hosted service, an AI 
 - A role obeys its policy inside Claude Code.
 - The sandbox stops a write through Python. So the default isolation is the container.
 - A role in Docker through the local driver.
+- The analyst, the review lens, and the checkpoints with real models.
 - A task end to end with real models through the local driver.
 - One clean round of three lenses finds enough errors in a plan.
 - Every number on this page: 3 tries, 70, 30 minutes, 10 USD, 60 USD, 4 rounds, 2 advisor decisions, 3 files and 50 lines.

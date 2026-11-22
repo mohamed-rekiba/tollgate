@@ -63,6 +63,9 @@ DEFAULTS = {
     "isolation": "container",
     "require_plan": True,
     "auto_merge": False,
+    # Where the driver stops and asks the advisor before it goes on: after the plan,
+    # after each ticket, and after the whole task.
+    "checkpoints": ["plan", "task"],
     # The time limit of a check that sets no "minutes" of its own.
     "check_minutes": 20,
     # The base suite: one command for each of the five things a base must prove.
@@ -71,6 +74,7 @@ DEFAULTS = {
 }
 
 CHECK_KEYS = {"run", "report", "minutes"}
+CHECKPOINTS = ("plan", "ticket", "task")
 ISOLATIONS = ("container", "sandbox")
 KEY_TYPES = ("ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384",
              "ecdsa-sha2-nistp521", "sk-ssh-ed25519@openssh.com",
@@ -126,6 +130,9 @@ def parse(text: str) -> dict:
         extra = set(check) - CHECK_KEYS
         if extra:
             raise SettingsError(f"unknown key: checks.{name}.{min(extra)}")
+    points = settings["checkpoints"]
+    if not isinstance(points, list) or any(p not in CHECKPOINTS for p in points):
+        raise SettingsError(f"checkpoints must be a list of: {', '.join(CHECKPOINTS)}")
     if settings["isolation"] not in ISOLATIONS:
         raise SettingsError('isolation must be "container" or "sandbox"')
     if not isinstance(settings["signers"], list):

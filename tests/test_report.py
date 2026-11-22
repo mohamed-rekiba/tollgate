@@ -22,10 +22,19 @@ Sell things.
 A cart.
 
 ## Files
-cart.py
+create cart.py
 
 ## Seams
 cart.add
+
+## Reuse
+none
+
+## Risks
+- An empty cart.
+
+## Assumptions
+none
 
 ## Tickets
 - shop-1: add. - shop-2: remove. - shop-3: total. - shop-4: pay. - shop-5: ship.

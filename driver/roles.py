@@ -8,7 +8,7 @@ contract: read the prompt on standard input, print {"result": ..., "total_cost_u
 Isolation, from the settings `isolation`:
 
 - "container": the role runs in Docker. Only the role's own copy is mounted,
-  read-only for a reviewer and the advisor. The key folder and the rest of the
+  read-only for a reviewer, the advisor, and the analyst. The key folder and the rest of the
   state folder are never mounted.
 - "sandbox": Claude Code runs with a settings file for the role that turns on
   its sandbox, the permission rules, and the guard hook. UNTESTED: `claude -p`
@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gate import state
+from hooks.guard import READ_ONLY
 
 ROOT = Path(__file__).resolve().parent.parent
 ROLES = ROOT / "roles"
@@ -45,8 +46,8 @@ TOOLS = {
     "planner": ["Read", "Grep", "Glob", "Write", "Edit", "Bash"],
     "reviewer": ["Read", "Grep", "Glob"],
     "advisor": ["Read", "Grep", "Glob"],
+    "analyst": ["Read", "Grep", "Glob"],
 }
-READ_ONLY = ("reviewer", "advisor")
 
 
 class RoleError(RuntimeError):

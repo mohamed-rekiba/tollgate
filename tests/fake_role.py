@@ -8,7 +8,10 @@ and prints {"result": ..., "total_cost_usd": ...}.
 Builder modes: pass2 (fails attempt 1, passes attempt 2), same (fails the same
 way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
-Reviewer options: badline (names a line that does not exist).
+Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
+function that does not exist), block=<lens> (that lens finds a blocking problem).
+Builder options: ask=1 (the plan asks a question). Advisor options: plan_decision=<d>,
+decision=<d>, checkpoint=<continue or stop>.
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
 """
@@ -65,14 +68,41 @@ tickets: {task}-1, {task}-2
 Add two functions next to greet.
 
 ## Files
-app.py
+modify app.py
 
 ## Seams
 app.shout, app.whisper
 
+## Reuse
+app.greet, unchanged.
+
+## Risks
+- An empty name: both functions return the greeting with no name.
+
+## Assumptions
+none
+
 ## Tickets
 - {task}-1: shout returns the greeting in capitals.
 - {task}-2: whisper returns the greeting in small letters.
+"""
+
+ANALYSIS = """---
+task: {task}
+commit: {commit}
+---
+## Structure
+- confirmed: one module holds the code [app.py:1]
+## Entry points
+- confirmed: greet builds the greeting [app.py::greet]
+## Frameworks
+- assumed: no framework, the standard library only
+## Similar features
+- confirmed: greet formats one name [app.py:2]{bad}
+## Tests
+- confirmed: a script runs the tests [run_tests.py:1]
+## Standards
+- assumed: no written standards
 """
 
 TICKET_T1 = """---
@@ -142,6 +172,11 @@ def main() -> int:
     prompt = sys.stdin.read()
     first = prompt.splitlines()[0]
     data = inputs(prompt)
+    if first == "# Role: analyst":
+        commit = data["commit"]
+        bad = "\n- confirmed: shout already exists [app.py::nope]" if "badcite" in sys.argv else ""
+        answer({"analysis": ANALYSIS.format(task=data["task_id"], commit=commit, bad=bad)}, cost)
+        return 0
     if first == "# Role: test writer":
         Path("tests").mkdir(exist_ok=True)
         if data.get("ticket_id", "").endswith("-2"):
@@ -158,8 +193,10 @@ def main() -> int:
     elif first == "# Role: builder" and data.get("mode") == "plan":
         task = data["task_id"]
         Path(".tollgate/plans").mkdir(parents=True, exist_ok=True)
-        Path(f".tollgate/plans/{task}.md").write_text(PLAN.format(task=task,
-                                                                  request=data["request"]))
+        plan = PLAN.format(task=task, request=data["request"])
+        if opts.get("ask") and not data.get("hint"):
+            plan = plan.replace("## Assumptions\nnone", "## Assumptions\n- Should whisper keep accents?")
+        Path(f".tollgate/plans/{task}.md").write_text(plan)
         for tid, text in ((f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)):
             Path(f".tollgate/tickets/{tid}").mkdir(parents=True, exist_ok=True)
             Path(f".tollgate/tickets/{tid}/ticket.md").write_text(text.format(task=task))
@@ -193,7 +230,8 @@ def main() -> int:
             Path(".github/workflows").mkdir(parents=True, exist_ok=True)
             Path(".github/workflows/evil.yml").write_text("on: push\n")
             Path("app.py").write_text(GREET + SHOUT_OK)
-        answer({"changed": ["app.py"], "locked_test_wrong": None}, cost)
+        answer({"changed": ["app.py"], "locked_test_wrong": None,
+                "decisions": ["shout reuses greet"], "concerns": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: test fit" in prompt:
         answer({"verdict": "pass", "findings": [], "items": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: checklist" in prompt:
@@ -209,15 +247,19 @@ def main() -> int:
         found = lens == "simplicity" and count_marker(".fake-planfind") <= rounds
         answer({"verdict": "pass", "findings": [{"level": "major", "text": "drop T-2?"}]
                 if found else [], "items": []}, cost)
-    elif first == "# Role: reviewer" and ("# Lens: change" in prompt or "# Lens: security" in prompt):
-        lens = "security" if "# Lens: security" in prompt else "change"
+    elif first == "# Role: reviewer" and ("# Lens: review" in prompt or "# Lens: security" in prompt):
+        lens = "security" if "# Lens: security" in prompt else "review"
         block = opts.get("block") == lens
         answer({"verdict": "fail" if block else "pass", "findings": [
             {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]
             if block else []}, cost)
     elif first == "# Role: advisor":
-        decision = opts.get("plan_decision", "approve") if "plan" in data else opts.get(
-            "decision", "park")
+        if "checkpoint" in data:
+            decision = opts.get("checkpoint", "continue")
+        elif "plan" in data:
+            decision = opts.get("plan_decision", "approve")
+        else:
+            decision = opts.get("decision", "park")
         answer({"decision": decision, "hint": "try harder", "reason": "test"}, cost)
     else:
         print(f"unknown role: {first}", file=sys.stderr)

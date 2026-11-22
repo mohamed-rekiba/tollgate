@@ -127,7 +127,7 @@ class ReadOnlyTest(Env):
         self.assertLets("Read", {"file_path": str(self.copy / "app.py")}, role="reviewer")
 
     def test_a_reviewer_and_the_advisor_edit_nothing_and_run_nothing(self):
-        for role in ("reviewer", "advisor"):
+        for role in ("reviewer", "advisor", "analyst"):
             self.assertRefuses("reads only", "Edit", {"file_path": str(self.copy / "app.py")},
                                role=role)
             self.assertRefuses("reads only", "Bash", {"command": "ls"}, role=role)
@@ -229,7 +229,7 @@ class PolicyTest(Env):
         self.assertIn(f"Edit(/{self.copy}/.tollgate/settings.json)", deny)
 
     def test_a_reviewer_and_the_advisor_read_only(self):
-        for role in ("reviewer", "advisor"):
+        for role in ("reviewer", "advisor", "analyst"):
             p = self.rules(role)["permissions"]
             self.assertEqual(p["allow"], ["Read", "Grep", "Glob"])
             for tool in ("Edit", "Write", "Bash"):

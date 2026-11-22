@@ -35,6 +35,7 @@ from gate import gate as gatelib
 from gate import manifest as mf
 from gate import review as reviewlib
 from gate import settings as st
+from gate.paths import line_exists
 from gate.store import Store, StoreError
 from gate.tickets import item_of_test
 
@@ -105,16 +106,6 @@ def _alive(pid: int) -> bool:
 
 
 # The score.
-
-def line_exists(workdir: str, file: str, line) -> bool:
-    try:
-        path = Path(workdir, file).resolve()
-        if not path.is_relative_to(Path(workdir).resolve()):
-            return False
-        return isinstance(line, int) and 1 <= line <= len(path.read_text().splitlines())
-    except (OSError, UnicodeDecodeError, TypeError):
-        return False
-
 
 def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     """Return (score, {item id: passed}).
@@ -296,6 +287,9 @@ class Driver:
             st_.attempts = n
             return
         cost = answer.cost_usd
+        said = {k: answer.data.get(k) for k in ("decisions", "concerns") if answer.data.get(k)}
+        if said:
+            self.log.add("builder_said", attempt=n, **said)
         commit = self.commit(f"feat({self.ticket_id}): try {n}")
         results = self.checks()
         facts = self.gate.collect(self.project, self.copy, self.base, "HEAD", self.ticket_id,
@@ -330,7 +324,7 @@ class Driver:
         cost += checked.cost_usd
         value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
-        if tier >= 3:
+        if tier >= 2:
             spent = []
 
             def run_role(lens, role_inputs):

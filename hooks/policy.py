@@ -8,7 +8,7 @@ The roles:
 - builder and test_writer read, run commands, and edit only their own copy.
 - planner is the builder when it writes a plan. It may also write plans and
   tickets under `.tollgate/` in its copy.
-- reviewer and advisor read only: no edit, no command.
+- reviewer, advisor, and analyst read only: no edit, no command.
 
 Every role is denied the key folder, the state folder outside its copy,
 `.tollgate/settings.json`, the locked files, and the git commands that push,
@@ -26,10 +26,10 @@ import sys
 from pathlib import Path
 
 from gate import state
+from hooks.guard import READ_ONLY
 
 GUARD = Path(__file__).resolve().parent / "guard.py"
-ROLES = ("builder", "test_writer", "planner", "reviewer", "advisor")
-READ_ONLY = ("reviewer", "advisor")
+ROLES = ("builder", "test_writer", "planner", "reviewer", "advisor", "analyst")
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 BASH_DENY = ("git push", "git merge", "git commit --no-verify", "git commit -n",
              "git config core.hooksPath", "git -c core.hooksPath")

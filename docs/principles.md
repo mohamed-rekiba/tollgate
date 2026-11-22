@@ -1,6 +1,6 @@
 # Tollgate's principles
 
-Tollgate lets an AI write your code, and merges only what works. It keeps 14 rules, in 8 groups. This page explains each rule: what it means, why, how Tollgate does it, and where it stops.
+Tollgate lets an AI write your code, and merges only what works. It keeps 17 rules, in 8 groups. This page explains each rule: what it means, why, how Tollgate does it, and where it stops.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
@@ -11,7 +11,22 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 1. Plan first
 
-### Rule 1. Fresh reviewers check the plan before any code
+### Rule 1. The analysis comes first, and every finding cites the code
+
+**What it means.** Before the plan, an analyst reads the project and reports how it is built: its structure, entry points, frameworks, similar features, tests, and standards. Each finding is confirmed, with a citation to the code, or marked assumed.
+
+**Why.** A plan written from a guess about the code builds on things that do not exist.
+
+**How Tollgate does it.**
+
+- `driver/task.py` runs the analyst before the plan. The analyst is read-only: its policy denies every edit and every command.
+- `gate/analysis.py` reads the analysis and checks each citation, `[path:line]` or `[path::name]`, against the commit it read. A finding whose citation does not exist becomes an assumption.
+- The driver keeps the checked analysis and puts it on the plan branch with the plan. The plan writer and the plan reviewers read it.
+- `/tollgate:analyze` runs the same analysis by hand, and changes no file.
+
+**Where it stops.** The check proves that a cited line or name exists, not that the claim about it is true. The readiness lens reads the claims, and that is an AI reading.
+
+### Rule 2. Fresh reviewers check the plan before any code
 
 **What it means.** The builder writes a plan for the task. Three reviewers read it, each through one lens, before any code exists. The review repeats for up to 4 rounds.
 
@@ -19,7 +34,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- `driver/task.py` runs the three lenses in each round: simplicity, fresh reader, and readiness.
+- `driver/task.py` runs the three lenses in each round: simplicity, fresh reader, and readiness. Simplicity and readiness also read the analysis.
 - The builder answers each finding: it fixes it, contests it with evidence, or asks the advisor.
 - A round with no blocking or major finding ends the review. After 4 rounds (`MAX_ROUNDS`), the open findings go to the advisor.
 - The advisor approves the plan or sends it back. Then the store signs a plan lock in `plans/<task>.json`.
@@ -27,7 +42,21 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **Where it stops.** A reviewer that gives no answer gets one retry. After that, the round does not count as clean. The advisor can approve a plan with open findings.
 
-### Rule 2. A large request grows one step at a time
+### Rule 3. An assumption waits for an answer
+
+**What it means.** The plan lists, as questions, what the request and the analysis do not settle. A plan with a question goes to the advisor before it is locked.
+
+**Why.** A builder that guesses an unclear requirement builds the wrong thing well.
+
+**How Tollgate does it.**
+
+- `gate/plan.py` requires the sections Reuse, Risks, and Assumptions. Each assumption ends with a question mark.
+- `driver/task.py` sends a plan with questions to the advisor, even when the plan checkpoint is off. The advisor answers them and sends the plan back, or approves it as it is.
+- The readiness lens reports a part of the plan that rests on an assumed finding and asks nothing about it.
+
+**Where it stops.** The plan writer decides what is unclear. A question it does not ask is not caught until the review.
+
+### Rule 4. A large request grows one step at a time
 
 **What it means.** A request too large for one plan becomes a roadmap: first the base, then one thin path through every shared rule, then one feature at a time.
 
@@ -42,7 +71,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **Where it stops.** The roadmap and its checks have no passing test. The skill, not code, decides when a request needs a roadmap.
 
-### Rule 3. Each ticket has a checklist, and a must-have item cannot fail
+### Rule 5. Each ticket has a checklist, and a must-have item cannot fail
 
 **What it means.** Each ticket lists what done means. Each line is an item. Some items are must-have items.
 
@@ -57,7 +86,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 2. Tests first
 
-### Rule 4. One test for each must-have item, locked before any code
+### Rule 6. One test for each must-have item, locked before any code
 
 **What it means.** Before the builder starts, the test writer writes one test at a seam for each must-have item, and the store locks it. The AI cannot change a locked test.
 
@@ -75,7 +104,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 3. Build from the best try
 
-### Rule 5. Below 70%, try again from the best try
+### Rule 7. Below 70%, try again from the best try
 
 **What it means.** When a try fails, the builder gets the reasons and tries again, starting from its best try so far.
 
@@ -91,7 +120,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 4. The gate judges
 
-### Rule 6. A program with no AI checks every try
+### Rule 8. A program with no AI checks every try
 
 **What it means.** The gate checks each try. The AI that built it never grades its own work.
 
@@ -99,13 +128,13 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- `gate/gate.py` runs six checks: the lock verifies and matches, a plan lock lists the ticket, every locked file is unchanged, the tier, every check and locked test passes, and a tier 3 or 4 change has a passed review.
+- `gate/gate.py` runs six checks: the lock verifies and matches, a plan lock lists the ticket, every locked file is unchanged, the tier, every check and locked test passes, and a change of tier 2 or more has a passed review.
 - It reads the settings from main, never from the try.
 - Each reviewer is a separate AI session with no history. A reviewer and the advisor can only read: no edit, no command.
 
 **Where it stops.** The gate reads the test results that the checks write. Code in a change that forges its own test report is out of scope. A reviewer and you are the only defense against that.
 
-### Rule 7. The score is the share of items that pass, and 70% passes
+### Rule 9. The score is the share of items that pass, and 70% passes
 
 **What it means.** The score is the share of checklist items that passed. A try needs 70% or more, and no failed must-have item.
 
@@ -119,7 +148,21 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **Where it stops.** A reviewer can be wrong about an item with no test. The 70 is a first guess: no measure has set it.
 
-### Rule 8. Only the gate says done
+### Rule 10. A review reads each change from tier 2, and the whole task at the end
+
+**What it means.** A reviewer reads each ticket's change through the review lens from tier 2 up, and the security lens adds a second reading at tiers 3 and 4. After the last ticket, the review lens reads every ticket's change together.
+
+**Why.** A test checks what someone thought to test. A reader finds the rest: a missed requirement, a security hole, a break from the architecture, a missing error case, a slower path, a test gap, or needless complexity.
+
+**How Tollgate does it.**
+
+- `gate/review.py` picks the lenses by tier. A blocking finding fails the try.
+- A finding counts only when it points to a file and a line inside the change. The driver drops the rest, so a reviewer cannot fail a try on a guess.
+- `driver/task.py` reviews the whole task after the last ticket. A blocking finding goes to the advisor.
+
+**Where it stops.** A tier 1 change gets no review. A reviewer can miss a problem, and a finding inside the change can still be wrong.
+
+### Rule 11. Only the gate says done
 
 **What it means.** A try is done when the gate passes it and the store signs a pass record. Nothing else counts.
 
@@ -135,7 +178,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 ## 5. Stop when stuck
 
-### Rule 9. After 3 tries, or the same failure twice, the advisor decides
+### Rule 12. After 3 tries, or the same failure twice, the advisor decides
 
 **What it means.** The builder does not try forever. When it is stuck, the advisor decides: a second AI, or you.
 
@@ -153,11 +196,13 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 Then the driver asks the advisors in `ai.advisor`, in order. The default is you. The advisor can give one more try with a hint, give one more try with a stronger model, split the ticket, or park it. You answer with `/tollgate:inbox`.
 
-**Where it stops.** No advisor can make the gate pass. A cost stop parks the ticket, and no advisor can lift it. An AI advisor decides at most 2 times for one ticket, then only you decide. A split parks the ticket: the driver does not cut it into new tickets.
+The setting `checkpoints` adds the places where the advisor decides whether the task goes on: `plan` (the approval of the plan), `ticket` (after each ready ticket), and `task` (after the review of the whole task). The default is `["plan", "task"]`.
+
+**Where it stops.** No advisor can make the gate pass. A cost stop parks the ticket, and no advisor can lift it. A checkpoint does not count against the AI advisor's limit. An AI advisor decides at most 2 times for one ticket, then only you decide. A split parks the ticket: the driver does not cut it into new tickets.
 
 ## 6. Risk sets the checks
 
-### Rule 10. The files give the tier, and you merge tiers 3 and 4
+### Rule 13. The files give the tier, and you merge tiers 3 and 4
 
 **What it means.** Each change gets a tier from 1 to 4 from the files it touches. A higher tier gets more checks, and you merge the riskiest changes yourself.
 
@@ -173,8 +218,8 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 | Tier | When | What it adds | Who merges |
 | --- | --- | --- | --- |
 | 1 | At most 3 files and 50 lines (`tier1`), and no path rule matches | Locked tests and the checklist review | The store, when `auto_merge` is on |
-| 2 | Every other change | An approved plan | The store, when `auto_merge` is on |
-| 3 | Paths under `tiers.3`, such as login, payments, or user data | A review through the change lens and the security lens | You, with your signed approval |
+| 2 | Every other change | An approved plan, and a review through the review lens | The store, when `auto_merge` is on |
+| 3 | Paths under `tiers.3`, such as login, payments, or user data | The security lens too | You, with your signed approval |
 | 4 | Harness, and paths under `tiers.4` | The same review | You, with your signed approval |
 
 `auto_merge` is off by default. Then you merge every change with `/tollgate:merge`. An approval is signed with your own SSH key and verified against `owners` on main. The machine key is never in `owners`, so it can never approve.
@@ -183,7 +228,7 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 
 ## 7. Mistakes become rules
 
-### Rule 11. At most 3 lessons a task
+### Rule 14. At most 3 lessons a task
 
 **What it means.** After a task, `/tollgate:retro` shows its numbers and writes at most 3 lessons. Each lesson becomes a ticket: a new test, a new check, a change to a lens, or a stricter rule.
 
@@ -193,7 +238,7 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 
 **Where it stops.** The retro has no passing test.
 
-### Rule 12. Rules never get looser
+### Rule 15. Rules never get looser
 
 **What it means.** Tollgate can make a rule stricter. Only you make a rule looser.
 
@@ -209,7 +254,7 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 
 ## 8. Always
 
-### Rule 13. Code enforces the rules
+### Rule 16. Code enforces the rules
 
 **What it means.** A rule that is only written in a prompt does not count.
 
@@ -233,7 +278,7 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 - A Bash command such as `python -c` can write a file that a permission rule forbids. The container stops it, because only the copy is mounted. The sandbox should stop it, but this is untested.
 - Nobody has tested that a real role obeys its policy.
 
-### Rule 14. Plain words, for people
+### Rule 17. Plain words, for people
 
 **What it means.** Everything is written for people to read: docs, comments, commit messages, and diagrams.
 
@@ -243,7 +288,7 @@ Then the driver asks the advisors in `ai.advisor`, in order. The default is you.
 
 - Write like a plain-spoken senior engineer talking to someone who knows the project, in the spirit of Simplified Technical English (ASD-STE100).
 - One word for each thing. [CONTEXT.md](../CONTEXT.md) lists the words.
-- The writing rules are in [lenses/change.md](../lenses/change.md). `/tollgate:docs` writes by them.
+- The writing rules are in [lenses/review.md](../lenses/review.md). `/tollgate:docs` writes by them.
 - `check_writing.py` runs in pre-commit. It finds the words to avoid, filler, and long dashes. `check_commit_msg.py` checks each commit message.
 
-**Where it stops.** A script finds only some of the rules. The change lens reads for the rest, and only on tier 3 and 4.
+**Where it stops.** A script finds only some of the rules. The review lens reads for the rest, and only from tier 2.

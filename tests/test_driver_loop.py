@@ -29,12 +29,23 @@ class BuildTest(LoopCase):
         s = self.sample()
         d, store = driver(s)
         self.assertEqual(d.run(), 0)
-        self.assertEqual(s.events()[-5:], ["try_failed", "try_started", "try_passed", "ready",
-                                           "waiting_for_merge"])
+        self.assertEqual(s.events()[-6:], ["try_failed", "try_started", "builder_said",
+                                           "try_passed", "ready", "waiting_for_merge"])
+        said = [e for e in s.log() if e["event"] == "builder_said"][-1]
+        self.assertEqual(said["decisions"], ["shout reuses greet"])
         branch, ticket, commit = store.ready_marks[0]
         self.assertEqual((branch, ticket), ("tg/T-1", "T-1"))
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
+
+    def test_a_tier_2_change_gets_the_review_lens(self):
+        s = self.sample(reviewer="ok block=review", tier1={"max_files": 0, "max_lines": 0})
+        d, store = driver(s)
+        d.run()
+        failed = [e for e in s.log() if e["event"] == "try_failed"]
+        self.assertTrue(any("review problem" in f.get("text", "")
+                            for e in failed for f in e.get("findings", [])))
+        self.assertEqual(store.ready_marks, [])
 
     def test_nothing_the_driver_writes_stays_in_the_project(self):
         s = self.sample()
@@ -203,6 +214,76 @@ class TaskTest(LoopCase):
         self.assertTrue(state.path(str(s.project), "reports", "demo.md").exists())
         self.assertFalse(Path(s.project, ".tollgate", "plans").exists())
         self.assertIn("demo-2", Path(state.path(str(s.project), "reports", "demo.md")).read_text())
+
+    def task(self, advisor="ok", **settings_args):
+        from driver.task import Task
+        from tests.driver_fakes import gate_api, review_api
+        s = Sample(ticket=False, advisor=(f"{sys.executable} {FAKE_ROLE} {advisor}",),
+                   **settings_args)
+        self.addCleanup(s.close)
+        store = FakeStore(s.project)
+        task = Task(str(s.project), "demo", "Add shout and whisper.", store,
+                    driver_args={"gate_api": gate_api(), "review_api": review_api()})
+        return s, task
+
+    def test_the_analysis_comes_first_and_travels_with_the_plan(self):
+        s, task = self.task()
+        self.assertEqual(task.run(), 0)
+        events = s.events("task-demo")
+        self.assertLess(events.index("analysis_written"), events.index("plan_written"))
+        from tests.driver_fakes import sh
+        text = sh(s.project, "git", "show", "tg-plan/demo:.tollgate/analysis/demo.md")
+        self.assertIn("commit: " + sh(s.project, "git", "rev-parse", "main"), text)
+        self.assertIn("- confirmed: greet builds the greeting [app.py::greet]", text)
+
+    def test_a_citation_that_does_not_exist_becomes_an_assumption(self):
+        s, task = self.task(reviewer="ok badcite")
+        self.assertEqual(task.run(), 0)
+        written = next(e for e in s.log("task-demo") if e["event"] == "analysis_written")
+        self.assertEqual(written["not_found"], ["app.py::nope"])
+
+    def test_a_plan_with_no_checkpoint_and_no_questions_needs_no_advisor(self):
+        s, task = self.task(checkpoints=[])
+        self.assertEqual(task.run(), 0)
+        events = s.events("task-demo")
+        self.assertIn("plan_approved", events)
+        self.assertNotIn("advisor_decided", events[:events.index("plan_locked")])
+
+    def test_a_plan_that_asks_a_question_always_goes_to_the_advisor(self):
+        s, task = self.task(builder="pass2 ask=1", checkpoints=[], advisor="ok plan_decision=send_back")
+        self.assertEqual(task.run(), 3)
+        log = s.log("task-demo")
+        self.assertIn("advisor_decided", [e["event"] for e in log])
+        self.assertIn("plan_sent_back", [e["event"] for e in log])
+
+    def test_a_ticket_checkpoint_can_stop_the_task(self):
+        s, task = self.task(checkpoints=["ticket"], advisor="ok checkpoint=stop")
+        self.assertEqual(task.run(), 3)
+        done = [e["ticket"] for e in s.log("task-demo") if e["event"] == "ticket_done"]
+        self.assertEqual(done, ["demo-1"])
+        self.assertIn("checkpoint_stopped", s.events("task-demo"))
+
+    def test_the_whole_task_is_reviewed_after_the_last_ticket(self):
+        s, task = self.task(checkpoints=[])
+        self.assertEqual(task.run(), 0)
+        log = s.log("task-demo")
+        reviewed = [e for e in log if e["event"] == "task_reviewed"]
+        self.assertEqual(len(reviewed), 1)
+        self.assertTrue(reviewed[0]["passed"])
+        events = [e["event"] for e in log]
+        self.assertLess(max(i for i, e in enumerate(events) if e == "ticket_done"),
+                        events.index("task_reviewed"))
+        text = Path(state.path(str(s.project), "reports", "demo.md")).read_text()
+        self.assertIn("- Analysis: written. Every citation was found.", text)
+        self.assertIn("## The review of the whole task\n\nPassed. Tier 2.", text)
+
+    def test_a_blocking_finding_in_the_task_review_goes_to_the_advisor(self):
+        s, task = self.task(checkpoints=[], reviewer="ok block=review", advisor="ok checkpoint=stop")
+        # The sample tickets are tier 1, so only the review of the whole task blocks.
+        self.assertEqual(task.run(), 3)
+        reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
+        self.assertFalse(reviewed["passed"])
+        self.assertIn("checkpoint_stopped", s.events("task-demo"))
 
 
 if __name__ == "__main__":

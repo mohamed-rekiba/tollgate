@@ -1,4 +1,5 @@
-"""The task loop: plan, plan review, approval, plan lock, then each ticket in order.
+"""The task loop: analysis, plan, plan review, approval, plan lock, each ticket in
+order, then a review of the whole task.
 
     PYTHONPATH=<tollgate> python3 -m driver.task --project . --task retries --request-file r.txt
 
@@ -6,6 +7,12 @@ The task's own log is logs/task-<task id>.jsonl in the state folder, and its
 copy is builders/task-<task id>/. Each ticket keeps its own log. A task that
 starts again repeats no finished step. A ticket that waits for the advisor or is
 parked does not stop the others: the report says why.
+
+The setting `checkpoints` names where the advisor decides whether the task goes
+on: "plan" (the approval of the plan), "ticket" (after each ready ticket), and
+"task" (after the review of the whole task). A plan that asks a question, a plan
+review with open findings, and a task review that blocks go to the advisor even
+when their checkpoint is off.
 
 Exit codes: 0 every ticket is a ready change or merged, 3 something waits for the
 advisor, 4 another driver holds the task, 1 an error.
@@ -20,7 +27,9 @@ from pathlib import Path
 from driver import advisor, report, roles
 from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
 from driver.log import Log, read
+from gate import analysis as an
 from gate import plan as pl
+from gate import review as reviewlib
 from gate import settings as st
 from gate import state
 from gate import tickets as tk
@@ -47,7 +56,8 @@ class Task:
 
     def role(self, name, inputs, lens=None, command=None):
         s = self.settings
-        command = command or (s["ai"]["reviewer"] if name == "reviewer" else s["ai"]["builder"])
+        command = command or (s["ai"]["reviewer"] if name in ("reviewer", "analyst")
+                              else s["ai"]["builder"])
         # The builder writes the plan here, so it may write plans and tickets.
         policy = "planner" if name == "builder" else name
         return roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
@@ -74,10 +84,39 @@ class Task:
                     for t in used]
         return problems + pl.check_tickets(plan, self.read_copy)
 
+    def analysis_text(self) -> str:
+        found = [e for e in read(self.log_path) if e["event"] == "analysis_written"]
+        return found[-1]["text"] if found else ""
+
     # Steps.
+
+    def analyze(self):
+        """The analyst reads the copy at main and answers with the analysis. The driver
+        checks it, makes each citation that does not exist an assumption, and keeps the
+        text in the log, so no later role can change it."""
+        commit = git(self.copy, "rev-parse", "HEAD")
+        problems = []
+        for _ in range(3):
+            answer = self.role("analyst", {"request": self.request, "task_id": self.id,
+                                           "commit": commit, "problems": problems})
+            try:
+                found = an.parse(answer.data.get("analysis") or "")
+                if (found.task, found.commit) != (self.id, commit):
+                    raise an.AnalysisError(f"the header must say task: {self.id} and "
+                                           f"commit: {commit}")
+            except an.AnalysisError as err:
+                problems = [str(err)]
+                self.log.add("analysis_invalid", problems=problems, cost_usd=answer.cost_usd)
+                continue
+            missing = an.verify(found, self.copy)
+            self.log.add("analysis_written", text=an.render(found), not_found=missing,
+                         cost_usd=answer.cost_usd)
+            return
+        raise an.AnalysisError("; ".join(problems))
 
     def write_plan(self, problems=None, hint=""):
         answer = self.role("builder", {"mode": "plan", "task_id": self.id, "request": self.request,
+                                       "analysis": self.analysis_text(),
                                        "problems": problems or [], "hint": hint})
         self.log.add("plan_written", cost_usd=answer.cost_usd)
         for _ in range(2):
@@ -86,7 +125,9 @@ class Task:
                 return
             self.log.add("plan_invalid", problems=problems)
             answer = self.role("builder", {"mode": "plan", "task_id": self.id,
-                                           "request": self.request, "problems": problems})
+                                           "request": self.request,
+                                           "analysis": self.analysis_text(),
+                                           "problems": problems})
             self.log.add("plan_written", cost_usd=answer.cost_usd)
         problems = self.check_plan()
         if problems:
@@ -102,7 +143,8 @@ class Task:
             findings = []
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
-                    "plan": text, "tickets": tickets, "request": self.request}
+                    "plan": text, "tickets": tickets, "request": self.request,
+                    "analysis": self.analysis_text()}
                 try:
                     data = self.role("reviewer", inputs, lens=lens)
                 except roles.RoleError:
@@ -133,9 +175,16 @@ class Task:
         return open_findings or [{"level": "major", "text": f"{MAX_ROUNDS} rounds with findings"}]
 
     def approve(self, open_findings: list) -> dict:
+        plan = self.read_copy(pl.plan_path(self.id))
+        questions = pl.parse(plan).questions
+        if "plan" not in self.settings["checkpoints"] and not open_findings and not questions:
+            self.log.add("plan_approved", by="no checkpoint")
+            return {"decision": "approve", "hint": ""}
         reason = ("The plan review is clean." if not open_findings
                   else f"{len(open_findings)} findings are open after the review.")
-        plan = self.read_copy(pl.plan_path(self.id))
+        if questions:
+            reason += ("\n\nThe plan asks these questions. Send it back with your answers, or "
+                       "approve it as it is:\n\n" + "\n".join(f"- {q}" for q in questions))
         for entry in self.settings["ai"]["advisor"]:
             if entry == "person":
                 return advisor.ask_person(self.store, self.log, self.log_path, f"plan {self.id}",
@@ -153,8 +202,45 @@ class Task:
                 return {"decision": decision, "hint": answer.data.get("hint", "")}
         raise Parked("no advisor decided on the plan")
 
+    def checkpoint(self, name: str, reason: str, inputs: dict, key: str = "") -> None:
+        """Ask the advisor whether the task goes on. Return when it does; raise Parked
+        when the advisor stops it or a person has not answered yet. A checkpoint does
+        not count against the AI advisor's limit of decisions."""
+        subject = f"task {self.id}, {name} checkpoint" + (f" after {key}" if key else "")
+        decision = None
+        for entry in self.settings["ai"]["advisor"]:
+            if entry == "person":
+                try:
+                    decision = advisor.ask_person(self.store, self.log, self.log_path, subject,
+                                                  reason, ["continue", "stop"])
+                except advisor.Waiting as waiting:
+                    raise Parked(str(waiting)) from None
+                break
+            answer = self.role("advisor", {"checkpoint": name, "reason": reason, **inputs},
+                               command=entry)
+            decision = {"decision": answer.data.get("decision"),
+                        "hint": answer.data.get("hint", "")}
+            self.log.add("advisor_decided", by="ai", cost_usd=answer.cost_usd, **decision)
+            if decision["decision"] in ("continue", "stop"):
+                break
+            decision = None
+        if decision is None:
+            raise Parked(f"no advisor decided at the {name} checkpoint")
+        if decision["decision"] == "stop":
+            self.log.add("checkpoint_stopped", name=name, key=key, hint=decision["hint"])
+            raise Parked(f"the advisor stopped the task at the {name} checkpoint")
+        self.log.add("checkpoint_passed", name=name, key=key)
+
+    def passed_checkpoint(self, name: str, key: str = "") -> bool:
+        return any(e["event"] == "checkpoint_passed" and e.get("name") == name
+                   and e.get("key", "") == key for e in read(self.log_path))
+
     def lock_plan(self):
-        git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets")
+        # The analysis goes on the plan branch as the driver checked it.
+        path = Path(self.copy, an.analysis_path(self.id))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.analysis_text())
+        git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets", ".tollgate/analysis")
         git(self.copy, "commit", "-q", "--allow-empty", "-m", f"docs({self.id}): the plan")
         fetch_branch(self.project, self.copy, f"tg-plan/{self.id}")
         path = self.store.lock_plan(self.id)
@@ -167,6 +253,7 @@ class Task:
         done = {e["ticket"]: e["code"] for e in read(self.log_path) if e["event"] == "ticket_done"}
         for tid in plan.tickets:
             if done.get(tid) == 0:
+                self.ticket_checkpoint(tid)
                 continue
             text = self.read_copy(f".tollgate/tickets/{tid}/ticket.md")
             try:
@@ -180,7 +267,44 @@ class Task:
                 code = 1
             self.log.add("ticket_done", ticket=tid, code=code)
             done[tid] = code
+            if code == 0:
+                self.ticket_checkpoint(tid)
         return done
+
+    def ticket_checkpoint(self, tid: str) -> None:
+        if "ticket" in self.settings["checkpoints"] and not self.passed_checkpoint("ticket", tid):
+            self.checkpoint("ticket", f"Ticket {tid} is a ready change. Go on to the next one?",
+                            {"ticket": self.read_copy(f".tollgate/tickets/{tid}/ticket.md")}, tid)
+
+    def review_task(self) -> None:
+        """The review lens reads every ticket's change together, against the plan. A
+        blocking finding, or the task checkpoint, goes to the advisor."""
+        found = [e for e in read(self.log_path) if e["event"] == "task_reviewed"]
+        if found:
+            passed, text = found[-1]["passed"], found[-1]["text"]
+        else:
+            plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+            parts = []
+            for tid in plan.tickets:
+                ready = [e for e in read(str(Path(self.logs, f"{tid}.jsonl")))
+                         if e["event"] == "ready"]
+                if ready:
+                    parts.append(reviewlib.diff(self.project, self.base, ready[-1]["commit"]))
+            change = "\n".join(parts)[:reviewlib.DIFF_LIMIT]
+            cost = []
+
+            def run_role(lens, inputs):
+                answer = self.role("reviewer", inputs, lens=lens)
+                cost.append(answer.cost_usd)
+                return answer.data
+
+            passed, findings, text = reviewlib.review(
+                2, self.read_copy(pl.plan_path(self.id)), change, run_role, lenses=("review",))
+            self.log.add("task_reviewed", passed=passed, findings=findings, text=text,
+                         cost_usd=sum(cost))
+        if (not passed or "task" in self.settings["checkpoints"]) \
+                and not self.passed_checkpoint("task"):
+            self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
 
     def run(self) -> int:
         lock = run_lock(self.project, f"task-{self.id}")
@@ -197,7 +321,10 @@ class Task:
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
                         if "plan_written" not in kinds:
-                            git(self.copy, "checkout", "-q", "-B", f"tg-plan/{self.id}", self.base)
+                            if "analysis_written" not in kinds:
+                                git(self.copy, "checkout", "-q", "-B", f"tg-plan/{self.id}",
+                                    self.base)
+                                self.analyze()
                             self.write_plan()
                         open_findings = self.review_plan()
                         self.log.add("plan_review_done", open=open_findings)
@@ -215,6 +342,8 @@ class Task:
                         raise Parked("the plan was sent back and needs a new approval")
                     self.lock_plan()
                 done = self.build_tickets()
+                if done and all(c == 0 for c in done.values()):
+                    self.review_task()
                 path = report.write(self.project, self.id)
                 self.log.add("reported", path=path, tickets=done)
                 return 0 if all(c == 0 for c in done.values()) else 3

@@ -1,4 +1,4 @@
-"""Match file paths against glob patterns.
+"""Match file paths against glob patterns, and check that a cited line exists.
 
 A pattern uses three wildcards: `**` matches any number of folders, `*` matches
 any part of one name, and `?` matches one character. A pattern that ends in a
@@ -7,6 +7,33 @@ slash matches everything below that folder.
 
 import re
 from functools import lru_cache
+from pathlib import Path
+
+
+def read_inside(root: str, file: str) -> str | None:
+    """The text of root/file, or None when it is missing, unreadable, or outside root."""
+    try:
+        path = Path(root, file).resolve()
+        if not path.is_relative_to(Path(root).resolve()):
+            return None
+        return path.read_text()
+    except (OSError, UnicodeDecodeError, TypeError, ValueError):
+        return None
+
+
+def line_exists(root: str, file: str, line) -> bool:
+    """True when root/file has a line number `line`, counted from 1."""
+    text = read_inside(root, file)
+    return text is not None and isinstance(line, int) and 1 <= line <= len(text.splitlines())
+
+
+def name_exists(root: str, file: str, name: str) -> bool:
+    """True when root/file defines `name`: a function, a class, or an assignment."""
+    text = read_inside(root, file)
+    last = name.rsplit(".", 1)[-1]
+    return text is not None and bool(
+        re.search(rf"^\s*(?:async\s+def|def|class)\s+{re.escape(last)}\b"
+                  rf"|^\s*{re.escape(last)}\s*=", text, re.MULTILINE))
 
 
 @lru_cache(maxsize=512)

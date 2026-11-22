@@ -15,7 +15,9 @@ Words: a **finding** is one problem. It is `blocking` when the work must not go 
 End with one block. The lens says what goes under `items`, if anything.
 
 ```json
-{"verdict": "pass", "findings": [{"level": "major", "file": "src/app.py", "line": 12, "text": "one line"}], "items": []}
+{"verdict": "pass", "findings": [{"level": "major", "file": "src/app.py", "line": 12, "text": "the problem", "why": "why it matters", "fix": "the fix"}], "items": []}
 ```
+
+`why` and `fix` are one line each. Leave them out when the lens does not ask for them.
 
 `verdict` is `fail` when any finding is blocking. Otherwise it is `pass`.

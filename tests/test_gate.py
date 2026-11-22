@@ -132,6 +132,10 @@ class PlanTest(GateCase):
         super().setUp()
         self.build("x = 1\n" * 80, "src/big.py")  # tier 2
 
+    def failed(self, facts=None):
+        # A tier 2 try also needs a passed review; these tests check the plan alone.
+        return super().failed(facts or self.facts(review=True))
+
     def test_a_signed_plan_that_lists_the_ticket_passes(self):
         self.assertEqual(self.failed(), [])
 
@@ -218,6 +222,25 @@ class ReviewTest(GateCase):
             findings = gate.evaluate(self.facts(review=verdict))
             self.assertEqual([(f["check"], f["fixable"]) for f in findings],
                              [("review", False)], verdict)
+
+
+class Tier2ReviewTest(GateCase):
+    plan_required = False
+
+    def setUp(self):
+        super().setUp()
+        self.repo.git("checkout", "-q", "main")
+        self.repo.write(".tollgate/settings.json",
+                        self.settings(signers=[self.key], tier1={"max_files": 0, "max_lines": 0}))
+        self.repo.commit("every change is tier 2")
+        self.repo.git("checkout", "-q", "tg/T-1")
+        self.build("x = 1\n", "src/app.py")
+
+    def test_tier_2_needs_a_passed_review(self):
+        self.assertEqual(gate.tier_of(self.facts(review=True))[0], 2)
+        self.assertEqual(self.failed(self.facts(review=True)), [])
+        for verdict in (None, False):
+            self.assertEqual(self.failed(self.facts(review=verdict)), ["review"], verdict)
 
 
 class PassRecordTest(GateCase):

@@ -88,7 +88,7 @@ class ContainerTest(StateEnv):
         self.assertNotIn(".ssh", docker)
 
     def test_a_reviewer_and_the_advisor_mount_it_read_only(self):
-        for role in ("reviewer", "advisor"):
+        for role in ("reviewer", "advisor", "analyst"):
             mounts = [a for a in self.args(role) if a.endswith(":/work:ro")]
             self.assertEqual(mounts, [f"{self.copy}:/work:ro"])
         self.assertFalse([a for a in self.args("builder") if a.endswith(":ro")])

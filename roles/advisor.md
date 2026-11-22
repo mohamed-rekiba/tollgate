@@ -16,6 +16,13 @@ For a plan, the inputs hold `plan` and the open findings, and you pick one of:
 - `approve`: the plan may be locked and built.
 - `send_back`: the builder writes the plan again. Give the reason as the hint.
 
+When the plan asks questions under Assumptions, answer them in the hint and send it back, or approve it if its assumptions are right as they stand.
+
+For a checkpoint, the inputs hold `checkpoint` (`ticket` or `task`), the reason, and the ticket or the review of the whole task. You pick one of:
+
+- `continue`: the task goes on.
+- `stop`: the task stops here. Say why in the hint.
+
 ## Steps
 
 1. Read the reason and the last two tries. Done when you can say why it stopped.

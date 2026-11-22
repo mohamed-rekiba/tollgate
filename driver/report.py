@@ -58,7 +58,7 @@ def render(project: str, task: str) -> str:
              f"- Cost: {total} USD ({plan_cost} USD for the plan).",
              f"- Time: {history.minutes(all_events)} minutes from the first event to the last.",
              f"- Plan: {'locked' if any(e['event'] == 'plan_locked' for e in task_events) else 'not locked'}.",
-             ""]
+             _analysis_line(task_events), ""]
     if waiting:
         lines += [f"The task waits: {waiting[-1]['reason']}", ""]
     lines += ["| Ticket | State | Tier | Tries | Score | Cost USD | Minutes | Ready change | Why |",
@@ -72,7 +72,19 @@ def render(project: str, task: str) -> str:
     asked = sum(1 for e in advisor_events if e["event"] == "waiting_for_advisor")
     decided = sum(1 for e in advisor_events if e["event"] == "advisor_decided")
     lines += ["", f"The advisor was asked {asked} times and decided {decided} times."]
+    reviewed = [e for e in task_events if e["event"] == "task_reviewed"]
+    if reviewed:
+        lines += ["", "## The review of the whole task", "", reviewed[-1]["text"]]
     return "\n".join(lines) + "\n"
+
+
+def _analysis_line(task_events: list) -> str:
+    written = [e for e in task_events if e["event"] == "analysis_written"]
+    if not written:
+        return "- Analysis: not written."
+    missing = written[-1].get("not_found") or []
+    return ("- Analysis: written. Every citation was found." if not missing else
+            f"- Analysis: written. Not found, so made assumptions: {', '.join(missing)}.")
 
 
 # How each state looks in the picture: who acts, and the label over the title.

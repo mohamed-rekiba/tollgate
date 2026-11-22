@@ -15,7 +15,7 @@ Words: the **state folder** holds Tollgate's records outside the project, where 
 
 1. Read the project: its language, its test command, how it installs what the tests need, and any lint or type check.
 2. Find a way for the test command to write a JUnit XML report. Most test tools have a flag for it, for example `pytest --junitxml=report.xml` or `go test` with `go-junit-report`.
-3. Ask the user, in one message, only what you cannot find: the paths that need a review (tier 3), the paths that need a person (tier 4), and which SSH public key is theirs, if `~/.ssh/` holds more than one.
+3. Ask the user, in one message, only what you cannot find: the paths that need a security review (tier 3), the paths that need a person (tier 4), and which SSH public key is theirs, if `~/.ssh/` holds more than one.
 4. Write `.tollgate/settings.json`. Put the test command under `checks.tests` with its `report`. Leave `require_plan` at its default, `true`: a ticket of tier 2 or more then needs a plan that the task locked, and `/tollgate:task` writes and locks one. Set `isolation` to `"container"`, the default, when Docker runs on this machine; otherwise set it to `"sandbox"`.
 
 Done when the file holds the checks and the tiers. Show the user the file.

@@ -11,7 +11,7 @@ The six checks:
     locked_files  every locked file has its fingerprint at the try
     tier          the tier, from the files the try changes
     tests         every check passes and every locked test ran and passed
-    review        tier 3 and 4 need a passed review
+    review        tier 2 and up need a passed review
 
 Approvals are not checked here: the store checks them at merge.
 """
@@ -150,7 +150,7 @@ def evaluate(facts: Facts) -> list:
                 fail("tests", f"locked test failed: {test_id}")
 
     # Review.
-    if level >= 3 and facts.review_passed is not True:
+    if level >= 2 and facts.review_passed is not True:
         state_ = "did not run" if facts.review_passed is None else "failed"
         fail("review", f"tier {level} ({reason}) needs a passed review; the review {state_}")
 
@@ -271,7 +271,7 @@ def main(argv=None) -> int:
     parser.add_argument("--ticket", required=True)
     parser.add_argument("--results", required=True, help="results file from gate.checks")
     parser.add_argument("--review", choices=("passed", "failed"),
-                        help="the review verdict, for tier 3 and 4")
+                        help="the review verdict, for tier 2 and up")
     args = parser.parse_args(argv)
     review = {"passed": True, "failed": False}.get(args.review)
     try:
