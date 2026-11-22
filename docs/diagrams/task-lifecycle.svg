@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -134 1911 984" width="1911" height="984" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">The life of a task</title>
+<desc id="desc">A task is analyzed, planned, and approved, then each ticket is built in order: tests first, then tries at the gate until one passes or a stop sends it to the advisor. When every ticket is a ready change, a reviewer reads the whole task. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-134" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-24" y="-134" width="1911" height="984" fill="#ffffff"/>
+<rect x="-24" y="-134" width="1911" height="984" fill="url(#grid)"/>
+<g class="parent" data-state="tickets">
+<rect x="0.0" y="173.0" width="1435.2" height="486.0" rx="16" fill="#f9f6ff" fill-opacity="0.35" stroke="#8250df" stroke-width="1.3"/>
+<path d="M0.0,257.0 V189.0 Q0.0,173.0 16.0,173.0 H1419.2 Q1435.2,173.0 1435.2,189.0 V257.0 Z" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(14.0,185.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>
+<text x="40.0" y="198.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="14.0" y="225.0" font-size="14" font-weight="700" fill="#1f2328">Building the tickets</text>
+<text x="14.0" y="243.0" font-size="12" fill="#59636e">One at a time, in plan order</text>
+</g>
+<path class="transition" d="M19.0,51.5 L356.4,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M470.8,103.0 L470.8,117.0 Q470.8,129.0 458.8,129.0 L454.8,129.0 Q442.8,129.0 442.8,117.0 L442.8,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M557.2,51.5 L704.8,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M819.2,103.0 L819.2,117.0 Q819.2,129.0 807.2,129.0 L803.2,129.0 Q791.2,129.0 791.2,117.0 L791.2,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M905.6,41.5 L1020.2,41.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M1020.2,61.5 L905.6,61.5" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M805.2,0.0 L805.2,-20.0 Q805.2,-32.0 817.2,-32.0 L1552.4,-32.0 Q1564.4,-32.0 1564.4,-20.0 L1564.4,0.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M476.8,0.0 L476.8,-54.0 Q476.8,-66.0 488.8,-66.0 L1582.4,-66.0 Q1594.4,-66.0 1594.4,-54.0 L1594.4,0.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M1624.4,0.0 L1624.4,-88.0 Q1624.4,-100.0 1612.4,-100.0 L448.8,-100.0 Q436.8,-100.0 436.8,-88.0 L436.8,0.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M1221.0,51.5 L1494.0,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M1120.6,103.0 L1120.6,173.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<path class="transition" d="M34.0,378.5 L90.0,378.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M176.4,327.0 L176.4,313.0 Q176.4,301.0 188.4,301.0 L192.4,301.0 Q204.4,301.0 204.4,313.0 L204.4,327.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M290.8,378.5 L412.0,378.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M190.4,430.0 L190.4,617.0 Q190.4,629.0 202.4,629.0 L895.0,629.0 Q907.0,629.0 907.0,617.0 L907.0,597.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M612.8,378.5 L806.6,378.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M907.0,327.0 L907.0,307.0 Q907.0,295.0 895.0,295.0 L524.4,295.0 Q512.4,295.0 512.4,307.0 L512.4,327.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M1007.4,378.5 L1214.4,378.5" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<path class="transition" d="M921.0,430.0 L921.0,494.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M867.0,494.0 L867.0,474.0 Q867.0,462.0 855.0,462.0 L564.4,462.0 Q552.4,462.0 552.4,450.0 L552.4,430.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M806.6,545.5 L612.8,545.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M498.4,430.0 L498.4,494.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<path class="transition" d="M1435.2,236.0 L1582.4,236.0 Q1594.4,236.0 1594.4,224.0 L1594.4,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M1120.6,659.0 L1120.6,723.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<path class="transition" d="M1221.0,774.5 L1777.8,774.5 Q1789.8,774.5 1789.8,762.5 L1789.8,63.5 Q1789.8,51.5 1777.8,51.5 L1694.8,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="transition" d="M1020.2,774.5 L24.0,774.5" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<g class="initial"><circle cx="12.0" cy="51.5" r="7" fill="#1f2328"/></g>
+<g class="state" data-state="analyzing">
+<rect x="356.4" y="0.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(370.4,13.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
+<text x="396.4" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="370.4" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Analyzing</text>
+<text x="370.4" y="71.0" font-size="12" fill="#59636e">The analyst reads</text>
+<text x="370.4" y="88.0" font-size="12" fill="#59636e">the project</text>
+</g>
+<g class="state" data-state="planning">
+<rect x="704.8" y="0.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(718.8,13.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="744.8" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="718.8" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Planning</text>
+<text x="718.8" y="71.0" font-size="12" fill="#59636e">The builder writes it,</text>
+<text x="718.8" y="88.0" font-size="12" fill="#59636e">reviewers check it</text>
+</g>
+<g class="state" data-state="approval">
+<rect x="1020.2" y="0.0" width="200.8" height="103.0" rx="12" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3"/>
+<g transform="translate(1034.2,13.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="1060.2" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
+<text x="1034.2" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Plan approval</text>
+<text x="1034.2" y="71.0" font-size="12" fill="#59636e">The advisor approves</text>
+<text x="1034.2" y="88.0" font-size="12" fill="#59636e">or sends it back</text>
+</g>
+<g class="state" data-state="waits">
+<rect x="1494.0" y="0.0" width="200.8" height="103.0" rx="12" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3"/>
+<g transform="translate(1508.0,13.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
+<text x="1534.0" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">YOU</text>
+<text x="1508.0" y="53.0" font-size="14" font-weight="700" fill="#1f2328">The task waits</text>
+<text x="1508.0" y="71.0" font-size="12" fill="#59636e">For you; it starts again</text>
+<text x="1508.0" y="88.0" font-size="12" fill="#59636e">where it stopped</text>
+</g>
+<g class="initial"><circle cx="27.0" cy="378.5" r="7" fill="#1f2328"/></g>
+<g class="state" data-state="tests">
+<rect x="90.0" y="327.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(104.0,340.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="130.0" y="353.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="104.0" y="380.0" font-size="14" font-weight="700" fill="#1f2328">Writing the tests</text>
+<text x="104.0" y="398.0" font-size="12" fill="#59636e">One for each</text>
+<text x="104.0" y="415.0" font-size="12" fill="#59636e">must-have item</text>
+</g>
+<g class="state" data-state="building">
+<rect x="412.0" y="327.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(426.0,340.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 8l-4 4l4 4"/><path d="M15.5 8l4 4l-4 4"/><path d="M13.5 5.5l-3 13"/></g>
+<text x="452.0" y="353.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="426.0" y="380.0" font-size="14" font-weight="700" fill="#1f2328">Building</text>
+<text x="426.0" y="398.0" font-size="12" fill="#59636e">The builder builds</text>
+<text x="426.0" y="415.0" font-size="12" fill="#59636e">from the best try</text>
+</g>
+<g class="state" data-state="gate">
+<rect x="806.6" y="327.0" width="200.8" height="103.0" rx="12" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(820.6,340.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
+<text x="846.6" y="353.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">CHECK</text>
+<text x="820.6" y="380.0" font-size="14" font-weight="700" fill="#1f2328">At the gate</text>
+<text x="820.6" y="398.0" font-size="12" fill="#59636e">The checks run,</text>
+<text x="820.6" y="415.0" font-size="12" fill="#59636e">the gate judges</text>
+</g>
+<g class="state" data-state="ready">
+<rect x="1214.4" y="327.0" width="200.8" height="103.0" rx="12" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(1228.4,340.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="1254.4" y="353.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="1228.4" y="380.0" font-size="14" font-weight="700" fill="#1f2328">A ready change</text>
+<text x="1228.4" y="398.0" font-size="12" fill="#59636e">A signed pass record;</text>
+<text x="1228.4" y="415.0" font-size="12" fill="#59636e">it waits for a merge</text>
+</g>
+<g class="state" data-state="ticket_waits">
+<rect x="412.0" y="494.0" width="200.8" height="103.0" rx="12" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3"/>
+<g transform="translate(426.0,507.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
+<text x="452.0" y="520.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">YOU</text>
+<text x="426.0" y="547.0" font-size="14" font-weight="700" fill="#1f2328">The ticket waits</text>
+<text x="426.0" y="565.0" font-size="12" fill="#59636e">Parked, or a question;</text>
+<text x="426.0" y="582.0" font-size="12" fill="#59636e">the next one goes on</text>
+</g>
+<g class="state" data-state="advisor">
+<rect x="806.6" y="494.0" width="200.8" height="103.0" rx="12" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3"/>
+<g transform="translate(820.6,507.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="846.6" y="520.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
+<text x="820.6" y="547.0" font-size="14" font-weight="700" fill="#1f2328">The advisor decides</text>
+<text x="820.6" y="565.0" font-size="12" fill="#59636e">After a stop: retry,</text>
+<text x="820.6" y="582.0" font-size="12" fill="#59636e">stronger, split, or park</text>
+</g>
+<g class="state" data-state="reviewing">
+<rect x="1020.2" y="723.0" width="200.8" height="103.0" rx="12" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(1034.2,736.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
+<text x="1060.2" y="749.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">CHECK</text>
+<text x="1034.2" y="776.0" font-size="14" font-weight="700" fill="#1f2328">Reviewing the task</text>
+<text x="1034.2" y="794.0" font-size="12" fill="#59636e">A reviewer reads every</text>
+<text x="1034.2" y="811.0" font-size="12" fill="#59636e">ticket's change together</text>
+</g>
+<g class="final"><circle cx="12.0" cy="774.5" r="11" fill="#ffffff" stroke="#1f2328" stroke-width="2"/><circle cx="12.0" cy="774.5" r="6" fill="#1f2328"/></g>
+<rect x="347.5" y="133.0" width="218.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="456.8" y="146.8" text-anchor="middle" font-size="11" fill="#59636e">unreadable [fewer than 3 reads]</text>
+<rect x="571.2" y="41.5" width="119.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="631.0" y="55.3" text-anchor="middle" font-size="11" fill="#59636e">analysis written</text>
+<rect x="686.0" y="133.0" width="238.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="805.2" y="146.8" text-anchor="middle" font-size="11" fill="#59636e">findings answered [under 4 rounds]</text>
+<rect x="919.6" y="17.5" width="86.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="962.9" y="31.3" text-anchor="middle" font-size="11" fill="#59636e">review done</text>
+<rect x="926.2" y="65.5" width="73.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="962.9" y="79.3" text-anchor="middle" font-size="11" fill="#cf222e">sent back</text>
+<rect x="1080.6" y="-42.0" width="238.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1199.8" y="-28.2" text-anchor="middle" font-size="11" fill="#59636e">plan rewritten [after a send-back]</text>
+<rect x="952.6" y="-76.0" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="1025.6" y="-62.2" text-anchor="middle" font-size="11" fill="#cf222e">unreadable [3 times]</text>
+<rect x="899.8" y="-110.0" width="251.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1025.6" y="-96.2" text-anchor="middle" font-size="11" fill="#59636e">it runs again [skips finished steps]</text>
+<rect x="1235.0" y="41.5" width="245.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1357.5" y="55.3" text-anchor="middle" font-size="11" fill="#59636e">asked you [the advisor is a person]</text>
+<rect x="1087.2" y="128.0" width="66.8" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1120.6" y="141.8" text-anchor="middle" font-size="11" fill="#1a7f37">approved</text>
+<rect x="87.7" y="277.0" width="205.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="190.4" y="290.8" text-anchor="middle" font-size="11" fill="#59636e">rejected [fewer than 3 times]</text>
+<rect x="304.8" y="368.5" width="93.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="351.4" y="382.3" text-anchor="middle" font-size="11" fill="#59636e">tests locked</text>
+<rect x="455.9" y="619.0" width="185.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="548.7" y="632.8" text-anchor="middle" font-size="11" fill="#cf222e">stopped [rejected 3 times]</text>
+<rect x="663.1" y="368.5" width="93.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="382.3" text-anchor="middle" font-size="11" fill="#59636e">builder done</text>
+<rect x="649.9" y="285.0" width="119.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="709.7" y="298.8" text-anchor="middle" font-size="11" fill="#cf222e">failed [no stop]</text>
+<rect x="1021.4" y="368.5" width="179.0" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1110.9" y="382.3" text-anchor="middle" font-size="11" fill="#1a7f37">passed [score 70 or more]</text>
+<rect x="927.0" y="452.0" width="113.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="983.5" y="465.8" text-anchor="middle" font-size="11" fill="#cf222e">failed [a stop]</text>
+<rect x="636.7" y="452.0" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="465.8" text-anchor="middle" font-size="11" fill="#59636e">retry [tests locked]</text>
+<rect x="626.8" y="535.5" width="165.8" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="549.3" text-anchor="middle" font-size="11" fill="#59636e">park, split, or ask you</text>
+<rect x="293.6" y="452.0" width="198.8" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="393.0" y="465.8" text-anchor="middle" font-size="11" fill="#cf222e">stopped [cost limit reached]</text>
+<rect x="1508.2" y="159.5" width="172.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1594.4" y="173.3" text-anchor="middle" font-size="11" fill="#59636e">tickets done [one waits]</text>
+<rect x="1014.6" y="681.0" width="212.0" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1120.6" y="694.8" text-anchor="middle" font-size="11" fill="#1a7f37">tickets done [every one ready]</text>
+<rect x="1716.8" y="403.0" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1789.8" y="416.8" text-anchor="middle" font-size="11" fill="#59636e">the advisor stops it</text>
+<rect x="369.9" y="764.5" width="304.4" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="522.1" y="778.3" text-anchor="middle" font-size="11" fill="#1a7f37">reported [passed, or the advisor says go on]</text>
+<g class="ticket">
+<circle r="13" fill="#8250df" opacity="0.2"><animate attributeName="fill" values="#8250df;#8250df;#8250df;#1a7f37;#8250df;#8250df;#8250df;#1a7f37;#1a7f37;#1a7f37" keyTimes="0.0000;0.1417;0.2066;0.2622;0.3054;0.3446;0.4022;0.4800;0.5616;0.6031" calcMode="discrete" dur="14.87s" repeatCount="indefinite"/></circle>
+<circle r="6.5" fill="#8250df" stroke="#ffffff" stroke-width="2"><animate attributeName="fill" values="#8250df;#8250df;#8250df;#1a7f37;#8250df;#8250df;#8250df;#1a7f37;#1a7f37;#1a7f37" keyTimes="0.0000;0.1417;0.2066;0.2622;0.3054;0.3446;0.4022;0.4800;0.5616;0.6031" calcMode="discrete" dur="14.87s" repeatCount="indefinite"/></circle>
+<animateMotion path="M19.0,51.5 L356.4,51.5 L557.2,51.5 L704.8,51.5 L905.6,41.5 L1020.2,41.5 L1120.6,103.0 L1120.6,173.0 L34.0,378.5 L90.0,378.5 L290.8,378.5 L412.0,378.5 L612.8,378.5 L806.6,378.5 L1007.4,378.5 L1214.4,378.5 L1120.6,659.0 L1120.6,723.0 L1020.2,774.5 L24.0,774.5" keyPoints="0.0000;0.0000;0.0636;0.0636;0.1015;0.1293;0.1293;0.1691;0.1907;0.1907;0.2213;0.2345;0.2345;0.4782;0.4887;0.4887;0.5266;0.5495;0.5495;0.5873;0.6239;0.6239;0.6618;0.7008;0.7008;0.7714;0.7835;0.7835;0.8121;1.0000;1.0000;1.0000" keyTimes="0.0000;0.0235;0.1181;0.1417;0.1417;0.1830;0.2066;0.2066;0.2387;0.2622;0.2622;0.2819;0.3054;0.3054;0.3211;0.3446;0.3446;0.3786;0.4022;0.4022;0.4565;0.4800;0.4800;0.5380;0.5616;0.5616;0.5795;0.6031;0.6031;0.8823;0.9058;1.0000" calcMode="linear" dur="14.87s" repeatCount="indefinite"/>
+</g>
+</svg>

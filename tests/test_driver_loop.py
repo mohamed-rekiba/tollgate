@@ -68,6 +68,64 @@ class BuildTest(LoopCase):
         self.assertIn("Tollgate draws the SVG files", guide)
         self.assertEqual(diagram_guide("- [ ] I1 (must): shout returns capitals"), "")
 
+    def test_the_diagram_guide_holds_every_format(self):
+        from driver.driver import diagram_guide
+        guide = diagram_guide("- [ ] I1 (must): a sequence diagram of the login")
+        for kind in ("a flow", "a sequence diagram", "a state machine", "a scene"):
+            self.assertIn(f"## The format of {kind}", guide)
+
+    def test_the_driver_draws_a_sequence_or_state_spec_the_builder_wrote(self):
+        import json
+        import subprocess
+        import tempfile
+
+        from driver.driver import draw_diagrams
+        specs = {
+            "login": {"type": "sequence", "title": "Log in", "desc": "You log in.",
+                      "participants": [{"id": "you", "text": "You", "kind": "you"},
+                                       {"id": "site", "text": "The site", "kind": "server"}],
+                      "messages": [{"from": "you", "to": "site", "text": "log in"},
+                                   {"from": "site", "to": "you", "text": "welcome",
+                                    "reply": True}]},
+            "order": {"type": "state", "title": "An order", "desc": "An order is paid.",
+                      "states": [{"id": "start", "initial": True, "col": 0, "row": 0},
+                                 {"id": "paid", "text": "Paid", "col": 1, "row": 0,
+                                  "kind": "server"},
+                                 {"id": "end", "final": True, "col": 2, "row": 0}],
+                      "transitions": [{"from": "start", "to": "paid", "event": "pay"},
+                                      {"from": "paid", "to": "end", "event": "ship"}]},
+        }
+        for name, spec in specs.items():
+            with self.subTest(kind=spec["type"]), tempfile.TemporaryDirectory() as copy:
+                subprocess.run(["git", "init", "-q", copy], check=True)
+                src = Path(copy, "docs", "diagrams", "src")
+                src.mkdir(parents=True)
+                (src / f"{name}.json").write_text(json.dumps(spec))
+                folders, problem = draw_diagrams(copy)
+                self.assertEqual((folders, problem), (["docs/diagrams"], ""))
+                self.assertIn("<svg", Path(copy, "docs", "diagrams", f"{name}-dark.svg").read_text())
+
+    def test_a_spec_of_the_wrong_shape_is_a_problem_not_a_crash(self):
+        import json
+        import subprocess
+        import tempfile
+
+        from driver.driver import draw_diagrams
+        bad = [{"type": "state", "title": "t", "desc": "d", "states": ["x"]},
+               {"type": "sequence", "title": "t", "desc": "d", "participants": ["x"],
+                "messages": []},
+               {"title": "t", "desc": "d", "nodes": ["x"]}]
+        for spec in bad:
+            with self.subTest(kind=spec.get("type", "flow")), \
+                    tempfile.TemporaryDirectory() as copy:
+                subprocess.run(["git", "init", "-q", copy], check=True)
+                src = Path(copy, "docs", "diagrams", "src")
+                src.mkdir(parents=True)
+                (src / "bad.json").write_text(json.dumps(spec))
+                folders, problem = draw_diagrams(copy)
+                self.assertEqual(folders, ["docs/diagrams"])
+                self.assertIn("cannot be drawn", problem)
+
     def test_a_spec_that_cannot_be_drawn_fails_the_try(self):
         s = self.sample(builder="good diagram=bad")
         d, _ = driver(s)

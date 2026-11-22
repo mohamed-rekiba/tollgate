@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, an architecture picture, or icons. Never use Mermaid or a picture of text.
+description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, an architecture picture, or icons. Never use Mermaid or a picture of text.
 ---
 
 # Draw a diagram
@@ -26,6 +26,8 @@ The reader has never seen the project's code. Every word in the picture is for t
 ## Pick the kind
 
 - A process, steps, choices: a **flow**. See below.
+- One scenario between parts over time, such as a request between services or an API call: a **sequence**. See below.
+- One thing with a lifecycle, the states it is in and the events that move it, such as an order or a task: a **state machine**. See below.
 - The big picture: places, who holds what, what talks to what: a **scene**. See below.
 - Cloud infrastructure on AWS: a **flow** with AWS icons and AWS groups. See below.
 
@@ -49,6 +51,27 @@ The format, with every option, is at the top of `$TG/diagram/flow.py`. In short:
 - `edges`: arrows. `label` says what travels or why. `tone` is `pass` (green) or `fail` (red), always with a label. `dashed` is a side path. `loop` (left, right, above, below) is an arrow that goes back. `route` (vhv, vh, hv) picks where it bends.
 - `groups`: a border around boxes that belong together, such as "For each ticket".
 - `ticket`: one dot that travels a path of arrows, to show one thing moving through. At most once per diagram.
+
+## A sequence
+
+A UML sequence diagram: one scenario between parts, in time order. Set `"type": "sequence"`. The format, with every option, is at the top of `$TG/diagram/sequence.py`. In short:
+
+- `participants`: the parts, in a row across the top, each with a dashed lifeline down. `kind`, `icon`, `tag`, and `names` work as in a flow.
+- `messages`: one row each, top to bottom. A call is a solid arrow. `"reply": true` is a reply: a dashed arrow with an open head. A message to the same participant is a self-message. `text` says what is asked or sent; `tone` is `pass` or `fail`.
+- `activations`: a bar on a lifeline while that part is busy, from one message to another, counted from 0.
+- `frames`: a box around messages. `loop` repeats them, `alt` picks one of two or more ways, `opt` happens only when its guard holds. Write each guard as a plain condition; the brackets are added.
+- `"ticket": true`: one dot follows the messages in order.
+- About ten to fourteen messages. Split a longer scenario.
+
+## A state machine
+
+A UML state machine: the states one thing is in, and the events that move it. Set `"type": "state"`. The format, with every option, is at the top of `$TG/diagram/state.py`. In short:
+
+- `states`: boxes with round corners on a grid of `col` and `row`, with `kind` for who acts in that state. `"initial": true` is the start dot, `"final": true` the end ring.
+- `parent`: puts a state inside another one, one level deep. The outer state may have its own start dot.
+- `transitions`: arrows labeled with the `event`, then the `guard` in brackets, both optional. A transition from a state to itself is a loop, such as another try. `loop`, `route`, and `tone` work as in a flow; `shift` moves an arrow along a side so two arrows can share it.
+- `ticket`: one dot follows a path of transitions, such as the path that works.
+- About eight to twelve states. Name each for what is true while the thing waits there, such as "At the gate", not for a function.
 
 ## A scene
 

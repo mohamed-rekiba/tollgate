@@ -114,24 +114,29 @@ def diagram_guide(ticket_text: str) -> str:
     if "diagram" not in ticket_text.lower():
         return ""
     import diagram
-    from diagram import flow
+    from diagram import flow, sequence, state
     root = Path(__file__).resolve().parent.parent
     skill = (root / "skills" / "diagram" / "SKILL.md").read_text()
     return "\n\n".join([
         ("You write the spec in <folder>/src/<name>.json. Tollgate draws the SVG files from "
          "it after your try, so leave the build command and the SVG files to it."),
         skill, "## The format of a flow\n\n" + (flow.__doc__ or ""),
+        "## The format of a sequence diagram\n\n" + (sequence.__doc__ or ""),
+        "## The format of a state machine\n\n" + (state.__doc__ or ""),
         "## The format of a scene\n\n" + (diagram.__doc__ or "")])
 
 
+DIAGRAM_TYPES = ("flow", "sequence", "state", "scene")
+
+
 def _is_spec(path: Path) -> bool:
-    """A diagram spec: a JSON object with a diagram type or nodes. A file that does
-    not parse counts only inside a folder named for diagrams."""
+    """A diagram spec: a JSON object with a diagram type, or a flow's nodes. A file
+    that does not parse counts only inside a folder named for diagrams."""
     try:
         spec = json.loads(path.read_text())
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return path.exists() and "diagram" in path.parent.parent.name
-    return isinstance(spec, dict) and (spec.get("type") in ("flow", "scene") or "nodes" in spec)
+    return isinstance(spec, dict) and (spec.get("type") in DIAGRAM_TYPES or "nodes" in spec)
 
 
 def draw_diagrams(copy: str) -> tuple:
@@ -153,7 +158,7 @@ def draw_diagrams(copy: str) -> tuple:
     for folder in names:
         try:
             build(str(Path(copy, folder)))
-        except (aws.Missing, ValueError, KeyError, TypeError, IndexError,
+        except (aws.Missing, ValueError, KeyError, TypeError, IndexError, AttributeError,
                 json.JSONDecodeError, SystemExit) as err:
             return names, (f"the diagram spec in {folder}/src cannot be drawn: {err}. "
                            "Fix the spec; Tollgate draws the SVG files.")

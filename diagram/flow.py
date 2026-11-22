@@ -363,25 +363,32 @@ def route(e, boxes, lanes):
 SPEED, WAIT, REST = 240, 0.35, 1.4  # pixels a second; seconds at a box; seconds at the end
 
 
-def travel(spec, boxes, lanes, t):
+def travel(spec, boxes, lanes, t, arrow=None):
     """One dot that follows the ticket's path of arrows, then starts again.
 
     It runs along each arrow, waits where the arrow meets the next box, and
     jumps to the start of the next arrow. So it never sits on a box's text.
+    `arrow(a, b)` gives the points and the tone of the arrow from a to b; by
+    default, the flow's own edge.
     """
-    edges = {(e["from"], e["to"]): e for e in spec["edges"]}
+    if arrow is None:
+        edges = {(e["from"], e["to"]): e for e in spec["edges"]}
+
+        def arrow(a, b):
+            e = edges[(a, b)]
+            return route(e, boxes, lanes)[0], e.get("tone")
+
     wait = spec["ticket"].get("wait", {})
     base = t["kinds"]["ai"][0]
     points, marks, colors = [], [], []  # marks: (time, distance along the path)
     now, dist = 0.0, 0.0
     for n, (a, b) in enumerate(spec["ticket"]["path"]):
-        e = edges[(a, b)]
-        pts, _ = route(e, boxes, lanes)
+        pts, tone = arrow(a, b)
         if points:
             dist += abs(pts[0][0] - points[-1][0]) + abs(pts[0][1] - points[-1][1])
         points += pts
         marks.append((now, dist))  # the jump to this arrow takes no time
-        colors.append((now, t["tones"].get(e.get("tone"), base)))
+        colors.append((now, t["tones"].get(tone, base)))
         if n == 0:
             now += WAIT
             marks.append((now, dist))

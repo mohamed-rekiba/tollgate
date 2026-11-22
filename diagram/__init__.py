@@ -1,9 +1,13 @@
 """Diagrams as SVG, in a light and a dark theme, that people can read.
 
-Two kinds, chosen by "type" in the spec:
+Four kinds, chosen by "type" in the spec:
 
 - "flow" (the default): a flat blueprint flowchart. Steps in the standard
   flowchart shapes, arrows, groups, AWS icons. Format: diagram/flow.py.
+- "sequence": a UML sequence diagram. Participants across the top, messages
+  down the page in time order. Format: diagram/sequence.py.
+- "state": a UML state machine. States, and the events that move one thing
+  between them. Format: diagram/state.py.
 - "scene": an isometric picture of places and things, with lanes between
   them and one change that travels. Format below.
 
@@ -62,6 +66,15 @@ from diagram import flow, scene
 
 
 def draw(spec: dict, theme: str) -> str:
-    if spec.get("type") == "scene":
+    kind = spec.get("type", "flow")
+    if kind == "scene":
         return scene.from_spec(spec, theme)
+    if kind == "sequence":
+        from diagram import sequence
+        return sequence.draw(spec, theme)
+    if kind == "state":
+        from diagram import state
+        return state.draw(spec, theme)
+    if kind != "flow":
+        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, or scene")
     return flow.draw(spec, theme)
