@@ -240,7 +240,7 @@ Each project sits inside the home as a git submodule: a link from the home to th
 | You type | What happens |
 | --- | --- |
 | `/tollgate:home` | Creates the home in an empty folder. |
-| `/tollgate:home add <path or git address>` | Adds the project as a submodule under `projects/<name>`, and says whether it has Tollgate settings. |
+| `/tollgate:home add <path or git address>` | Adds the project as a submodule under `projects/<name>`, and says whether it has Tollgate settings. The home does not track which commit the project is on, so the project's own commits never show the home as changed. |
 | `/tollgate:home sync` | Copies the shared lenses into each project, on the branch `tollgate-sync`. You approve and merge each one. |
 | `/tollgate:inbox` | Lists every question that waits for you, across all projects. |
 
