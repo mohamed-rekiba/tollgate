@@ -377,6 +377,16 @@ class MergeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "lock"):
             self.store.merge(commit)
 
+    def test_a_pass_record_of_an_older_tollgate_must_pass_again(self):
+        commit = self.change()
+        record = self.pass_record(commit)
+        record.pop("base_commit")
+        record["at"] = "2026-11-01T00:00:00Z"
+        sign.write(state.path(str(self.repo.path), "passes", f"{commit}.json"), record,
+                   "tollgate-pass")
+        with self.assertRaisesRegex(StoreError, "older Tollgate.*pass the gate again"):
+            self.store.merge(commit)
+
     def test_refuses_with_no_pass(self):
         commit = self.change()
         with self.assertRaisesRegex(StoreError, "no verified pass record"):

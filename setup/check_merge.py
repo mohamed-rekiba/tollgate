@@ -133,6 +133,9 @@ def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> l
         return [f"ticket {ticket} has no lock that verifies, so its start cannot be checked"]
     if hashlib.sha256(path.read_bytes()).hexdigest() != record.get("lock_sha256"):
         return [f"ticket {ticket} was locked again after its pass record; it must pass again"]
+    if "base_commit" not in record:
+        return [(f"the pass record of ticket {ticket} was made by an older Tollgate, with no "
+                 "start; the change must pass the gate again")]
     start = record.get("base_commit")
     if not isinstance(start, str) or not start or lock.get("base_commit") != start:
         return [f"the pass record of ticket {ticket} names no start, or not its lock's start"]

@@ -291,6 +291,17 @@ class MergeCheckTest(Env):
         FakeStore(str(self.root)).merge(first)
         self.assertEqual(check_merge.check_commit(str(self.root), second), [])
 
+    def test_a_pass_record_of_an_older_tollgate_must_pass_again(self):
+        commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
+        self.record_pass(self.root, commit)
+        path = state.path(str(self.root), "passes", f"{commit}.json")
+        data = json.loads(path.read_text())
+        data.pop("base_commit")
+        sign.write(path, data, "tollgate-pass")
+        found = check_merge.check_commit(str(self.root), commit)
+        self.assertIn("older Tollgate", found[0])
+        self.assertIn("pass the gate again", found[0])
+
     def test_a_push_of_merges_that_passed_passes(self):
         commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
         self.record_pass(self.root, commit)

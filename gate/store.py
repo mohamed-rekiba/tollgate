@@ -152,6 +152,13 @@ class Store:
             raise mf.FreezeError(f"the ticket's commit does not build on {full[:12]}")
         return full
 
+    def _older_record(self, full: str) -> bool:
+        """True when the commit has a verified pass record of an older Tollgate: one
+        with every key but the start."""
+        found = self._read(state.path(self.project, "passes", f"{full}.json"), "tollgate-pass",
+                           PASS_KEYS - {"base_commit"}, full)
+        return bool(found and found.get("ticket"))
+
     def _check_start(self, found: dict, full: str) -> None:
         """Refuse a ticket unless its lock is there, names the same start as its pass
         record, and that start is on main. A ticket in a task builds on the ready change
@@ -386,6 +393,9 @@ class Store:
         if not full:
             raise StoreError(f"the project has no commit {commit!r}")
         found = self.passed(full)
+        if not found and self._older_record(full):
+            raise StoreError(f"the pass record of {full[:12]} was made by an older Tollgate, "
+                             "with no start; the change must pass the gate again")
         if not found:
             # A change made by hand has no ticket, so the gate cannot pass it. An owner
             # vouches for it with a signed approval instead. An AI ticket always needs a pass.
