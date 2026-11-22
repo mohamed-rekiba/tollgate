@@ -347,7 +347,7 @@ class Store:
         name = found["ticket"] or "change"
         try:
             git(folder, "merge", "-q", "--no-ff", "--no-edit", "-m",
-                f"merge({name}): {full[:12]} passed the gate at tier {tier}", full)
+                f"chore({name}): merge {full[:12]}, which passed the gate at tier {tier}", full)
         except GitError as err:
             subprocess.run(["git", "-C", folder, "merge", "--abort"], capture_output=True,
                            check=False)

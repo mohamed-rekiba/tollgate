@@ -277,6 +277,16 @@ class MergeTest(StoreCase):
         self.assertEqual(parents, [self.main, commit])
         self.assertFalse(state.path(str(self.repo.path), "passes", "ready", "T-1.json").exists())
 
+    def test_the_merge_commit_passes_the_commit_message_check(self):
+        # A project set up by /tollgate:init runs this check on the store's merge too.
+        from setup import check_commit_msg
+        commit = self.change()
+        self.store.record_pass(commit, self.pass_record(commit))
+        self.store.ready("tg/T-1-build", "T-1")
+        merged = self.store.merge(commit)
+        message = self.repo.git("log", "-1", "--format=%B", merged)
+        self.assertEqual(check_commit_msg.problems(message, in_merge=True), [])
+
     def test_refuses_with_no_pass(self):
         commit = self.change()
         with self.assertRaisesRegex(StoreError, "no verified pass record"):
