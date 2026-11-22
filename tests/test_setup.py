@@ -46,8 +46,12 @@ class Env(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
+        # A git identity, since a CI machine may have none and every commit needs one.
         patch = mock.patch.dict(os.environ, {"TOLLGATE_STATE": str(self.tmp / "state"),
-                                             "TOLLGATE_KEYS": str(self.tmp / "keys")})
+                                             "TOLLGATE_KEYS": str(self.tmp / "keys"),
+                                             "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "t@t",
+                                             "GIT_COMMITTER_NAME": "Test",
+                                             "GIT_COMMITTER_EMAIL": "t@t"})
         patch.start()
         self.addCleanup(patch.stop)
         # Docker is checked on its own, in DockerCheckTest.
