@@ -178,6 +178,7 @@ def pass_record(facts: Facts, score: int, at: str | None = None) -> dict:
         "commit": facts.head_sha,
         "ticket": facts.ticket,
         "tier": tier_of(facts)[0],
+        "base_commit": (facts.lock or {}).get("base_commit"),
         "lock_sha256": facts.lock_sha256,
         "checks": checks_of(findings),
         "score": score,

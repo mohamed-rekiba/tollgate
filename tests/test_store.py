@@ -81,7 +81,17 @@ class StoreCase(unittest.TestCase):
         return commit
 
     def pass_record(self, commit, tier=2, ticket="T-1"):
-        return {"commit": commit, "ticket": ticket, "tier": tier,
+        """A pass record, and a signed lock of the ticket from main when it has none."""
+        base = None
+        if ticket:
+            path = freeze.lock_path(str(self.repo.path), ticket)
+            if not path.exists():
+                sign.write(path, {"ticket": ticket, "base_commit": self.main, "commit": commit,
+                                  "number": 1, "at": "2026-11-22T00:00:00Z",
+                                  "manifest": {"files": {}, "tests": [], "keeps_behavior": []}},
+                           "tollgate-lock")
+            base = json.loads(path.read_text())["base_commit"]
+        return {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
                 "lock_sha256": freeze.lock_sha256(str(self.repo.path), ticket) if ticket else None,
                 "checks": {"tests": True}, "score": 100}
 
@@ -355,6 +365,17 @@ class MergeTest(StoreCase):
         self.approve(first)
         self.store.merge(first)
         self.assertTrue(self.store.merge(second))
+
+    def test_refuses_a_ticket_whose_lock_is_gone_or_names_another_start(self):
+        commit = self.change()
+        record = self.pass_record(commit)
+        self.store.record_pass(commit, dict(record, base_commit="0" * 40))
+        with self.assertRaisesRegex(StoreError, "not its lock's start"):
+            self.store.merge(commit)
+        self.store.record_pass(commit, record)
+        freeze.lock_path(str(self.repo.path), "T-1").unlink()
+        with self.assertRaisesRegex(StoreError, "lock"):
+            self.store.merge(commit)
 
     def test_refuses_with_no_pass(self):
         commit = self.change()

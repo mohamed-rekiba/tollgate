@@ -119,20 +119,24 @@ def keys_on_main(root, name: str) -> list:
 
 
 def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> list:
-    """A ticket's lock names the commit the ticket started from. In a task that is the
-    ready change before it, and the ticket's tier counts only its own files. So the
-    start must already be on main (onto), or it would come in with no check of its own."""
+    """A ticket's pass record and its lock both name the commit the ticket started
+    from. In a task that is the ready change before it, and the ticket's tier counts
+    only its own files. So the lock must be there, be the lock that passed, name the
+    same start as the record, and that start must already be on main (onto), or it
+    would come in with no check of its own. Anything else fails closed."""
     ticket = record.get("ticket")
     if not ticket:
         return []
     path = folder / "locks" / f"{ticket}.json"
-    if not path.exists():
-        return []
-    lock = read(path, "tollgate-lock", signers)
-    if lock is None or hashlib.sha256(path.read_bytes()).hexdigest() != record.get("lock_sha256"):
-        return []   # not the lock this record passed with: the store refuses that merge
-    start = str(lock.get("base_commit") or "")
-    if not start or git(root, "merge-base", "--is-ancestor", start, onto)[0] != 0:
+    lock = read(path, "tollgate-lock", signers) if path.exists() else None
+    if lock is None:
+        return [f"ticket {ticket} has no lock that verifies, so its start cannot be checked"]
+    if hashlib.sha256(path.read_bytes()).hexdigest() != record.get("lock_sha256"):
+        return [f"ticket {ticket} was locked again after its pass record; it must pass again"]
+    start = record.get("base_commit")
+    if not isinstance(start, str) or not start or lock.get("base_commit") != start:
+        return [f"the pass record of ticket {ticket} names no start, or not its lock's start"]
+    if git(root, "merge-base", "--is-ancestor", start, onto)[0] != 0:
         return [(f"ticket {ticket} builds on {start[:12]}, which is not on {MAIN}; merge the "
                  "ticket before it first")]
     return []

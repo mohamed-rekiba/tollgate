@@ -27,7 +27,7 @@ from gate import settings as st
 from gate.gitio import GitError, commit_of, fingerprint, git, show_bytes, worktree_of
 
 MAIN = "main"
-PASS_KEYS = {"commit", "ticket", "tier", "lock_sha256", "checks", "score", "at"}
+PASS_KEYS = {"commit", "ticket", "tier", "base_commit", "lock_sha256", "checks", "score", "at"}
 APPROVAL_KEYS = {"commit", "ticket", "approver", "at"}
 DECIDE_PREFIX = "tollgate decide "
 
@@ -152,19 +152,23 @@ class Store:
             raise mf.FreezeError(f"the ticket's commit does not build on {full[:12]}")
         return full
 
-    def _check_start(self, ticket: str, full: str) -> None:
-        """Refuse a ticket whose lock starts from a commit that is not on main yet. A
-        ticket in a task builds on the ready change before it, and its tier counts only
-        its own files, so it merges only after that change, with that change's own
-        tier and approval."""
+    def _check_start(self, found: dict, full: str) -> None:
+        """Refuse a ticket unless its lock is there, names the same start as its pass
+        record, and that start is on main. A ticket in a task builds on the ready change
+        before it, and its tier counts only its own files, so it merges only after that
+        change, with that change's own tier and approval. Anything else fails closed."""
+        ticket = found["ticket"]
         path = fz.lock_path(self.project, ticket)
         if not path.exists():
-            return
+            raise StoreError(f"ticket {ticket} has no lock, so its start cannot be checked")
         try:
             lock = sign.read(path, fz.NAMESPACE, self._signers())
         except sign.SignError as err:
             raise StoreError(f"the lock of {ticket} does not verify: {err}") from None
-        start = lock.get("base_commit") or ""
+        start = found.get("base_commit")
+        if not start or lock.get("base_commit") != start:
+            raise StoreError(f"the pass record of {ticket} names no start, or not its lock's "
+                             "start")
         if subprocess.run(["git", "-C", self.project, "merge-base", "--is-ancestor", start, MAIN],
                           capture_output=True, check=False).returncode:
             raise StoreError(f"{full[:12]} builds on {start[:12]}, which is not on {MAIN}; "
@@ -397,7 +401,7 @@ class Store:
             raise StoreError(f"the pass record of {full[:12]} is not for the current lock of "
                              f"{found['ticket']}")
         if found["ticket"]:
-            self._check_start(found["ticket"], full)
+            self._check_start(found, full)
         folder = worktree_of(self.project, MAIN)
         if not folder:
             raise StoreError(f"no worktree of the project has {MAIN} checked out")

@@ -92,10 +92,19 @@ class Env(unittest.TestCase):
         sh(root, "git", "checkout", "-q", "main")
         return head
 
-    def record_pass(self, root, commit, tier=2):
+    def record_pass(self, root, commit, tier=2, ticket="t1", base=None):
+        """A signed lock of the ticket, from base (main by default), and a pass record."""
+        import hashlib
+        base = base or sh(root, "git", "rev-parse", "main").stdout.strip()
+        lock = state.path(str(root), "locks", f"{ticket}.json")
+        sign.write(lock, {"ticket": ticket, "base_commit": base, "commit": commit, "number": 1,
+                          "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
+                          "at": "now"}, "tollgate-lock")
         path = state.path(str(root), "passes", f"{commit}.json")
-        sign.write(path, {"commit": commit, "ticket": "t1", "tier": tier, "lock_sha256": "x",
+        sign.write(path, {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
+                          "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
                           "checks": {"tests": True}, "score": 100, "at": "now"}, "tollgate-pass")
+        return lock
 
     def record_approval(self, root, commit, key=None):
         path = state.path(str(root), "approvals", f"{commit}.json")
@@ -238,8 +247,8 @@ class MergeCheckTest(Env):
         self.record_approval(self.root, commit)
         self.assertEqual(check_merge.check_commit(str(self.root), commit), [])
 
-    def test_a_ticket_that_builds_on_a_change_not_on_main_may_not_merge(self):
-        import hashlib
+    def chained(self):
+        """t1 on main's branch, and t2 that starts from t1 before t1 merges."""
         first = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
         sh(self.root, "git", "checkout", "-q", "-b", "t2", first)
         Path(self.root, "src/b.py").write_text("y = 2\n")
@@ -247,14 +256,34 @@ class MergeCheckTest(Env):
         sh(self.root, "git", "commit", "-q", "--no-verify", "-m", "feat(t2): b")
         second = sh(self.root, "git", "rev-parse", "HEAD").stdout.strip()
         sh(self.root, "git", "checkout", "-q", "main")
-        lock = state.path(str(self.root), "locks", "t2.json")
-        sign.write(lock, {"ticket": "t2", "base_commit": first, "commit": second, "number": 1,
+        return first, second
+
+    def test_a_chained_ticket_fails_closed_when_its_lock_is_gone_or_replaced(self):
+        first, second = self.chained()
+        lock = self.record_pass(self.root, second, tier=1, ticket="t2", base=first)
+        record = state.path(str(self.root), "passes", f"{second}.json")
+        lock.unlink()
+        self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
+        # Locked again, from main: the record's base no longer matches any lock.
+        main = sh(self.root, "git", "rev-parse", "main").stdout.strip()
+        sign.write(lock, {"ticket": "t2", "base_commit": main, "commit": second, "number": 2,
                           "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
                           "at": "now"}, "tollgate-lock")
-        path = state.path(str(self.root), "passes", f"{second}.json")
-        sign.write(path, {"commit": second, "ticket": "t2", "tier": 1, "checks": {"tests": True},
-                          "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
-                          "score": 100, "at": "now"}, "tollgate-pass")
+        self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
+        # A record with no base, for a lock that has one.
+        data = json.loads(record.read_text())
+        data.pop("base_commit")
+        sign.write(record, data, "tollgate-pass")
+        self.assertTrue(check_merge.check_commit(str(self.root), second))
+        # The push of a merge of t2 is refused too.
+        sh(self.root, "git", "merge", "-q", "--no-ff", "--no-verify", "-m", "chore(t2): merge",
+           second)
+        head = sh(self.root, "git", "rev-parse", "HEAD").stdout.strip()
+        self.assertTrue(check_merge.check_push(str(self.root), head, main, "refs/heads/main"))
+
+    def test_a_ticket_that_builds_on_a_change_not_on_main_may_not_merge(self):
+        first, second = self.chained()
+        self.record_pass(self.root, second, tier=1, ticket="t2", base=first)
         found = check_merge.check_commit(str(self.root), second)
         self.assertTrue(found and "is not on main" in found[0], found)
         # The push check reads main as it was before that merge.

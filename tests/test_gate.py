@@ -270,8 +270,9 @@ class PassRecordTest(GateCase):
     def test_a_passed_try_gets_a_record_in_the_contract_format(self):
         f = self.facts()
         record = gate.pass_record(f, 85, at="2026-11-22T11:00:00Z")
-        self.assertEqual(sorted(record), ["at", "checks", "commit", "lock_sha256", "score",
-                                          "ticket", "tier"])
+        self.assertEqual(sorted(record), ["at", "base_commit", "checks", "commit", "lock_sha256",
+                                          "score", "ticket", "tier"])
+        self.assertEqual(record["base_commit"], self.base)
         self.assertEqual(record["commit"], f.head_sha)
         self.assertEqual((record["ticket"], record["tier"], record["score"]), ("T-1", 1, 85))
         self.assertEqual(record["checks"], {name: True for name in gate.CHECKS})
