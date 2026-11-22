@@ -8,8 +8,8 @@ description: Draw a diagram as an SVG file in light and dark, one that a person 
 `TG` is the plugin root: two folders above this skill's base directory. The diagrams of a project live in one folder, `docs/diagrams/` unless the project already has another. Each diagram is a JSON spec in `<folder>/src/<name>.json`; the command draws `<name>.svg` and `<name>-dark.svg` next to it:
 
 ```sh
-PYTHONPATH="$TG" python3 -m diagram build docs/diagrams          # draw them all
-PYTHONPATH="$TG" python3 -m diagram build docs/diagrams --check  # 1 if one is out of date
+PYTHONPATH="$TG" python3 -P -m diagram build docs/diagrams          # draw them all
+PYTHONPATH="$TG" python3 -P -m diagram build docs/diagrams --check  # 1 if one is out of date
 ```
 
 ## Write for a person
@@ -63,7 +63,7 @@ An isometric picture: zones on the ground, objects on them, lanes with moving do
 
 - A node with `"aws": "s3"` (or `lambda`, `dynamodb`, `apigw`, `ecs`, or a name from AWS's package) shows the official AWS icon with its name under it.
 - A group with `"aws": "vpc"` draws AWS's own border and corner icon. Groups: `cloud`, `account`, `region`, `az`, `vpc`, `public subnet`, `private subnet`, `security group`, `auto scaling`, `data center`. Nest them in AWS's order: Cloud, Region, VPC, Availability Zone, subnet.
-- The first AWS diagram downloads the official package from AWS, once, into a cache on this machine. Nothing goes into git. If there is no network, tell the person to download it from https://aws.amazon.com/architecture/icons/ and run `PYTHONPATH="$TG" python3 -m setup.aws_icons --zip <file>`.
+- The first AWS diagram downloads the official package from AWS, once, into a cache on this machine. Nothing goes into git. If there is no network, tell the person to download it from https://aws.amazon.com/architecture/icons/ and run `PYTHONPATH="$TG" python3 -P -m setup.aws_icons --zip <file>`.
 - AWS allows its icons in architecture diagrams, unchanged. Never crop, recolor, rotate, or redraw one.
 
 ## Check it

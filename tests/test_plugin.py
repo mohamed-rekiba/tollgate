@@ -1,6 +1,7 @@
 """Tests for the plugin manifest and the catalog."""
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -85,6 +86,15 @@ class PluginManifestTest(unittest.TestCase):
         bad = re.compile(r"github|\bgh\b|pull request|workflow|\bissues?\b", re.IGNORECASE)
         for skill in sorted((ROOT / "skills").glob("*/SKILL.md")):
             self.assertIsNone(bad.search(skill.read_text()), skill)
+
+    def test_a_skill_runs_the_plugin_code_not_the_project_code(self):
+        # A skill runs Python from the project folder. Without -P, Python puts that
+        # folder first on the import path, and a project with its own driver/ or
+        # gate/ package would run its code instead of the plugin's.
+        run = re.compile(r'PYTHONPATH="\$TG"\s+python3\s+(?!-P\s)')
+        for skill in sorted((ROOT / "skills").glob("*/SKILL.md")):
+            for n, line in enumerate(skill.read_text().splitlines(), 1):
+                self.assertIsNone(run.search(line), f"{skill.parent.name}:{n}: {line.strip()}")
 
 
 if __name__ == "__main__":

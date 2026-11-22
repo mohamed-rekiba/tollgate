@@ -5,7 +5,7 @@ description: Create or manage a Tollgate home: one git repository on this machin
 
 # Manage a home
 
-`TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m <module>` from the home folder.
+`TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -P -m <module>` from the home folder.
 
 Words: a **home** is a git repository with a list of projects. Each project is a git submodule: a link from the home to the project's own repository. The **shared rules** are the lens files in the home's `rules/lenses/`.
 
