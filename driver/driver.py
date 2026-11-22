@@ -28,6 +28,7 @@ session (the step file, run/step.json, says which), 1 an error.
 """
 
 import argparse
+import fcntl
 import json
 import os
 import subprocess
@@ -70,19 +71,36 @@ class TicketLock:
         self.path = str(path)
 
     def acquire(self):
+        """The lock appears whole, with its pid, in one step: a link to a file that
+        already holds the pid. Only one process at a time may clear a stale lock,
+        and it clears it only if it still names the same dead process."""
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        for _ in range(2):
-            try:
-                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            except FileExistsError:
-                if _alive(_pid_in(self.path)):
-                    raise Busy(f"another driver holds {self.path}") from None
-                os.unlink(self.path)  # stale: its process is gone
-                continue
-            os.write(fd, str(os.getpid()).encode())
-            os.close(fd)
-            return self
+        for _ in range(3):
+            if self._link():
+                return self
+            pid = _pid_in(self.path)
+            if _alive(pid):
+                raise Busy(f"another driver holds {self.path}")
+            with open(f"{self.path}.guard", "a") as guard:
+                fcntl.flock(guard, fcntl.LOCK_EX)
+                if os.path.exists(self.path) and _pid_in(self.path) == pid:
+                    os.unlink(self.path)  # stale: its process is gone
         raise Busy(f"could not take {self.path}")
+
+    def _link(self) -> bool:
+        tmp = f"{self.path}.{os.getpid()}.tmp"
+        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o644)
+        try:
+            os.write(fd, str(os.getpid()).encode())
+        finally:
+            os.close(fd)
+        try:
+            os.link(tmp, self.path)
+            return True
+        except FileExistsError:
+            return False
+        finally:
+            os.unlink(tmp)
 
     def release(self):
         if _pid_in(self.path) == os.getpid():
