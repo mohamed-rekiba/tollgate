@@ -24,7 +24,8 @@ Then the tickets merge in plan order, as far as auto merge and their tiers allow
 When the first review of the whole task finds a blocking or major problem, the
 task runs one fix round: the builder changes the plan with the findings as its
 hint, the plan is reviewed, approved, and locked again, and the new tickets are
-built. A second failed review goes to the task checkpoint.
+built. A second failed review parks the task, and nothing merges, whatever the
+advisor says. A ticket that does not end ready stops the tickets after it.
 
 Exit codes: 0 every ticket is a ready change or merged, 3 something waits for the
 advisor, 4 another driver holds the task, 5 a role waits for your session (see
@@ -317,9 +318,11 @@ class Task:
                 raise session.Pause(session.read_step(self.project) or {"role": "role"})
             self.log.add("ticket_done", ticket=tid, code=code)
             done[tid] = code
-            if code == 0:
-                self.ticket_checkpoint(tid)
-                start = self.ready_commit(tid) or start
+            if code != 0:
+                # Each later ticket builds on this one, so none starts without it.
+                break
+            self.ticket_checkpoint(tid)
+            start = self.ready_commit(tid) or start
         return done
 
     def ready_commit(self, tid: str) -> str:
@@ -337,8 +340,8 @@ class Task:
     def review_task(self) -> bool:
         """The review lens reads every ticket's change together, against the plan. Return
         True when the task may merge. A blocking or major finding in the first round
-        starts the fix round instead, and returns False. After it, a blocking finding,
-        or the task checkpoint, goes to the advisor."""
+        starts the fix round instead, and returns False. After it, such a finding parks
+        the task with no merge. A clean review still meets the task checkpoint."""
         round_no = self.fix_rounds()
         found = [e for e in read(self.log_path)
                  if e["event"] == "task_reviewed" and e.get("round", 0) == round_no]
@@ -371,11 +374,15 @@ class Task:
             self.log.add("task_reviewed", round=round_no, passed=passed, findings=findings,
                          text=text, tickets=reviewed, cost_usd=roles.add_cost(*cost))
         open_findings = [f for f in findings if f.get("level") in OPEN_LEVELS]
-        if (not passed or open_findings) and round_no < FIX_ROUNDS:
-            self.amend_plan(open_findings or findings)
-            return False
-        if (not passed or "task" in self.settings["checkpoints"]) \
-                and not self.passed_checkpoint("task"):
+        if not passed or open_findings:
+            if round_no < FIX_ROUNDS:
+                self.amend_plan(open_findings or findings)
+                return False
+            # The merges are held until the review passes: no advisor lets them through.
+            raise Parked("the review of the whole task still finds problems after the fix "
+                         "round, so nothing merges. Read the report, then fix it by hand or "
+                         "start a new task")
+        if "task" in self.settings["checkpoints"] and not self.passed_checkpoint("task"):
             self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
         return True
 
@@ -496,7 +503,8 @@ class Task:
         except session.Pause:
             return 5
         except Parked as parked:
-            Log(self.log_path, task=self.id).add("task_waiting", reason=str(parked))
+            with Log(self.log_path, task=self.id) as log:
+                log.add("task_waiting", reason=str(parked))
             report.write(self.project, self.id)
             return 3
         finally:

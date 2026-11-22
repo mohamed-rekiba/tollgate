@@ -123,7 +123,7 @@ The driver decides each step, the gate scores each try, and the store signs and 
 - **Session mode**, the default: your own Claude Code session runs each role as one of Tollgate's subagents. The task skill asks the driver for the next step, starts the subagent it names, and hands back its answer, until the task is done or a question waits for you. You see each step, and the roles use your own Claude Code login.
 - **Background mode**: the driver starts each role as its own process, in Docker or Claude Code's sandbox, so you can close Claude Code. A roadmap always runs this way.
 
-In a task, each ticket builds on the ready change before it, and nothing merges until a reviewer has read the whole task. If that review finds a problem, the task runs one fix round: the plan gets new tickets for the problem, is approved and locked again, and the new tickets are built. Then the tickets merge in plan order.
+In a task, each ticket builds on the ready change before it, and nothing merges until a reviewer has read the whole task. If that review finds a problem, the task runs one fix round: the plan gets new tickets for the problem, is approved and locked again, and the new tickets are built. Then the tickets merge in plan order. If the review still finds a problem after the fix round, the task parks and nothing merges.
 
 In both modes a stopped task picks up where it stopped, and a question waits in the state folder until you answer it. [docs/design.md](docs/design.md#two-ways-to-run-the-roles) has the details, and what each mode protects.
 

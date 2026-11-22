@@ -36,7 +36,7 @@ Steps 4 to 6 repeat for each ticket. Each ticket starts from the ready change of
 
 ### The fix round
 
-When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. If that review fails too, the task checkpoint asks the advisor, and a stop parks the task.
+When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. If that review still finds a blocking or major problem, the task parks and nothing merges, whatever the advisor would say: the merges wait until the review passes. A ticket that does not end ready, parked or stopped, stops the tickets after it, since each builds on the one before.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/task-lifecycle-dark.svg">

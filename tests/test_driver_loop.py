@@ -392,13 +392,14 @@ class TaskTest(LoopCase):
         self.assertIn("- Analysis: written. Every citation was found.", text)
         self.assertIn("## The review of the whole task\n\nPassed. Tier 2.", text)
 
-    def test_a_blocking_finding_in_the_task_review_goes_to_the_advisor(self):
-        s, task = self.task(checkpoints=[], reviewer="ok block=review", advisor="ok checkpoint=stop")
+    def test_a_blocking_finding_after_the_fix_round_parks_the_task(self):
+        s, task = self.task(checkpoints=[], reviewer="ok block=review", advisor="ok")
         # The sample tickets are tier 1, so only the review of the whole task blocks.
         self.assertEqual(task.run(), 3)
-        reviewed = next(e for e in s.log("task-demo") if e["event"] == "task_reviewed")
-        self.assertFalse(reviewed["passed"])
-        self.assertIn("checkpoint_stopped", s.events("task-demo"))
+        reviewed = [e for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual([e["passed"] for e in reviewed], [False, False])
+        self.assertIn("fix_round", s.events("task-demo"))
+        self.assertNotIn("checkpoint_passed", s.events("task-demo"))
 
 
     def test_an_analysis_that_cannot_be_read_parks_the_task(self):
@@ -464,16 +465,26 @@ class FixRoundTest(LoopCase):
         lock = json.loads(state.path(str(s.project), "locks", "demo-3.json").read_text())
         self.assertEqual(lock["base_commit"], self.ready(s, "demo-2"))
 
-    def test_a_second_failure_parks_at_the_checkpoint_and_nothing_merges(self):
-        s, store, task = self.task(reviewer="ok taskmajor=2", advisor="ok checkpoint=stop",
+    def test_a_second_failure_parks_and_nothing_merges_whatever_the_advisor_says(self):
+        s, store, task = self.task(reviewer="ok taskmajor=2", advisor="ok checkpoint=continue",
                                    auto_merge=True)
         self.assertEqual(task.run(), 3)
-        events = s.events("task-demo")
+        log = s.log("task-demo")
+        events = [e["event"] for e in log]
         self.assertEqual(events.count("fix_round"), 1)
-        self.assertIn("checkpoint_stopped", events)
+        self.assertFalse([e for e in log if e.get("checkpoint") == "task"
+                          or e.get("name") == "task"])
+        waiting = [e for e in log if e["event"] == "task_waiting"][-1]
+        self.assertIn("after the fix round", waiting["reason"])
         self.assertEqual(store.merged, [])
         for tid in ("demo-1", "demo-2", "demo-3"):
             self.assertEqual(s.events(tid)[-1], "waiting_for_merge")
+
+    def test_the_tickets_stop_at_the_first_that_does_not_end_ready(self):
+        s, _, task = self.task(builder="same", advisor="ok decision=park")
+        self.assertEqual(task.run(), 3)
+        self.assertIn("parked", s.events("demo-1"))
+        self.assertEqual(s.log("demo-2"), [])
 
     def test_no_ticket_merges_before_the_task_review_passes(self):
         s, store, task = self.task(reviewer="ok taskmajor=1", auto_merge=True)

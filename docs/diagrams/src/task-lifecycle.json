@@ -1,7 +1,7 @@
 {
  "type": "state",
  "title": "The life of a task",
- "desc": "A task is analyzed, planned, and approved, then each ticket is built in order, each from the ready change before it: tests first, then tries at the gate until one passes or a stop sends it to the advisor. Every ready change is held. When every ticket is ready, a reviewer reads the whole task. Problems in the first review start one fix round: the plan gets new tickets, is approved and locked again, and the new tickets are built. Once the review passes, the tickets merge in plan order. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.",
+ "desc": "A task is analyzed, planned, and approved, then each ticket is built in order, each from the ready change before it: tests first, then tries at the gate until one passes or a stop sends it to the advisor. Every ready change is held. When every ticket is ready, a reviewer reads the whole task. Problems in the first review start one fix round: the plan gets new tickets, is approved and locked again, and the new tickets are built. Problems in the second review park the task with no merge. Once the review passes, the tickets merge in plan order. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.",
  "names": {
   "server": "Store"
  },
@@ -319,9 +319,10 @@
   {
    "from": "reviewing",
    "to": "waits",
-   "event": "the advisor stops it",
+   "event": "still problems",
    "loop": "right",
-   "guard": "after the fix round"
+   "guard": "after the fix round",
+   "tone": "fail"
   },
   {
    "from": "reviewing",
@@ -339,7 +340,7 @@
    "from": "reviewing",
    "to": "merging",
    "event": "passed",
-   "guard": "or the advisor says go on",
+   "guard": "and the checkpoint says go on",
    "tone": "pass",
    "loop": "below"
   },
