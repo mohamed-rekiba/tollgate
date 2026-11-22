@@ -59,7 +59,7 @@ In the picture above, three loops send each problem back to the step that can fi
   <img alt="Two layers enforce the rules: Claude Code hooks and permission rules refuse a bad tool call, then pre-commit checks each commit, merge, and push" src="docs/diagrams/two-layers.svg">
 </picture>
 
-1. **Claude Code hooks and policies.** Each role runs with a policy: permission rules that deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. A hook checks each tool call again, and refuses a push, a merge into main, and `--no-verify`. The plugin's hook guards your own session too.
+1. **Claude Code hooks and policies.** Each role runs with a policy: permission rules that deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. A hook checks each tool call again, and refuses a merge into main and `--no-verify`. A role never pushes. The plugin's hook guards your own session too: you may push a branch for review, but never main. A Tollgate subagent gets its role's rules from its subagent type.
 2. **pre-commit.** In git, pre-commit runs Tollgate's checks before each commit, merge, and push. A commit may not change a locked file. A merge into main needs a pass record, and an approval for tier 3 and 4. A push to main needs the same for each merge on it.
 
 The gate and the signed records are the real checks. They hold even when a role gets past its hook.
