@@ -1,7 +1,7 @@
 {
  "type": "scene",
  "title": "How Tollgate works, with its three feedback loops",
- "desc": "An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own room. At the gate, the tests run: on a fail, what failed goes back to the builder; when it is stuck, the advisor decides; on a pass, the barrier lifts and the change goes into main. The retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails once, then passes.",
+ "desc": "An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are written and locked before any code. The AI builds in its own copy of the project. At the gate, the tests and reviewers check each try: below 70%, it goes back and the AI tries again from its best try; after 3 tries, the advisor decides; at 70% or more, the barrier lifts and the change goes into main. After the task, up to 3 lessons become rules for the next one. A dot shows one change travelling: it fails once, then passes.",
  "size": [
   1180,
   720
@@ -14,7 +14,7 @@
  "grid": 520,
  "caption": [
   "How Tollgate works",
-  "three loops: check the plan, build until the tests pass, learn"
+  "three loops: check the plan, try until it scores 70%, learn"
  ],
  "lanes": [
   {
@@ -58,7 +58,7 @@
      -274
     ]
    ],
-   "label": "failed: back to the AI",
+   "label": "below 70%: try again",
    "at": 0.66,
    "tone": "fail"
   },
@@ -77,7 +77,7 @@
      170
     ]
    ],
-   "label": "lessons tighten the rules",
+   "label": "lessons become rules",
    "at": 0.72,
    "side": true
   },
@@ -92,7 +92,7 @@
      -84
     ]
    ],
-   "label": "stuck",
+   "label": "after 3 tries",
    "side": true
   },
   {
@@ -281,7 +281,7 @@
     40
    ],
    "head": "The gate",
-   "sub": "opens when the tests pass",
+   "sub": "opens at a score of 70%",
    "anchor": "start"
   },
   {
@@ -290,8 +290,8 @@
     -20,
     -18
    ],
-   "head": "When stuck",
-   "sub": "a second AI, or you, decides",
+   "head": "After 3 tries",
+   "sub": "the advisor: a second AI, or you",
    "anchor": "middle"
   },
   {
@@ -340,7 +340,7 @@
     40,
     70
    ],
-   "head": "Look back",
+   "head": "Mistakes become rules",
    "sub": "at most 3 lessons",
    "anchor": "start"
   }

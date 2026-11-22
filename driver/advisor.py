@@ -1,61 +1,76 @@
-"""Ask a person on the server, and read the answer.
+"""Ask a person through the store, and read the answer.
 
-The driver opens one issue with the label tg-waiting for each open question. A
-person answers with a comment whose first line is
+The driver writes one question in the state folder for each decision a person
+makes. You answer it with the store, for example from the inbox skill:
 
     tollgate decide <decision> [a hint for the builder]
 
-Only a user named under `approvers` in the settings counts. The driver reads the
-answer when it starts again, so a question never blocks other tickets.
+The store keeps the answer as {decision, hint, at}. The driver reads the answer
+when it starts again, so a question never blocks other tickets.
 """
 
+import json
 import re
 
 from driver import history
 from driver.log import read
+from gate import state
+from gate.store import StoreError
 
-DECIDE = re.compile(r"^tollgate decide ([a-z_]+)\b[ \t]*(.*)$")
-WAITING_LABEL = "tg-waiting"
+DECIDE = re.compile(r"^(?:tollgate decide )?([a-z_]+)\b[ \t]*(.*)$")
 
 
 class Waiting(Exception):
-    """The question is open on the server."""
+    """The question waits for a person."""
 
 
-def first_decision(comments: list, approvers: list) -> dict | None:
-    """comments: [{"user", "user_type", "body"}] oldest first. The newest valid answer wins."""
-    for c in reversed(comments):
-        if c.get("user_type") != "User" or c.get("user") not in approvers:
-            continue
-        first = (c.get("body") or "").strip().splitlines()[:1]
-        m = DECIDE.match(first[0].strip()) if first else None
-        if m:
-            return {"decision": m.group(1), "hint": m.group(2).strip(), "by": c["user"]}
+def parse_answer(answer) -> dict | None:
+    """{decision, hint} from an answer: a structured answer, or the text
+    `tollgate decide <decision> [hint]`. None when there is no decision."""
+    if isinstance(answer, dict) and answer.get("decision"):
+        return {"decision": str(answer["decision"]), "hint": str(answer.get("hint") or "")}
+    text = answer.get("body", "") if isinstance(answer, dict) else answer
+    if not isinstance(text, str):
+        return None
+    first = text.strip().splitlines()[:1]
+    m = DECIDE.match(first[0].strip()) if first else None
+    return {"decision": m.group(1), "hint": m.group(2).strip()} if m else None
+
+
+def question(store, n: int) -> dict | None:
+    """Question n, open or closed, or None."""
+    if hasattr(store, "question"):
+        return store.question(n)
+    for name in (f"{n}.json", f"{n}.closed.json"):
+        path = state.path(store.project, "questions", name)
+        if path.exists():
+            return json.loads(path.read_text())
     return None
 
 
 def pending(log_path: str) -> dict | None:
-    """The open question in this log, or None: {"issue", "reason"}."""
+    """The open question in this log, or None: {"question", "reason"}."""
     return history.open_question(read(log_path))
 
 
-def ask_person(server, log, log_path: str, subject: str, reason: str, options: list,
-               approvers: list) -> dict:
-    """Return the person's decision, or raise Waiting after opening the question."""
-    question = history.open_question(read(log_path))
-    open_issue = question["issue"] if question else None
-    if open_issue:
-        found = first_decision(server.issue_comments(open_issue), approvers)
-        if found and found["decision"] in options:
-            server.close_question(open_issue)
-            log.add("advisor_decided", by="person", issue=open_issue, decision=found["decision"],
-                    hint=found["hint"], person=found["by"])
-            return found
-        log.add("still_waiting", issue=open_issue)
-        raise Waiting(f"issue {open_issue} waits for a decision")
-    body = (f"{reason}\n\nAnswer with a comment whose first line is one of:\n\n"
-            + "\n".join(f"    tollgate decide {o} [hint]" for o in options)
-            + "\n\nOnly a user named under `approvers` in the settings counts.")
-    issue = server.ask(f"tollgate: {subject} waits for a decision", body)
-    log.add("waiting_for_advisor", by="person", issue=issue, reason=reason, options=options)
-    raise Waiting(f"asked in issue {issue}")
+def ask_person(store, log, log_path: str, subject: str, reason: str, options: list) -> dict:
+    """Return the person's decision, or raise Waiting after writing the question."""
+    asked = history.open_question(read(log_path))
+    if asked:
+        n = asked["question"]
+        found = question(store, n) or {}
+        decision = parse_answer(found.get("answer"))
+        if decision and decision["decision"] in options:
+            try:
+                store.close_question(n)
+            except StoreError:
+                pass  # a closed question stays closed
+            log.add("advisor_decided", by="person", question=n, **decision)
+            return decision
+        log.add("still_waiting", question=n)
+        raise Waiting(f"question {n} waits for a decision")
+    body = (f"{reason}\n\nAnswer with one of:\n\n"
+            + "\n".join(f"    tollgate decide {o} [hint]" for o in options))
+    n = store.ask(f"tollgate: {subject} waits for a decision", body, options)
+    log.add("waiting_for_advisor", by="person", question=n, reason=reason, options=options)
+    raise Waiting(f"asked in question {n}")

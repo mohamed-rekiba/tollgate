@@ -1,14 +1,15 @@
 """Tests for the Minutes column of the status table and the task report."""
 
 import json
+import os
 import tempfile
 import unittest
-from pathlib import Path
+from unittest import mock
 
 from driver import report
 
-OLD_REPORT_HEAD = ["Ticket", "State", "Tier", "Attempts", "Score", "Cost USD", "Pull request", "Why"]
-OLD_STATUS_HEAD = ["Task", "Ticket", "State", "Tier", "Attempts", "Score", "Cost USD", "Pull request"]
+OLD_REPORT_HEAD = ["Ticket", "State", "Tier", "Tries", "Score", "Cost USD", "Ready change", "Why"]
+OLD_STATUS_HEAD = ["Task", "Ticket", "State", "Tier", "Tries", "Score", "Cost USD", "Ready change"]
 
 
 def ev(event, at=None, **fields):
@@ -26,23 +27,26 @@ class MinutesTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.p = self.tmp.name
+        self.p = os.path.join(self.tmp.name, "project")
+        os.mkdir(self.p)
+        patch = mock.patch.dict(os.environ, {"TOLLGATE_STATE": os.path.join(self.tmp.name, "state")})
+        patch.start()
+        self.addCleanup(patch.stop)
         # t-a: 3 minutes (10:02 to 10:05). t-b: 100 seconds (10:08:20 to 10:10:00, rounds up to 2). Task spans 10 minutes.
         self.write("task-demo", [ev("plan_locked", "2026-01-01T10:00:00Z", task="demo")])
         self.write("t-a", [
-            ev("attempt_failed", "2026-01-01T10:02:00Z", ticket="t-a", task="demo", attempt=1, score=50, tier=1),
-            ev("attempt_passed", "2026-01-01T10:03:00Z", ticket="t-a", task="demo", attempt=2, score=100, tier=1),
-            ev("pr_opened", "2026-01-01T10:05:00Z", ticket="t-a", task="demo", pr=5, commit="c"),
+            ev("try_failed", "2026-01-01T10:02:00Z", ticket="t-a", task="demo", attempt=1, score=50, tier=1),
+            ev("try_passed", "2026-01-01T10:03:00Z", ticket="t-a", task="demo", attempt=2, score=100, tier=1),
+            ev("ready", "2026-01-01T10:05:00Z", ticket="t-a", task="demo", commit="c" * 40),
         ])
         self.write("t-b", [
-            ev("attempt_failed", "2026-01-01T10:08:20Z", ticket="t-b", task="demo", attempt=1, score=10, tier=2),
+            ev("try_failed", "2026-01-01T10:08:20Z", ticket="t-b", task="demo", attempt=1, score=10, tier=2),
             ev("stopped", "2026-01-01T10:09:30Z", ticket="t-b", task="demo", reason="why not"),
             ev("task_marker", "2026-01-01T10:10:00Z", ticket="t-b", task="demo"),
         ])
 
     def write(self, name, events):
-        path = Path(self.p, ".tollgate/logs", f"{name}.jsonl")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path = report.logs_dir(self.p) / f"{name}.jsonl"
         path.write_text("".join(json.dumps(e) + "\n" for e in events))
 
     def table(self, text, first_cell):
@@ -68,7 +72,7 @@ class MinutesTest(unittest.TestCase):
         i = head.index("Cost USD")
         self.assertEqual(head[i + 1], "Minutes")
         self.assertEqual(len(sep), len(head))
-        self.assertEqual(head[i + 2], "Pull request")
+        self.assertEqual(head[i + 2], "Ready change")
         by_ticket = {r[1]: r for r in body}
         self.assertEqual(by_ticket["t-a"][i + 1], "3")
         self.assertEqual(by_ticket["t-b"][i + 1], "2")
@@ -94,8 +98,8 @@ class MinutesTest(unittest.TestCase):
         drop = lambda row: [c for j, c in enumerate(row) if j != i]
         self.assertEqual(drop(head), OLD_REPORT_HEAD)
         by_ticket = {r[0]: drop(r) for r in body}
-        self.assertEqual(by_ticket["t-a"][:4], ["t-a", "pull request open", "1", "2"])
-        self.assertEqual(by_ticket["t-a"][6], "#5")
+        self.assertEqual(by_ticket["t-a"][:4], ["t-a", "ready to merge", "1", "2"])
+        self.assertEqual(by_ticket["t-a"][6], "tg/t-a at cccccccccccc")
         self.assertEqual(by_ticket["t-b"][7], "why not")
         shead, _, _ = self.table(report.status(self.p), "Task")
         j = shead.index("Minutes") if "Minutes" in shead else None

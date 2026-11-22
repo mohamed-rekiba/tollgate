@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from itertools import pairwise
 from pathlib import Path
 from unittest import mock
 
@@ -70,6 +71,127 @@ class SceneTest(unittest.TestCase):
         with self.assertRaises(ValueError) as err:
             draw(spec, "light")
         self.assertIn("room", str(err.exception))
+
+
+def callout_spec(callouts, size=(600, 400)):
+    return {"type": "scene", "title": "t", "desc": "d", "size": list(size),
+            "origin": [300, 200], "scale": 0.6, "callouts": callouts}
+
+
+LEFT = [{"n": 1, "head": "Low", "line": "The lowest point.", "to": [0, 200, 0], "side": "left"},
+        {"n": 2, "head": "Mid", "line": "A point in the middle of the scene.",
+         "to": [0, 0, 0], "side": "left", "kind": "ai"},
+        {"n": 3, "head": "High", "line": "The highest point.", "to": [0, -200, 0], "side": "left"}]
+RIGHT = [{"n": 4, "head": "Top", "line": "Near the top.", "to": [200, -100, 0], "side": "right"},
+         {"n": 5, "head": "Close", "line": "Close to the one above it.", "to": [200, -90, 0],
+          "side": "right", "kind": "check"},
+         {"n": 6, "head": "Down", "line": "Far down.", "to": [200, 150, 0], "side": "right"}]
+UNDER = [{"n": 7, "head": "Always", "line": "Under the scene.", "side": "bottom"}]
+
+
+def texts(svg):
+    root = ET.fromstring(svg)
+    return [(float(e.get("x")), float(e.get("y")), e.text) for e in root.iter(f"{NS}text")]
+
+
+def places(callouts, size=(600, 400)):
+    s = scene.Scene("light", size[0] + 2 * scene.COLUMN, size[1], (300 + scene.COLUMN, 200), 0.6)
+    frame = (scene.COLUMN, 24, scene.COLUMN + size[0], size[1] - 16)
+    return scene.callout_layout(callouts, s.iso, frame), frame
+
+
+class CalloutTest(unittest.TestCase):
+    def test_the_page_widens_for_each_column_and_the_bottom_row(self):
+        for callouts, grow_w, grow_h in ((LEFT, scene.COLUMN, 0),
+                                         (LEFT + RIGHT, 2 * scene.COLUMN, 0),
+                                         (LEFT + RIGHT + UNDER, 2 * scene.COLUMN, scene.BOTTOM),
+                                         ([], 0, 0)):
+            root = ET.fromstring(draw(callout_spec(callouts), "light"))
+            self.assertEqual(root.get("viewBox"), f"0 0 {600 + grow_w} {400 + grow_h}")
+
+    def test_each_label_sits_in_its_column_with_a_leader_to_its_point(self):
+        out, (left, _, right, _) = places(LEFT + RIGHT)
+        for c in LEFT + RIGHT:
+            x, _, point = out[c["n"]]
+            self.assertLess(x, left) if c["side"] == "left" else self.assertGreater(x, right)
+            self.assertIsNotNone(point)
+        svg = draw(callout_spec(LEFT + RIGHT + UNDER), "dark")
+        root = ET.fromstring(svg)
+        dotted = [e for e in root.iter(f"{NS}line") if e.get("stroke-dasharray") == "1 4"]
+        self.assertEqual(len(dotted), len(LEFT + RIGHT), "a leader for each, none for the bottom")
+        for head in ("LOW", "MID", "HIGH", "TOP", "CLOSE", "DOWN", "ALWAYS"):
+            self.assertIn(head, words(svg))
+
+    def test_labels_in_a_column_never_overlap(self):
+        out, _ = places(LEFT + RIGHT)
+        for side in ("left", "right"):
+            column = sorted((c for c in LEFT + RIGHT if c["side"] == side),
+                            key=lambda c: out[c["n"]][1])
+            for a, b in pairwise(column):
+                bottom_of_a = out[a["n"]][1] + scene.callout_height(a)
+                self.assertLessEqual(bottom_of_a + scene.BADGE, out[b["n"]][1])
+
+    def test_leaders_in_a_column_never_cross(self):
+        # 5 is numbered above 6 but its point is lower: the labels move apart until
+        # the two leaders clear each other.
+        tricky = [{"n": 1, "head": "A", "line": "a far point", "to": [-150, -150, 0],
+                   "side": "right"},
+                  {"n": 2, "head": "B", "line": "a near point", "to": [300, 0, 0],
+                   "side": "right"}]
+        out, _ = places(tricky)
+        (xa, ya, pa), (xb, yb, pb) = out[1], out[2]
+        self.assertLess(ya, yb)
+        self.assertFalse(scene.crosses((xa, ya), pa, (xb, yb), pb))
+        out, _ = places(LEFT + RIGHT)
+        for side in ("left", "right"):
+            ns = [c["n"] for c in LEFT + RIGHT if c["side"] == side]
+            for i in ns:
+                for j in ns:
+                    if i < j:
+                        (x1, y1, p1), (x2, y2, p2) = out[i], out[j]
+                        self.assertFalse(scene.crosses((x1, y1), p1, (x2, y2), p2), (i, j))
+
+    def test_numbers_run_clockwise(self):
+        out, _ = places(LEFT + RIGHT)
+        self.assertGreater(out[1][1], out[2][1], "the left column reads upward")
+        self.assertGreater(out[2][1], out[3][1])
+        self.assertLess(out[4][1], out[5][1], "the right column reads downward")
+        self.assertLess(out[5][1], out[6][1])
+        backward = [dict(c, n=c["n"] + 1) for c in LEFT] + [dict(UNDER[0], n=1)]
+        with self.assertRaises(ValueError) as err:
+            draw(callout_spec(backward), "light")
+        self.assertIn("clockwise", str(err.exception))
+
+    def test_a_bottom_callout_is_centered_under_the_scene(self):
+        svg = draw(callout_spec(LEFT + RIGHT + UNDER), "light")
+        (head,) = [t for t in texts(svg) if t[2] == "ALWAYS"]
+        self.assertGreater(head[1], 400, "under the scene")
+        width = scene.bottom_width(UNDER[0])
+        center = scene.COLUMN + 300
+        self.assertAlmostEqual(head[0], center - width / 2 + 2 * scene.BADGE + 12, delta=1)
+
+    def test_a_line_that_wraps_past_two_lines_is_refused(self):
+        long = [dict(LEFT[0], line="word " * 40)]
+        with self.assertRaises(ValueError) as err:
+            draw(callout_spec(long), "light")
+        self.assertIn("shorten", str(err.exception))
+        for bad, says in (({"side": "up"}, "side"), ({"to": None}, "to"), ({"kind": "x"}, "kind")):
+            with self.subTest(bad=bad), self.assertRaises(ValueError) as err:
+                draw(callout_spec([dict(LEFT[0], **bad)]), "light")
+            self.assertIn(says, str(err.exception))
+
+    def test_every_word_is_for_people(self):
+        """The words of the rules view pass the same check as every other picture."""
+        import re
+        root = Path(__file__).resolve().parent.parent / "docs" / "diagrams"
+        for name in ("how-it-works-rules.svg", "how-it-works-rules-dark.svg"):
+            svg = (root / name).read_text()
+            said = " ".join(e.text or "" for e in ET.fromstring(svg).iter(f"{NS}text"))
+            self.assertIsNone(re.search(r"tg/|\b[0-9a-f]{12,}\b|\.py\b|\.ya?ml\b", said))
+            for n in range(1, 9):
+                self.assertIn(str(n), said.split())
+        spec = json.loads((root / "src" / "how-it-works-rules.json").read_text())
+        self.assertEqual(sorted(spec), ["callouts", "desc", "title"], "objects come from one source")
 
 
 class BuildTest(unittest.TestCase):

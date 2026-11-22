@@ -27,18 +27,14 @@
       "lenses/**"
     ],
     "4": [
-      "action/**",
-      "workflows/**",
+      "gate/**",
       "setup/**",
-      "skills/init/**"
+      "skills/init/**",
+      "hooks/**"
     ]
   },
   "require_plan": false,
   "auto_merge": false,
-  "approvers": [
-    "mohamed-rekiba"
-  ],
-  "version": "self",
   "container_image": "tollgate-builder:ci",
   "ai": {
     "advisor": [
@@ -50,5 +46,8 @@
     "attempt_minutes": 30,
     "ticket_usd": 5.0,
     "task_usd": 60.0
-  }
+  },
+  "signers": [],
+  "owners": [],
+  "isolation": "container"
 }

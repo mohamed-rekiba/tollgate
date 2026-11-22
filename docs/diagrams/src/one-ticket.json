@@ -1,10 +1,10 @@
 {
  "title": "How one ticket is built",
- "desc": "The AI builds one attempt and runs the locked tests on its own machine. On a pass, the change goes to GitHub, which runs the tests again. On a fail, the AI tries again with what went wrong. After 3 tries, or when stuck, it asks the advisor.",
+ "desc": "The AI builds from its best try. First the locked tests must pass; then the reviewers check the rest, and the try needs a score of 70% or more. Then the change gets a signed pass record and waits to merge. When a try fails, the AI tries again with the reasons. After 3 tries, it asks the advisor: a second AI, or you.",
  "nodes": [
   {
    "id": "b",
-   "text": "The AI builds\nOne attempt",
+   "text": "The AI builds\nFrom its best try",
    "col": 0,
    "row": 0,
    "kind": "ai",
@@ -12,7 +12,7 @@
   },
   {
    "id": "q",
-   "text": "Do the tests pass?\nThe locked ones,\nin the AI's container",
+   "text": "Locked tests\npass?",
    "col": 1,
    "row": 0,
    "kind": "check",
@@ -20,28 +20,35 @@
    "shape": "decision"
   },
   {
-   "id": "s",
-   "text": "Send to GitHub\nIt runs the tests again",
+   "id": "sc",
+   "text": "Score 70%\nor more?\nReviewers check",
    "col": 2,
    "row": 0,
+   "kind": "check",
+   "shape": "decision"
+  },
+  {
+   "id": "s",
+   "text": "A ready change\nSigned as passed,\nit waits to merge",
+   "col": 3,
+   "row": 0,
    "kind": "server",
-   "icon": "pull-request",
+   "icon": "merge",
    "shape": "end"
   },
   {
    "id": "t",
-   "text": "Try again\nWith what went wrong",
+   "text": "3 tries\nused?",
    "col": 1,
    "row": 1,
-   "kind": "ai",
-   "icon": "retry",
-   "shape": "step"
+   "kind": "check",
+   "shape": "decision"
   },
   {
    "id": "a",
    "text": "Ask the advisor\nA second AI, or you",
-   "col": 2,
-   "row": 1,
+   "col": 1,
+   "row": 2,
    "kind": "advisor",
    "shape": "wait"
   }
@@ -53,29 +60,58 @@
   },
   {
    "from": "q",
+   "to": "sc",
+   "label": "yes",
+   "tone": "pass"
+  },
+  {
+   "from": "sc",
    "to": "s",
-   "label": "pass",
+   "label": "yes",
    "tone": "pass"
   },
   {
    "from": "q",
    "to": "t",
-   "label": "fail",
+   "label": "no",
    "tone": "fail"
+  },
+  {
+   "from": "sc",
+   "to": "t",
+   "label": "no",
+   "tone": "fail",
+   "route": "vh"
   },
   {
    "from": "t",
    "to": "b",
+   "label": "no: try again",
    "route": "hv"
   },
   {
    "from": "t",
    "to": "a",
-   "label": "after 3 tries",
-   "dashed": true
+   "label": "yes"
   }
  ],
  "names": {
-  "server": "GITHUB"
+  "server": "STORE"
+ },
+ "ticket": {
+  "path": [
+   [
+    "b",
+    "q"
+   ],
+   [
+    "q",
+    "sc"
+   ],
+   [
+    "sc",
+    "s"
+   ]
+  ]
  }
 }

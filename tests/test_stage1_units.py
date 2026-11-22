@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from action import checks, junit, manifest, paths, settings, tickets, tiers
+from gate import checks, junit, manifest, paths, settings, tickets, tiers
 from tests.helpers import TICKET, Repo, settings_text
 from tests.helpers import junit as make_junit
 
@@ -30,16 +30,25 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "checks.tests needs a run"):
             settings.parse('{"checks": {"tests": {"report": "x.xml"}}}')
 
-    def test_version_is_self_or_a_full_commit_id(self):
-        self.assertEqual(settings.parse('{"version": "self"}')["version"], "self")
-        self.assertEqual(settings.parse(json.dumps({"version": "a" * 40}))["version"], "a" * 40)
-        for bad in ("main", "v1.0", "a" * 39, "SELF"):
-            with self.assertRaisesRegex(settings.SettingsError, "version must be"):
-                settings.parse(json.dumps({"version": bad}))
+    def test_isolation_is_container_or_sandbox(self):
+        self.assertEqual(settings.parse('{"isolation": "sandbox"}')["isolation"], "sandbox")
+        with self.assertRaisesRegex(settings.SettingsError, "isolation must be"):
+            settings.parse('{"isolation": "none"}')
 
-    def test_no_sandbox_turns_auto_merge_off(self):
-        s = settings.parse('{"sandbox": "none", "auto_merge": true}')
-        self.assertFalse(s["auto_merge"])
+    def test_each_signer_is_a_public_key_line(self):
+        import base64
+        blob = base64.b64encode(b"\x00\x00\x00\x0bssh-ed25519" + b"\x00" * 36).decode()
+        good = f"ssh-ed25519 {blob} me@laptop"
+        self.assertEqual(settings.parse(json.dumps({"signers": [good]}))["signers"], [good])
+        wrong_type = f"ssh-rsa {blob}"
+        for bad in ("ssh-ed25519", "not a key", wrong_type, f"ssh-ed25519 {blob}!", 7):
+            with self.assertRaisesRegex(settings.SettingsError, "not an SSH public key"):
+                settings.parse(json.dumps({"signers": [bad]}))
+
+    def test_github_keys_are_gone(self):
+        for key in ("action", "version", "approvers", "sandbox"):
+            with self.assertRaisesRegex(settings.SettingsError, f"unknown key: {key}"):
+                settings.parse(json.dumps({key: ""}))
 
     def test_built_in_harness_cannot_be_removed(self):
         s = settings.parse('{"harness": []}')
@@ -119,7 +128,6 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(m["commit"], self.commit)
         self.assertEqual(len(m["tests"]), 3)
         self.assertEqual(m["keeps_behavior"], ["tests.test_t1::test_c2_sent_once"])
-        self.assertEqual(manifest.loads("Freeze of T-1\n\n" + manifest.dumps(m)), m)
 
     def test_refuses_a_new_test_that_already_passes(self):
         with self.assertRaisesRegex(manifest.FreezeError, "passed before the build"):

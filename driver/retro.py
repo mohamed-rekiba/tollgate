@@ -2,17 +2,17 @@
 
     PYTHONPATH=<tollgate> python3 -m driver.retro --project . --task retries
 
-It writes .tollgate/lessons/<task id>.md. A lesson becomes a test, a check, a
+It writes lessons/<task id>.md in the project's state folder. A lesson becomes a test, a check, a
 change to a lens, or a stricter rule. The retro skill turns each candidate into
 a ticket. Tollgate can make a rule stricter. Only a person makes a rule looser.
 """
 
 import argparse
 import sys
-from pathlib import Path
 
 from driver.log import read
 from driver.report import logs_dir, ticket_row
+from gate import state
 
 MAX_LESSONS = 3
 
@@ -35,7 +35,7 @@ def numbers(project: str, task: str) -> dict:
         "reached_advisor_pct": share(lambda r, ev: any(e["event"] in (
             "waiting_for_advisor", "advisor_decided") for e in ev)),
         "first_attempt_pass_pct": share(lambda r, ev: any(
-            e["event"] == "attempt_passed" and e.get("attempt") == 1 for e in ev)),
+            e["event"] == "try_passed" and e.get("attempt") == 1 for e in ev)),
         "parked": sum(1 for r, _ in tickets if r["state"] == "parked"),
         "mean_attempts": round(sum(r["attempts"] for r, _ in tickets) / n, 2) if n else 0,
         "cost_per_ticket_usd": round(sum(r["cost_usd"] for r, _ in tickets) / n, 4) if n else 0,
@@ -51,12 +51,12 @@ def candidates(tickets: list) -> list:
         rejected = sum(1 for e in events if e["event"] == "tests_rejected")
         if not stops and not rejected and row["attempts"] <= 1:
             continue
-        kind = ("check" if any("same checks" in s for s in stops) else
+        kind = ("check" if any("same way" in s for s in stops) else
                 "lens" if rejected else "test" if row["attempts"] > 1 else "rule")
         scored.append(((len(stops), rejected, row["attempts"]), {
             "ticket": row["ticket"], "kind": kind,
             "evidence": stops[-1] if stops else f"{rejected} rejected tests, "
-                                                f"{row['attempts']} attempts"}))
+                                                f"{row['attempts']} tries"}))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [c for _, c in scored[:MAX_LESSONS]]
 
@@ -68,9 +68,8 @@ def write(project: str, task: str) -> str:
     lines += [f"| {k.replace('_', ' ')} | {v} |" for k, v in nums.items()]
     lines += ["", f"## Candidates for lessons (at most {MAX_LESSONS})", ""]
     lines += [f"- {c['ticket']}: a {c['kind']}. Evidence: {c['evidence']}" for c in cands] or [
-        "- None. No ticket stopped, had a test rejected, or needed a second attempt."]
-    path = Path(project, ".tollgate", "lessons", f"{task}.md")
-    path.parent.mkdir(parents=True, exist_ok=True)
+        "- None. No ticket stopped, had a test rejected, or needed a second try."]
+    path = state.path(project, "lessons", f"{task}.md")
     path.write_text("\n".join(lines) + "\n")
     return str(path)
 

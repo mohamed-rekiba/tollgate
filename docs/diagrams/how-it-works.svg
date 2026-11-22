@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" width="1180" height="720" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">How Tollgate works, with its three feedback loops</title>
-<desc id="desc">An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own room. At the gate, the tests run: on a fail, what failed goes back to the builder; when it is stuck, the advisor decides; on a pass, the barrier lifts and the change goes into main. The retro turns lessons into stricter rules for the next plan. A dot shows one change travelling: it fails once, then passes.</desc>
+<desc id="desc">An isometric scene. You ask in plain words. The AI writes a plan, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are written and locked before any code. The AI builds in its own copy of the project. At the gate, the tests and reviewers check each try: below 70%, it goes back and the AI tries again from its best try; after 3 tries, the advisor decides; at 70% or more, the barrier lifts and the change goes into main. After the task, up to 3 lessons become rules for the next one. A dot shows one change travelling: it fails once, then passes.</desc>
 <defs><radialGradient id="glow" cx="0.398" cy="0.556" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="1180" height="720" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#8250df"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker></defs>
 <style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.still-arm{display:none}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.moving-arm{display:none}.still-arm{display:inline}}</style>
 <rect width="1180" height="720" fill="#ffffff"/>
@@ -174,15 +174,15 @@
 <line x1="795.8" y1="600.7" x2="795.8" y2="580.9" stroke="#8250df" stroke-width="5"/>
 <line x1="781.8" y1="608.8" x2="781.8" y2="572.8" stroke="#8250df" stroke-width="5"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#1f2328">HOW TOLLGATE WORKS</text>
-<text x="40" y="68" font-size="12" fill="#59636e">three loops: check the plan, build until the tests pass, learn</text>
+<text x="40" y="68" font-size="12" fill="#59636e">three loops: check the plan, try until it scores 70%, learn</text>
 <rect x="249.0" y="385.5" width="108.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
 <text x="303.2" y="399.5" text-anchor="middle" font-size="11" fill="#cf222e">problems found</text>
-<rect x="692.0" y="238.9" width="161.2" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
-<text x="772.6" y="252.9" text-anchor="middle" font-size="11" fill="#cf222e">failed: back to the AI</text>
-<rect x="421.9" y="565.7" width="181.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
-<text x="512.4" y="579.7" text-anchor="middle" font-size="11" fill="#59636e">lessons tighten the rules</text>
-<rect x="717.9" y="415.4" width="49.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
-<text x="742.4" y="429.4" text-anchor="middle" font-size="11" fill="#59636e">stuck</text>
+<rect x="698.6" y="238.9" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
+<text x="772.6" y="252.9" text-anchor="middle" font-size="11" fill="#cf222e">below 70%: try again</text>
+<rect x="438.4" y="565.7" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="512.4" y="579.7" text-anchor="middle" font-size="11" fill="#59636e">lessons become rules</text>
+<rect x="691.5" y="415.4" width="101.8" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<text x="742.4" y="429.4" text-anchor="middle" font-size="11" fill="#59636e">after 3 tries</text>
 <rect x="567.4" y="400.2" width="75.4" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="605.1" y="414.2" text-anchor="middle" font-size="11" fill="#59636e">try again</text>
 <rect x="440.5" y="379.6" width="88.6" height="20" rx="3" fill="#ffffff" stroke="#1a7f37"/>
@@ -192,9 +192,9 @@
 <text x="703.8" y="116.5" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE AI BUILDS</text>
 <text x="703.8" y="132.5" text-anchor="middle" font-size="12" fill="#59636e">in its own copy</text>
 <text x="922.1" y="328.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">THE GATE</text>
-<text x="922.1" y="344.0" text-anchor="start" font-size="12" fill="#59636e">opens when the tests pass</text>
-<text x="672.6" y="515.2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">WHEN STUCK</text>
-<text x="672.6" y="531.2" text-anchor="middle" font-size="12" fill="#59636e">a second AI, or you, decides</text>
+<text x="922.1" y="344.0" text-anchor="start" font-size="12" fill="#59636e">opens at a score of 70%</text>
+<text x="672.6" y="515.2" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">AFTER 3 TRIES</text>
+<text x="672.6" y="531.2" text-anchor="middle" font-size="12" fill="#59636e">the advisor: a second AI, or you</text>
 <text x="497.3" y="281.6" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">TESTS WRITTEN AND LOCKED</text>
 <text x="497.3" y="297.6" text-anchor="end" font-size="12" fill="#59636e">before any code</text>
 <text x="321.9" y="314.5" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">REVIEW</text>
@@ -203,7 +203,7 @@
 <text x="205.0" y="416.0" text-anchor="end" font-size="12" fill="#59636e">small tickets</text>
 <text x="166.0" y="521.5" text-anchor="end" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">YOU ASK</text>
 <text x="166.0" y="537.5" text-anchor="end" font-size="12" fill="#59636e">in plain words</text>
-<text x="859.7" y="598.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">LOOK BACK</text>
+<text x="859.7" y="598.0" text-anchor="start" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">MISTAKES BECOME RULES</text>
 <text x="859.7" y="614.0" text-anchor="start" font-size="12" fill="#59636e">at most 3 lessons</text>
 <g class="ticket">
 <circle r="12" fill="#8250df" opacity="0.22"><animate attributeName="fill" values="#8250df;#8250df;#1a7f37;#8250df;#8250df;#cf222e;#8250df;#1a7f37" keyTimes="0.0000;0.0861;0.1493;0.2180;0.2689;0.3617;0.5840;0.7373" calcMode="discrete" dur="14.64s" repeatCount="indefinite"/></circle>

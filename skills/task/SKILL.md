@@ -13,8 +13,9 @@ Words: a **task** is what the user asks for, in their own words. The **driver** 
 
 ## 1. Check the project
 
-1. Confirm that `.tollgate/settings.json` exists on the main branch: `git fetch origin && git show origin/main:.tollgate/settings.json`. If it does not, stop and tell the user to run `/tollgate:init` first.
-2. Run `PYTHONPATH="$TG" python3 -m action.settings .tollgate/settings.json`. Done when it prints the settings with no error.
+1. Confirm that `.tollgate/settings.json` exists on the main branch: `git show main:.tollgate/settings.json`. If it does not, stop and tell the user to run `/tollgate:init` first.
+2. Run `PYTHONPATH="$TG" python3 -m gate.settings .tollgate/settings.json`. Done when it prints the settings with no error.
+3. Run `PYTHONPATH="$TG" python3 -m setup.health`. If it prints a warning, show it to the user and ask whether to go on: a missing layer means fewer checks hold.
 
 ## 2. Get the request
 
@@ -32,50 +33,34 @@ For one task, go to step 4.
 
 For a roadmap:
 
-1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/action/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
-2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/action/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
+1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/gate/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
+2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/gate/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
 3. If `base` in the settings has an empty command, tell the user which of the five base checks has none. The roadmap stops after the base tasks until all five pass.
-4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from action import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
-5. Start it, on GitHub or here, as in step 4.
+4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from gate import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
+5. Start it as in step 4.
 
-## 4. Start it: on GitHub, or on this machine
+## 4. Start it
 
-Run it on GitHub when the user asks for that, and for a roadmap, which can run for hours. GitHub needs the model access: `gh secret list` must show `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`. If neither is there, run it on this machine and tell the user that adding one of the two secrets lets the next one run on GitHub. Anything else runs on this machine.
-
-**A task on GitHub:**
+The driver runs on this machine, in the background. Its logs go to the state folder. Find the folder once:
 
 ```
-gh workflow run tollgate.yml --ref main -f kind=task -f id="<task id>" -f request="$(cat ".tollgate/requests/<task id>.md")"
+logs="$(PYTHONPATH="$TG" python3 -c 'from gate import state; print(state.path(".", "logs"))')"
 ```
 
-**A roadmap on GitHub.** The run reads the roadmap and its checklist from the branch `tg-roadmap/<task id>`. Push them there without touching the user's working folder. The branch only carries these two files, so a new push replaces it:
+**A task:** run this from the project folder, as one command:
 
 ```
-git fetch -q origin main && tmp="$(mktemp -d)" && git worktree add -q --detach "$tmp" origin/main \
-  && mkdir -p "$tmp/.tollgate/roadmaps" "$tmp/.tollgate/tickets" \
-  && cp ".tollgate/roadmaps/<task id>.md" "$tmp/.tollgate/roadmaps/" \
-  && cp -r ".tollgate/tickets/<task id>-done" "$tmp/.tollgate/tickets/" \
-  && git -C "$tmp" add .tollgate && git -C "$tmp" commit -q -m "roadmap <task id>" \
-  && git -C "$tmp" push -q --force origin "HEAD:refs/heads/tg-roadmap/<task id>"; git worktree remove --force "$tmp"
-gh workflow run tollgate.yml --ref main -f kind=roadmap -f id="<task id>"
+setsid -f env PYTHONPATH="$TG" python3 -m driver.task --project . --task "<task id>" --request-file ".tollgate/requests/<task id>.md" > "$logs/task-<task id>.out" 2>&1 < /dev/null
 ```
 
-Done, for either, when `gh run list --workflow tollgate.yml --limit 3` shows `tollgate task <task id>` or `tollgate roadmap <task id>` within 60 seconds. If it does not, show the user the error and stop. A roadmap that runs out of GitHub's time can be started again the same way: it skips the tasks it finished, and the task it was in starts again.
-
-**A task on this machine.** Run this from the project folder, as one command:
+**A roadmap:**
 
 ```
-mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.task --project . --task "<task id>" --request-file ".tollgate/requests/<task id>.md" > ".tollgate/logs/task-<task id>.out" 2>&1 < /dev/null
+setsid -f env PYTHONPATH="$TG" python3 -m driver.roadmap --project . --roadmap "<task id>" > "$logs/roadmap-<task id>.out" 2>&1 < /dev/null
 ```
 
-**A roadmap on this machine:**
-
-```
-mkdir -p .tollgate/logs && setsid -f env PYTHONPATH="$TG" python3 -m driver.roadmap --project . --roadmap "<task id>" > ".tollgate/logs/roadmap-<task id>.out" 2>&1 < /dev/null
-```
-
-`setsid -f` starts it as its own process, so closing this session does not stop it. Done when `.tollgate/logs/task-<task id>.jsonl` or `.tollgate/logs/roadmap-<task id>.jsonl` exists, within 60 seconds. If it does not, show the user the last 20 lines of the `.out` file and stop.
+`setsid -f` starts it as its own process, so closing this session does not stop it. Done when `$logs/task-<task id>.jsonl` or `$logs/roadmap-<task id>.jsonl` exists, within 60 seconds. If it does not, show the user the last 20 lines of the `.out` file and stop. A roadmap that stops can be started again the same way: it skips the tasks it finished, and the task it was in starts again.
 
 ## 5. Tell the user
 
-In two lines: the task id, whether it is one task or a roadmap (and its tasks), where it runs, and that `/tollgate:status` shows progress. Questions for a person appear as GitHub issues with the label `tg-waiting`. A person answers with a comment whose first line is `tollgate decide <decision>`.
+In two lines: the task id, whether it is one task or a roadmap (and its tasks), and that `/tollgate:status` shows progress. When the driver needs a person, `/tollgate:inbox` shows its question. When a change passes the gate, `/tollgate:merge` merges it.

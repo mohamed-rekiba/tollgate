@@ -1,46 +1,51 @@
 # Status
 
-This file says what is built, what is proven, and what is not.
+This file says what is built, what is verified, and what is not.
 
 ## What is built
 
-| Part | State |
+| Part | Code | Verified by |
+| --- | --- | --- |
+| The state folder and the keys | `gate/state.py`, `gate/sign.py` | Unit tests |
+| The store: locks, plan locks, pass records, ready changes, questions, merge | `gate/store.py` | Unit tests, with a real git repository and real `ssh-keygen` signatures |
+| The gate and its six checks | `gate/gate.py`, `gate/tiers.py`, `gate/review.py` | Unit tests: each check has a passing and a failing case |
+| The settings | `gate/settings.py` | Unit tests |
+| The driver: one ticket, from the tests to a ready change | `driver/driver.py` | Unit tests, with fake roles |
+| The task: plan, plan review, approval, plan lock, then each ticket | `driver/task.py` | Unit tests, with fake roles |
+| The stop rules and the advisor | `driver/stop.py`, `driver/advisor.py` | Unit tests |
+| Running a role, and the isolation | `driver/roles.py` | Unit tests of the command line it builds. No real run. |
+| The roadmap and the base suite | `driver/roadmap.py`, `setup/base_suite.py` | No passing test |
+| The retro | `driver/retro.py` | No passing test |
+| The Claude Code hook and the policies | `hooks/guard.py`, `hooks/policy.py`, `hooks/hooks.json` | Unit tests of the hook's answers and of the rules it writes. No run inside Claude Code. |
+| Setup and the pre-commit checks | `setup/init.py`, `setup/precommit.py`, `setup/check_*.py`, `setup/health.py` | Unit tests, and a test that runs pre-commit on the config it writes |
+| Merge, inbox, home, and rules sync | `setup/merge.py`, `setup/inbox.py`, `setup/home.py`, `setup/sync_rules.py` | Unit tests |
+| The skills | `skills/` | Read by hand. No skill runs in a test. |
+
+`python3 -m pytest -q` runs the unit tests. The files `tests/proof_stage2.py`, `tests/proof_stage3.py`, and `tests/proof_stage4.py` do not match the local design and fail. Pytest does not collect them.
+
+Every default (3 tries, 30 minutes, 10 USD a ticket, 60 USD a task, a pass score of 70, 4 plan rounds) is a first guess. No measure has set it.
+
+## Experiments
+
+| Experiment | Result |
 | --- | --- |
-| Setup: README, license, word list, plan, plugin, CI | Done. The plugin installs from the catalog. |
-| Stage 0: experiments | E1, E3, E4, and E5 ran. E2 ran without a model ([E2](experiments/E2-closed-room.md)). |
-| Stage 1: the lock | Built and proven on GitHub ([S2](experiments/S2-gate-on-github.md)). An honest build passed. Five cheats failed on the right rules. |
-| Stage 1: Tollgate guards its own repository (1.12) | Done. One workflow, `tollgate.yml`, with `"version": "self"`: main's own code runs the gate. |
-| Stage 2: the loop | Built. Proven with fake roles in CI, and with every role in a container ([E2](experiments/E2-closed-room.md)). |
-| Stage 3: the task | Built. Proven with fake roles in CI. On GitHub, the plan workflow locked a plan, and the review posted a pass for tier 1 and a failure for tier 4 with no model key. |
-| The `copy` level of rights | Built. `"version": "copy"` runs a copy of Tollgate's code from `.tollgate/runner/`, for organizations that allow only local actions. Tested locally, not yet in such an organization. |
-| Stage 4: scale | Built: roadmap, base suite, home with submodules, rules sync, inbox, retro. Proven with fake roles in CI. |
+| [L1](experiments/L1-role-obeys-its-settings.md): a role obeys its policy | Not run. `claude -p` has no model access on the build machine. |
+| [L2](experiments/L2-sandbox-blocks-python.md): the sandbox stops a write through Python | Not run, for the same reason. So the default isolation is `container`. |
+| [L3](experiments/L3-pre-commit-stages.md): when pre-commit runs | Passed. A fast-forward merge skips every check, so the store merges with a merge commit. |
 
-Every default (3 attempts, 30 minutes, 10 USD a ticket, 60 USD a task, a pass score of 70) is provisional, until the 3.10 numbers are final.
+## What is not verified
 
-## What is not proven, and why
+- **The sandbox.** `"isolation": "sandbox"` is untested with Claude Code.
+- **The container.** No role has run in Docker through the local driver. Tollgate ships no container image: you name one under `container_image`.
+- **A real task.** No task has run end to end with real models through the local driver. The cost numbers in the README come from a run on hosted machines.
+- **The lock run.** `Store.freeze` runs the tests in a temporary clone on your machine, not in the role's isolation.
+- **A replaced lock.** The store allows a second lock for a ticket. The driver has no step that asks for one.
+- **A split.** The advisor can choose split, but the driver parks the ticket and does not cut it.
+- **Free paths.** The settings hold `free`, but no code reads it. A change made by hand needs your approval, at tier 4.
+- **The comparison.** Two measures of [the comparison](experiments/e310/results.md) are open: the blind review, and the fixes after merge.
 
-| Item | State |
-| --- | --- |
-| 2.9: one real ticket | Done. Built by the driver on GitHub with real models: one attempt, 0.93 USD, 4 minutes. See [T2.9](experiments/T2.9-first-real-ticket.md). |
-| 3.10: Tollgate against Claude Code alone | Run, with two measures pending: the blind review, and the fixes after merge, due 2026-12-05. See [e310/results.md](experiments/e310/results.md). |
-| E2: the closed room | Done, both halves. See [E2](experiments/E2-closed-room.md). |
-| E3: a fake gate check | The risk is real. Whether a required check accepts the fake needs the rulesets on. See [E3](experiments/E3-fake-check.md). |
-| An AI review on GitHub | Done. It passed #28 and #44 with the OAuth token. |
-| The `copy` level of rights | Tested locally. Not yet run in an organization that allows only local actions. |
+## Known gaps in other files
 
-## The rulesets
-
-The gate no longer runs on GitHub: the owner removed it on 2026-11-21. No ruleset requires a check.
-
-To turn them on again, run `PYTHONPATH=. python3 -m setup.apply_rulesets tollgate-ai/tollgate`. With them on:
-
-- **tollgate main**: changes come through pull requests, and main cannot be force-pushed or deleted.
-- **tollgate tags**: nobody can move or delete a tag under `tg/`.
-
-No normal change needs the admin bypass then: see "Nothing can deadlock" in [decisions.md](decisions.md).
-
-## Questions for you
-
-These need a person. The session leaves them open on purpose.
-
-- Approve or close any pull request that waits on the label `tg-waiting` or on `tollgate approve <sha>`. Only you can give that approval.
+- `skills/init/SKILL.md` tells the user to set `require_plan` to `false` because plan locks are not built. The store builds plan locks.
+- `skills/retro/SKILL.md` names `.tollgate/logs/` and `.tollgate/lessons/` in the project. The logs and lessons live in the state folder.
+- The docstrings of `gate/manifest.py` and `gate/__init__.py` describe a GitHub tag and a GitHub Action, which Tollgate does not use.

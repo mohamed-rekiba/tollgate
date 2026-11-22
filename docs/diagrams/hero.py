@@ -1,7 +1,7 @@
 """The README banner: an isometric line drawing of a change passing the gate.
 
 On the left, the name and the promise. On the right, on a fine grid: the AI's
-room, the gate with its barrier, and the main branch on GitHub. One
+room, the gate with its barrier, and the main branch. One
 change leaves the room, waits at the gate while the locked tests run, the
 barrier lifts only after the tests pass, and it goes in. Before that, a fail sends it
 back to the room on the red path.
@@ -41,7 +41,7 @@ DESC = ("A banner. On the left: Tollgate, a plugin for Claude Code. Let AI write
         "and merge only what works: tests are written before the code, the AI cannot change "
         "them, and nothing reaches the main branch until they pass. On the right, an isometric "
         "drawing: a change leaves the AI and stops at the gate while the tests run. They fail, "
-        "and it goes back to the AI on a red path. It comes again, the tests pass, the barrier "
+        "and it goes back to the AI on a red path. It comes again, it scores 70% or more, the barrier "
         "lifts, and it goes into the main branch.")
 
 
@@ -145,7 +145,7 @@ def gate(c):
                f'keyTimes="0;{keys};1" dur="{dur:.2f}s" repeatCount="indefinite"/></g>')
     out.append(f'<g class="still-arm">{arm}</g>')
     out.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="4.5" fill="{stroke}"/>')
-    out += label(205, 0, -10, "THE GATE", "opens when tests pass", c, "start")
+    out += label(205, 0, -10, "THE GATE", "opens at 70%", c, "start")
     return out
 
 
@@ -180,7 +180,7 @@ def paths(c):
         f'stroke-linecap="round" stroke-linejoin="round" marker-end="url(#fail)"/>'),
     ]
     mx, my = iso(-165, 150, 3)
-    text = "failed: back to the AI"
+    text = "below 70%: try again"
     w = len(text) * 7.2 + 18
     out.append(f'<rect x="{mx - w / 2:.1f}" y="{my - 11:.1f}" width="{w:.1f}" height="22" rx="11" '
                f'fill="{c["page"]}" stroke="{c["fail"]}"/>')

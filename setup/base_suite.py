@@ -17,7 +17,7 @@ and each gap becomes a ticket.
 
 import subprocess
 
-from action.checks import project_env
+from gate.checks import project_env
 
 NAMES = ("checks_run", "parallel_tests", "env_up_down", "bad_setting_stops", "one_log_line")
 

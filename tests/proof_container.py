@@ -6,7 +6,6 @@ It skips when there is no image or no container daemon. A model is not needed:
 the roles are fake roles with the same contract.
 """
 
-import json
 import os
 import subprocess
 import tempfile
@@ -14,8 +13,8 @@ import unittest
 from pathlib import Path
 
 from driver import roles
-from driver.log import read
-from tests.fakes import Sample, run_driver
+from tests.driver_fakes import FAKE_ROLE
+from tests.proof_common import Project, events, tries
 
 IMAGE = os.environ.get("TOLLGATE_TEST_IMAGE", "")
 
@@ -34,12 +33,8 @@ prompt = sys.stdin.read()
 open("from_container.txt", "w").write("written inside\n")
 push = subprocess.run(["git", "push", "origin", "HEAD:refs/heads/escape"],
                       capture_output=True, text=True)
-real = subprocess.run(["git", "push", "https://github.com/tollgate-ai/tollgate.git",
-                       "HEAD:refs/heads/tg-lab/escape"], capture_output=True, text=True,
-                      timeout=60, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
 data = {"push_code": push.returncode, "push_err": push.stderr.strip()[-200:],
-        "real_push_code": real.returncode, "real_push_err": real.stderr.strip()[-300:],
-        "env": sorted(k for k in os.environ if "TOKEN" in k or k.startswith("GH")),
+        "env": sorted(k for k in os.environ if "TOKEN" in k or "SECRET" in k),
         "home_files": sorted(os.listdir(os.environ.get("HOME", "/tmp"))),
         "uid": os.getuid()}
 print(json.dumps({"result": "```json\n" + json.dumps(data) + "\n```", "total_cost_usd": 0.01}))
@@ -63,16 +58,14 @@ class ContainerTest(unittest.TestCase):
 
     def test_a_role_in_the_container_works_on_the_copy_and_cannot_push(self):
         env_before = dict(os.environ)
-        os.environ["GH_TOKEN"] = "must-not-reach-the-container"
+        os.environ["DEPLOY_TOKEN"] = "must-not-reach-the-container"
         self.addCleanup(os.environ.clear)
         self.addCleanup(os.environ.update, env_before)
         answer = roles.run("python3 probe.py", "builder", {"x": 1}, str(self.copy), 2,
-                           sandbox="container", image=IMAGE)
+                           isolation="container", image=IMAGE)
         data = answer.data
         self.assertEqual(Path(self.copy, "from_container.txt").read_text(), "written inside\n")
         self.assertNotEqual(data["push_code"], 0, data)
-        self.assertNotEqual(data["real_push_code"], 0, data)
-        print("push to GitHub from inside:", data["real_push_err"].splitlines()[-1:])
         self.assertEqual(data["env"], [])
         self.assertEqual(data["home_files"], [])
         self.assertEqual(data["uid"], os.getuid())
@@ -82,17 +75,19 @@ class ContainerTest(unittest.TestCase):
         self.assertNotIn("escape", refs)
 
     def test_the_driver_builds_a_ticket_with_every_role_in_a_container(self):
-        sample = Sample(builder="pass2", image=IMAGE)
-        self.addCleanup(sample.close)
-        result = run_driver(sample)
+        role = "python3 fake_role.py"
+        p = Project(isolation="container", container_image=IMAGE,
+                    ai={"builder": f"{role} pass2", "reviewer": f"{role} ok",
+                        "advisor": ["person"]})
+        self.addCleanup(p.close)
+        Path(p.project, "fake_role.py").write_text(Path(FAKE_ROLE).read_text())
+        subprocess.run(["git", "add", "fake_role.py"], cwd=p.project, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "fake role"], cwd=p.project, check=True)
+        result = p.drive()
         self.assertEqual(result.returncode, 0, result.stderr)
-        events = read(str(sample.project / ".tollgate/logs/T-1.jsonl"))
-        kinds = [e["event"] for e in events]
-        self.assertEqual(kinds.count("attempt_failed"), 1)
-        self.assertEqual(kinds.count("attempt_passed"), 1)
-        self.assertIn("pr_opened", kinds)
-        settings = json.loads((sample.project / ".tollgate/settings.json").read_text())
-        self.assertEqual(settings["sandbox"], "container")
+        log = p.log_of("T-1")
+        self.assertEqual([e["event"] for e in tries(log)], ["try_failed", "try_passed"])
+        self.assertEqual(events(log)[-1], "waiting_for_merge")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 """The report of a task, and the status of every ticket, read from the logs.
 
+The logs and the reports are in the project's state folder.
+
     PYTHONPATH=<tollgate> python3 -m driver.report --project .            # status
     PYTHONPATH=<tollgate> python3 -m driver.report --project . --task retries
 """
@@ -10,20 +12,22 @@ from pathlib import Path
 
 from driver import history
 from driver.log import read
+from gate import state
 
 
 def logs_dir(project: str) -> Path:
-    return Path(project, ".tollgate", "logs")
+    """The logs, in the project's state folder."""
+    return state.path(project, "logs")
 
 
 def ticket_row(events: list) -> dict:
     t = history.replay(events)
     question = history.open_question(events)
-    return {"issue": question["issue"] if question else None, "ticket": t.ticket or "?",
+    return {"question": question["question"] if question else None, "ticket": t.ticket or "?",
             "state": t.state, "tier": t.tier, "attempts": t.attempts,
             "score": t.best_score if t.best_score >= 0 else None,
             "cost_usd": history.cost(events), "minutes": history.minutes(events),
-            "pr": t.pr or None, "reason": t.reason, "task": t.task}
+            "ready": t.ready or None, "reason": t.reason, "task": t.task}
 
 
 def rows(project: str, task: str | None = None) -> list:
@@ -57,12 +61,12 @@ def render(project: str, task: str) -> str:
              ""]
     if waiting:
         lines += [f"The task waits: {waiting[-1]['reason']}", ""]
-    lines += ["| Ticket | State | Tier | Attempts | Score | Cost USD | Minutes | Pull request | Why |",
+    lines += ["| Ticket | State | Tier | Tries | Score | Cost USD | Minutes | Ready change | Why |",
               "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in tickets:
         lines.append(f"| {r['ticket']} | {r['state']} | {r['tier'] or ''} | {r['attempts']} | "
                      f"{'' if r['score'] is None else r['score']} | {r['cost_usd']} | {r['minutes']} | "
-                     f"{'#' + str(r['pr']) if r['pr'] else ''} | {r['reason']} |")
+                     f"{_ready(r)} | {r['reason']} |")
     advisor_events = [e for e in all_events if e["event"] in ("waiting_for_advisor",
                                                               "advisor_decided")]
     asked = sum(1 for e in advisor_events if e["event"] == "waiting_for_advisor")
@@ -73,7 +77,7 @@ def render(project: str, task: str) -> str:
 
 # How each state looks in the picture: who acts, and the label over the title.
 LOOKS = {"merged": ("server", "MERGED", "merge"),
-         "pull request open": ("check", "PULL REQUEST", "pull-request"),
+         "ready to merge": ("check", "READY TO MERGE", "pull-request"),
          "building": ("ai", "BUILDING", "ai"), "tests written": ("ai", "TESTS WRITTEN", "test"),
          "frozen": ("server", "TESTS LOCKED", "lock"), "started": ("ai", "STARTED", "ai"),
          "waits for a person": ("advisor", "WAITS FOR YOU", "advisor"),
@@ -99,11 +103,9 @@ def picture(project: str, task: str) -> dict:
     counts = {}
     for i, tid in enumerate(order):
         r = found.get(tid) or {"state": "not started", "tier": None, "attempts": 0,
-                               "cost_usd": 0, "pr": None, "reason": ""}
+                               "cost_usd": 0, "ready": None, "reason": ""}
         kind, tag, mark = LOOKS.get(r["state"], ("neutral", r["state"].upper(), "ticket"))
         counts[r["state"]] = counts.get(r["state"], 0) + 1
-        if r["pr"]:
-            tag += f" #{r['pr']}"
         if r["state"] == "building":
             tag += f" · TRY {r['attempts'] + 1}"
         facts = [f"tier {r['tier']}" if r["tier"] else "", (f"{r['attempts']} tr{'y' if r['attempts'] == 1 else 'ies'}") if r["attempts"]
@@ -125,8 +127,7 @@ def picture(project: str, task: str) -> dict:
 def write(project: str, task: str) -> str:
     """Write the report, and its picture in a light and a dark SVG next to it."""
     from diagram import draw
-    path = Path(project, ".tollgate", "reports", f"{task}.md")
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = state.path(project, "reports", f"{task}.md")
     spec = picture(project, task)
     for theme, suffix in (("light", ""), ("dark", "-dark")):
         path.with_name(f"{task}{suffix}.svg").write_text(draw(spec, theme))
@@ -134,10 +135,22 @@ def write(project: str, task: str) -> str:
     return str(path)
 
 
+def _ready(row: dict) -> str:
+    return f"tg/{row['ticket']} at {row['ready'][:12]}" if row["ready"] else ""
+
+
 def _planned(project: str, task: str) -> list:
-    """The ticket ids the task's plan lists, in build order, or [] with no plan."""
-    from action import plan as pl
-    path = Path(project, pl.plan_path(task))
+    """The ticket ids the task's plan lists, in build order, or [] with no plan.
+    The task's log has them once the plan is locked; before that, the plan file
+    in the task's copy or in the project."""
+    from gate import plan as pl
+    locked = [e for e in read(str(logs_dir(project) / f"task-{task}.jsonl"))
+              if e["event"] == "plan_locked" and e.get("tickets")]
+    if locked:
+        return list(locked[-1]["tickets"])
+    path = state.path(project, "builders", f"task-{task}", pl.plan_path(task))
+    if not path.exists():
+        path = Path(project, pl.plan_path(task))
     try:
         return pl.parse(path.read_text()).tickets
     except (OSError, pl.PlanError):
@@ -151,7 +164,7 @@ def _sentence(text: str) -> str:
 
 def roadmap_progress(project: str) -> tuple:
     """(done, still_to_do) for each roadmap: its base, its tasks in order, and its end."""
-    from action import roadmap as rm
+    from gate import roadmap as rm
     done, todo = [], []
     for path in sorted(logs_dir(project).glob("roadmap-*.jsonl")):
         rid = path.name[len("roadmap-"):-len(".jsonl")]
@@ -197,25 +210,27 @@ def progress(project: str, task: str | None = None) -> tuple:
         elif task_events:
             asked = history.open_question(task_events)
             if asked:
-                todo.append(f"Plan for {t}: waits for your approval in issue #{asked['issue']}.")
+                todo.append(f"Plan for {t}: waits for your approval in question "
+                            f"{asked['question']}.")
             else:
                 todo.append(f"Plan for {t}: being written and reviewed.")
         seen = set()
         for r in rows(project, t):
             seen.add(r["ticket"])
-            name, pr = r["ticket"], f"pull request #{r['pr']}" if r["pr"] else ""
+            name = r["ticket"]
             if r["state"] == "merged":
-                done.append(f"{name}: merged ({pr}).")
-            elif r["state"] == "pull request open":
-                need = " It needs your approval: tier 4." if r["tier"] == 4 else ""
-                todo.append(f"{name}: built, {pr} waits to merge.{need}")
+                done.append(f"{name}: merged.")
+            elif r["state"] == "ready to merge":
+                need = (f" It needs your approval: tier {r['tier']}." if r["tier"] in (3, 4)
+                        else "")
+                todo.append(f"{name}: built, branch tg/{name} waits to merge.{need}")
             elif r["state"] == "waits for a person":
-                where = f" in issue #{r['issue']}" if r["issue"] else ""
+                where = f" in question {r['question']}" if r["question"] else ""
                 todo.append(f"{name}: waits for your decision{where}. {_sentence(r['reason'])}".strip())
             elif r["state"] == "parked":
                 todo.append(f"{name}: parked. {_sentence(r['reason'])}".strip())
             elif r["state"] == "building":
-                todo.append(f"{name}: being built, attempt {r['attempts'] + 1}.")
+                todo.append(f"{name}: being built, try {r['attempts'] + 1}.")
             else:
                 todo.append(f"{name}: {r['state']}.")
         for tid in _planned(project, t):
@@ -236,52 +251,16 @@ def status(project: str) -> str:
     found = rows(project)
     if not found:
         return "Tollgate: no tickets have run in this project yet."
-    lines = [brief(project), "", "Details", "", "| Task | Ticket | State | Tier | Attempts | Score | Cost USD | Minutes | Pull request |",
+    lines = [brief(project), "", "Details", "", "| Task | Ticket | State | Tier | Tries | Score | Cost USD | Minutes | Ready change |",
              "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in found:
         lines.append(f"| {r['task']} | {r['ticket']} | {r['state']} | {r['tier'] or ''} | "
                      f"{r['attempts']} | {'' if r['score'] is None else r['score']} | "
-                     f"{r['cost_usd']} | {r['minutes']} | {'#' + str(r['pr']) if r['pr'] else ''} |")
+                     f"{r['cost_usd']} | {r['minutes']} | {_ready(r)} |")
     waiting = [r for r in found if r["state"] in ("waits for a person", "parked")]
     if waiting:
         lines += ["", "Waiting for a decision:"] + [f"- {r['ticket']}: {r['reason']}" for r in waiting]
     return "\n".join(lines)
-
-
-def logs_from_branch(project: str, branch: str) -> str:
-    """Gather what this machine ran and what GitHub ran into a new folder, and return it.
-
-    It copies the project's own plans, logs, reports, and roadmaps, then the ones on
-    `branch`, where the driver on GitHub pushes them. With no such branch, the folder
-    holds the local ones only."""
-    import shutil
-    import subprocess
-    import tempfile
-    out = tempfile.mkdtemp(prefix="tollgate-status-")
-    for part in ("plans", "logs", "reports", "roadmaps"):
-        local = Path(project, ".tollgate", part)
-        if local.exists():
-            shutil.copytree(local, Path(out, ".tollgate", part), dirs_exist_ok=True)
-    fetched = subprocess.run(["git", "fetch", "-q", "origin", branch], cwd=project, check=False,
-                             capture_output=True)
-    # What the fetch just returned. origin/<branch> may not exist in a clone whose
-    # fetch setup is narrow.
-    ref = "FETCH_HEAD" if fetched.returncode == 0 else f"origin/{branch}"
-    files = subprocess.run(["git", "ls-tree", "-r", "--name-only", ref, ".tollgate"], cwd=project,
-                           capture_output=True, text=True, check=False).stdout.split()
-    for name in files:
-        if name.startswith((".tollgate/logs/", ".tollgate/reports/", ".tollgate/plans/",
-                            ".tollgate/roadmaps/")):
-            data = subprocess.run(["git", "show", f"{ref}:{name}"], cwd=project,
-                                  capture_output=True, check=False).stdout
-            target = Path(out, name)
-            # A run on this machine may be newer than the copy on the branch: the
-            # fuller log wins.
-            if target.exists() and target.stat().st_size >= len(data):
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
-    return out
 
 
 def main(argv=None) -> int:
@@ -290,11 +269,7 @@ def main(argv=None) -> int:
     parser.add_argument("--project", default=".")
     parser.add_argument("--task")
     parser.add_argument("--brief", action="store_true", help="only done and still to do")
-    parser.add_argument("--logs-branch", help="read the logs from this branch, such as "
-                        "tollgate-logs, where the driver on GitHub keeps them")
     args = parser.parse_args(argv)
-    if args.logs_branch:
-        args.project = logs_from_branch(args.project, args.logs_branch)
     if args.brief:
         print(brief(args.project, args.task))
     elif args.task:

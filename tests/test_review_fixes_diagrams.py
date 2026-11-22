@@ -11,7 +11,6 @@ from unittest import mock
 from diagram import aws, draw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "docs" / "diagrams"))
-import build
 
 HOSTILE = ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
            'onload="alert(1)" viewBox="0 0 48 48"><script>alert(2)</script>'
@@ -88,19 +87,6 @@ class DownloadTest(unittest.TestCase):
                 aws.fetch(aws.URL, target)
             self.assertFalse(target.exists())
             self.assertEqual(list(Path(d).iterdir()), [])
-
-
-class WorkflowReaderTest(unittest.TestCase):
-    def test_block_list_needs(self):
-        text = ("on: push\njobs:\n  a:\n    runs-on: x\n  b:\n    runs-on: x\n  c:\n"
-                "    needs:\n      - a\n      - b\n    runs-on: x\n")
-        jobs = {j["name"]: j["needs"] for j in build.workflow_jobs(text)}
-        self.assertEqual(jobs["c"], ["a", "b"])
-
-    def test_no_jobs_says_so(self):
-        with self.assertRaises(ValueError) as err:
-            build.workflow_jobs("on: push\n")
-        self.assertIn("jobs", str(err.exception))
 
 
 class SpecCheckTest(unittest.TestCase):

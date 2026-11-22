@@ -1,19 +1,22 @@
 """Check the writing in a change: the rules a script can find. Python 3, standard library only.
 
-The docs skill copies this one file into a project as
-.tollgate/checks/check_writing.py, and the project runs it from its root as one
-of its checks:
+Tollgate copies this one file into a project as .tollgate/checks/check_writing.py.
+It runs in two ways:
 
-    python3 .tollgate/checks/check_writing.py
+    python3 .tollgate/checks/check_writing.py            the branch against main, a check of the gate
+    python3 .tollgate/checks/check_writing.py --staged   the staged change, before a commit
 
-It compares the change with origin/main and fails on:
+It fails on:
 
 - a word the word list says to avoid, on a line the change adds to a document;
-- a long dash on a line the change adds to a document;
-- a filler word, such as "leverage" or "delve", on a line the change adds to a document;
+- a long dash, or a filler word such as "leverage" or "delve", on a line the
+  change adds to a document, or in a comment the change adds to a source file:
+  `#` lines and docstrings in Python, `//` and `/* */` in JavaScript,
+  TypeScript, Go, and Rust;
 - a README that does not answer its four questions: what it is, why it exists,
-  how to start, and when to use it;
-- a commit in the change whose subject is not `type(scope): subject`, or that
+  how to start, and when to use it. With --staged, only when the README is in
+  the change;
+- on the branch, a commit whose subject is not `type(scope): subject`, or that
   credits an AI.
 
 The word list is CONTEXT.md, in this form: a term in bold, then a line that
@@ -24,12 +27,17 @@ It ends with 0 when it finds nothing, 1 when it finds something, and prints one
 line for each finding: the file and line, then what to change.
 """
 
+import ast
+import io
 import re
 import subprocess
 import sys
+import tokenize
 from pathlib import Path
 
 DOCS = (".md", ".markdown", ".txt", ".rst")
+SLASH_COMMENTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs")
+SOURCES = (".py",) + SLASH_COMMENTS
 WORD_LIST = "CONTEXT.md"
 LONG_DASH = "—"
 # Filler and the plain word to say instead. An empty word means: cut the sentence.
@@ -37,7 +45,7 @@ FILLER = {"leverage": "use", "leverages": "uses", "leveraging": "using", "utiliz
           "utilizes": "uses", "utilizing": "using", "delve": "look", "delves": "looks",
           "it's worth noting": "", "it is worth noting": ""}
 TYPES = "feat|fix|docs|test|refactor|chore|build|ci|perf|style|revert"
-SUBJECT = re.compile(rf"^({TYPES})(\([^()\s]+\))?!?: \S")
+SUBJECT = re.compile(rf"^({TYPES})\([^()\s]+\)!?: \S")
 AI_CREDIT = re.compile(r"co-authored-by:.*\b(claude|anthropic|openai|chatgpt|copilot|gemini)\b"
                        r"|generated (with|by) .*\b(claude|chatgpt|copilot|gemini|ai)\b"
                        r"|\U0001F916", re.IGNORECASE)
@@ -85,59 +93,156 @@ def prose(line: str) -> str:
     return re.sub(r"<[^>]+>", " ", line)
 
 
-def added_lines(root: Path, base: str) -> dict:
-    """{file: [(line number, text)]} for each line the change adds to a document."""
-    code, out = git("diff", "--unified=0", "--no-color", f"{base}...HEAD", "--", cwd=root)
+def content(root: Path, name: str, staged: bool) -> str:
+    """The new text of a file: from the index with --staged, else from HEAD."""
+    code, out = git("show", f"{':' if staged else 'HEAD:'}{name}", cwd=root)
+    if code == 0:
+        return out
+    try:
+        return (root / name).read_text()
+    except OSError:
+        return ""
+
+
+def diff_lines(root: Path, base: str, staged: bool) -> dict:
+    """{file: [(line number, text)]} for each line the change adds."""
+    span = ["--cached"] if staged else [f"{base}...HEAD"]
+    code, out = git("diff", "--unified=0", "--no-color", *span, "--", cwd=root)
     if code != 0:
         return {}
     files, path, number = {}, None, 0
     for line in out.splitlines():
         if line.startswith("+++ "):
-            name = line[6:] if line.startswith("+++ b/") else None
-            path = name if name and name.endswith(DOCS) and name != WORD_LIST else None
+            path = line[6:] if line.startswith("+++ b/") else None
         elif line.startswith("@@"):
             number = int(re.search(r"\+(\d+)", line).group(1))
         elif path and line.startswith("+") and not line.startswith("+++"):
             files.setdefault(path, []).append((number, line[1:]))
             number += 1
+    return files
+
+
+def added_lines(root: Path, base: str, staged: bool = False) -> dict:
+    """{file: [(line number, text)]} for each line the change adds to a document."""
+    files = {name: lines for name, lines in diff_lines(root, base, staged).items()
+             if name.endswith(DOCS) and name != WORD_LIST}
     # Lines inside a fenced code block are code. Read each file to know where they are.
     for name, lines in files.items():
         fenced, inside = set(), False
-        try:
-            for n, text in enumerate((root / name).read_text().splitlines(), 1):
-                if text.lstrip().startswith(("```", "~~~")):
-                    inside = not inside
-                    fenced.add(n)
-                elif inside:
-                    fenced.add(n)
-        except OSError:
-            continue
+        for n, text in enumerate(content(root, name, staged).splitlines(), 1):
+            if text.lstrip().startswith(("```", "~~~")):
+                inside = not inside
+                fenced.add(n)
+            elif inside:
+                fenced.add(n)
         files[name] = [(n, t) for n, t in lines if n not in fenced]
     return files
 
 
-def check_lines(root: Path, base: str) -> list:
+def python_comments(text: str) -> dict:
+    """{line number: the words of its comments and docstrings} in Python source."""
+    out = {}
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+            if tok.type == tokenize.COMMENT:
+                out[tok.start[0]] = out.get(tok.start[0], "") + " " + tok.string.lstrip("#")
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        pass
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return out
+    lines = text.splitlines()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = node.body
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
+                and isinstance(body[0].value.value, str):
+            for n in range(body[0].lineno, body[0].end_lineno + 1):
+                # Without the quotes that open and close it: words in quotes are not checked.
+                line = lines[n - 1].replace('"""', " ").replace("'''", " ")
+                out[n] = out.get(n, "") + " " + line
+    return out
+
+
+def slash_comments(text: str) -> dict:
+    """{line number: the words of its comments} in source with // and /* */ comments.
+    Strings are skipped, roughly: a quote starts a string that ends at the same quote."""
+    out, n, i, state, quote = {}, 1, 0, "code", ""
+    while i < len(text):
+        c, pair = text[i], text[i:i + 2]
+        if c == "\n":
+            n += 1
+            if state == "line":
+                state = "code"
+        elif state == "code":
+            if pair == "//":
+                state, i = "line", i + 1
+            elif pair == "/*":
+                state, i = "block", i + 1
+            elif c in "\"'`":
+                state, quote = "string", c
+        elif state == "string":
+            if c == "\\":
+                i += 1
+            elif c == quote:
+                state = "code"
+        elif state == "block" and pair == "*/":
+            state, i = "code", i + 1
+        else:
+            out[n] = out.get(n, "") + c
+        i += 1
+    return out
+
+
+def added_comments(root: Path, base: str, staged: bool = False) -> dict:
+    """{file: [(line number, comment text)]} for each comment the change adds to source."""
+    files = {}
+    for name, lines in diff_lines(root, base, staged).items():
+        if not name.endswith(SOURCES):
+            continue
+        text = content(root, name, staged)
+        found = python_comments(text) if name.endswith(".py") else slash_comments(text)
+        kept = [(n, found[n]) for n, _ in lines if found.get(n, "").strip()]
+        if kept:
+            files[name] = kept
+    return files
+
+
+def plain_words(name: str, n: int, words_only: str) -> list:
+    """A long dash and filler words: the rules for every word a person reads."""
+    found = []
+    if LONG_DASH in words_only:
+        found.append(f"{name}:{n}: a long dash. Use a colon or a period.")
+    for word, plain in FILLER.items():
+        if re.search(rf"\b{re.escape(word)}\b", words_only, re.IGNORECASE):
+            fix = f"Say '{plain}'." if plain else "Cut the sentence."
+            found.append(f"{name}:{n}: '{word}' is filler. {fix}")
+    return found
+
+
+def check_lines(root: Path, base: str, staged: bool = False) -> list:
     words = avoid_words(root)
     # A word written with a capital in the list, such as Action, is a name: only
     # that spelling is matched. Any other word is matched in any case.
     rules = [(re.compile(rf"\b{re.escape(w)}\b", 0 if w != w.lower() else re.IGNORECASE), t)
              for w, t in sorted(words.items(), key=lambda x: -len(x[0]))]
     found = []
-    for name, lines in added_lines(root, base).items():
+    for name, lines in added_lines(root, base, staged).items():
         for n, text in lines:
             words_only = prose(text)
-            if LONG_DASH in words_only:
-                found.append(f"{name}:{n}: a long dash. Use a colon or a period.")
-            for word, plain in FILLER.items():
-                if re.search(rf"\b{re.escape(word)}\b", words_only, re.IGNORECASE):
-                    fix = f"Say '{plain}'." if plain else "Cut the sentence."
-                    found.append(f"{name}:{n}: '{word}' is filler. {fix}")
+            found += plain_words(name, n, words_only)
             taken = set()  # a longer word wins over a shorter one inside it
             for rule, term in rules:
                 for m in rule.finditer(words_only):
                     if taken.isdisjoint(range(*m.span())):
                         taken.update(range(*m.span()))
                         found.append(f"{name}:{n}: '{m.group(0)}'. The word list says: {term}.")
+    # The word list is for documents only: code may name things the list avoids.
+    for name, lines in added_comments(root, base, staged).items():
+        for n, text in lines:
+            found += plain_words(name, n, prose(text))
     return found
 
 
@@ -178,9 +283,12 @@ def check_commits(root: Path, base: str) -> list:
     return found
 
 
-def main(repo=".", base="origin/main") -> int:
+def main(repo=".", base="main", staged=False) -> int:
     root = Path(repo).resolve()
-    if git("rev-parse", "--verify", "-q", base, cwd=root)[0] != 0:
+    if staged:
+        names = diff_lines(root, base, True)
+        found = check_lines(root, base, True) + (check_readme(root) if "README.md" in names else [])
+    elif git("rev-parse", "--verify", "-q", base, cwd=root)[0] != 0:
         print(f"check_writing: there is no {base} to compare with, so only the README is checked.")
         found = check_readme(root)
     else:
@@ -191,4 +299,4 @@ def main(repo=".", base="origin/main") -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(staged="--staged" in sys.argv[1:]))

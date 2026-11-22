@@ -1,149 +1,133 @@
-# Decisions after stage 0
+# Decisions
 
-Two fresh reviewers read the plan with the results of the experiments (task R0). This file records each decision that answers their findings (task D0). The plan in [plan.md](plan.md) is changed to match where a decision changes it.
+Each decision here holds for Tollgate as it is built. Each one says what was decided, why, and where it stops.
 
-## How the freeze starts
+## Everything runs on your machine
 
-- The driver pushes the ticket file and its tests to the branch `tg/<ticket id>`.
-- The driver starts the freeze workflow by hand (`workflow_dispatch`) on the main branch, with the input `ticket`. It uses your own access.
-- Job one has a token that can only read and no secrets. It checks out the head of `tg/<ticket id>`, puts back the harness from the main branch, runs the check named `tests`, and uploads the test report.
-- Job two runs none of the code. It downloads the report, builds the manifest, writes its own run id into the manifest, and creates the tag `tg/freeze/<ticket id>/<number>` on the commit it froze.
+**Decision.** Tollgate runs on your machine. No product file calls GitHub, `gh`, or any outside service, except the AI model through Claude Code.
 
-## How the gate trusts a freeze
+**Why.** A check that lives on a hosted service depends on rights you may not have, and on rules that service may change. On your machine, the store, the gate, and pre-commit need nothing but git, Python, and `ssh-keygen`.
 
-The gate takes the freeze with the highest number. It accepts it when all of these hold:
+**Limit.** Nothing outside your machine checks a change. A person who skips pre-commit with `--no-verify` can change main by hand.
 
-1. The tag points at the commit that the manifest names.
-2. The manifest names the ticket of the branch.
-3. The run named in the manifest used the workflow file `.github/workflows/tollgate-freeze.yml`, ran on the main branch, was started by hand, and succeeded.
-4. The title of that run is `tollgate freeze <ticket id>`, so the run froze this ticket.
-5. The run recorded the same manifest as the tag. The lock job uploads the tag message as the artifact `tollgate-manifest`, and only that run can upload to itself.
-6. The number in the tag name is plain ASCII digits and equals the number in the manifest.
+## Two layers, and the signed records behind them
 
-A tagger name proves nothing, because anyone with write access can set one. Points 3 to 5 are what a forged freeze cannot meet. The artifact expires after 90 days. A pull request that waits longer needs a new freeze.
+**Decision.** Two layers enforce the rules: Claude Code hooks and policies, then pre-commit in git. The gate and the signed records are the real checks.
 
-## What a ticket may lock
+**Why.** A hook stops a bad tool call early, with a reason the role can read. pre-commit stops a bad commit, merge, or push, whoever makes it. Neither is complete alone: a hook reads only the text of a Bash command, and pre-commit can be skipped. A signed record cannot be faked without the machine key, so the store and the pre-commit checks can trust it.
 
-A ticket's `tests:` header may not name harness or a tier 3 or 4 path. The freeze refuses it. If such a file is frozen anyway, it still counts for the tier, and the restore step keeps the main branch's copy.
+**Limit.** The hook and the policies are untested inside Claude Code (L1). pre-commit does not run on a fast-forward merge (L3), so the store always merges with a merge commit.
 
-## Tag creation on a personal account
+## The state folder lives outside the project
 
-GitHub accepts the GitHub Actions app as a bypass actor only in an organization. On a personal account, the tag ruleset blocks moving and deleting `tg/` tags, but not creating them. A forged tag still fails the gate: its run id names no run of the freeze or plan workflow that recorded the same manifest.
+**Decision.** The store keeps every record in a state folder outside the project: `~/.local/state/tollgate/<name>-<hash>/` on Linux, `~/Library/Application Support/tollgate/<name>-<hash>/` on macOS. The machine key lives in `~/.config/tollgate/`.
 
-## The admin bypass
+**Why.** A role works in a copy of the project. It cannot reach a folder that is outside its copy and never mounted into its container. The hash of the project's path keeps two projects with the same name apart.
 
-The ruleset on the main branch lets a repository admin merge a pull request that the gate blocks, and GitHub logs it. It is for emergencies only. No normal change needs it: an upgrade is a settings change, a change under `.github/` is tier 4 and takes an approval, and a broken review never blocks an approval. The driver never uses it.
+**Limit.** A role that runs with no isolation runs as you, and you can write the state folder. The signatures, not the folder, are what a role cannot fake.
 
-## One workflow, and the version in the settings
+## Records are signed with SSH keys
 
-The four workflow files became one, `tollgate.yml`, that is the same for every version of Tollgate. The version is `"version"` in the settings on main: a full commit id, or `"self"` in the Tollgate repository, where main's own code runs the gate. Before this, each workflow held a pin, so every upgrade was a `.github/` change, and each one needed the admin bypass.
+**Decision.** The store signs each lock, plan lock, and pass record with the machine key, through `ssh-keygen -Y sign`. Each kind of record has its own namespace: `tollgate-lock`, `tollgate-plan`, `tollgate-pass`, `tollgate-approval`. A record is JSON with sorted keys, and the signature covers its exact bytes.
 
-These are the jobs of `tollgate.yml` and the order they run in. The picture is drawn from the file itself, so a test fails when the two differ.
+**Why.** `ssh-keygen` is on every machine with git, and it needs no library. A namespace stops a signature for one kind of record from passing as another: a pass record cannot pose as an approval.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="diagrams/workflow-dark.svg">
-  <img alt="The jobs of the Tollgate workflow" src="diagrams/workflow.svg">
-</picture>
+**Limit.** Anyone who holds the machine key can sign a record. The key folder is never mounted into a role's container.
 
-## Nothing can deadlock
+## Keys are read from main, never from the change
 
-- A change under `.github/` is tier 4, not an automatic failure.
-- For tier 4, the review is advice. A person's approval decides.
-- For tier 3, the review passing or a person's approval is enough.
-- Changes to free paths only, such as docs, need no ticket.
+**Decision.** The store and the checks verify a lock, a plan lock, or a pass record against `signers` in the settings on main. They verify an approval against `owners` on main.
 
-So every change can merge through the gate with at most one approval by a person.
+**Why.** A change that adds its own key to the settings must not be able to approve itself.
 
-## Which approvals count
+**Limit.** A key that is on main is trusted until a person removes it.
 
-A review counts only from someone whose role in the repository is owner, member, or collaborator, or who is named under `approvers`.
+## Only an owner approves
 
-## Where the ticket id comes from
+**Decision.** An approval is a record that an owner signs with their own SSH key, with `/tollgate:merge`. `init` refuses an owner key that is the machine key.
 
-The branch name: `tg/<ticket id>`. A pull request from any other branch fails gate rule 1.
+**Why.** The AI never approves its own work. The machine key signs pass records, and it is never in `owners`, so it can never approve. `ssh-keygen` asks for the passphrase in your terminal, where no role can type.
 
-## Test reports and test ids
+**Limit.** An owner key with no passphrase can be used by any program that runs as you.
 
-- The one report format is JUnit XML.
-- A test id is `<classname>::<name>`.
-- A test belongs to a ticket's test file when its `file` attribute is that path, or when its class name, with dots read as folders, names that file without its extension.
-- A test case with a `skipped` child is skipped. One with a `failure` or `error` child failed. Any other passed.
+## The store is the only path that merges
 
-## Checklist items and tests
+**Decision.** The store merges a ready change into main with `git merge --no-ff`. It refuses a commit with no verified pass record, a tier 3 or 4 change with no approval, and a pass record for a lock that is not the current one. The hook refuses a merge into main from a role or from your own Claude Code session.
 
-- Each checklist line carries an id: `- [C1, must] text`.
-- A test belongs to the item whose id appears in its name, such as `test_c1_retries_twice`.
-- The freeze refuses a test that names no item, and refuses the ticket if a must-have item has no test.
+**Why.** A merge commit makes pre-commit run (L3), so the pre-commit check sees the pass record again. One path to merge means one set of rules.
 
-## The ticket header
+**Limit.** `auto_merge` is off by default, so you merge every change. With it on, the driver merges only tier 1 and 2.
 
-Plain `key: value` lines between two `---` lines, with lists written with commas. The standard library reads it with no YAML library. The keys are `id`, `plan`, `seams`, and `tests`. `tests` lists every file the locked tests need: the test files and any helper or data file they load. The freeze locks all of them.
+## A change made by hand needs an approval
 
-## Harness that a project cannot shorten
+**Decision.** A commit with no ticket and no pass record merges only with an owner's approval that names no ticket. The store treats it as tier 4.
 
-These count as harness in every project, whatever the settings say: `.github/**`, `.tollgate/settings.json`, `.tollgate/lenses/**`, and the settings files of common test tools, such as `conftest.py`, `pytest.ini`, `pyproject.toml`, `setup.cfg`, `tox.ini`, `package.json`, `jest.config.*`, `vitest.config.*`, `go.mod`, `Cargo.toml`, `requirements*.txt`, and lock files. The settings can add to this list and cannot remove from it.
+**Why.** A change made by hand has no locked tests, so the gate cannot pass it. A person vouches for it instead. An AI ticket always needs a pass record.
 
-## Changes under .github
+**Limit.** The setting `free` lists paths that should need no ticket, such as `docs/**`. No code reads it, so a change to docs by hand also needs an approval.
 
-The driver refuses to push any change under `.github/`, because a file there that a pushed branch adds runs with the repository's rights before any gate runs. A person's change under `.github/` is harness, so it is tier 4 and needs an approval.
+## Isolation is a container by default
 
-## Approval by a person
+**Decision.** `"isolation": "container"` runs each role in Docker, with only its own copy mounted, read-only for a reviewer and the advisor. Only the model access variables go in, by name. `"isolation": "sandbox"` runs Claude Code with its own sandbox and the role's policy instead.
 
-- A review with the state "approved" by someone other than the author, on the latest commit.
-- Or a comment that reads exactly `tollgate approve <full id of the latest commit>`, by a user named under `approvers` in the settings on the main branch, whose account type is User.
+**Why.** A hook reads only the text of a command, so `python -c` can write a file that a rule forbids. A container that mounts only the copy stops that write. The sandbox may stop it too, but L2 did not run.
 
-A comment cannot name a commit before the commit exists, so it comes after the latest push.
+**Limit.** You name the container image under `container_image`. Tollgate ships none. A real run through the local driver is untested.
 
-## Plan tags in stages 1 and 2
+## The gate uses no AI
 
-The plan tag arrives in stage 3. Until then, `require_plan` is off in the settings, and gate rule 2 passes with the note "no plan required". With `require_plan` on and no plan tag, rule 2 fails.
+**Decision.** The gate is a program that reads git, the lock, the plan lock, and the check results. A reviewer's verdict reaches it only as a fact for tier 3 and 4.
 
-## How results reach the gate
+**Why.** An AI gate can differ from run to run, and a change can talk it into a pass.
 
-The gate workflow runs only for pull requests into the main branch, and it checks out the main branch by name. The action starts Python with `-P`, so a module in the change cannot replace the gate's code. Any error inside the gate posts a failing check.
+**Limit.** The gate trusts the test report that the checks write. Code written to forge its own test results is out of scope.
 
-The gate does not run checks. A caller runs them with `action/checks.py`, writes the results to a file, and passes the file to the gate. The gate workflow does this on the server. The driver does it on your machine.
+## Every must-have item has a locked test
 
-## The contract with Claude Code
+**Decision.** The test writer writes one test at a seam for each must-have item, before any code. The store locks it only when none of the new tests passes yet, except an item marked `keeps behavior`.
 
-- The driver runs the command from the settings, for example `claude -p`, with `--output-format json` and `--allowedTools <list>`, and sends the prompt on standard input.
-- The prompt is the role file, then the inputs as JSON.
-- The driver reads the fields `result` and `total_cost_usd` from the output.
-- The role ends its answer with one JSON object in a fenced block. The driver reads the last such block.
-- A fake role is any command that reads the prompt on standard input and prints the same JSON shape.
+**Why.** A test gives the same answer each time. A test that passes before the build tests nothing new.
 
-## Locks and the log
+**Limit.** A locked test can be wrong. The store allows one replacement lock, but the driver has no step that asks for one.
 
-- One file holds one log. The driver appends one JSON line for each event and holds an exclusive file lock while it writes.
-- A ticket lock is a file created only if it does not exist, holding the process id. A lock whose process is gone is stale and is taken over.
+## The tier comes from the files
 
-## "The same checks failed"
+**Decision.** `gate/tiers.py` works out the tier from the files a change touches and the path rules on main. Harness is always tier 4. The built-in harness list includes `.tollgate/settings.json`, `.tollgate/lenses/**`, `.tollgate/checks/**`, `.pre-commit-config.yaml`, and the settings files of common test tools. The settings can add to it and cannot remove from it.
 
-Two attempts failed the same way when the names of the failed checks and the ids of the failed locked tests are the same in both.
+**Why.** A builder that picks the tier of its own work can pick a low one.
 
-## Still open, for the owner
+**Limit.** A risky path with no rule counts as tier 1 or 2.
 
-- E1, the ruleset part: [experiments/scripts/e1_rulesets.sh](experiments/scripts/e1_rulesets.sh).
-- E2, the container: [experiments/scripts/e2_closed_room.sh](experiments/scripts/e2_closed_room.sh).
-- E3, a fake check with the gate's name: [experiments/scripts/e3_fake_check.md](experiments/scripts/e3_fake_check.md). Tollgate's own defense is that the driver never sends a change under `.github/`. A person who adds such a file can still fake the check. If GitHub counts the fake check as passed, the fallback is a second required check that a pull request cannot add: the review workflow, which then also runs for tier 1 and 2.
-- E4, a driver that outlives a closed session: [experiments/scripts/e4_long_run.md](experiments/scripts/e4_long_run.md).
+## The driver is a script, and a skill only starts it
 
-## The gate runs only in the driver
+**Decision.** `/tollgate:task` starts `driver.task` or `driver.roadmap` as its own process with `setsid -f`, and returns. The driver writes one log line for each event, in the state folder. A driver that starts again reads the log and repeats no finished step.
 
-The owner removed the gate from the workflow on 2026-11-21. Every pull request made by hand failed it until a person commented an approval, and the owner chose to drop that step for every project.
+**Why.** An AI session loses its place on a run of hours. A script gives the same result each time.
 
-- The driver still runs the gate on your machine after each attempt, so a ticket's pull request opens only after rules 1 to 5 pass there.
-- On GitHub, the test job runs the checks with main's harness and the locked files, and fails when a check fails. The review runs for tier 3 and 4. Neither one blocks a merge.
-- No ruleset requires a check. The branch ruleset keeps pull requests, no force-push, and no deletion. The tag ruleset is unchanged.
-- With `auto_merge` on, the driver merges only tier 1 and 2. A person merges tier 3 and 4.
-- `/tollgate:init` no longer proves the gate with a pull request: no check on GitHub rejects anything.
+**Limit.** The machine must stay on while a task runs.
 
-What this gives up: nothing on GitHub stops a change that skips the driver, such as a change pushed by hand, a weakened test, or a change to the workflow, from merging.
+## A question waits in the state folder
 
-## A change made by hand needs a person, not a ticket
+**Decision.** When the driver needs a person, the store writes a question in `questions/<n>.json`. You answer with `/tollgate:inbox`, for example `tollgate decide retry keep the retries short`.
 
-The gate's rules 1 to 3 prove that an AI change was built against tests locked before the build. A change a person makes by hand has no ticket and no locked tests, so it always failed rule 1, and a change to the harness always failed rule 5: the test job puts main's harness back, so a new workflow was tested against the old one. The only way through was to merge around a red gate.
+**Why.** A question in a file needs no outside service, and the driver reads the answer when it starts again. A question never blocks the other tickets.
 
-Now a change on a branch that is not a ticket branch passes rules 1 and 2 with an approval by a person under `approvers`: a comment `tollgate approve <the head commit>`, or an approving review. The same approval meets rule 4, and the test job then keeps the change's own harness. The checks still run and must pass. A ticket branch cannot take this path. The gate's failure message prints the comment to write.
+**Limit.** Nothing tells you that a question waits. `/tollgate:status` and `/tollgate:inbox` show it when you ask.
 
-The test job must know before the tests run whether the change is approved. The find job asks `action.approval`, which applies the gate's own rule, `gate.approved`, to the settings on main. So the rule is written once. Any error there counts as not approved, and the test job then puts main's harness back.
+## Python with the standard library only
+
+**Decision.** Tollgate is Python 3.11 with the standard library only. The checks that pre-commit runs are single files, copied into `.tollgate/checks/`.
+
+**Why.** A guard with dependencies can break when a dependency changes. A copied check runs with no Tollgate code, so the project carries its own.
+
+**Limit.** A copied check can fall behind the plugin. `setup/health.py` warns when a copy differs.
+
+## The words of one ticket
+
+These formats hold for every ticket:
+
+- The branch of a ticket is `tg/<ticket id>`. The branch of a plan is `tg-plan/<task id>`.
+- The header of a ticket is plain `key: value` lines between two `---` lines. The keys are `id`, `plan`, `seams`, and `tests`.
+- A checklist line is `- [C1, must] text`. A test belongs to the item whose id is in its name, such as `test_c1_retries_twice`.
+- The one test report format is JUnit XML. A test id is `<classname>::<name>`.
+- Two tries failed the same way when the failed checks and the failed locked tests are the same, or the same items failed at the same score.

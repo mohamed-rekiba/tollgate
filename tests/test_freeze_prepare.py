@@ -1,17 +1,14 @@
-"""Tests for the freeze command, the restore step, and the workflow templates."""
+"""Tests for the freeze command and the restore step."""
 
-import re
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from action import freeze, gate, prepare
-from action import manifest as mf
-from action.checks import CheckResult, Results
+from gate import freeze, gate, prepare
+from gate import manifest as mf
+from gate import settings as st
+from gate.checks import CheckResult, Results
 from tests.helpers import TICKET, Repo, settings_text
-
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def results_file(folder, **status):
@@ -25,6 +22,10 @@ def results_file(folder, **status):
     return str(path)
 
 
+def results_of(path):
+    return Results.from_json(Path(path).read_text()).tests
+
+
 class FreezeTest(unittest.TestCase):
     def setUp(self):
         self.repo = Repo()
@@ -33,43 +34,33 @@ class FreezeTest(unittest.TestCase):
         self.repo.write(mf.ticket_path("T-1"), TICKET)
         self.repo.write("tests/test_t1.py", "# tests\n")
         self.commit = self.repo.commit()
+        self.settings = st.load_from_ref(str(self.repo.path), "main")
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
 
-    def test_first_freeze(self):
-        name, text = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                    results_file(self.tmp.name), "123", "main")
-        self.assertEqual(name, "tg/freeze/T-1/1")
-        m = mf.loads(text)
-        self.assertEqual((m["run_id"], m["number"], m["commit"]), (123, 1, self.commit))
+    def record(self, number=1, ticket="T-1", **status):
+        return freeze.record(str(self.repo.path), ticket, self.commit, "b" * 40, self.settings,
+                             results_of(results_file(self.tmp.name, **status)), number)
 
-    def test_second_freeze_gets_the_next_number_and_a_third_is_refused(self):
-        self.repo.tag("tg/freeze/T-1/1", "x", self.commit)
-        name, _ = freeze.message(str(self.repo.path), "T-1", self.commit,
-                                 results_file(self.tmp.name), "1", "main")
-        self.assertEqual(name, "tg/freeze/T-1/2")
-        self.repo.tag("tg/freeze/T-1/2", "x", self.commit)
+    def test_first_lock(self):
+        lock = self.record()
+        self.assertEqual((lock["number"], lock["commit"], lock["base_commit"]),
+                         (1, self.commit, "b" * 40))
+        self.assertEqual(sorted(lock["manifest"]), ["files", "keeps_behavior", "tests"])
+        self.assertEqual(lock["manifest"]["keeps_behavior"], ["tests.test_t1::test_c2_sent_once"])
+
+    def test_a_third_lock_is_refused(self):
+        self.assertEqual(self.record(number=2)["number"], 2)
         with self.assertRaisesRegex(mf.FreezeError, "already has 2 freezes"):
-            freeze.message(str(self.repo.path), "T-1", self.commit,
-                           results_file(self.tmp.name), "1", "main")
+            self.record(number=3)
 
     def test_refuses_a_bad_ticket_id(self):
         with self.assertRaisesRegex(mf.FreezeError, "not a valid ticket id"):
-            freeze.message(str(self.repo.path), "T-1;rm", self.commit,
-                           results_file(self.tmp.name), "1", "main")
+            self.record(ticket="T-1;rm")
 
-    def test_command_line_writes_name_and_message(self):
-        out, name_out = Path(self.tmp.name, "msg"), Path(self.tmp.name, "name")
-        code = freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
-                            "--commit", self.commit, "--results", results_file(self.tmp.name),
-                            "--run-id", "9", "--base", "main", "--out", str(out), "--name-out", str(name_out)])
-        self.assertEqual(code, 0)
-        self.assertEqual(name_out.read_text(), "tg/freeze/T-1/1")
-        self.assertEqual(freeze.main(["--repo", str(self.repo.path), "--ticket", "T-1",
-                                      "--commit", self.commit, "--results",
-                                      results_file(self.tmp.name, test_c1_retries="passed"),
-                                      "--run-id", "9", "--base", "main", "--out", str(out),
-                                      "--name-out", str(name_out)]), 1)
+    def test_refuses_a_test_that_passes_before_the_build(self):
+        with self.assertRaisesRegex(mf.FreezeError, "passed before the build"):
+            self.record(test_c1_retries="passed")
 
 
 class PrepareTest(unittest.TestCase):
@@ -117,71 +108,6 @@ class SummaryTest(unittest.TestCase):
         title, text = gate.summary([{"rule": 3, "file": "a.py", "message": "changed"}], 1)
         self.assertIn("1 finding", title)
         self.assertIn("Rule 3: changed (`a.py`)", text)
-
-
-class WorkflowTemplatesTest(unittest.TestCase):
-    FILE = ROOT / "workflows/tollgate.yml"
-
-    def jobs(self):
-        try:
-            import yaml
-        except ImportError:
-            self.skipTest("no YAML parser here")
-        return yaml.safe_load(self.FILE.read_text())["jobs"]
-
-    def test_this_repository_runs_the_template_as_it_is(self):
-        # Tollgate guards itself with this file, so the installed copy must match.
-        # It compares the copy the commit holds. On GitHub, the test job puts main's
-        # harness back on disk before the tests run, so for a change to the workflow
-        # the file on disk is main's copy, not the one this commit installs.
-        path = ".github/workflows/tollgate.yml"
-        proc = subprocess.run(["git", "-C", str(ROOT), "show", f"HEAD:{path}"],
-                              capture_output=True, text=True, check=False)
-        installed = proc.stdout if proc.returncode == 0 else (
-            (ROOT / path).read_text() if (ROOT / path).exists() else None)
-        if installed is not None:
-            self.assertEqual(installed, self.FILE.read_text(),
-                             "run: python3 -m setup.write_workflows --version self")
-
-    def test_no_broad_permissions_and_no_pin_in_the_file(self):
-        text = self.FILE.read_text()
-        self.assertIn("permissions: {}", text)
-        self.assertNotIn("tollgate/action@", text)
-        self.assertIn(".tollgate/settings.json", text)
-
-    def test_untrusted_text_never_lands_in_a_shell_line(self):
-        bad = re.compile(r"\$\{\{\s*(github\.event\.(pull_request\.head|comment|issue\.title|"
-                         r"issue\.body)|inputs\.id|needs\.find\.outputs\.(branch|ticket))")
-        block = None
-        for line in self.FILE.read_text().splitlines():
-            if re.match(r"\s*run:", line):
-                block = len(line) - len(line.lstrip())
-                self.assertIsNone(bad.search(line), line)
-            elif block is not None and line.strip() and len(line) - len(line.lstrip()) <= block:
-                block = None
-            elif block is not None:
-                self.assertIsNone(bad.search(line), line)
-
-    def test_jobs_that_run_the_change_cannot_write(self):
-        for name in ("freeze-test", "test"):
-            job = self.jobs()[name]
-            self.assertEqual(job["permissions"], {"contents": "read"}, name)
-            text = str(job)
-            self.assertNotIn("secrets.", text)
-            for step in job["steps"]:
-                if "actions/checkout" in step.get("uses", ""):
-                    self.assertEqual(step["with"]["persist-credentials"], False, name)
-
-    def test_there_is_no_gate_job_and_a_failed_check_fails_the_test_job(self):
-        self.assertNotIn("gate", self.jobs())
-        steps = [s.get("name") for s in self.jobs()["test"]["steps"]]
-        self.assertEqual(steps[-1], "Fail when a check failed")
-
-    def test_the_change_is_never_where_the_code_runs_from(self):
-        for name, job in self.jobs().items():
-            for step in job["steps"]:
-                if "actions/checkout" in step.get("uses", "") and step["with"].get("path") == "main":
-                    self.assertEqual(step["with"]["ref"], "main", name)
 
 
 if __name__ == "__main__":

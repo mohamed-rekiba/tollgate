@@ -18,7 +18,7 @@ _Avoid_: issue, work item
 **gate**: The check that decides whether a change may merge.
 _Avoid_: judge, ticket
 
-**workflow**: The one GitHub workflow.
+**workflow**: The steps a ticket goes through.
 _Avoid_: Action, item
 """
 
@@ -47,7 +47,7 @@ class Repo:
         self.write("CONTEXT.md", WORDS)
         self.write("README.md", README)
         self.commit("docs: start")
-        sh(root, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
+        sh(root, "git", "update-ref", "refs/heads/main", "HEAD")
         sh(root, "git", "checkout", "-q", "-b", "change")
 
     def write(self, name, text):
@@ -59,10 +59,10 @@ class Repo:
         sh(self.root, "git", "add", "-A")
         sh(self.root, "git", "commit", "-q", "--allow-empty", "-m", message)
 
-    def check(self):
+    def check(self, **kw):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            code = check_writing.main(str(self.root))
+            code = check_writing.main(str(self.root), **kw)
         return code, out.getvalue()
 
 
@@ -117,7 +117,7 @@ class CheckWritingTest(unittest.TestCase):
     def test_only_added_lines_are_checked(self):
         self.repo.write("docs/old.md", "An issue from before.\n")
         self.repo.commit("docs: an old page")
-        sh(self.repo.root, "git", "update-ref", "refs/remotes/origin/main", "HEAD")
+        sh(self.repo.root, "git", "update-ref", "refs/heads/main", "HEAD")
         self.repo.write("docs/old.md", "An issue from before.\nA new line.\n")
         self.repo.commit("docs(old): add a line")
         self.assertEqual(self.repo.check(), (0, ""))
@@ -146,11 +146,36 @@ class CheckWritingTest(unittest.TestCase):
         self.assertIn("credits an AI", self.repo.check()[1])
 
     def test_with_no_main_to_compare_only_the_readme_is_checked(self):
-        sh(self.repo.root, "git", "update-ref", "-d", "refs/remotes/origin/main")
         self.repo.commit("Fixed stuff")
-        code, out = self.repo.check()
+        code, out = self.repo.check(base="no-such-branch")
         self.assertEqual(code, 0)
         self.assertIn("only the README is checked", out)
+
+    def test_a_plain_comment_in_source_passes(self):
+        self.repo.write("src/a.py", '"""Count the books."""\n\nleverage = 1  # the plain count\n')
+        self.repo.write("src/b.ts", "// Count the books.\nconst s = \"a — b\";\n")
+        self.repo.commit("feat(shop): count")
+        self.assertEqual(self.repo.check(), (0, ""))
+
+    def test_filler_or_a_long_dash_in_a_comment_fails_but_not_the_word_list(self):
+        self.repo.write("src/a.py", 'def f():\n    """We leverage the issue."""\n'
+                        "    return 1  # one — two\n")
+        self.repo.write("src/b.go", "package b\n/* we utilize\n   this */\nvar x = 1 // a — b\n")
+        self.repo.commit("feat(shop): count")
+        out = self.repo.check()[1]
+        self.assertIn("src/a.py:2: 'leverage' is filler", out)
+        self.assertIn("src/a.py:3: a long dash", out)
+        self.assertIn("src/b.go:2: 'utilize' is filler", out)
+        self.assertIn("src/b.go:4: a long dash", out)
+        self.assertNotIn("'issue'", out)
+
+    def test_staged_checks_the_staged_change(self):
+        self.repo.write("docs/guide.md", "The gate checks each ticket.\n")
+        sh(self.repo.root, "git", "add", "-A")
+        self.assertEqual(self.repo.check(staged=True), (0, ""))
+        self.repo.write("docs/guide.md", "We leverage the gate.\n")
+        sh(self.repo.root, "git", "add", "-A")
+        self.assertEqual(self.repo.check(staged=True)[0], 1)
 
     def test_the_driver_commit_subjects_pass(self):
         for subject in ("test(shop-1): the ticket and its locked tests",
@@ -175,6 +200,15 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(Path(tmp, install_writing_check.TARGET).read_bytes(),
                              install_writing_check.SOURCE.read_bytes())
             self.assertEqual(install_writing_check.install(tmp), [])
+
+    def test_help_installs_nothing_and_project_names_the_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+                install_writing_check.main(["--help", "--project", tmp])
+            self.assertFalse(Path(tmp, install_writing_check.TARGET).exists())
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(install_writing_check.main(["--project", tmp]), 0)
+            self.assertTrue(Path(tmp, install_writing_check.TARGET).exists())
 
     def test_the_copy_runs_alone_with_no_tollgate_code(self):
         with tempfile.TemporaryDirectory() as tmp:

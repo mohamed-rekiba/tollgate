@@ -1,6 +1,6 @@
 {
  "title": "The idea of Tollgate in four steps",
- "desc": "First the tests are written; they say what done means. Then they are locked on GitHub, where the AI cannot change them. The AI builds, and may try again, but cannot move the goal. The locked tests decide: only a change that passes them is merged.",
+ "desc": "First the tests are written; they say what done means. Then they are locked: your machine signs a record of them in the state folder, where the AI cannot write. The AI builds, and can try again, but the tests stay the same. The tests and fresh reviewers check each try, never the AI: 70% or more passes.",
  "nodes": [
   {
    "id": "a",
@@ -14,7 +14,7 @@
   },
   {
    "id": "b",
-   "text": "Lock them\nOn GitHub, where the\nAI cannot change them",
+   "text": "Lock them\nA signed record the\nAI cannot change",
    "col": 1,
    "row": 0,
    "kind": "server",
@@ -34,7 +34,7 @@
   },
   {
    "id": "d",
-   "text": "The tests decide\nOnly a change that\npasses is merged",
+   "text": "Others check it\nTests and reviewers.\n70% or more passes.",
    "col": 3,
    "row": 0,
    "kind": "check",
@@ -58,6 +58,6 @@
   }
  ],
  "names": {
-  "server": "GITHUB"
+  "server": "STORE"
  }
 }

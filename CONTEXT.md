@@ -1,6 +1,6 @@
 # Tollgate
 
-Tollgate keeps a change written by an AI out of the main branch until tests that were locked before the build pass on GitHub.
+Tollgate keeps a change written by an AI out of the main branch until the gate, on your machine, sees tests that were locked before the build pass.
 
 ## Language
 
@@ -8,6 +8,9 @@ Tollgate keeps a change written by an AI out of the main branch until tests that
 
 **task**: What a person asks for, and the work Tollgate does for it. The person's own words for it are the request.
 _Avoid_: user story, epic
+
+**roadmap**: An ordered list of tasks, for a request too large for one plan: the base, the skeleton, then the features. It has its own checklist.
+_Avoid_: backlog, milestone plan
 
 **plan**: The design for a task. It names every file that changes, every seam, and every ticket.
 _Avoid_: design doc, PRD
@@ -24,10 +27,10 @@ _Avoid_: required item, critical item
 **seam**: A public point where a test observes behavior: a web address, a command, the name and inputs of a function.
 _Avoid_: boundary, touchpoint
 
-**attempt**: One builder session, then one run of the gate.
-_Avoid_: iteration
+**try**: One builder session, then one run of the gate. The driver starts each try from the best try so far.
+_Avoid_: attempt, iteration
 
-**score**: The share of checklist items that passed, as a percentage.
+**score**: The share of checklist items that passed, as a percentage. A try needs 70 or more.
 _Avoid_: rating, grade
 
 ### Roles
@@ -42,7 +45,7 @@ _Avoid_: implementer, coder, developer
 _Avoid_: tester, QA
 
 **reviewer**: The role that reads something through one lens and reports findings. It has no history and cannot edit.
-_Avoid_: critic, judge, goldfish
+_Avoid_: critic, goldfish
 
 **lens**: A file that tells a reviewer what to look for.
 _Avoid_: rubric
@@ -50,35 +53,77 @@ _Avoid_: rubric
 **finding**: One problem that a reviewer or a check reports: blocking, major, or minor.
 _Avoid_: defect, nit
 
-**advisor**: Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder.
-_Avoid_: approver, human in the loop, escalation
+**advisor**: Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder. The settings list the advisors in order.
+_Avoid_: human in the loop, escalation
+
+**owner**: A person whose SSH public key is in `owners` in the settings on main. Only an owner signs an approval.
+_Avoid_: admin, maintainer
 
 ### Proof
 
-**checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets.
+**checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets. They are the project's own tools.
 _Avoid_: linters, validators
 
-**harness**: The files that decide how tests run: test settings, shared test helpers, dependency lists, the server workflows.
+**harness**: The files that decide how tests run: test settings, shared test helpers, dependency lists, the pre-commit config, Tollgate's settings and checks.
 _Avoid_: test config, test infrastructure
 
-**freeze**: The point after which a ticket and its tests cannot change. GitHub creates it as a tag.
-_Avoid_: lock-in, snapshot
+**lock**: The signed record of a ticket's tests, made before any code: each locked file with its fingerprint, and the name of each locked test. A ticket has at most 2 locks: the first, and one replacement.
+_Avoid_: freeze, snapshot
 
-**manifest**: The record of a freeze: each frozen file with its fingerprint, and the name of each frozen test.
-_Avoid_: lockfile, inventory
+**plan lock**: The signed record of an approved plan: the fingerprint of the plan and of each of its tickets.
+_Avoid_: plan tag, plan freeze
 
-**gate**: The check that decides whether a change may merge. It uses no AI.
-_Avoid_: judge, verifier, quality gate
+**gate**: The program that decides whether a try passes. It uses no AI, and the driver runs it on your machine after each try.
+_Avoid_: verifier, quality gate
 
 **tier**: A number from 1 to 4 that says how much a change puts at risk. The gate works it out from the files that changed.
 _Avoid_: risk level, severity
 
+**pass record**: The signed record that a commit passed the gate: its ticket, tier, score, the checks, and the fingerprint of its lock.
+_Avoid_: pass token, green build
+
+**approval**: The record an owner signs with their own SSH key to let a tier 3 or 4 change, or a change made by hand, merge.
+_Avoid_: sign-off, LGTM
+
+**ready change**: A branch whose last commit has a pass record and is not on main yet. It waits for a merge.
+_Avoid_: pull request, candidate
+
+**signers**: The public keys in the settings on main that may sign locks, plan locks, and pass records. Each is the machine key of a machine that runs Tollgate.
+_Avoid_: trusted keys, keyring
+
+**machine key**: The SSH key that Tollgate makes on your machine, in the key folder. It signs locks, plan locks, and pass records. It never signs an approval.
+_Avoid_: bot key, service key
+
 ### Parts
 
-**driver**: The Tollgate script that runs the steps of a ticket in order.
+**driver**: The Tollgate program that runs the steps of a task and of each ticket in order, on your machine.
 _Avoid_: orchestrator, runner
 
-**log**: A file on the person's machine. The driver adds one line for each event.
+**store**: The part of Tollgate that keeps its state. The driver, the gate, and the skills reach the state folder only through it. It locks tests, signs records, asks questions, and merges.
+_Avoid_: repository layer, backend
+
+**state folder**: The folder outside the project where the store keeps the locks, the pass records, the approvals, the questions, the builder's copies, and the logs. No role can write there.
+_Avoid_: data dir, cache
+
+**copy**: The builder's own clone of the project, in the state folder, with no remote. A role works only there.
+_Avoid_: workspace, checkout
+
+**isolation**: How the driver keeps a role apart from the rest of your machine: `container` (Docker, the default) or `sandbox` (Claude Code's own sandbox).
+_Avoid_: closed room, jail
+
+**hook**: A command that Claude Code runs before each tool call. Tollgate's hook refuses a call that breaks a rule.
+_Avoid_: interceptor
+
+**policy**: The Claude Code settings file that Tollgate writes for each role: its permission rules, the sandbox, and the hook.
+_Avoid_: profile, permission set
+
+**pre-commit**: The tool that runs Tollgate's checks in git, before each commit, merge, and push.
+_Avoid_: git hooks layer
+
+**question**: A decision that waits for a person, in the state folder. You answer it with `/tollgate:inbox`.
+_Avoid_: ticket comment
+
+**log**: A file in the state folder. The driver adds one line for each event.
 _Avoid_: journal
 
 **report**: The file that the driver writes from the logs when a task ends.
@@ -93,11 +138,5 @@ _Avoid_: slash command
 **plugin**: The package that adds Tollgate to Claude Code.
 _Avoid_: extension, add-on
 
-**workflow**: The one GitHub workflow, `tollgate.yml`, that runs the freeze, the plan lock, the tests, the review, and the gate. It reads which version of Tollgate to run from the settings on main.
-_Avoid_: Action, pipeline
-
-**home**: An optional git repository that holds many projects as submodules.
-_Avoid_: ops repo, workspace, portfolio
-
-**GitHub**: Where the locked tests, the workflow, the gate, and the main branch live. The AI cannot change anything there.
-_Avoid_: the server, remote
+**home**: An optional git repository on your machine that holds many projects as submodules, and the rules they share.
+_Avoid_: ops repo, portfolio

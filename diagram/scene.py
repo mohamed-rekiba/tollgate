@@ -351,6 +351,59 @@ class Scene:
             f'values="{shut};{shut};{open_};{open_};{shut};{shut}" keyTimes="0;{keys};1" '
             f'dur="{dur:.2f}s" repeatCount="indefinite"/>')}
 
+    # Callouts -----------------------------------------------------------------
+    def number(self, x, y, n, accent):
+        self.front.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{BADGE}" fill="{accent}"/>')
+        self.front.append(f'<text x="{x:.1f}" y="{y + 4:.1f}" text-anchor="middle" font-size="11" '
+                          f'font-weight="700" fill="{self.c["page"]}">{n}</text>')
+
+    def callout(self, c, x, y, point):
+        """A numbered label with its number at (x, y), and a dotted leader to a ring
+        on the page point it names."""
+        accent = self.c["kinds"][c.get("kind", "neutral")][0]
+        px, py = point
+        dx, dy = px - x, py - y
+        far = max((dx * dx + dy * dy) ** 0.5, 1)
+        ux, uy = dx / far, dy / far
+        a = (x + ux * (BADGE + 3), y + uy * (BADGE + 3))
+        b = (px - ux * 5, py - uy * 5)
+        # A page can find each callout and the point it names, to light that part.
+        self.front.append(f'<g class="callout" data-n="{c["n"]}" data-x="{px:.1f}" '
+                          f'data-y="{py:.1f}">')
+        self.front.append(f'<line x1="{a[0]:.1f}" y1="{a[1]:.1f}" x2="{b[0]:.1f}" y2="{b[1]:.1f}" '
+                          f'stroke="{accent}" stroke-width="1.5" stroke-dasharray="1 4" '
+                          f'stroke-linecap="round"/>')
+        self.front.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="4.5" fill="{self.c["page"]}" '
+                          f'fill-opacity="0.7" stroke="{accent}" stroke-width="1.8"/>')
+        self.number(x, y, c["n"], accent)
+        right = c["side"] == "right"
+        tx = x + (INSET - BADGE) if right else x - (INSET - BADGE)
+        anchor = "start" if right else "end"
+        lines = wrap(c["line"], int((COLUMN - INSET - 12) / LINE_CHAR))
+        self.front.append(f'<text x="{tx:.1f}" y="{y + 4:.1f}" text-anchor="{anchor}" '
+                          f'font-size="12" font-weight="700" letter-spacing="1.4" '
+                          f'fill="{self.c["text"]}">{escape(c["head"].upper())}</text>')
+        for k, line in enumerate(lines):
+            self.front.append(f'<text x="{tx:.1f}" y="{y + 4 + STEP * (k + 1):.1f}" '
+                              f'text-anchor="{anchor}" font-size="12" '
+                              f'fill="{self.c["sub"]}">{escape(line)}</text>')
+        self.front.append("</g>")
+
+    def callout_under(self, c, cx, cy):
+        """A numbered label on one line, centered under the scene, with no leader."""
+        accent = self.c["kinds"][c.get("kind", "neutral")][0]
+        x = cx - bottom_width(c) / 2
+        self.front.append(f'<g class="callout" data-n="{c["n"]}">')
+        self.number(x + BADGE, cy, c["n"], accent)
+        hx = x + 2 * BADGE + 12
+        self.front.append(f'<text x="{hx:.1f}" y="{cy + 4:.1f}" font-size="12" font-weight="700" '
+                          f'letter-spacing="1.4" fill="{self.c["text"]}">'
+                          f'{escape(c["head"].upper())}</text>')
+        lx = hx + len(c["head"]) * HEAD_CHAR + 14
+        self.front.append(f'<text x="{lx:.1f}" y="{cy + 4:.1f}" font-size="12" '
+                          f'fill="{self.c["sub"]}">{escape(c["line"])}</text>')
+        self.front.append("</g>")
+
     # The page ------------------------------------------------------------------
     def grid(self, extent=420, step=30):
         out = ['<g mask="url(#fade)">']
@@ -407,14 +460,169 @@ class Scene:
 OBJECTS = ("room", "gate", "server", "vault", "papers", "laptop", "board", "house",
            "database", "pedestal", "wall", "aws")
 
+# Callouts ---------------------------------------------------------------------
+# A callout is a numbered label in a column beside the scene, with a dotted
+# leader to a small ring on the part it names.
+SIDES = ("left", "right", "bottom")
+COLUMN = 270       # the width of a column of callouts
+BOTTOM = 52        # the height of the row under the scene
+BADGE = 10         # the radius of the number's circle
+INSET = 28         # from the inner edge of a column to the start of its text
+HEAD_CHAR = 8.6    # the width of one character of a head: 12 px mono, spaced 1.4
+LINE_CHAR = 7.2    # the width of one character of a line: 12 px mono
+STEP = 16          # from one line of text to the next
+GAP = 14           # the least space between two callouts in a column
+
+
+def wrap(text, chars):
+    """Break text into lines of at most `chars` characters, at spaces."""
+    lines = []
+    for word in text.split():
+        if lines and len(lines[-1]) + 1 + len(word) <= chars:
+            lines[-1] += " " + word
+        else:
+            lines.append(word)
+    return lines
+
+
+def check_callouts(callouts, width=COLUMN):
+    """Refuse a callout that cannot be drawn, with a message that says how to fix it."""
+    kinds = set(THEMES["light"]["kinds"])
+    numbers = [c.get("n") for c in callouts]
+    if len(set(numbers)) != len(numbers):
+        raise ValueError("each callout needs its own number 'n'")
+    room = (width - INSET - 12) / LINE_CHAR
+    for c in callouts:
+        name = f"callout {c.get('n')}"
+        for key in ("n", "head", "line", "side"):
+            if not c.get(key):
+                raise ValueError(f"{name} needs a '{key}'")
+        if c["side"] not in SIDES:
+            raise ValueError(f"{name}: side must be one of {', '.join(SIDES)}")
+        if c.get("kind", "neutral") not in kinds:
+            raise ValueError(f"{name}: kind must be one of {', '.join(sorted(kinds))}")
+        if c["side"] != "bottom":
+            if len(c.get("to") or []) != 3:
+                raise ValueError(f"{name} needs 'to': the [x, y, z] point it names")
+            if len(c["head"]) * HEAD_CHAR > width - INSET - 12:
+                raise ValueError(f"{name}: the head is too long for one line; shorten it")
+            if len(wrap(c["line"], int(room))) > 2:
+                raise ValueError(f"{name}: the line wraps past two lines; shorten it")
+    # Clockwise: up the left column, down the right one, then the row under the scene.
+    groups = [[c["n"] for c in callouts if c["side"] == side] for side in SIDES]
+    order = [n for g in groups for n in sorted(g)]
+    if order != sorted(numbers):
+        raise ValueError("number the callouts clockwise: the left column first, from its "
+                         "lowest label up, then the right column from the top, then the bottom")
+
+
+def crosses(a, b, c, d):
+    """True when segment a-b crosses segment c-d."""
+    def turn(p, q, r):
+        v = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return (v > 0) - (v < 0)
+    return turn(a, b, c) * turn(a, b, d) < 0 and turn(c, d, a) * turn(c, d, b) < 0
+
+
+def place_column(items, edge, top, bottom):
+    """Place the labels of one column, given top to bottom, beside their points.
+
+    `items` are (point, height) pairs: the page point a label names and the
+    height of the label below its number. `edge` is the x of the numbers.
+    Each label starts level with its point. Labels then move apart until none
+    overlaps the next and no two leaders cross. Return the y of each number.
+    """
+    want = [p[1] for p, _ in items]
+    space = [h + GAP for _, h in items]  # from a number down to the next one, at least
+    extra = [0.0] * len(items)
+    for _ in range(400):
+        # Labels that touch form a block; each block sits at the mean of where its
+        # labels want to be, so no label moves farther than it must.
+        blocks = []  # [first, last, y of first]
+        for i in range(len(want)):
+            blocks.append([i, i, want[i]])
+            while len(blocks) > 1:
+                a, b = blocks[-2], blocks[-1]
+                end = a[2] + sum(space[k] + extra[k] for k in range(a[0], a[1] + 1))
+                if end <= b[2]:
+                    break
+                offs, run = [], 0.0
+                for k in range(a[0], b[1] + 1):
+                    offs.append(run)
+                    run += space[k] + extra[k]
+                y = sum(want[k] - o for k, o in zip(range(a[0], b[1] + 1), offs,
+                                                    strict=True)) / len(offs)
+                blocks[-2:] = [[a[0], b[1], y]]
+        ys = []
+        for first, last, y in blocks:
+            for k in range(first, last + 1):
+                ys.append(y if k == first else ys[-1] + space[k - 1] + extra[k - 1])
+        ys[-1] = min(ys[-1], bottom - items[-1][1])
+        for i in range(len(ys) - 2, -1, -1):  # push up, off the bottom
+            ys[i] = min(ys[i], ys[i + 1] - space[i] - extra[i])
+        ys[0] = max(ys[0], top)
+        for i in range(1, len(ys)):  # push down, off the top
+            ys[i] = max(ys[i], ys[i - 1] + space[i - 1] + extra[i - 1])
+        if ys[-1] > bottom - items[-1][1]:
+            raise ValueError("the callouts of a column do not fit; shorten them or make the "
+                             "scene taller")
+        bad = [(i, j) for i in range(len(ys)) for j in range(i + 1, len(ys))
+               if crosses((edge, ys[i]), items[i][0], (edge, ys[j]), items[j][0])]
+        if not bad:
+            return ys
+        for i, j in bad:
+            for k in range(i, j):
+                extra[k] += 4
+    raise ValueError("the leaders of a column cross; move a point or a label to another side")
+
+
+def callout_height(c, width=COLUMN):
+    """The height of a callout below its number: the head and the wrapped line."""
+    return STEP * len(wrap(c["line"], int((width - INSET - 12) / LINE_CHAR))) + 8
+
+
+def callout_layout(callouts, iso, frame, width=COLUMN):
+    """Where each callout goes. `iso` maps a ground point to the page; `frame` is
+    (left, top, right, bottom) of the scene on the widened page.
+
+    Return a dict from number to (number x, number y, page point or None)."""
+    left, top, right, bottom = frame
+    out = {}
+    for side, edge in (("left", left - 8 - BADGE), ("right", right + 8 + BADGE)):
+        column = sorted((c for c in callouts if c["side"] == side), key=lambda c: c["n"])
+        if side == "left":
+            column.reverse()  # it reads upward: its first label is the lowest
+        if not column:
+            continue
+        points = [iso(*c["to"]) for c in column]
+        ys = place_column([(p, callout_height(c, width)) for p, c in zip(points, column,
+                                                                          strict=True)],
+                          edge, top, bottom)
+        for c, p, y in zip(column, points, ys, strict=True):
+            out[c["n"]] = (edge, y, p)
+    return out
+
+
+def bottom_width(c):
+    return 2 * BADGE + 12 + len(c["head"]) * HEAD_CHAR + 14 + len(c["line"]) * LINE_CHAR
+
 
 def from_spec(spec: dict, theme: str) -> str:
     """Draw a scene from a spec. See the format in diagram/__init__.py."""
     for key in ("title", "desc"):
         if not spec.get(key):
             raise ValueError(f"the scene needs a '{key}'")
+    callouts = spec.get("callouts", [])
+    check_callouts(callouts)
     w, h = spec.get("size", [1120, 640])
-    s = Scene(theme, w, h, origin=tuple(spec.get("origin", [w / 2, h / 2])),
+    ox, oy = spec.get("origin", [w / 2, h / 2])
+    # The page grows by a column on each side that has callouts, and by a row
+    # under the scene for the bottom ones.
+    grow_l = COLUMN if any(c["side"] == "left" for c in callouts) else 0
+    grow_r = COLUMN if any(c["side"] == "right" for c in callouts) else 0
+    unders = sorted((c for c in callouts if c["side"] == "bottom"), key=lambda c: c["n"])
+    grow_b = BOTTOM * len(unders)
+    s = Scene(theme, w + grow_l + grow_r, h + grow_b, origin=(ox + grow_l, oy),
               scale=spec.get("scale", 0.8))
     s.grid(spec.get("grid", 460))
     if spec.get("caption"):
@@ -477,4 +685,12 @@ def from_spec(spec: dict, theme: str) -> str:
             arrived, leaves = times[n - 1][1], times[n][0]
             swing = min(0.5, max(0.1, (leaves - arrived) / 2))
             s.lift(ticket.get("gate", "arm"), dur, leaves - swing - 0.05, times[n][1], swing)
+    if callouts:
+        top = 90 if spec.get("caption") else 24
+        places = callout_layout(callouts, s.iso, (grow_l, top, grow_l + w, h - 16))
+        for c in callouts:
+            if c["side"] != "bottom":
+                s.callout(c, *places[c["n"]])
+        for k, c in enumerate(unders):
+            s.callout_under(c, grow_l + w / 2, h + BOTTOM * k + BOTTOM / 2)
     return s.render(spec["title"], spec["desc"])

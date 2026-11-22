@@ -27,12 +27,22 @@ A scene spec:
      "labels":  [{"at": [x, y, z], "head": "Main", "sub": ["line", "line"],
                   "anchor": "start" | "middle" | "end"}],
      "ticket":  {"legs": [{"path": [[x, y], ...], "tone": "fail", "wait": 0.9}],
-                 "lift": 6}}
+                 "lift": 6},
+     "callouts": [{"n": 1, "head": "Plan first", "line": "One short sentence or two.",
+                   "to": [x, y, z], "side": "left" | "right" | "bottom", "kind": "ai"}]}
 
 Ground units: x runs down-right on the page, y runs down-left, z runs up.
 "gate" takes "arm_to" (where the barrier ends) and "axis" ("x" or "y");
 "pedestal" takes "icon"; "aws" takes "aws" (a service name); "wall" takes "to".
 "lift" names the ticket leg during which the gate's barrier is up.
+
+Callouts are numbered labels beside the scene. The page widens by a column for
+each side that has them, and grows by a row for each bottom one. A dotted
+leader runs from each number to a small ring on the point "to" names; a
+bottom callout sits centered under the scene, with no leader. Number them
+clockwise: the left column reads upward, the right column downward, then the
+bottom. A line wraps to at most two lines in its column; shorten a longer one.
+"kind" sets the color.
 """
 
 from diagram import flow, scene

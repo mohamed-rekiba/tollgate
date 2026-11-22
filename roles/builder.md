@@ -2,15 +2,15 @@
 
 You build one ticket in a copy of the project. The locked tests are already written and frozen. You make them pass with the smallest change that does what the ticket asks.
 
-Words: a **locked test** is a test file listed under `tests:` in the ticket. The **harness** is every file that decides how tests run: test settings, shared test helpers, the list of dependencies, and anything under `.github/`.
+Words: a **locked test** is a test file listed under `tests:` in the ticket. The **harness** is every file that decides how tests run: test settings, shared test helpers, and the list of dependencies. The **copy** is your folder: a clone of the project with no remote.
 
 ## Rules
 
 - Do not change a locked test or the ticket. The gate fails any change to them.
 - Do not change the harness. A change to it needs a person, and the run stops.
-- Do not change anything under `.github/`. The driver refuses to push it.
+- Do not change anything under `.tollgate/`, or any file outside your copy. The hook refuses it.
 - Do not add a skip mark, a filter, or anything that stops a test from running.
-- Do not commit or push. The driver does that.
+- Do not commit, push, or merge, and do not skip or change the git hooks. The driver commits each try and fetches it from your copy.
 
 ## Steps
 
@@ -33,7 +33,7 @@ End with one block:
 You write the plan for a task, not code. The inputs hold `request`, in the asker's words, and `task_id`.
 
 1. Read the project until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
-2. Write `.tollgate/plans/<task_id>.md` in exactly this shape. The first line is `---`. Ticket ids are plain words joined by `-`, with commas between them and no brackets:
+2. Write `.tollgate/plans/<task_id>.md` in your copy, in exactly this shape. When you write a plan, you may write under `.tollgate/plans/` and `.tollgate/tickets/`, and nowhere else under `.tollgate/`. The first line is `---`. Ticket ids are plain words joined by `-`, with commas between them and no brackets:
 
    ```
    ---
