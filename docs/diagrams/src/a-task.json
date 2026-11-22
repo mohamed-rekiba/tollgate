@@ -1,6 +1,6 @@
 {
  "title": "A task from start to finish",
- "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. GitHub runs the tests again, and the change is merged; you merge the risky ones. You read the report, and up to 3 lessons become rules for the next task.",
+ "desc": "You say what you want. The AI writes a plan, which fresh AIs check, and cuts it into small tickets. For each ticket: the tests are written and locked first, and the AI builds until it scores 70%, each time from its best try. After 3 tries, it asks the advisor: a second AI, or you. The gate passes the change, and it is merged; you merge the risky ones. You read the report, and up to 3 lessons become rules for the next task.",
  "nodes": [
   {
    "id": "s1",
@@ -53,7 +53,7 @@
   },
   {
    "id": "s6",
-   "text": "GitHub runs the tests again\nThen it is merged.\nYou merge the risky ones.",
+   "text": "The gate passes it\nThen it is merged.\nYou merge the risky ones.",
    "col": 0,
    "row": 5,
    "kind": "server",
@@ -145,6 +145,6 @@
   }
  ],
  "names": {
-  "server": "GITHUB"
+  "server": "STORE"
  }
 }

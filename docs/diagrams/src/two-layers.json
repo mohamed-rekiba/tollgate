@@ -1,0 +1,176 @@
+{
+ "type": "scene",
+ "title": "Two layers enforce the rules",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's session in Claude Code: hooks and permission rules refuse an edit of a locked file, a push, and a merge. At the wall, git runs pre-commit on each commit, merge, and push. On the right, the main branch and the signed records: a merge into main needs a signed pass record, and a risky change also needs your signed approval. A commit goes in on one lane; a refusal comes back on the other. Behind both layers, the gate and the signed records hold even when a layer is skipped.",
+ "size": [
+  1120,
+  620
+ ],
+ "origin": [
+  560,
+  360
+ ],
+ "scale": 0.8,
+ "grid": 420,
+ "caption": [
+  "Two layers enforce the rules",
+  "Claude Code hooks, then pre-commit in git"
+ ],
+ "zones": [
+  {
+   "at": [
+    -310,
+    -175,
+    -60,
+    175
+   ],
+   "kind": "ai"
+  },
+  {
+   "at": [
+    60,
+    -175,
+    340,
+    175
+   ],
+   "kind": "check"
+  }
+ ],
+ "lanes": [
+  {
+   "path": [
+    [
+     -150,
+     -16
+    ],
+    [
+     214,
+     -16
+    ]
+   ],
+   "label": "a commit",
+   "at": 0.7
+  },
+  {
+   "path": [
+    [
+     214,
+     26
+    ],
+    [
+     -150,
+     26
+    ]
+   ],
+   "label": "refused",
+   "at": 0.82,
+   "tone": "fail"
+  }
+ ],
+ "objects": [
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    -175
+   ],
+   "to": [
+    6,
+    -82
+   ]
+  },
+  {
+   "type": "server",
+   "at": [
+    260,
+    10
+   ],
+   "levels": 3,
+   "size": 80
+  },
+  {
+   "type": "room",
+   "at": [
+    -190,
+    0
+   ],
+   "size": 110
+  },
+  {
+   "type": "gate",
+   "at": [
+    0,
+    -58
+   ],
+   "arm_to": 62,
+   "axis": "y"
+  },
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    64
+   ],
+   "to": [
+    6,
+    175
+   ]
+  },
+  {
+   "type": "database",
+   "at": [
+    170,
+    -110
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    -300,
+    60,
+    140
+   ],
+   "head": "Layer 1: Claude Code",
+   "sub": [
+    "hooks and permission rules",
+    "refuse a locked file,",
+    "a push, a merge"
+   ],
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    250,
+    -150,
+    120
+   ],
+   "head": "Signed records",
+   "sub": [
+    "pass records",
+    "and approvals"
+   ],
+   "anchor": "start"
+  },
+  {
+   "at": [
+    320,
+    90,
+    -10
+   ],
+   "head": "Main branch",
+   "sub": "a merge needs a pass record",
+   "anchor": "start"
+  },
+  {
+   "at": [
+    0,
+    -58,
+    180
+   ],
+   "head": "Layer 2: pre-commit",
+   "sub": "checks each commit, merge, push",
+   "anchor": "middle"
+  }
+ ]
+}

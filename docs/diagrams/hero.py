@@ -1,7 +1,7 @@
 """The README banner: an isometric line drawing of a change passing the gate.
 
 On the left, the name and the promise. On the right, on a fine grid: the AI's
-room, the gate with its barrier, and the main branch on GitHub. One
+room, the gate with its barrier, and the main branch. One
 change leaves the room, waits at the gate while the locked tests run, the
 barrier lifts only after the tests pass, and it goes in. Before that, a fail sends it
 back to the room on the red path.

@@ -1,7 +1,7 @@
 {
  "type": "scene",
- "title": "The AI's copy and GitHub",
- "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot change anything on GitHub. On the right, GitHub keeps the locked tests, which nobody can change, and the main branch. A change goes in on one lane; GitHub runs the tests again, and pass or fail comes back on the other. Tollgate merges small changes, and you merge the risky ones.",
+ "title": "The AI's copy and the state folder",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot reach the state folder. On the right, the state folder keeps the signed locks and pass records, and the store merges into the main branch. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. Tollgate merges small changes, and you merge the risky ones.",
  "size": [
   1120,
   620
@@ -14,7 +14,7 @@
  "grid": 420,
  "caption": [
   "Who can change what",
-  "the AI works in its own copy; GitHub keeps the tests locked"
+  "the AI works in its own copy; the store keeps the signed records"
  ],
  "zones": [
   {
@@ -49,7 +49,7 @@
     ]
    ],
    "label": "the change",
-   "at": 0.78
+   "at": 0.7
   },
   {
    "path": [
@@ -134,19 +134,22 @@
    "head": "The AI's copy",
    "sub": [
     "writes code, runs tests",
-    "cannot change GitHub"
+    "cannot reach the records"
    ],
    "anchor": "middle"
   },
   {
    "at": [
-    170,
-    -110,
-    150
+    250,
+    -150,
+    120
    ],
-   "head": "Locked tests",
-   "sub": "nobody can change them",
-   "anchor": "middle"
+   "head": "Signed records",
+   "sub": [
+    "locks and passes,",
+    "in the state folder"
+   ],
+   "anchor": "start"
   },
   {
    "at": [
@@ -155,7 +158,7 @@
     -10
    ],
    "head": "Main branch",
-   "sub": "you or Tollgate merge",
+   "sub": "the store merges it",
    "anchor": "start"
   },
   {
@@ -164,8 +167,8 @@
     -58,
     180
    ],
-   "head": "GitHub checks",
-   "sub": "runs the tests again",
+   "head": "The gate",
+   "sub": "runs the locked tests",
    "anchor": "middle"
   }
  ],
