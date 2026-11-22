@@ -12,13 +12,13 @@ This folder holds the GitHub settings for this repository. The JSON files are th
 
 ## Apply the settings
 
-A maintainer runs this from the repository folder:
+An owner runs this from the repository folder:
 
 ```sh
 docs/rulesets/apply.sh
 ```
 
-The script needs `gh`, signed in with admin rights, and `jq`. It does two things:
+The script needs `gh`, signed in as an owner of the repository, and `jq`. It does two things:
 
 1. It sets the merge options: squash only, the title and description as the commit message, and branches deleted after a merge.
 2. It applies each JSON file. It finds a ruleset by its name, updates it when it exists, and creates it when not.
