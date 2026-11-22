@@ -171,6 +171,38 @@ def _forms(folder: Path) -> list:
     return sorted(forms, key=len, reverse=True)
 
 
+REDIRECT = re.compile(r"^\d*[<>]+&?")
+
+
+def check_paths(command: str, cwd: str, copy: str, project: str) -> str:
+    """For a role: the reason to refuse a command with a path word that, resolved from
+    the role's folder, lands in the key folder, or in the state folder outside the
+    role's copy and the copies' folder; or "". A `cd` moves the folder for the words
+    after it. A folder that holds the copy, as `cd ..` reaches, is not refused."""
+    own = Path(os.path.realpath(copy)) if copy else None
+    keys = Path(os.path.realpath(state.key_dir()))
+    root = Path(os.path.realpath(state.state_dir(project).parent))
+    copies = Path(os.path.realpath(state.state_dir(project))) / "builders"
+    here = cwd or "."
+    for part in SPLIT.split(command):
+        words = _words(part)
+        for n, word in enumerate(words):
+            word = REDIRECT.sub("", word)
+            word = word.split("=", 1)[1] if word.startswith("-") and "=" in word else word
+            if not word or word.startswith("-") or "://" in word:
+                continue
+            target = _real(word, here)
+            if _under(target, keys):
+                return f"the command names {word}, in the key folder, which no role may reach"
+            if (_under(target, root) and not (own and _under(target, own))
+                    and not (own and _under(own, target)) and not _under(target, copies)):
+                return (f"the command names {word}, in the state folder outside the role's "
+                        "own copy, which no role may reach")
+        if len(words) >= 2 and words[0] == "cd":
+            here = str(_real(words[1], here))
+    return ""
+
+
 def check_names(command: str, copy: str, project: str) -> str:
     """For a role: the reason to refuse a command whose text names the key folder or the
     state folder, or "". The role's own copy may be named."""
@@ -191,25 +223,33 @@ def check_names(command: str, copy: str, project: str) -> str:
 STATEFUL = ("driver.step", "driver.task", "driver.driver", "driver.roadmap", "driver.retro",
             "driver.report", "setup.merge", "setup.inbox", "setup.init", "setup.home",
             "setup.sync_rules", "gate.store", "gate.gate")
-_RUN_MODULE = re.compile(r"-m\s+(" + "|".join(re.escape(m) for m in STATEFUL) + r")\b")
-_RUN_FILE = re.compile(r"(^|[\s/'\"])(" + "|".join(m.replace(".", "/") for m in STATEFUL)
-                       + r")\.py\b")
-GIT_FOLDER = re.compile(r"(^|[\s/'\"=>])\.git/")
+_RUN_FILE = re.compile(r"(.*/)?(" + "|".join(m.replace(".", "/") for m in STATEFUL) + r")\.py")
+GIT_FOLDER = re.compile(r"(\./)?\.git(/|$)")
 
 
 def check_tollgate(command: str) -> str:
     """For a role: the reason to refuse a plain run of a Tollgate command that changes
-    its state, such as `python3 -m driver.step answer`, or ""."""
-    if _RUN_MODULE.search(command) or ("python" in command and _RUN_FILE.search(command)):
-        return "the command runs a Tollgate command; only your own session runs it"
+    its state, such as `python3 -m driver.step answer`, or "". It reads the words of
+    each part of the command, so a commit message that mentions one is not a run."""
+    for part in SPLIT.split(command):
+        words = _words(part)
+        python = any(Path(w).name.startswith("python") for w in words)
+        for n, word in enumerate(words):
+            module = words[n + 1] if word == "-m" and n + 1 < len(words) else ""
+            if (python and module in STATEFUL) or (python and _RUN_FILE.fullmatch(word)):
+                return "the command runs a Tollgate command; only your own session runs it"
     return ""
 
 
 def check_git_folder(command: str) -> str:
-    """For a role: refuse a command that names the copy's .git folder, where a hook or a
-    config line would run code when the driver calls git."""
-    if GIT_FOLDER.search(command):
-        return "the command names a .git folder; no role writes there"
+    """For a role: refuse a command with a path into a .git folder, to read or to write
+    it, since a hook or a config line there would run code when the driver calls git.
+    git's own commands, such as git log, read git's state."""
+    for part in SPLIT.split(command):
+        for word in _words(part):
+            if GIT_FOLDER.match(REDIRECT.sub("", word)) or "/.git/" in word:
+                return ("the command reads or writes a .git folder; no role works there. "
+                        "Use git's own commands, such as git log or git show, to read it")
     return ""
 
 
@@ -377,7 +417,8 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
         if role:
             command = data.get("command", "")
             reason = (check_tollgate(command) or check_git_folder(command)
-                      or check_names(command, copy, project))
+                      or check_names(command, copy, project)
+                      or check_paths(command, cwd, copy, project))
             if reason:
                 return reason
         return check_bash(data.get("command", ""), cwd, role)

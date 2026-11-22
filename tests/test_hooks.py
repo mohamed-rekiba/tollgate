@@ -269,6 +269,24 @@ class KeyAndStateReadTest(Env):
             self.assertRefuses(".git", "Bash", {"command": command})
         self.assertLets("Bash", {"command": "git status && git log -1"})
 
+    def test_a_relative_path_from_the_copy_into_the_state_folder_is_refused(self):
+        for command in ("rm -rf ../../locks", "cat ../../run/step.json",
+                        f"cd {self.copy} && cat ../../run/step.json", "ls ../../locks/"):
+            with self.subTest(command=command):
+                self.assertRefuses("state folder", "Bash", {"command": command})
+        for command in ("cd .. && ls", "pytest ../tests", "cd src && make && cd .."):
+            with self.subTest(command=command):
+                self.assertLets("Bash", {"command": command})
+
+    def test_reading_git_is_named_a_read_and_a_commit_message_is_not_a_command(self):
+        code, err = self.guard("Bash", {"command": "cat .git/HEAD"})
+        if code:
+            self.assertIn("read", err)
+        for command in ('git commit -m "text mentioning -m driver.step"',
+                        'git commit -m "fix the .git/ hooks note"'):
+            with self.subTest(command=command):
+                self.assertLets("Bash", {"command": command})
+
     def test_your_own_session_may_still_read_the_state_folder(self):
         self.assertLets("Read", {"file_path": str(self.lock)}, role="")
 
