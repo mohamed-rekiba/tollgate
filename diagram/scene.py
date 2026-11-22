@@ -391,7 +391,8 @@ class Scene:
 
     def pinned(self, label):
         """A label tied to its part by a stem: a flat ring on the part, a line
-        straight up or down, one rounded turn, then level to the label. A label
+        straight up or down, one rounded turn, then level to the label. With
+        "route": "level", the line goes level first, then up or down. A label
         with "n" shows that number where the stem ends; one without shows a dot."""
         n, kind = label.get("n"), label.get("kind", "neutral")
         accent = self.c["kinds"][kind][0]
@@ -411,6 +412,15 @@ class Scene:
         d = f"M{tx:.1f},{ty - 4:.1f} "
         if bx == tx:
             d += f"L{tx:.1f},{by + (-r if by > ty else r):.1f}"
+        elif label.get("route") == "level":
+            # Sideways first, then up or down to the number: for a part with an icon
+            # over it, or a tall part that a line down its middle would cross.
+            side = 1 if bx > tx else -1
+            up = -1 if by < ty else 1
+            y0 = ty - 4
+            turn = min(10, abs(by - y0) / 2, abs(bx - tx) / 2)
+            d += (f"L{bx - side * turn:.1f},{y0:.1f} Q{bx:.1f},{y0:.1f} {bx:.1f},"
+                  f"{y0 + up * turn:.1f} L{bx:.1f},{by - up * r:.1f}")
         else:
             side = 1 if bx > tx else -1
             up = -1 if by < ty else 1
