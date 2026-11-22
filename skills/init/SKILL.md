@@ -7,7 +7,7 @@ description: Set up Tollgate in a project on this machine. It writes the setting
 
 You set up Tollgate in the git repository of the current folder. Each step ends with a check. Do not go to the next step until the check passes.
 
-`TG` below is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -m <module>`, from the project folder.
+`TG` below is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -P -m <module>`, from the project folder.
 
 Words: the **state folder** holds Tollgate's records outside the project, where no AI role can write. The **machine key** signs locks and pass records. An **owner** is a person whose SSH key may approve a tier 3 or 4 change. The **harness** is every file that decides how tests run.
 

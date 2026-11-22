@@ -14,8 +14,8 @@ Words: a **task** is what the user asks for, in their own words. The **driver** 
 ## 1. Check the project
 
 1. Confirm that `.tollgate/settings.json` exists on the main branch: `git show main:.tollgate/settings.json`. If it does not, stop and tell the user to run `/tollgate:init` first.
-2. Run `PYTHONPATH="$TG" python3 -m gate.settings .tollgate/settings.json`. Done when it prints the settings with no error.
-3. Run `PYTHONPATH="$TG" python3 -m setup.health`. If it prints a warning, show it to the user and ask whether to go on: a missing layer means fewer checks hold.
+2. Run `PYTHONPATH="$TG" python3 -P -m gate.settings .tollgate/settings.json`. Done when it prints the settings with no error.
+3. Run `PYTHONPATH="$TG" python3 -P -m setup.health`. If it prints a warning, show it to the user and ask whether to go on: a missing layer means fewer checks hold.
 
 ## 2. Get the request
 
@@ -36,7 +36,7 @@ For a roadmap:
 1. Write `.tollgate/roadmaps/<task id>.md` in the format at the top of `$TG/gate/roadmap.py`: the request in the user's words; under **Base**, the tasks that make the project build, test, and run, and pass the base suite; under **Skeleton**, one task for each rule all code must follow, then the thinnest path through the riskiest feature; under **Features**, only the features that are clear now, one task each; under **Not yet specified**, everything else in a few words. Each task line is `- <task id>: <the request for that task, in plain words>`.
 2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/gate/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
 3. If `base` in the settings has an empty command, tell the user which of the five base checks has none. The roadmap stops after the base tasks until all five pass.
-4. Run `PYTHONPATH="$TG" python3 -c 'import sys; from gate import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
+4. Run `PYTHONPATH="$TG" python3 -P -c 'import sys; from gate import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
 5. Start it as in step 4.
 
 ## 4. Start it
@@ -44,19 +44,19 @@ For a roadmap:
 The driver runs on this machine, in the background. Its logs go to the state folder. Find the folder once:
 
 ```
-logs="$(PYTHONPATH="$TG" python3 -c 'from gate import state; print(state.path(".", "logs"))')"
+logs="$(PYTHONPATH="$TG" python3 -P -c 'from gate import state; print(state.path(".", "logs"))')"
 ```
 
 **A task:** run this from the project folder, as one command:
 
 ```
-setsid -f env PYTHONPATH="$TG" python3 -m driver.task --project . --task "<task id>" --request-file ".tollgate/requests/<task id>.md" > "$logs/task-<task id>.out" 2>&1 < /dev/null
+setsid -f env PYTHONPATH="$TG" python3 -P -m driver.task --project . --task "<task id>" --request-file ".tollgate/requests/<task id>.md" > "$logs/task-<task id>.out" 2>&1 < /dev/null
 ```
 
 **A roadmap:**
 
 ```
-setsid -f env PYTHONPATH="$TG" python3 -m driver.roadmap --project . --roadmap "<task id>" > "$logs/roadmap-<task id>.out" 2>&1 < /dev/null
+setsid -f env PYTHONPATH="$TG" python3 -P -m driver.roadmap --project . --roadmap "<task id>" > "$logs/roadmap-<task id>.out" 2>&1 < /dev/null
 ```
 
 `setsid -f` starts it as its own process, so closing this session does not stop it. Done when `$logs/task-<task id>.jsonl` or `$logs/roadmap-<task id>.jsonl` exists, within 60 seconds. If it does not, show the user the last 20 lines of the `.out` file and stop. A roadmap that stops can be started again the same way: it skips the tasks it finished, and the task it was in starts again.
