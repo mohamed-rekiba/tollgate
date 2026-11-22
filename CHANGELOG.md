@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/tollgate-ai/tollgate/compare/v0.1.1...v0.2.0) (2026-11-22)
+
+
+### Features
+
+* **diagram:** draw UML sequence diagrams and state machines ([#109](https://github.com/tollgate-ai/tollgate/issues/109)) ([ad9722b](https://github.com/tollgate-ai/tollgate/commit/ad9722b1aa559fdd9e4774d7eda7d64d0f824e2a))
+
 ## [0.1.1](https://github.com/tollgate-ai/tollgate/compare/v0.1.0...v0.1.1) (2026-11-22)
 
 
