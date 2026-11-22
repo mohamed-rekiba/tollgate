@@ -123,7 +123,16 @@ _Avoid_: data dir, cache
 **copy**: The builder's own clone of the project, in the state folder, with no remote. A role works only there.
 _Avoid_: workspace, checkout
 
-**isolation**: How the driver keeps a role apart from the rest of your machine: `container` (Docker, the default) or `sandbox` (Claude Code's own sandbox).
+**session mode**: The default way to run the roles: your own Claude Code session runs each role as one of Tollgate's subagents, one step at a time, while the driver decides every step.
+_Avoid_: interactive mode
+
+**background mode**: The other way to run the roles: the driver starts each role as its own process, in its isolation, and keeps running after you close Claude Code.
+_Avoid_: daemon mode, headless mode
+
+**step**: In session mode, one role the driver needs, with its prompt and its key, written to the step file `run/step.json` in the state folder.
+_Avoid_: job
+
+**isolation**: How the background driver keeps a role apart from the rest of your machine: `container` (Docker, the default) or `sandbox` (Claude Code's own sandbox).
 _Avoid_: closed room, jail
 
 **hook**: A command that Claude Code runs before each tool call. Tollgate's hook refuses a call that breaks a rule.

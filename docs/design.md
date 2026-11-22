@@ -92,7 +92,47 @@ A locked test can be wrong. The builder cannot change it. The store allows one r
 | Store | Lock tests. Sign plan locks and pass records with the machine key. Write questions. Merge a ready change. | Sign an approval. Merge a change with no pass record, or a tier 3 or 4 change with no approval. |
 | You | Answer a question. Approve and merge with `/tollgate:merge`. Change the settings. | Nothing in Tollgate stops a commit you make with `--no-verify`. |
 
-Each role works in a copy of the project in the state folder, `builders/<ticket>/`. The copy has no remote, so nothing in it can push. With `"isolation": "container"`, a role runs in Docker with only its copy mounted, read-only for a reviewer and the advisor. Only the model access variables go in. The key folder and the rest of the state folder never go in.
+Each role works in a copy of the project in the state folder, `builders/<ticket>/`. The copy has no remote, so nothing in it can push. In background mode with `"isolation": "container"`, a role runs in Docker with only its copy mounted, read-only for a reviewer and the advisor. Only the model access variables go in. The key folder and the rest of the state folder never go in. In session mode, the hook keeps a role in its copy: see [Two ways to run the roles](#two-ways-to-run-the-roles).
+
+## Two ways to run the roles
+
+The driver decides every step, the gate scores every try, and the store signs and merges, in both modes. Only the place where a role runs differs. The setting `"runner"` picks the mode.
+
+- **Session mode**, the default. Your own Claude Code session runs each role as one of Tollgate's subagents, one step at a time. Nothing runs when your session is closed, and no Docker image or login inside Docker is needed.
+- **Background mode.** The driver starts each role as its own `claude -p` process, in its isolation: Docker, or Claude Code's sandbox. It keeps running after you close Claude Code. A roadmap always runs this way.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/session-ticket-dark.svg">
+  <img alt="One ticket in session mode: your session asks the driver for the next step, runs the role it names as a subagent in the copy, and hands back the answer, until the gate passes a try and the store signs its pass record" src="diagrams/session-ticket.svg">
+</picture>
+
+### The step file
+
+The driver asks for each role through one caller. In session mode, the caller works out a key for the question: the SHA-256 of the role, the lens, and the inputs. If `logs/<log>.answers.jsonl` in the state folder already holds an answer with that key, the caller returns it. If not, it writes the step file, `run/step.json`: the role, the lens, the full prompt, the copy, the key, and the task and ticket. Then the driver lets go of its run lock and ends with 5.
+
+`python3 -P -m driver.step next --project . --task <task id>` runs the driver up to the next step and prints it: the subagent to start, its prompt, its folder, and the key. `driver.step answer --project . --key <key>` takes the subagent's whole answer on standard input. It refuses a key that is not the key of the step that waits, and an answer with no final json block. It saves the answer, then runs `next` again. `next` also prints the end of the task, or a question for you, which you answer as `/tollgate:inbox` does.
+
+### The replay
+
+Each `next` starts the driver again, and the driver repeats no finished step: it reads its log, as it does after any restart, and each role it asks again gets its saved answer at once. So a step costs one run of the driver up to the point where it stopped.
+
+Each try starts from the best try so far, so the driver resets the copy before the builder's step, which would wipe the builder's edits on a replay. So `answer`, for the builder or the test writer, saves the copy's work tree as a commit on `refs/tollgate/answers/<key>` in the copy. On a replay the caller puts that work back in the copy before it returns the saved answer.
+
+### The copy of a subagent
+
+The builder works in the driver's own copy, in the state folder, with no remote: not in a work tree that Claude Code makes. The subagent carries its type, such as `tollgate:builder`, and no driver names its copy. So the hook reads the copy from the step file, and only when the step is for that same role. No role can write the state folder, so no role can change the step file. A builder that writes a plan gets the planner's rules from the step file too.
+
+### Cost
+
+In session mode the cost of a role is your session's own, and Tollgate cannot see it. The log keeps `cost_usd: null`, not 0, and the report shows the cost as unknown. The two USD stop rules apply only in background mode. Each subagent has a limit of turns instead, in `maxTurns`: the builder the most, then the test writer, and the analyst, the reviewer, and the advisor few.
+
+### The security trade
+
+In background mode with a container, the key folder is never mounted, so a role cannot reach the machine key at all. In session mode the role runs on your machine as your own session does. The hook refuses a role's Read, Grep, or Glob of the key folder or of the state folder outside its copy, and a Bash command whose text names either folder. But a command can hide a path, for example by building it from parts. So in session mode the machine key is protected by the hook only. The gate and the signed records still hold: a role that reads the key still cannot change main without the store. Choose background mode with a container when a role must have no way to the key.
+
+### Before a task starts
+
+A task that cannot pass stops at once. `driver.task` and `driver.step next` refuse to start when `signers` in the settings on main is empty, or this machine has no machine key, and say to run `/tollgate:init`.
 
 ### The gate
 
@@ -261,13 +301,13 @@ You install the plugin in Claude Code once. There is no separate program to inst
 /plugin install tollgate@tollgate-ai
 ```
 
-The machine needs Python 3.11, git, `ssh-keygen`, pre-commit, and Docker for the default isolation.
+The machine needs Python 3.11, git, `ssh-keygen`, and pre-commit. Background mode with the container isolation also needs Docker.
 
 | You type in Claude Code | What happens |
 | --- | --- |
 | `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
 | `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, makes the machine key, adds your SSH key to `owners`, and installs pre-commit. |
-| `/tollgate:task Add retries to webhook delivery` | Starts a task. The driver runs in the background, so you can close Claude Code. |
+| `/tollgate:task Add retries to webhook delivery` | Runs a task. In session mode your session runs each role, one step at a time. In background mode the driver runs on its own, so you can close Claude Code. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, and records your answer. |
 | `/tollgate:merge` | Lists the ready changes, asks you to sign the approval for tier 3 and 4, and merges. |
@@ -297,6 +337,7 @@ When a task ends, you read the report. It has:
 | Gate | `gate/gate.py`, `gate/tiers.py`, `gate/review.py`, `gate/checks.py` | The six checks, the tier, the review from tier 2, and running the checks. |
 | Formats | `gate/settings.py`, `gate/analysis.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
 | Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py` | Run one ticket, one task, one roadmap. |
+| Session mode | `driver/session.py`, `driver/step.py` | The caller of each role in each mode, the step file, the saved answers, and the `next` and `answer` commands. |
 | Stop and advisor | `driver/stop.py`, `driver/advisor.py` | When to stop, and how to ask. |
 | Roles | `driver/roles.py`, `roles/`, `lenses/`, `agents/` | Run one AI session in its copy and its isolation. `agents/` holds each role as a Claude Code subagent, written from its role file by `setup/agents.py`. |
 | Log and report | `driver/log.py`, `driver/history.py`, `driver/report.py`, `driver/retro.py` | One line per event. Read the logs back. |
@@ -319,7 +360,7 @@ Each setup script does one step, can run twice without harm, and prints one line
 
 ### How a task starts and keeps running
 
-`/tollgate:task` checks the settings and the two layers, writes the request to `.tollgate/requests/<task id>.md`, and starts `driver.task` or `driver.roadmap` with `setsid -f`. Then it returns. The driver takes a run lock for each ticket and each task in `run/`, so two drivers cannot build the same ticket. A lock whose process is gone is taken over. `/tollgate:status` reads the logs.
+`/tollgate:task` checks the settings and the two layers, and writes the request to `.tollgate/requests/<task id>.md`. In session mode it then loops on `driver.step next` and `answer` until the task ends or waits for you. In background mode it starts `driver.task` or `driver.roadmap` as its own process, with Python's `subprocess.Popen(..., start_new_session=True)`, which works on Linux and macOS. Then it returns. The driver takes a run lock for each ticket and each task in `run/`, so two drivers cannot build the same ticket. A lock whose process is gone is taken over. `/tollgate:status` reads the logs.
 
 ### The state folder
 
@@ -438,6 +479,7 @@ A ticket describes behavior and seams. `tests` lists every file the locked tests
     "advisor": ["claude -p --model opus", "person"],
     "stronger_builder": "claude -p --model opus"
   },
+  "runner": "session",
   "isolation": "container",
   "container_image": "my-builder:latest",
   "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10, "task_usd": 60},
@@ -450,7 +492,7 @@ A ticket describes behavior and seams. `tests` lists every file the locked tests
 }
 ```
 
-The commands, the image, and the model names are examples. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
+The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
 
 ### What the gate returns
 
@@ -575,6 +617,7 @@ Product management documents, deployment to production, a hosted service, an AI 
 
 - A role obeys its policy inside Claude Code.
 - The sandbox stops a write through Python. So the default isolation is the container.
+- Session mode with real subagents: that Claude Code honors `maxTurns` in a subagent, and sends the subagent's type to the hook for each Read, Grep, and Glob.
 - A role in Docker through the local driver.
 - The analyst, the review lens, and the checkpoints with real models.
 - A task end to end with real models through the local driver.
