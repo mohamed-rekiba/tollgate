@@ -16,13 +16,13 @@ _Avoid_: backlog, milestone plan
 _Avoid_: survey, discovery, research
 
 **citation**: The code that proves a finding: `[path:line]` or `[path::name]`. The driver checks that it exists.
-_Avoid_: reference, source
+_Avoid_: source link
 
 **plan**: The design for a task. It names every file that changes, every seam, the code it reuses, the risks, the assumptions, and every ticket.
 _Avoid_: design doc, PRD
 
 **assumption**: A point that the request and the analysis do not settle, written in the plan as a question. A plan with one waits for the advisor.
-_Avoid_: open question, unknown
+_Avoid_: open question
 
 **ticket**: One small part of a plan, sized for one AI session. It has an id.
 _Avoid_: user story, work item
@@ -68,7 +68,7 @@ _Avoid_: defect, nit
 **advisor**: Whoever makes a decision that the loop cannot make: a person, or an AI on a different model from the builder. The settings list the advisors in order.
 
 **checkpoint**: A place where the advisor decides whether the task goes on: after the plan, after each ticket, or after the whole task. The setting `checkpoints` lists them.
-_Avoid_: gate, approval step
+_Avoid_: approval step
 _Avoid_: human in the loop, escalation
 
 **owner**: A person whose SSH public key is in `owners` in the settings on main. Only an owner signs an approval.
