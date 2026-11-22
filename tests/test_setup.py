@@ -383,6 +383,28 @@ class InitTest(Env):
         with self.assertRaisesRegex(setup_init.InitError, "machine key"):
             setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False, which=FOUND)
 
+    def test_init_writes_the_test_check_for_a_python_test_suite(self):
+        root = self.repo()
+        Path(root, "tests").mkdir()
+        Path(root, "tests/test_shop.py").write_text("def test_ok():\n    assert True\n")
+        sh(root, "git", "add", "-A")
+        sh(root, "git", "commit", "-q", "-m", "test(shop): start")
+        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        tests = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]["tests"]
+        self.assertEqual(tests["report"], "report.xml")
+        self.assertIn("pytest", tests["run"])
+        self.assertIn("--junitxml=report.xml tests", tests["run"])
+        self.assertTrue(any(line.startswith("tests: ") for line in lines))
+
+    def test_init_says_when_it_finds_no_tests(self):
+        root = self.repo()
+        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        checks = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]
+        self.assertNotIn("tests", checks)
+        said = next(line for line in lines if line.startswith("tests: "))
+        self.assertIn("no test suite found", said)
+        self.assertIn("checks", said)
+
 
 REAL_DOCKER_READY = setup_init.docker_ready
 
