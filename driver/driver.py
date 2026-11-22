@@ -194,6 +194,30 @@ def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     return value, passed
 
 
+def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict) -> str:
+    """Why each failed item failed, for the builder's next try."""
+    claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
+    out = []
+    for item in ticket.items:
+        if passed.get(item.id, True):
+            continue
+        tests = sorted(t for t in test_status if item_of_test(t) == item.id)
+        if tests:
+            failing = [t for t in tests if test_status[t] != "passed"]
+            out.append(f"{item.id}: its locked tests fail: {', '.join(failing)}")
+            continue
+        claim = claims.get(item.id)
+        if not claim:
+            out.append(f"{item.id}: it has no locked test, and the reviewer did not pass it")
+        elif not claim.get("passed"):
+            why = claim.get("why") or "no reason given"
+            out.append(f"{item.id}: it has no locked test, and the reviewer failed it: {why}")
+        else:
+            out.append(f"{item.id}: the reviewer passed it, but the line it named does not "
+                       f"exist: {claim.get('file', '')}:{claim.get('line', '')}")
+    return "; ".join(out)
+
+
 # Git.
 
 def git(cwd, *args) -> str:
@@ -405,7 +429,9 @@ class Driver:
             self.log.add("try_failed", findings=findings, score=value, items=passed, **fields)
             self._keep_if_best(st_, value, commit)
             return
-        tested = sorted({item_of_test(t) for t in results.tests if item_of_test(t)})
+        # Only a locked test vouches for an item: the builder's own tests do not, so the
+        # reviewer judges every item that no locked test covers, as score() counts them.
+        tested = sorted({item_of_test(t) for t in locked if item_of_test(t)})
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
         checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
                                          "diff": diff}, lens="checklist")
@@ -427,9 +453,11 @@ class Driver:
         fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
+            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed)
             why = blocking or [{"level": "major", "text": f["message"]} for f in findings] or [
-                {"level": "major", "text": f"must-have items failed: {', '.join(must_failed)}"
-                 if must_failed else f"score {value} is under {self.settings['pass_score']}"}]
+                {"level": "major", "text": (f"must-have items failed: {', '.join(must_failed)}"
+                 if must_failed else f"score {value} is under {self.settings['pass_score']}")
+                 + (f". {reasons}" if reasons else "")}]
             self.log.add("try_failed", findings=why, **fields)
             self._keep_if_best(st_, value, commit)
             if findings:

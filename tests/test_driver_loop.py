@@ -313,6 +313,45 @@ class StopTest(LoopCase):
         self.assertEqual(s.events()[-1], "waiting_for_advisor")
 
 
+class ChecklistTest(LoopCase):
+    def test_the_builder_s_own_test_does_not_vouch_for_an_item(self):
+        path = s_path()
+        self.addCleanup(Path(path).unlink, missing_ok=True)
+        s = self.sample(builder="pass1 owntest=1", reviewer=f"ok review_to={path}")
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        seen = [json.loads(line) for line in Path(path).read_text().splitlines()]
+        self.assertNotIn("C3", seen[-1]["tested"])
+        self.assertEqual(sorted(seen[-1]["tested"]), ["C1", "C2"])
+        passed = [e for e in s.log() if e["event"] == "try_passed"][-1]
+        self.assertEqual((passed["score"], passed["items"]["C3"]), (100, True))
+
+    def test_a_low_score_tells_the_builder_which_items_failed_and_why(self):
+        inputs = s_path()
+        self.addCleanup(Path(inputs).unlink, missing_ok=True)
+        s = self.sample(builder=f"pass1 inputs_to={inputs}", reviewer="ok c3fail",
+                        pass_score=70)
+        d, _ = driver(s)
+        d.run()
+        failed = next(e for e in s.log() if e["event"] == "try_failed")
+        text = " ".join(f["text"] for f in failed["findings"])
+        self.assertIn("score 67 is under 70", text)
+        self.assertIn("C3", text)
+        self.assertIn("shout has no docstring", text)
+        second = [json.loads(line) for line in Path(inputs).read_text().splitlines()][1]
+        self.assertIn("shout has no docstring", " ".join(f["text"] for f in second["findings"]))
+
+
+def s_path():
+    """A file outside the copy for a fake role to write to, new for each call."""
+    import tempfile
+    handle, path = tempfile.mkstemp(suffix=".jsonl")
+    import os
+    os.close(handle)
+    os.unlink(path)
+    return path
+
+
 class TaskTest(LoopCase):
     def test_a_task_plans_locks_the_plan_and_builds_each_ticket(self):
         from driver.task import Task

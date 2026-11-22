@@ -10,9 +10,12 @@ way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
 function that does not exist), block=<lens> (that lens finds a blocking problem),
-taskmajor=<n> (the first n reviews of the whole task find a major problem).
+taskmajor=<n> (the first n reviews of the whole task find a major problem),
+c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the checklist
+reviewer adds its inputs to this file). Like a real reviewer, it judges only the items
+that are not in `tested`.
 A plan written with a hint from the review of the whole task adds a third ticket, loud.
-Builder options: ask=1 (the plan lists an assumption), diagram=ok or bad (the try
+Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
@@ -298,6 +301,11 @@ def main() -> int:
             Path("app.py").write_text(GREET_BROKEN + SHOUT_OK)
         else:
             Path("app.py").write_text(GREET + (SHOUT_OK if good else SHOUT_BAD))
+        if opts.get("owntest"):
+            Path("tests/test_more.py").write_text(
+                "import unittest\n\nimport app\n\n\nclass M(unittest.TestCase):\n"
+                "    def test_c3_has_a_docstring(self):\n"
+                "        self.assertTrue(app.shout.__doc__)\n")
         if mode == "github":
             Path(".github/workflows").mkdir(parents=True, exist_ok=True)
             Path(".github/workflows/evil.yml").write_text("on: push\n")
@@ -318,11 +326,17 @@ def main() -> int:
     elif first == "# Role: reviewer" and "# Lens: test fit" in prompt:
         answer({"verdict": "pass", "findings": [], "items": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: checklist" in prompt:
+        if opts.get("review_to"):
+            with open(opts["review_to"], "a") as f:
+                f.write(json.dumps(data) + "\n")
         lines = Path("app.py").read_text().splitlines()
         line = 999 if "badline" in sys.argv else next(
             i for i, text in enumerate(lines, 1) if '"""' in text)
-        answer({"verdict": "pass", "findings": [],
-                "items": [{"item": "C3", "passed": True, "file": "app.py", "line": line}]}, cost)
+        item = {"item": "C3", "passed": True, "file": "app.py", "line": line}
+        if "c3fail" in sys.argv:
+            item = {"item": "C3", "passed": False, "why": "shout has no docstring"}
+        items = [] if "C3" in data.get("tested", []) else [item]
+        answer({"verdict": "pass", "findings": [], "items": items}, cost)
     elif first == "# Role: reviewer" and any(f"# Lens: {k}" in prompt for k in
                                              ("simplicity", "fresh reader", "readiness")):
         rounds = int(opts.get("planfind", 0))
