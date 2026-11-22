@@ -38,6 +38,33 @@ class BuildTest(LoopCase):
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
 
+    def test_a_check_that_fails_on_the_new_tests_sends_them_back(self):
+        py = sys.executable
+        bad = f"{py} -c \"print('tests/test_t1.py:1: a long dash'); raise SystemExit(1)\""
+        s = self.sample(checks={"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                                "writing": {"run": bad}})
+        d, _ = driver(s)
+        d.run()
+        rejected = [e for e in s.log() if e["event"] == "tests_rejected"]
+        self.assertTrue(rejected)
+        self.assertIn("tests/test_t1.py", rejected[0]["findings"][0]["text"])
+
+    def test_a_check_failure_the_tests_did_not_cause_waits_for_the_builder(self):
+        # A project with no README fails the writing check before any test is written.
+        # The test writer may not write a README, so the tests go on, and the gate
+        # holds the builder's try to that check.
+        py = sys.executable
+        bad = f"{py} -c \"print('README.md: missing.'); raise SystemExit(1)\""
+        s = self.sample(checks={"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                                "writing": {"run": bad}})
+        d, _ = driver(s)
+        d.run()
+        events = s.events()
+        self.assertNotIn("tests_rejected", events)
+        self.assertIn("tests_reviewed", events)
+        failed = [e for e in s.log() if e["event"] == "try_failed"]
+        self.assertTrue(failed, "the gate still runs the writing check on the try")
+
     def test_a_tier_2_change_gets_the_review_lens(self):
         s = self.sample(reviewer="ok block=review", tier1={"max_files": 0, "max_lines": 0})
         d, store = driver(s)

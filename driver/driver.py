@@ -300,7 +300,11 @@ class Driver:
                 # may not change a locked test, so a failure there must go back here.
                 others = [n for n in self.settings["checks"] if n != "tests"]
                 found = checks.run(self.settings, self.copy, others) if others else None
-                failed = [c for c in (found.checks if found else []) if not c.passed]
+                # Only a failure that names one of the new test files is the test
+                # writer's to fix. Any other, such as a missing README, waits for the
+                # builder: the gate runs every check on each try.
+                failed = [c for c in (found.checks if found else []) if not c.passed
+                          and any(t in (c.output or "") for t in self.ticket.tests)]
                 if failed:
                     findings = [{"level": "blocking", "text": f"check {c.name} fails on the "
                                  f"new tests:\n{c.output}"} for c in failed]
