@@ -14,6 +14,10 @@ place where the role runs differs.
   saves the answer, and the next run of the driver replays its log and the
   saved answers up to the next step.
 
+Each saved answer carries a code made with a secret drawn from the machine key,
+and a saved answer whose code does not verify is ignored. A role cannot read the
+key folder, so a line a role writes into the answers file counts for nothing.
+
 A role that writes, the builder or the test writer, leaves its work in the
 copy. Its answer saves that work as a commit on refs/tollgate/answers/<key> in
 the copy, and a replay puts the work back, because each try starts again from
@@ -124,10 +128,29 @@ def clear_step(project: str) -> None:
     step_path(project).unlink(missing_ok=True)
 
 
+def _mac(line: dict) -> str:
+    """A code over a saved answer, made with a secret drawn from the machine key. A role
+    cannot read the key folder, so it cannot make a saved answer that verifies."""
+    import hmac
+    secret = hashlib.sha256(b"tollgate-answers\0" + sign.machine_key().read_bytes()).digest()
+    data = json.dumps([line.get(k) for k in ("key", "role", "lens", "seconds", "work", "text")],
+                      separators=(",", ":"))
+    return hmac.new(secret, data.encode(), hashlib.sha256).hexdigest()
+
+
+def _verifies(line: dict) -> bool:
+    import hmac
+    try:
+        return isinstance(line.get("mac"), str) and hmac.compare_digest(line["mac"], _mac(line))
+    except OSError:
+        return False
+
+
 def saved(project: str, log: str, found_key: str) -> dict | None:
-    """The last saved answer with this key, or None."""
+    """The last saved answer with this key that verifies, or None."""
     from driver.log import read
-    found = [a for a in read(str(answers_path(project, log))) if a.get("key") == found_key]
+    found = [a for a in read(str(answers_path(project, log)))
+             if a.get("key") == found_key and _verifies(a)]
     return found[-1] if found else None
 
 
@@ -177,6 +200,7 @@ def save_answer(project: str, step: dict, text: str) -> dict:
     line = {"key": step["key"], "role": step["role"], "lens": step.get("lens"),
             "seconds": round(max(0.0, time.time() - float(step.get("asked_at") or time.time())),
                              1), "work": work, "text": text}
+    line["mac"] = _mac(line)
     from driver.log import Log
     with Log(str(answers_path(project, step["log"]))) as log:
         log.add("answer", **line)
