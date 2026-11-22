@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from gate import checks, junit, manifest, paths, settings, tickets, tiers
-from tests.helpers import TICKET, Repo, settings_text
+from tests.helpers import TICKET, Repo, settings_text, within
 from tests.helpers import junit as make_junit
 
 
@@ -97,6 +97,11 @@ class TicketsTest(unittest.TestCase):
     def test_keeps_behavior_must_be_must(self):
         text = TICKET.replace("C2, must, keeps behavior", "C2, keeps behavior")
         with self.assertRaisesRegex(tickets.TicketError, "must be a must-have"):
+            tickets.parse(text)
+
+    def test_a_long_broken_mark_list_is_refused_quickly(self):
+        text = TICKET.replace("- [C3] ", "- [C3," + " ," * 40 + " ")
+        with within(2), self.assertRaisesRegex(tickets.TicketError, "must look like"):
             tickets.parse(text)
 
     def test_item_of_test(self):

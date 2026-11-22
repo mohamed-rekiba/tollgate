@@ -1,6 +1,8 @@
 """Shared helpers for tests: throwaway git repositories and sample files."""
 
+import contextlib
 import json
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
@@ -31,6 +33,20 @@ JUNIT = """<?xml version="1.0"?>
 {cases}
 </testsuite></testsuites>
 """
+
+
+@contextlib.contextmanager
+def within(seconds: int):
+    """Fail the test if the block runs longer than `seconds`. Needs SIGALRM."""
+    def stop(*_):
+        raise TimeoutError(f"took longer than {seconds} s")
+    old = signal.signal(signal.SIGALRM, stop)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
 
 
 def junit(cases: dict) -> str:
