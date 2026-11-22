@@ -18,8 +18,13 @@ All run state lives in the state folder: the copy in builders/<ticket>/, the log
 in logs/<ticket>.jsonl, the run lock in run/. A driver that starts again reads
 the log and repeats no finished step.
 
+Each role goes through one caller, from driver/session.py: in session mode your
+own Claude Code session runs it as a subagent, and in background mode the driver
+starts it as its own process. The setting `runner` picks one.
+
 Exit codes: 0 the ticket is a ready change or merged, 3 the ticket waits for the
-advisor or is parked, 4 another driver holds the ticket, 1 an error.
+advisor or is parked, 4 another driver holds the ticket, 5 a role waits for your
+session (the step file, run/step.json, says which), 1 an error.
 """
 
 import argparse
@@ -29,7 +34,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from driver import advisor, history, roles, stop
+from driver import advisor, history, roles, session, stop
 from driver.log import Log, read
 from gate import checks, prepare, state, tickets
 from gate import gate as gatelib
@@ -203,7 +208,7 @@ def fetch_branch(project: str, copy: str, branch: str) -> None:
 
 def task_cost(logs_dir, task: str) -> float:
     total = 0.0
-    for path in Path(logs_dir).glob("*.jsonl"):
+    for path in history.logs(logs_dir):
         total += history.cost([e for e in read(str(path)) if e.get("task") == task])
     return round(total, 4)
 
@@ -212,7 +217,7 @@ class Driver:
     """gate_api and review_api default to gate.gate and gate.review. Tests pass fakes."""
 
     def __init__(self, project: str, ticket_id: str, store=None, ticket_text: str | None = None,
-                 gate_api=None, review_api=None):
+                 gate_api=None, review_api=None, runner: str | None = None, caller=None):
         self.project = os.path.abspath(project)
         self.ticket_id = ticket_id
         self.store = store or Store(self.project)
@@ -224,14 +229,17 @@ class Driver:
         self.log_path = str(self.logs / f"{ticket_id}.jsonl")
         self.ticket_text = ticket_text or Path(self.project, mf.ticket_path(ticket_id)).read_text()
         self.ticket = tickets.parse(self.ticket_text)
+        self.runner = runner    # None: the setting `runner` decides
+        self.caller = caller
 
     # Helpers.
 
     def role(self, name, inputs, lens=None, command=None):
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name == "reviewer" else s["ai"]["builder"])
-        return roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
-                         s["isolation"], s["container_image"], self.project)
+        return self.caller(session.Call(name, inputs, lens, command, name, self.copy,
+                                        self.project, self.ticket_id, self.ticket_id,
+                                        self.ticket.plan))
 
     def lock(self) -> dict | None:
         """The ticket's lock as the store wrote it. The gate verifies its signature;
@@ -388,7 +396,7 @@ class Driver:
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
         checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
                                          "diff": diff}, lens="checklist")
-        cost += checked.cost_usd
+        cost = roles.add_cost(cost, checked.cost_usd)
         value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
         if tier >= 2:
@@ -400,10 +408,10 @@ class Driver:
                 return answer.data
             facts.review_passed, found, _ = self.review.review(
                 tier, self.ticket_text, self.review.diff(self.copy, self.base, "HEAD"), run_role)
-            cost += sum(spent)
+            cost = roles.add_cost(cost, *spent)
             blocking += [f for f in found if f.get("level") == "blocking"]
             findings = self.gate.evaluate(facts)
-        fields.update(cost_usd=round(cost, 4), score=value, items=passed)
+        fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
             why = blocking or [{"level": "major", "text": f["message"]} for f in findings] or [
@@ -512,6 +520,7 @@ class Driver:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
+                self.caller = self.caller or session.caller(self.settings, self.runner)
                 self.log.add("started", attempts_done=st_.attempts)
                 question = advisor.pending(self.log_path)
                 if question:
@@ -520,6 +529,8 @@ class Driver:
                 return self._loop(st_)
         except Parked:
             return 3
+        except session.Pause:
+            return 5
         finally:
             lock.release()
 

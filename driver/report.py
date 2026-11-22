@@ -32,7 +32,7 @@ def ticket_row(events: list) -> dict:
 
 def rows(project: str, task: str | None = None) -> list:
     out = []
-    for path in sorted(logs_dir(project).glob("*.jsonl")):
+    for path in history.logs(logs_dir(project)):
         if path.name.startswith("task-"):
             continue
         events = read(str(path))
@@ -44,7 +44,7 @@ def rows(project: str, task: str | None = None) -> list:
 def render(project: str, task: str) -> str:
     task_events = read(str(logs_dir(project) / f"task-{task}.jsonl"))
     tickets = rows(project, task)
-    all_events = task_events + [e for p in logs_dir(project).glob("*.jsonl")
+    all_events = task_events + [e for p in history.logs(logs_dir(project))
                                 if not p.name.startswith("task-")
                                 for e in read(str(p)) if e.get("task") == task]
     plan_cost = history.cost(task_events)
@@ -213,7 +213,7 @@ def progress(project: str, task: str | None = None) -> tuple:
     """Return (done, still_to_do): two lists of short sentences for a person."""
     done, todo = roadmap_progress(project) if task is None else ([], [])
     tasks = [task] if task else sorted({r["task"] for r in rows(project) if r["task"]} | {
-        p.name[len("task-"):-len(".jsonl")] for p in logs_dir(project).glob("task-*.jsonl")})
+        p.name[len("task-"):-len(".jsonl")] for p in history.logs(logs_dir(project), "task-*.jsonl")})
     for t in tasks:
         task_events = read(str(logs_dir(project) / f"task-{t}.jsonl"))
         kinds = [e["event"] for e in task_events]

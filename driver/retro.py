@@ -10,6 +10,7 @@ a ticket. Tollgate can make a rule stricter. Only a person makes a rule looser.
 import argparse
 import sys
 
+from driver import history
 from driver.log import read
 from driver.report import logs_dir, ticket_row
 from gate import state
@@ -19,7 +20,7 @@ MAX_LESSONS = 3
 
 def numbers(project: str, task: str) -> dict:
     tickets = []
-    for path in sorted(logs_dir(project).glob("*.jsonl")):
+    for path in history.logs(logs_dir(project)):
         if path.name.startswith(("task-", "roadmap-")):
             continue
         events = read(str(path))

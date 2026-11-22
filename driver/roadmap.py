@@ -4,7 +4,8 @@ The task skill starts this for a request too large for one plan, after it writes
 the roadmap file and its checklist ticket in the project's working folder.
 A task that does not finish stops the roadmap, because later tasks build on it.
 After the base tasks, the base suite must pass before the skeleton starts.
-Exit codes as for driver.task.
+Exit codes as for driver.task. A roadmap runs in the background: its tasks and
+tickets start each role as its own process, whatever the setting `runner` says.
 """
 
 import argparse
@@ -21,6 +22,8 @@ from gate import settings as st
 from gate import state
 from gate.store import Store
 from setup import base_suite
+
+BACKGROUND = "background"
 
 
 def check_base(project: str, log, ref: str = BASE) -> int:
@@ -57,7 +60,7 @@ def run(project: str, roadmap_id: str, store=None) -> int:
         frozen = any(e["event"] == "checklist_frozen" for e in read(log_path))
         with Log(log_path, roadmap=roadmap_id) as log:
             if not frozen:
-                code = Driver(project, roadmap.checklist, store).run(until="frozen")
+                code = Driver(project, roadmap.checklist, store, runner=BACKGROUND).run(until="frozen")
                 if code != 0:
                     log.add("roadmap_waiting", reason="the checklist could not be frozen")
                     return code
@@ -72,7 +75,7 @@ def run(project: str, roadmap_id: str, store=None) -> int:
                     base_checked = True
                 if done.get(task_id) == 0:
                     continue
-                code = Task(project, task_id, request, store).run()
+                code = Task(project, task_id, request, store, runner=BACKGROUND).run()
                 log.add("task_done", stage=stage, task=task_id, code=code)
                 if code != 0:
                     log.add("roadmap_waiting", reason=f"task {task_id} did not finish")
@@ -81,7 +84,7 @@ def run(project: str, roadmap_id: str, store=None) -> int:
                 code = check_base(project, log)
                 if code != 0:
                     return code
-            code = Driver(project, roadmap.checklist, store).run()
+            code = Driver(project, roadmap.checklist, store, runner=BACKGROUND).run()
             log.add("roadmap_done" if code == 0 else "roadmap_waiting", checklist_code=code)
             return code
     finally:
@@ -99,7 +102,7 @@ def main(argv=None, store=None) -> int:
     except Busy as err:
         print(err, file=sys.stderr)
         return 4
-    except (rm.RoadmapError, OSError) as err:
+    except (rm.RoadmapError, st.SettingsError, OSError) as err:
         print(f"tollgate roadmap: {err}", file=sys.stderr)
         return 1
 

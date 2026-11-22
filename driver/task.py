@@ -14,8 +14,13 @@ on: "plan" (the approval of the plan), "ticket" (after each ready ticket), and
 review with open findings, and a task review that blocks go to the advisor even
 when their checkpoint is off.
 
+A task starts only when it can pass: the settings on main name signers, and this
+machine has its machine key. Otherwise it stops at once and says to run
+/tollgate:init.
+
 Exit codes: 0 every ticket is a ready change or merged, 3 something waits for the
-advisor, 4 another driver holds the task, 1 an error.
+advisor, 4 another driver holds the task, 5 a role waits for your session (see
+driver/session.py), 1 an error.
 """
 
 import argparse
@@ -25,7 +30,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from driver import advisor, report, roles
+from driver import advisor, report, roles, session
 from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
 from driver.log import Log, read
 from gate import analysis as an
@@ -43,7 +48,8 @@ TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the r
 
 
 class Task:
-    def __init__(self, project: str, task_id: str, request: str, store=None, driver_args=None):
+    def __init__(self, project: str, task_id: str, request: str, store=None, driver_args=None,
+                 runner: str | None = None):
         if not pl.ID.match(task_id):
             raise pl.PlanError(f"not a valid task id: {task_id!r}")
         self.project = os.path.abspath(project)
@@ -55,6 +61,8 @@ class Task:
         self.logs = state.path(self.project, "logs")
         self.log_path = str(self.logs / f"task-{task_id}.jsonl")
         self.ai_decisions = 0
+        self.runner = runner    # None: the setting `runner` decides
+        self.caller = None
 
     def role(self, name, inputs, lens=None, command=None):
         s = self.settings
@@ -62,8 +70,8 @@ class Task:
                               else s["ai"]["builder"])
         # The builder writes the plan here, so it may write plans and tickets.
         policy = "planner" if name == "builder" else name
-        return roles.run(command, name, inputs, self.copy, s["stop"]["attempt_minutes"], lens,
-                         s["isolation"], s["container_image"], self.project, policy)
+        return self.caller(session.Call(name, inputs, lens, command, policy, self.copy,
+                                        self.project, f"task-{self.id}", "", self.id))
 
     def read_copy(self, path):
         p = Path(self.copy, path)
@@ -268,13 +276,16 @@ class Task:
             text = self.read_copy(f".tollgate/tickets/{tid}/ticket.md")
             try:
                 code = Driver(self.project, tid, self.store, ticket_text=text,
-                              **self.driver_args).run()
+                              runner=self.runner, **self.driver_args).run()
             except Busy:
                 code = 4
             except (roles.RoleError, tk.TicketError, StoreError,
                     subprocess.CalledProcessError) as err:
                 self.log.add("ticket_error", ticket=tid, error=str(err)[-500:])
                 code = 1
+            if code == 5:
+                # The ticket's role waits for your session; the task waits with it.
+                raise session.Pause(session.read_step(self.project) or {"role": "role"})
             self.log.add("ticket_done", ticket=tid, code=code)
             done[tid] = code
             if code == 0:
@@ -316,12 +327,15 @@ class Task:
                 TASK_TIER, self.read_copy(pl.plan_path(self.id)), change, run_role,
                 lenses=("review",))
             self.log.add("task_reviewed", passed=passed, findings=findings, text=text,
-                         tickets=reviewed, cost_usd=sum(cost))
+                         tickets=reviewed, cost_usd=roles.add_cost(*cost))
         if (not passed or "task" in self.settings["checkpoints"]) \
                 and not self.passed_checkpoint("task"):
             self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
 
     def run(self) -> int:
+        problem = session.cannot_pass(self.project)
+        if problem:
+            raise session.NotReady(problem)
         lock = run_lock(self.project, f"task-{self.id}")
         lock.acquire()
         try:
@@ -332,6 +346,9 @@ class Task:
             with Log(self.log_path, task=self.id) as self.log:
                 self.copy = roles.make_copy(self.project, f"task-{self.id}")
                 self.settings = st.load_from_ref(self.copy, self.base)
+                self.caller = session.caller(self.settings, self.runner)
+                if self.runner is None:
+                    self.runner = self.settings["runner"]
                 self.log.add("started")
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
@@ -362,6 +379,8 @@ class Task:
                 path = report.write(self.project, self.id)
                 self.log.add("reported", path=path, tickets=done)
                 return 0 if all(c == 0 for c in done.values()) else 3
+        except session.Pause:
+            return 5
         except Parked as parked:
             Log(self.log_path, task=self.id).add("task_waiting", reason=str(parked))
             report.write(self.project, self.id)

@@ -66,6 +66,13 @@ class Answer:
     text: str = field(repr=False, default="")
 
 
+def add_cost(*costs) -> float | None:
+    """The sum of the costs in USD, or None when one is not known, as in session mode."""
+    if any(c is None for c in costs):
+        return None
+    return round(sum(costs), 4)
+
+
 def prompt(role: str, inputs: dict, lens: str | None = None) -> str:
     parts = [(ROLES / f"{role}.md").read_text()]
     if lens:
