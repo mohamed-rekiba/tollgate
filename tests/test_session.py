@@ -151,6 +151,103 @@ class DriverPauseTest(Case):
         self.assertIsNone(written["cost_usd"])
 
 
+class StepTest(Case):
+    """driver.step next and answer, as the task skill runs them."""
+
+    def task_sample(self, **settings_args):
+        s = self.sample(ticket=False, **settings_args)
+        Path(s.project, ".tollgate/requests").mkdir(parents=True)
+        Path(s.project, ".tollgate/requests/demo.md").write_text("Add shout and whisper.\n")
+        return s, FakeStore(s.project)
+
+    def step(self, store, *argv, stdin=""):
+        from driver import step
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = step.main(list(argv), store=store, stdin=io.StringIO(stdin))
+        return code, json.loads(out.getvalue())
+
+    def next(self, s, store):
+        return self.step(store, "next", "--project", str(s.project), "--task", "demo")
+
+    def answer(self, s, store, found_key, text):
+        return self.step(store, "answer", "--project", str(s.project), "--key", found_key,
+                         stdin=text)
+
+    def test_next_names_the_subagent_its_prompt_its_folder_and_the_key(self):
+        s, store = self.task_sample()
+        code, out = self.next(s, store)
+        self.assertEqual(code, 0)
+        self.assertEqual(sorted(out), ["agent", "cwd", "key", "prompt"])
+        self.assertEqual(out["agent"], "tollgate:analyst")
+        self.assertTrue(out["prompt"].startswith("# Role: analyst"))
+        self.assertEqual(Path(out["cwd"]), state.path(str(s.project), "builders", "task-demo"))
+        # Asked again, next names the same step.
+        self.assertEqual(self.next(s, store)[1]["key"], out["key"])
+
+    def test_answer_refuses_a_key_that_is_not_the_waiting_step_s(self):
+        s, store = self.task_sample()
+        _, out = self.next(s, store)
+        code, refused = self.answer(s, store, "0" * 64, fake_answer(out))
+        self.assertEqual(code, 1)
+        self.assertIn("not the key of the step", refused["error"])
+        self.assertEqual(session.read_step(str(s.project))["key"], out["key"])
+        # Once answered, the old key is stale.
+        code, following = self.answer(s, store, out["key"], fake_answer(out))
+        self.assertEqual(code, 0)
+        self.assertNotEqual(following["key"], out["key"])
+        code, refused = self.answer(s, store, out["key"], fake_answer(out))
+        self.assertEqual(code, 1)
+        self.assertIn("not the key of the step", refused["error"])
+
+    def test_answer_refuses_an_answer_with_no_final_json_block(self):
+        s, store = self.task_sample()
+        _, out = self.next(s, store)
+        code, refused = self.answer(s, store, out["key"], "I looked around. All good.")
+        self.assertEqual(code, 1)
+        self.assertIn("json block", refused["error"])
+        self.assertIsNotNone(session.read_step(str(s.project)))
+
+    def test_next_refuses_to_start_a_task_that_cannot_pass(self):
+        s, store = self.task_sample()
+        from gate import sign
+        sign.machine_key().unlink()
+        code, out = self.next(s, store)
+        self.assertEqual(code, 1)
+        self.assertIn("/tollgate:init", out["error"])
+
+    def test_a_whole_task_runs_through_next_and_answer(self):
+        s, store = self.task_sample()
+        code, out = self.next(s, store)
+        agents, questions = [], 0
+        for _ in range(100):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                # The person's answer, recorded as the inbox records it.
+                questions += 1
+                options = out["question"]["options"]
+                pick = "approve" if "approve" in options else "continue"
+                self.assertIn(pick, options)
+                store.answer(out["question"]["n"], f"tollgate decide {pick}")
+                code, out = self.next(s, store)
+                continue
+            if out.get("done"):
+                break
+            agents.append(out["agent"])
+            code, out = self.answer(s, store, out["key"], fake_answer(out))
+        self.assertTrue(out.get("done"), out)
+        self.assertEqual(questions, 2)   # the plan and the task checkpoints
+        self.assertEqual([m[1] for m in store.ready_marks], ["demo-1", "demo-2"])
+        self.assertIn("demo-2", out["result"])
+        self.assertEqual(out["merged"], [])
+        self.assertEqual(agents[0], "tollgate:analyst")
+        for role in ("builder", "test_writer", "reviewer"):
+            self.assertIn(f"tollgate:{role}", agents)
+        self.assertIsNone(session.read_step(str(s.project)))
+        report = Path(state.path(str(s.project), "reports", "demo.md")).read_text()
+        self.assertIn("Cost: unknown", report)
+
+
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):
         s = self.sample()
@@ -173,6 +270,3 @@ class ReadyTest(Case):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-__all__ = ["io", "redirect_stdout"]
