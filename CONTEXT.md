@@ -33,6 +33,9 @@ _Avoid_: acceptance criteria, requirements
 **must-have item**: A checklist item that cannot fail. Each one has a locked test.
 _Avoid_: required item, critical item
 
+**kind**: The kind of test that a checklist item asks for, one of 10: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, `concurrency`. A kind that does not apply is listed under Not covered, with a reason.
+_Avoid_: test type, category
+
 **seam**: A public point where a test observes behavior: a web address, a command, the name and inputs of a function.
 _Avoid_: boundary, touchpoint
 

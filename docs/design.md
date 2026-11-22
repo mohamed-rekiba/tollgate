@@ -440,16 +440,32 @@ A failed delivery is dropped.
 A failed delivery is tried again up to 5 times, with a longer wait each time.
 
 ## Checklist
-- [C1, must] A delivery that fails twice and then succeeds is marked delivered.
-- [C2, must] A delivery that fails 5 times is marked failed.
-- [C3, must, keeps behavior] A delivery that succeeds at once is sent one time.
-- [C4] The wait between tries is written to the log.
+- [C1, must, happy] A delivery that fails twice and then succeeds is marked delivered.
+- [C2, must, error] A delivery that fails 5 times is marked failed.
+- [C3, must, keeps behavior, regression] A delivery that succeeds at once is sent one time.
+- [C4, boundary] A delivery that fails 4 times and then succeeds is marked delivered.
+- [C5, concurrency] 2 deliveries to one address at the same time are each sent one time.
+
+## Not covered
+- edge: a delivery has no input that can be empty.
+- integration: C1 already goes through the web address and the queue.
+- e2e: there is no screen.
+- security: the change reads nothing new from a sender.
+- performance: no time limit is asked for.
 
 ## Out of scope
 A screen to retry by hand.
 ```
 
-A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`.
+A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`. The optional header key `fixes` names the bug that the ticket fixes, in one line.
+
+A checklist has 3 to 10 items. Each item may carry one kind of test: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, or `concurrency`. The gate works out from the marks which kinds the ticket covers:
+
+- Each of the 10 kinds is marked on an item, or listed under the optional section Not covered, one line for each kind: `- <kind>: <reason>`. The reason cannot be empty. A kind cannot be both.
+- A ticket with an item that is not `keeps behavior` needs a `happy` item and an `error` item. A ticket with `fixes` needs a `regression` item. These kinds cannot go under Not covered.
+- The text of a `performance` or `concurrency` item holds a number, such as a time, a count, or a size, so that a test can fail.
+
+A ticket that marks no kind fails, and the message says what to add.
 
 ### A lock
 
@@ -563,6 +579,9 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | --- | --- |
 | It can be shown working alone. It goes through every layer that it needs. | Readiness lens |
 | It states current behavior, desired behavior, a checklist, and what is out of scope. | `gate/tickets.py` |
+| Each kind of test is marked on an item, or listed under Not covered with a reason. | `gate/tickets.py` |
+| It has a `happy` and an `error` item, unless every item keeps behavior, and a `regression` item when it has `fixes`. | `gate/tickets.py` |
+| A `performance` or `concurrency` item names a number that a test can check. | `gate/tickets.py` |
 | Each must-have item has a locked test. | The store, when it locks the tests |
 | Each item names a result that someone can observe. | Test fit lens |
 | A change that prepares the way is its own ticket and goes first. | Readiness lens |

@@ -79,7 +79,8 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- `gate/tickets.py` reads the ticket. A checklist line looks like `- [C1, must] text`.
+- `gate/tickets.py` reads the ticket. A checklist line looks like `- [C1, must, happy] text`: the item id, the marks that apply, and one kind of test.
+- Each kind of test is marked on an item, or listed under Not covered with a reason. Every ticket that changes behavior has a `happy` item and an `error` item.
 - Each must-have item gets a locked test. The gate fails a try when a locked test fails, so no score makes up for a failed must-have item.
 
 **Where it stops.** A checklist can miss what you meant. Only the plan review and you catch that.
