@@ -1,4 +1,4 @@
-"""The container half of experiment E2: roles run in a container on the copy.
+"""Roles run in a container, on their own copy of the project.
 
     TOLLGATE_TEST_IMAGE=<image with python3 and git> python3 -m unittest tests.proof_container -v
 

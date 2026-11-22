@@ -45,7 +45,7 @@ class SettingsTest(unittest.TestCase):
             with self.assertRaisesRegex(settings.SettingsError, "not an SSH public key"):
                 settings.parse(json.dumps({"signers": [bad]}))
 
-    def test_github_keys_are_gone(self):
+    def test_an_unknown_key_is_refused(self):
         for key in ("action", "version", "approvers", "sandbox"):
             with self.assertRaisesRegex(settings.SettingsError, f"unknown key: {key}"):
                 settings.parse(json.dumps({key: ""}))

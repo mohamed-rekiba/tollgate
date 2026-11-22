@@ -1,5 +1,4 @@
-"""Fakes for the driver's tests: a sample project on this machine, a fake store, and,
-while the gate in this worktree is the old one, a fake gate with the new interface.
+"""Fakes for the driver's tests: a sample project on this machine, and a fake store.
 
 The fake store keeps the CONTRACT formats in the state folder and signs its
 records with the machine key, so the real gate verifies them. It runs no
@@ -11,23 +10,21 @@ import os
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from gate import checks, prepare, sign, state, tickets, tiers
+from gate import checks, prepare, sign, state, tickets
 from gate import gate as real_gate
 from gate import manifest as mf
 from gate import review as real_review
 from gate import settings as st
-from gate.gitio import changed_files, fingerprint, show_bytes
+from gate.gitio import fingerprint, show_bytes
 from gate.store import StoreError
 from gate.tickets import item_of_test
 from tests.fakes import RUN_TESTS, TICKET
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")
-NEW_GATE = hasattr(real_gate, "tier_of") and hasattr(real_review, "diff")
 
 
 def sh(cwd, *args) -> str:
@@ -245,95 +242,12 @@ class FakeStore:
         return "merge-" + commit[:12]
 
 
-# A gate with the new interface, for a worktree that still has the old gate. With the
-# new gate in place, gate_api() returns the real one.
-
-class GateError(ValueError):
-    pass
-
-
-@dataclass
-class Facts:
-    settings: dict
-    ticket: str
-    head_sha: str
-    changes: dict
-    results: object
-    lock: dict | None = None
-    review_passed: bool | None = None
-    extra: list = field(default_factory=list)
-
-
-class FakeGate:
-    GateError = GateError
-
-    @staticmethod
-    def collect(project, repo, base, head, ticket, results, review_passed=None):
-        s = st.load_from_ref(repo, base)
-        path = state.path(project, "locks", f"{ticket}.json")
-        try:
-            lock = sign.read(path, "tollgate-lock", s["signers"])
-        except sign.SignError:
-            lock = None
-        return Facts(s, ticket, sh(repo, "git", "rev-parse", head), changed_files(repo, base, head),
-                     results, lock, review_passed)
-
-    @staticmethod
-    def tier_of(facts):
-        frozen = set(facts.lock["manifest"]["files"]) if facts.lock else set()
-        return tiers.tier(facts.settings, facts.changes, frozen)
-
-    @classmethod
-    def evaluate(cls, facts):
-        out = []
-
-        def fail(check, message, fixable):
-            out.append({"check": check, "rule": 0, "file": "", "message": message,
-                        "fixable": fixable})
-        if facts.lock is None:
-            fail("lock", "no lock", False)
-        for c in facts.results.checks:
-            if not c.passed:
-                fail("tests", f"check {c.name} failed", True)
-        for t in (facts.lock or {"manifest": {"tests": []}})["manifest"]["tests"]:
-            if facts.results.tests.get(t, {}).get("status") != "passed":
-                fail("tests", f"locked test failed: {t}", True)
-        level = cls.tier_of(facts)[0]
-        if level >= 3 and facts.review_passed is not True:
-            fail("review", f"tier {level} needs a passed review", False)
-        return out + facts.extra
-
-    @classmethod
-    def pass_record(cls, facts, score, at=None):
-        if cls.evaluate(facts) or score < facts.settings["pass_score"]:
-            raise GateError("no pass")
-        return {"commit": facts.head_sha, "ticket": facts.ticket, "tier": cls.tier_of(facts)[0],
-                "lock_sha256": "x", "checks": {}, "score": score,
-                "at": at or "2026-11-22T00:00:00Z"}
-
-
-class FakeReview:
-    @staticmethod
-    def diff(repo, base, head):
-        return sh(repo, "git", "diff", f"{base}...{head}")
-
-    @staticmethod
-    def review(level, ticket, change, run_role):
-        if level < 3:
-            return True, [], ""
-        found = []
-        for lens in ("change", "security"):
-            data = run_role(lens, {"ticket": ticket, "diff": change, "tier": level})
-            found += data.get("findings", [])
-        return not any(f.get("level") == "blocking" for f in found), found, ""
-
-
 def gate_api():
-    return real_gate if NEW_GATE else FakeGate
+    return real_gate
 
 
 def review_api():
-    return real_review if NEW_GATE else FakeReview
+    return real_review
 
 
 class Refusing:

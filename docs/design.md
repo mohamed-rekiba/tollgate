@@ -1,6 +1,4 @@
-# Tollgate plan
-
-Author: Mohamed Rekiba. Date: 2026-11-22.
+# Tollgate's design
 
 ## What Tollgate is
 
@@ -23,9 +21,7 @@ Think of an exam. The questions are set and sealed before the student starts. Th
 
 **The limit.** Tollgate stops an AI that takes a shortcut. It does not stop code written to attack the test tools themselves. It does not stop a person who skips pre-commit with `--no-verify`.
 
-**Status.** [status.md](status.md) says what is built, what is verified, and what is not.
-
-**How to read this plan.** The sections up to "How you use it" explain the tool in plain words. The sections after that are the reference for the person who builds it. [CONTEXT.md](../CONTEXT.md) explains each word once.
+**How to read this page.** The sections up to "How you use it" explain the tool in plain words. The sections after that are the reference for a person who changes Tollgate's code. [CONTEXT.md](../CONTEXT.md) explains each word once.
 
 ## A task from start to finish
 
@@ -565,38 +561,19 @@ Product management documents, deployment to production, a hosted service, an AI 
 
 ### Not verified
 
-- L1: a role obeys its policy inside Claude Code.
-- L2: the sandbox stops a write through Python. Until it passes, the default isolation is the container.
+- A role obeys its policy inside Claude Code.
+- The sandbox stops a write through Python. So the default isolation is the container.
 - A role in Docker through the local driver.
 - A task end to end with real models through the local driver.
 - One clean round of three lenses finds enough errors in a plan.
-- Every number in this plan: 3 tries, 70, 30 minutes, 10 USD, 60 USD, 4 rounds, 2 advisor decisions, 3 files and 50 lines.
+- Every number on this page: 3 tries, 70, 30 minutes, 10 USD, 60 USD, 4 rounds, 2 advisor decisions, 3 files and 50 lines.
 
 ### Open
 
 - **The lock run.** The store runs the tests for a lock in a temporary clone on your machine, not in the role's isolation.
 - **A replaced lock.** The store allows one, but the driver has no step that asks for it.
 - **A split.** The advisor can choose it, but the driver parks the ticket.
-- **Free paths.** The settings hold `free`, but no code reads it.
-- **Tickets at the same time.** Two tickets that touch different files could run side by side. The plan does not design this.
-- **The name is already in use.** A Claude Code plugin named tollgate handles payments for AI agents, and a Ruby tool named tollgate runs checks. Nobody has checked trademarks or package registries.
-
-## How we will know it works
-
-The tests show that each part does its job. They do not show that Tollgate makes changes better. This experiment does.
-
-1. Pick 10 to 15 real tickets from one project.
-2. Build each ticket two ways: with Claude Code alone, and with Tollgate. Use the same model for the builder.
-3. Compare the two sets.
-
-| Measure | How |
-| --- | --- |
-| Invented names | Count each name in the change that does not exist: a function, a file, an option, a library. A script counts them. |
-| Review | An engineer reviews each change for 15 minutes without knowing which way built it, and marks it merge or not. |
-| Fixes after merge | Count the commits that fix or undo each change in the 14 days after the merge. |
-| Cost | Add the model cost and the time for each ticket. |
-
-Tollgate works if it gives fewer invented names and fewer fixes at a cost that you accept. If it does not, the design is wrong, and the numbers say where. [The first comparison](experiments/e310/results.md) ran on hosted machines, and two of its measures are open.
+- **Tickets at the same time.** Two tickets that touch different files could run side by side. Tollgate has no design for this.
 
 ## Credits and licenses
 
@@ -607,6 +584,6 @@ Tollgate copies no code from these projects. It uses their ideas. Where a lens o
 | Elephant Goldfish Model, by Google | Apache-2.0 | Reviewers with a fresh context. The paraphrase test. The rule that a plan leaves no decision to the builder. Fix, contest, or escalate as the answers to a finding. |
 | mattpocock-skills, by Matt Pocock | MIT | Seams. Tickets that work alone. The rules for a good test. The three-step path for a wide change. The ticket format. A map that leaves unclear work unplanned. |
 | ApexYard, by me2resh | See its repository | One view over many projects, and the lesson that a fork as the home makes every upgrade a merge. |
-| Squad OS, by the owner of this plan | MIT | The separate test writer, tiers from path rules, the log, and the numbers for learning. |
+| Squad OS, by Tollgate's author | MIT | The separate test writer, tiers from path rules, the log, and the numbers for learning. |
 | "How to write a good README", an article |  | The four questions that a README answers. |
 | The owner's own coding standards |  | The rules for a change and for commits. |
