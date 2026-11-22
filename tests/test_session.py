@@ -170,15 +170,15 @@ class StepTest(Case):
     def next(self, s, store):
         return self.step(store, "next", "--project", str(s.project), "--task", "demo")
 
-    def answer(self, s, store, found_key, text):
-        return self.step(store, "answer", "--project", str(s.project), "--key", found_key,
-                         stdin=text)
+    def answer(self, s, store, out, text, key=None, nonce=None):
+        return self.step(store, "answer", "--project", str(s.project), "--key",
+                         key or out["key"], "--nonce", nonce or out["nonce"], stdin=text)
 
     def test_next_names_the_subagent_its_prompt_its_folder_and_the_key(self):
         s, store = self.task_sample()
         code, out = self.next(s, store)
         self.assertEqual(code, 0)
-        self.assertEqual(sorted(out), ["agent", "cwd", "key", "prompt"])
+        self.assertEqual(sorted(out), ["agent", "cwd", "key", "nonce", "prompt"])
         self.assertEqual(out["agent"], "tollgate:analyst")
         self.assertTrue(out["prompt"].startswith("# Role: analyst"))
         self.assertEqual(Path(out["cwd"]), state.path(str(s.project), "builders", "task-demo"))
@@ -188,22 +188,54 @@ class StepTest(Case):
     def test_answer_refuses_a_key_that_is_not_the_waiting_step_s(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
-        code, refused = self.answer(s, store, "0" * 64, fake_answer(out))
+        code, refused = self.answer(s, store, out, fake_answer(out), key="0" * 64)
         self.assertEqual(code, 1)
-        self.assertIn("not the key of the step", refused["error"])
+        self.assertIn("not the ones next printed", refused["error"])
+        self.assertNotIn(out["key"], refused["error"])
         self.assertEqual(session.read_step(str(s.project))["key"], out["key"])
         # Once answered, the old key is stale.
-        code, following = self.answer(s, store, out["key"], fake_answer(out))
+        code, following = self.answer(s, store, out, fake_answer(out))
         self.assertEqual(code, 0)
         self.assertNotEqual(following["key"], out["key"])
-        code, refused = self.answer(s, store, out["key"], fake_answer(out))
+        code, refused = self.answer(s, store, out, fake_answer(out))
         self.assertEqual(code, 1)
-        self.assertIn("not the key of the step", refused["error"])
+        self.assertIn("not the ones next printed", refused["error"])
+        self.assertNotIn(following["key"], refused["error"])
+
+    def test_answer_needs_the_nonce_that_only_next_printed(self):
+        s, store = self.task_sample()
+        _, out = self.next(s, store)
+        stored = session.step_path(str(s.project)).read_text()
+        self.assertNotIn(out["nonce"], stored)
+        code, refused = self.answer(s, store, out, fake_answer(out), nonce="0" * 32)
+        self.assertEqual(code, 1)
+        self.assertNotIn(out["key"], refused["error"])
+        self.assertEqual(self.answer(s, store, out, fake_answer(out))[0], 0)
+
+    def test_a_malformed_step_file_is_an_error_not_a_crash(self):
+        s, store = self.task_sample()
+        path = session.step_path(str(s.project))
+        for text in ("[]", '{"key": "k"}', "not json", '{"role": 1, "key": "k", "log": "x"}'):
+            path.write_text(text)
+            self.assertIsNone(session.read_step(str(s.project)))
+            code, refused = self.answer(s, store, {"key": "k", "nonce": "n"}, "```json\n{}\n```")
+            self.assertEqual(code, 1)
+            self.assertIn("no step waits", refused["error"])
+
+    def test_a_second_next_while_the_task_runs_leaves_the_step_alone(self):
+        import os
+        s, store = self.task_sample()
+        _, out = self.next(s, store)
+        state.path(str(s.project), "run", "task-demo.lock").write_text(str(os.getpid()))
+        code, busy = self.next(s, store)
+        self.assertEqual(code, 1)
+        self.assertIn("another driver", busy["error"])
+        self.assertEqual(session.read_step(str(s.project))["key"], out["key"])
 
     def test_answer_refuses_an_answer_with_no_final_json_block(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
-        code, refused = self.answer(s, store, out["key"], "I looked around. All good.")
+        code, refused = self.answer(s, store, out, "I looked around. All good.")
         self.assertEqual(code, 1)
         self.assertIn("json block", refused["error"])
         self.assertIsNotNone(session.read_step(str(s.project)))
@@ -234,7 +266,7 @@ class StepTest(Case):
             if out.get("done"):
                 break
             agents.append(out["agent"])
-            code, out = self.answer(s, store, out["key"], fake_answer(out))
+            code, out = self.answer(s, store, out, fake_answer(out))
         self.assertTrue(out.get("done"), out)
         self.assertEqual(questions, 2)   # the plan and the task checkpoints
         self.assertEqual([m[1] for m in store.ready_marks], ["demo-1", "demo-2"])

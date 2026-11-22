@@ -1,14 +1,16 @@
 """Session mode, one step at a time: your own Claude Code session runs each role.
 
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --task <task id>
-    PYTHONPATH=<tollgate> python3 -P -m driver.step answer --project . --key <key> < answer.md
+    PYTHONPATH=<tollgate> python3 -P -m driver.step answer --project . --key <key> --nonce <nonce> < answer.md
 
 `next` runs the task's driver in session mode, from its log and the saved
 answers, up to the next role. It prints one JSON object:
 
-- a step: {"agent": "tollgate:<role>", "prompt": ..., "cwd": ..., "key": ...}.
-  Start that subagent in that folder with that prompt, then pipe its whole final
-  answer to `answer` with that key.
+- a step: {"agent": "tollgate:<role>", "prompt": ..., "cwd": ..., "key": ...,
+  "nonce": ...}. Start that subagent in that folder with that prompt, then pipe
+  its whole final answer to `answer` with that key and that nonce. The nonce is
+  new for each `next`, and the step file keeps only its hash, so only the session
+  that ran `next` can answer.
 - the end: {"done": true, "result": <done and still to do>, "merged": [tickets],
   "report": <path>}.
 - a question for a person: {"question": {"n", "title", "body", "options"}}.
@@ -16,8 +18,9 @@ answers, up to the next role. It prints one JSON object:
 - a ticket parked with no question: {"parked": <the reason>}.
 - an error: {"error": <the reason>}, and the command ends with 1.
 
-`answer` refuses a key that is not the key of the waiting step, and an answer
-with no final json block. It saves the answer, then runs `next` and prints what
+`answer` refuses a key or a nonce that is not the waiting step's, and never
+says what they are; and an answer with no final json block. A role cannot run
+this command: the hook refuses any Tollgate command from a role. It saves the answer, then runs `next` and prints what
 `next` prints. The request of the task is .tollgate/requests/<task id>.md.
 """
 
@@ -81,7 +84,6 @@ def next_step(project: str, task: str, store=None) -> tuple:
     store = store or Store(project)
     try:
         request = _request(project, task)
-        session.clear_step(project)
         code = Task(project, task, request, store, runner="session").run()
     except Busy as err:
         return {"error": str(err)}, 1
@@ -89,9 +91,12 @@ def next_step(project: str, task: str, store=None) -> tuple:
             subprocess.CalledProcessError) as err:
         return {"error": str(err)}, 1
     if code == 5:
-        step = session.read_step(project) or {}
-        return {"agent": step.get("agent", ""), "prompt": step.get("prompt", ""),
-                "cwd": step.get("copy") or project, "key": step.get("key", "")}, 0
+        step = session.read_step(project)
+        if step is None:
+            return {"error": "the driver paused, but no step file is there; run next again"}, 1
+        nonce = session.new_nonce(project)
+        return {"agent": step.get("agent", ""), "prompt": step["prompt"],
+                "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}, 0
     if code == 0:
         return {"done": True, "result": report.brief(project, task),
                 "merged": _merged(project, task),
@@ -106,15 +111,18 @@ def next_step(project: str, task: str, store=None) -> tuple:
     return {"error": f"the driver ended with {code}"}, 1
 
 
-def answer(project: str, found_key: str, text: str, store=None) -> tuple:
+def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> tuple:
     """Save the answer to the waiting step, then run next. Return (what to print, exit code)."""
+    import hmac
     project = str(Path(project).resolve())
     step = session.read_step(project)
     if not step:
         return {"error": "no step waits for an answer; run next"}, 1
-    if found_key != step.get("key"):
-        return {"error": f"{found_key} is not the key of the step that waits; it is "
-                         f"{step.get('key')}. Run next to see it."}, 1
+    wanted = str(step.get("nonce_sha256") or "")
+    if not (hmac.compare_digest(found_key, step["key"]) and wanted
+            and hmac.compare_digest(session.digest(nonce), wanted)):
+        return {"error": "the key or the nonce is not the ones next printed for the step "
+                         "that waits. Run next, and answer with what it prints."}, 1
     try:
         session.save_answer(project, step, text)
     except roles.RoleError as err:
@@ -135,11 +143,13 @@ def main(argv=None, store=None, stdin=None) -> int:
     given = sub.add_parser("answer", help="save the answer to the waiting step (on stdin)")
     given.add_argument("--project", default=".")
     given.add_argument("--key", required=True)
+    given.add_argument("--nonce", required=True)
     args = parser.parse_args(argv)
     if args.command == "next":
         out, code = next_step(args.project, args.task, store)
     else:
-        out, code = answer(args.project, args.key, (stdin or sys.stdin).read(), store)
+        out, code = answer(args.project, args.key, args.nonce, (stdin or sys.stdin).read(),
+                           store)
     print(json.dumps(out, indent=1))
     return code
 

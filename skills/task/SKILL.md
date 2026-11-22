@@ -50,10 +50,10 @@ PYTHONPATH="$TG" python3 -P -m driver.step next --project . --task "<task id>"
 
 It prints one JSON object. Loop on it:
 
-- **A step**, `{"agent", "prompt", "cwd", "key"}`: start the subagent named in `agent`, such as `tollgate:builder`. Its message is one line, `Your folder: <cwd>`, then a blank line, then the `prompt` exactly as printed. When it ends, write its whole final answer, unchanged, to a file outside the project, such as `$TMPDIR/tollgate-answer.md`, and run:
+- **A step**, `{"agent", "prompt", "cwd", "key", "nonce"}`: start the subagent named in `agent`, such as `tollgate:builder`. Its message is one line, `Your folder: <cwd>`, then a blank line, then the `prompt` exactly as printed. When it ends, write its whole final answer, unchanged, to a file outside the project, such as `$TMPDIR/tollgate-answer.md`, and run:
 
   ```
-  PYTHONPATH="$TG" python3 -P -m driver.step answer --project . --key "<key>" < "$TMPDIR/tollgate-answer.md"
+  PYTHONPATH="$TG" python3 -P -m driver.step answer --project . --key "<key>" --nonce "<nonce>" < "$TMPDIR/tollgate-answer.md"
   ```
 
   It saves the answer and prints the next object. Loop again.
@@ -62,7 +62,7 @@ It prints one JSON object. Loop on it:
 - **Parked**, `{"parked": <reason>}`: tell the user the reason and stop.
 - **An error**, `{"error": <reason>}`: show it to the user and stop. If it says to run `/tollgate:init`, the task cannot pass until they do.
 
-Never edit a file of the copy yourself, never change an answer, and never answer for a subagent: the driver asks again for anything it has no answer to. Run `next` again at any time to see the step that waits. The cost of the roles is your session's own; the report shows it as unknown.
+Never give the nonce to a subagent, and never put it in a file in the project. Never edit a file of the copy yourself, never change an answer, and never answer for a subagent: the driver asks again for anything it has no answer to. Run `next` again at any time to see the step that waits. The cost of the roles is your session's own; the report shows it as unknown.
 
 ## 5. Background mode: start the driver
 

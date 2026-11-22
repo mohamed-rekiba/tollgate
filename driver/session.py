@@ -23,6 +23,7 @@ the best try so far.
 import hashlib
 import json
 import os
+import secrets
 import subprocess
 import tempfile
 import time
@@ -79,11 +80,44 @@ def answers_path(project: str, log: str) -> Path:
     return state.path(project, "logs", f"{log}{ANSWERS}")
 
 
+STEP_FIELDS = ("role", "key", "log", "task", "prompt")
+
+
 def read_step(project: str) -> dict | None:
+    """The step that waits, or None when there is none or the file is not a step."""
     try:
-        return json.loads(step_path(project).read_text())
+        found = json.loads(step_path(project).read_text())
     except (OSError, ValueError):
         return None
+    if not isinstance(found, dict) or not all(isinstance(found.get(f), str) and found.get(f)
+                                              for f in STEP_FIELDS if f != "task"):
+        return None
+    if not isinstance(found.get("task", ""), str) or not isinstance(found.get("copy", ""), str):
+        return None
+    return found
+
+
+def _write_step(project: str, step: dict) -> None:
+    path = step_path(project)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}")
+    tmp.write_text(json.dumps(step, indent=1) + "\n")
+    os.replace(tmp, path)
+
+
+def digest(nonce: str) -> str:
+    return hashlib.sha256(nonce.encode()).hexdigest()
+
+
+def new_nonce(project: str) -> str:
+    """A new nonce for the step that waits. Only its hash goes in the step file; the
+    nonce itself goes to your session in next's output, and answer needs it."""
+    step = read_step(project)
+    if step is None:
+        raise roles.RoleError("no step waits")
+    nonce = secrets.token_hex(16)
+    step["nonce_sha256"] = digest(nonce)
+    _write_step(project, step)
+    return nonce
 
 
 def clear_step(project: str) -> None:
@@ -179,10 +213,7 @@ class Session:
                 "copy": os.path.realpath(call.copy) if call.copy else "", "key": found_key,
                 "log": call.log, "ticket": call.ticket, "task": call.task,
                 "asked_at": time.time()}
-        path = step_path(call.project)
-        tmp = path.with_name(f".{path.name}.{os.getpid()}")
-        tmp.write_text(json.dumps(step, indent=1) + "\n")
-        os.replace(tmp, path)
+        _write_step(call.project, step)
         raise Pause(step)
 
 

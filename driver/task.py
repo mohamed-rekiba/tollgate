@@ -446,6 +446,9 @@ class Task:
         lock = run_lock(self.project, f"task-{self.id}")
         lock.acquire()
         try:
+            # Only the holder of the run lock clears the step: a second next that finds
+            # the task busy leaves the waiting step alone.
+            session.clear_step(self.project)
             events = read(self.log_path)
             kinds = {e["event"] for e in events}
             self.ai_decisions = sum(1 for e in events if e["event"] == "advisor_decided"
