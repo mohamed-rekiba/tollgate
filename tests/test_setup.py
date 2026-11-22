@@ -36,6 +36,10 @@ def sh(cwd, *args, check=True, env=None):
     return subprocess.run(args, cwd=cwd, check=check, capture_output=True, text=True, env=env)
 
 
+
+# Every tool counts as installed, so the tests do not depend on the machine they run on.
+FOUND = lambda tool: "/usr/bin/" + tool
+
 class Env(unittest.TestCase):
     """A temporary state folder, key folder, and owner key."""
 
@@ -69,7 +73,7 @@ class Env(unittest.TestCase):
 
     def setup_project(self, name="project", install=False) -> Path:
         root = self.repo(name)
-        setup_init.init(str(root), f"{self.owner}.pub", install=install)
+        setup_init.init(str(root), f"{self.owner}.pub", install=install, which=FOUND)
         return root
 
     def branch(self, root, name, files, message=None, verify=False) -> str:
@@ -340,7 +344,7 @@ class HooksTest(Env):
 class InitTest(Env):
     def test_init_sets_up_the_project(self):
         root = self.repo()
-        lines = setup_init.init(str(root), f"{self.owner}.pub", install=HAS_PRECOMMIT)
+        lines = setup_init.init(str(root), f"{self.owner}.pub", install=HAS_PRECOMMIT, which=FOUND)
         settings = json.loads(sh(root, "git", "show", "main:.tollgate/settings.json").stdout)
         self.assertEqual(settings["signers"], [sign.ensure_key()])
         self.assertEqual(settings["owners"], [Path(f"{self.owner}.pub").read_text().strip()])
@@ -356,7 +360,7 @@ class InitTest(Env):
             self.assertEqual(len(found), 1)
             self.assertIn("the plugin has no Claude Code hooks", found[0])
         self.assertIn("files: already in place",
-                      setup_init.init(str(root), f"{self.owner}.pub", install=False))
+                      setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND))
         self.assertTrue(lines)
 
     def test_init_stops_when_a_tool_is_missing(self):
@@ -369,11 +373,11 @@ class InitTest(Env):
         root = self.repo()
         sh(root, "git", "checkout", "-q", "-b", "other")
         with self.assertRaisesRegex(setup_init.InitError, "not main"):
-            setup_init.init(str(root), f"{self.owner}.pub", install=False)
+            setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
         sh(root, "git", "checkout", "-q", "main")
         sign.ensure_key()
         with self.assertRaisesRegex(setup_init.InitError, "machine key"):
-            setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False)
+            setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False, which=FOUND)
 
 
 REAL_DOCKER_READY = setup_init.docker_ready
