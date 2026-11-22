@@ -4,6 +4,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
+      "bump-minor-pre-major": true,
       "package-name": "tollgate",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
