@@ -431,3 +431,42 @@ class AwsFetchTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MeaningTest(unittest.TestCase):
+    """An object keeps one meaning across the scenes of a folder, and one meaning has
+    one object: a reader learns a picture once."""
+
+    def folder(self, *scenes):
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "src").mkdir()
+        for n, objects in enumerate(scenes):
+            spec = {"type": "scene", "title": f"Scene {n}", "desc": "A scene.",
+                    "objects": objects}
+            (tmp / "src" / f"s{n}.json").write_text(json.dumps(spec))
+        return str(tmp)
+
+    def test_one_object_with_two_meanings_is_refused(self):
+        folder = self.folder([{"type": "gate", "at": [0, 0], "arm_to": 40, "means": "the gate"}],
+                             [{"type": "gate", "at": [0, 0], "arm_to": 40, "means": "pre-commit"}])
+        with self.assertRaisesRegex(ValueError, "the gate.*pre-commit|pre-commit.*the gate"):
+            build(folder, check=True)
+
+    def test_one_meaning_drawn_two_ways_is_refused(self):
+        folder = self.folder([{"type": "vault", "at": [0, 0], "means": "the signed records"}],
+                             [{"type": "database", "at": [0, 0], "means": "the signed records"}])
+        with self.assertRaisesRegex(ValueError, "the signed records"):
+            build(folder, check=True)
+
+    def test_the_kind_and_the_icon_make_a_different_object(self):
+        folder = self.folder(
+            [{"type": "pedestal", "at": [0, 0], "kind": "check", "icon": "check",
+              "means": "the plan review"}],
+            [{"type": "pedestal", "at": [0, 0], "kind": "check", "icon": "firewall",
+              "means": "pre-commit"}])
+        build(folder)
+
+    def test_an_object_with_no_meaning_is_not_checked(self):
+        folder = self.folder([{"type": "gate", "at": [0, 0], "arm_to": 40, "means": "the gate"}],
+                             [{"type": "gate", "at": [0, 0], "arm_to": 40}])
+        build(folder)

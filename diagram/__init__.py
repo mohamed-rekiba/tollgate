@@ -36,7 +36,7 @@ A scene spec:
                           "board" | "house" | "database" | "pedestal" | "aws" | "wall" |
                           "person" | "external" | "building" | "container" | "queue" |
                           "cloud" | "component",
-                  "at": [x, y], "z": 0, "kind": "server", ...}],
+                  "at": [x, y], "z": 0, "kind": "server", "means": "the gate", ...}],
      "badges":  [{"at": [x, y, z], "icon": "lock", "kind": "server"}],
      "labels":  [{"at": [x, y, z], "head": "Main", "sub": ["line", "line"],
                   "anchor": "start" | "middle" | "end", "halo": true,
