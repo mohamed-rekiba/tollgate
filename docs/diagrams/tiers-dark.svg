@@ -8,6 +8,7 @@
 <path class="main" d="M204.4,51.5 L252.4,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path class="main" d="M456.8,51.5 L504.8,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
 <path class="main" d="M709.2,51.5 L757.2,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<g class="step">
 <rect x="0.0" y="0.0" width="204.4" height="103.0" rx="4" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
 <path d="M195.4,107.0 H208.4 V94.0" fill="none" stroke="#ab7df8" stroke-width="1.2"/>
@@ -16,6 +17,8 @@
 <text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">A small fix</text>
 <text x="14.0" y="70.0" font-size="12" fill="#9198a1">Locked tests.</text>
 <text x="14.0" y="87.0" font-size="12" fill="#9198a1">Tollgate merges it.</text>
+</g>
+<g class="step">
 <rect x="252.4" y="0.0" width="204.4" height="103.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M261.4,-4.0 H248.4 V9.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
 <path d="M447.8,107.0 H460.8 V94.0" fill="none" stroke="#d29922" stroke-width="1.2"/>
@@ -24,6 +27,8 @@
 <text x="266.4" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">A normal change</text>
 <text x="266.4" y="70.0" font-size="12" fill="#9198a1">+ a plan and a review.</text>
 <text x="266.4" y="87.0" font-size="12" fill="#9198a1">Tollgate merges it.</text>
+</g>
+<g class="step">
 <rect x="504.8" y="0.0" width="204.4" height="103.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M513.8,-4.0 H500.8 V9.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
 <path d="M700.2,107.0 H713.2 V94.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>
@@ -32,6 +37,8 @@
 <text x="518.8" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Login, payments, data</text>
 <text x="518.8" y="70.0" font-size="12" fill="#9198a1">+ a security review.</text>
 <text x="518.8" y="87.0" font-size="12" fill="#9198a1">You merge it.</text>
+</g>
+<g class="step">
 <rect x="757.2" y="0.0" width="204.4" height="103.0" rx="4" fill="#0d1d35" stroke="#4493f8" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M766.2,-4.0 H753.2 V9.0" fill="none" stroke="#4493f8" stroke-width="1.2"/>
 <path d="M952.6,107.0 H965.6 V94.0" fill="none" stroke="#4493f8" stroke-width="1.2"/>
@@ -40,4 +47,5 @@
 <text x="771.2" y="52.0" font-size="14" font-weight="700" fill="#f0f6fc">Test setup, settings</text>
 <text x="771.2" y="70.0" font-size="12" fill="#9198a1">+ a security review.</text>
 <text x="771.2" y="87.0" font-size="12" fill="#9198a1">You merge it.</text>
+</g>
 </svg>

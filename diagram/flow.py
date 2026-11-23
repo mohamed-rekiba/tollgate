@@ -9,17 +9,20 @@ A spec is a dict, often read from JSON:
      "desc": "What it shows, in one or two sentences, for a screen reader.",
      "nodes": [{"id": "a", "text": "Title\\nOne line under it", "col": 0, "row": 0,
                 "shape": "step" | "start" | "end" | "decision" | "io" | "document" |
-                         "data" | "subprocess" | "wait" | "manual",
+                         "data" | "subprocess" | "wait" | "manual" | "person" | "queue" |
+                         "node" | "oval",
                 "kind": "you" | "ai" | "server" | "check" | "advisor",
                 "icon": "lock", "tag": "OWN LABEL", "step": 1,
                 "aws": "s3"}],
      "edges": [{"from": "a", "to": "b", "label": "optional",
                 "tone": "pass" | "fail", "dashed": true,
                 "loop": "left" | "right" | "above" | "below",
-                "route": "vhv" | "vh" | "hv"}],
+                "route": "vhv" | "vh" | "hv", "arrow": false}],
      "names": {"server": "GitHub"},
+     "heading": "A title drawn over the diagram",
      "groups": [{"label": "The server", "nodes": ["a", "b"], "kind": "server",
-                 "icon": "lock", "aws": "vpc"}],
+                 "icon": "lock", "aws": "vpc",
+                 "style": "boundary" | "node" | "system", "type": "Software System"}],
      "ticket": {"path": [["a", "b"], ["b", "c"]], "wait": {"b": 1.2}}}
 
 The design:
@@ -30,6 +33,10 @@ The design:
   like a database or locked tests) is a cylinder, a "subprocess" (a step
   described elsewhere) has double sides, "wait" is a D, and "manual" (a person
   does it by hand) is a trapezoid.
+- Four more shapes serve architecture and UML: "person" (a head over a box
+  with round shoulders), "queue" (a pipe on its side), "node" (a box in three
+  dimensions, a machine or a place that runs software), and "oval" (a UML use
+  case).
 - Nodes sit on a grid of columns and rows. All boxes share one width.
 - "kind" says who acts. It sets the color, the icon, and the small label over
   the title (YOU, AI, SERVER, CHECK, ADVISOR). "names" renames those labels
@@ -42,18 +49,28 @@ The design:
 - "groups" draw a border around nodes: a place, a boundary, or an AWS group
   ("aws": "cloud", "region", "az", "vpc", "public subnet", "private subnet",
   "security group", ...), in AWS's own color with its group icon. Groups may
-  nest; inner ones must hold a subset of the outer one's nodes.
+  nest; inner ones must hold a subset of the outer one's nodes, or the same
+  nodes when the inner one is listed later.
+- A group's "style" draws it as a border of architecture: "boundary" is a
+  dashed box with the label in bold and "type" after it in brackets, as in
+  "Tollgate [Software System]"; "node" is a box in three dimensions with
+  "type" after the label as a UML stereotype, as in "Your machine «device»";
+  "system" is a plain box with the label in bold, a UML system's border.
 - Arrows are straight, or bend at right angles with round corners. "route"
   picks the bends for an arrow between two rows and two columns: "vhv" (the
   default) goes down, across, down; "vh" goes up or down, then across; "hv"
   goes across, then up or down.
 - "loop" draws an arrow that goes back, out to one side in its own lane.
 - "tone" colors an arrow and its label: green for pass, red for fail.
+- A label may have two lines, split by "\n".
+- "arrow": false draws a plain line with no head that does not move: a link
+  with no direction, such as a UML association.
 - Arrows are dotted, and the dots move the way the arrow points. "dashed"
   makes a side path: longer dashes that move slower. With "reduce motion" set,
   nothing moves.
 - "ticket" sends one dot along the arrows named in "path", in order. It waits
   where an arrow meets a box, and takes each arrow's tone as it goes.
+- "heading" draws a title in bold over the top left of the diagram.
 
 The output is plain SVG: real text, a viewBox, role="img" with a title and a
 description named by aria-labelledby, no scripts, and no external files.
@@ -125,13 +142,16 @@ def eyebrow(node):
 
 # Flowchart shapes (ISO 5807): what each step is decides its outline.
 SHAPES = ("step", "start", "end", "decision", "io", "document", "data", "subprocess", "wait",
-          "manual")
+          "manual", "person", "queue", "node", "oval")
+GROUP_STYLES = ("boundary", "node", "system")
+HEAD_R, SHOULDER, DEPTH = 15, 26, 10   # a person's head and where its body starts; a node's depth
 # Room each shape needs around its text: left, right, top, bottom.
 INSETS = {"step": (0, 0, 0, 0), "start": (14, 14, 0, 0), "end": (14, 14, 0, 0),
           "io": (16, 16, 0, 0), "document": (0, 0, 0, 10), "data": (0, 0, 12, 4),
           "subprocess": (10, 10, 0, 0), "wait": (0, 18, 0, 0), "manual": (16, 16, 0, 0),
-          "decision": (0, 0, 0, 0)}
-CENTERED = {"start", "end", "decision"}
+          "decision": (0, 0, 0, 0), "person": (0, 0, SHOULDER, 0), "queue": (8, 22, 0, 0),
+          "node": (0, DEPTH, DEPTH, 0), "oval": (24, 24, 8, 8)}
+CENTERED = {"start", "end", "decision", "oval"}
 
 
 def content_size(node):
@@ -156,7 +176,16 @@ def node_size(node):
 
 
 def label_size(label):
-    return text_width(label, LABEL) + 14, 20
+    lines = label.split("\n")
+    return max(text_width(s, LABEL) for s in lines) + 14, 20 + 14 * (len(lines) - 1)
+
+
+def group_label_width(g):
+    """How wide a group's label runs, from its left border."""
+    if g.get("style") in GROUP_STYLES:
+        extra = text_width(f"[{g['type']}]", SUB - 1) + 8 if g.get("type") else 0
+        return 12 + text_width(g["label"], TITLE - 1) + extra + 12
+    return 12 + 21 + text_width(g["label"], EYEBROW, 1.2) + 12
 
 
 def group_depths(spec):
@@ -166,7 +195,8 @@ def group_depths(spec):
     depth = [0] * len(groups)
     for _ in groups:
         for i, s in enumerate(sets):
-            inner = [depth[j] + 1 for j, o in enumerate(sets) if j != i and o < s]
+            # The same nodes: the group listed later is the inner one.
+            inner = [depth[j] + 1 for j, o in enumerate(sets) if o < s or (o == s and j > i)]
             depth[i] = max(inner, default=0)
     return depth
 
@@ -190,7 +220,9 @@ def gaps(order, spans, base, before, after, labels):
         end = max((after(d) for d, lo, hi in spans if hi == a), default=0)
         begin = max((before(d) for d, lo, hi in spans if lo == b), default=0)
         need = end + begin + 16 if end or begin else 0
-        out[a] = max(base, need, labels.get(a, 0))
+        # A label sits in the middle of the gap, clear of the borders on both sides.
+        label = labels.get(a, 0) + 2 * max(end, begin) if a in labels else 0
+        out[a] = max(base, need, label)
     return out
 
 
@@ -198,6 +230,10 @@ def layout(spec):
     nodes = spec["nodes"]
     boxes_w = [node_size(n)[0] for n in nodes if n.get("shape") != "decision"]
     width = max(MIN_W, *boxes_w) if boxes_w else MIN_W
+    # A group in one column is as wide as its label.
+    for g, (d, lo, hi, _, _) in zip(spec.get("groups", []), group_spans(spec), strict=True):
+        if lo == hi:
+            width = max(width, group_label_width(g) - 2 * GROUP_PAD * (d + 1))
     column = max(width, *(node_size(n)[0] for n in nodes))
     where = {n["id"]: (n["col"], n["row"]) for n in nodes}
     # Labels on straight arrows need room in the gap they cross.
@@ -420,7 +456,9 @@ def travel(spec, boxes, lanes, t, arrow=None):
     ]
 
 
-def draw_groups(spec, boxes, t, seen):
+def draw_groups(spec, boxes, t, seen, front):
+    """The borders of the groups. The label of a styled group goes in `front`,
+    over the arrows, on a patch of the page, so an arrow that crosses it hides."""
     out = []
     groups = spec.get("groups", [])
     depth = group_depths(spec)
@@ -434,6 +472,9 @@ def draw_groups(spec, boxes, t, seen):
         r = max(c[2] for c in inside) + pad
         bottom = max(c[3] for c in inside) + pad
         seen += [(l, top), (r, bottom)]
+        if g.get("style") in GROUP_STYLES:
+            out += styled_group(g, (l, top, r, bottom), t, seen, front)
+            continue
         if g.get("aws"):
             svg, color, dashed = aws.group(g["aws"], prefix=f"g{i}")
             dash = ' stroke-dasharray="6 4"' if dashed else ""
@@ -460,6 +501,44 @@ def draw_groups(spec, boxes, t, seen):
     return out
 
 
+def styled_group(g, edges, t, seen, front):
+    """A border of architecture: a C4 boundary, a UML node, or a UML system."""
+    l, top, r, bottom = edges
+    style = g["style"]
+    accent, tint = t["kinds"][g.get("kind", "neutral")]
+    dash = ' stroke-dasharray="7 5"' if style == "boundary" else ""
+    rx = {"boundary": 6, "system": 4, "node": 0}[style]
+    out = [f'<g class="{style}">',
+           (f'<rect x="{l:.1f}" y="{top:.1f}" width="{r - l:.1f}" height="{bottom - top:.1f}" '
+            f'rx="{rx}" fill="none" stroke="{accent}" stroke-width="1.4"{dash}/>')]
+    if style == "node":
+        d = DEPTH * 0.8
+        seen.append((r + d, top - d))
+        out += faces(l, top, r, bottom, d, accent, tint)
+    x, y = l + 12, top + 18
+    words = [(f'<text x="{x:.1f}" y="{y:.1f}" font-size="{TITLE - 1}" font-weight="700" '
+              f'fill="{t["text"]}">{escape(g["label"])}</text>')]
+    if g.get("type"):
+        kind = f"«{g['type']}»" if style == "node" else f"[{g['type']}]"
+        x += text_width(g["label"], TITLE - 1) + 8
+        words.append(f'<text x="{x:.1f}" y="{y:.1f}" font-size="{SUB - 1}" fill="{t["sub"]}">'
+                     f'{escape(kind)}</text>')
+    end = l + group_label_width(g) - 6
+    front += [f'<g class="{style}-label">',
+              (f'<rect x="{l + 6:.1f}" y="{top + 4:.1f}" width="{end - l - 12:.1f}" height="19" '
+               f'fill="{t["page"]}"/>'), *words, "</g>"]
+    return [*out, "</g>"]
+
+
+def faces(l, top, r, b, d, accent, tint):
+    """The top face and the right face of a box in three dimensions, behind its front."""
+    paint = f'fill="{tint}" stroke="{accent}" stroke-width="1.3" stroke-linejoin="round"'
+    return [(f'<polygon points="{l:.1f},{top:.1f} {l + d:.1f},{top - d:.1f} '
+             f'{r + d:.1f},{top - d:.1f} {r:.1f},{top:.1f}" {paint}/>'),
+            (f'<polygon points="{r:.1f},{top:.1f} {r + d:.1f},{top - d:.1f} '
+             f'{r + d:.1f},{b - d:.1f} {r:.1f},{b:.1f}" {paint}/>')]
+
+
 def draw_node(n, bx, t, i):
     out = []
     title, *sub = n["text"].split("\n")
@@ -477,6 +556,7 @@ def draw_node(n, bx, t, i):
         return out
     accent, tint = t["kinds"][n.get("kind", "neutral")]
     shape = n.get("shape", "step")
+    out.append(f'<g class="{shape}">')
     out.append(outline(shape, bx, accent, tint))
     if shape == "step":
         # Corner ticks, like marks on a drawing.
@@ -484,7 +564,7 @@ def draw_node(n, bx, t, i):
             out.append(f'<path d="M{cx + 9 * dx:.1f},{cy - 4 * dy:.1f} H{cx - 4 * dx:.1f} '
                        f'V{cy + 9 * dy:.1f}" fill="none" stroke="{accent}" stroke-width="1.2"/>')
     out += content(n, bx, t, accent, shape)
-    return out
+    return [*out, "</g>"]
 
 
 def outline(shape, bx, accent, tint):
@@ -518,6 +598,24 @@ def outline(shape, bx, accent, tint):
         k = h / 2
         return (f'<path d="M{l:.1f},{top:.1f} H{r - k:.1f} A{k:.1f},{k:.1f} 0 0 1 {r - k:.1f},{b:.1f} '
                 f'H{l:.1f} Z" {paint}/>')
+    if shape == "person":
+        body = top + SHOULDER
+        return (f'<rect x="{l:.1f}" y="{body:.1f}" width="{w:.1f}" height="{b - body:.1f}" '
+                f'rx="20" {paint}/><circle cx="{bx["x"]:.1f}" cy="{top + HEAD_R:.1f}" '
+                f'r="{HEAD_R}" {paint}/>')
+    if shape == "queue":
+        k = 10
+        return (f'<path d="M{l + k:.1f},{top:.1f} H{r - k:.1f} A{k},{h / 2:.1f} 0 0 1 {r - k:.1f},{b:.1f} '
+                f'H{l + k:.1f} A{k},{h / 2:.1f} 0 0 1 {l + k:.1f},{top:.1f} Z" {paint}/>'
+                f'<path d="M{r - k:.1f},{top:.1f} A{k},{h / 2:.1f} 0 0 0 {r - k:.1f},{b:.1f}" '
+                f'fill="none" stroke="{accent}" stroke-width="1.3"/>')
+    if shape == "node":
+        d = DEPTH
+        return (f'<rect x="{l:.1f}" y="{top + d:.1f}" width="{w - d:.1f}" height="{h - d:.1f}" '
+                f'{paint}/>' + "".join(faces(l, top + d, r - d, b, d, accent, tint)))
+    if shape == "oval":
+        return (f'<ellipse cx="{bx["x"]:.1f}" cy="{bx["y"]:.1f}" rx="{w / 2:.1f}" ry="{h / 2:.1f}" '
+                f'{paint}/>')
     if shape == "subprocess":
         return (f'<rect x="{l:.1f}" y="{top:.1f}" width="{w:.1f}" height="{h:.1f}" rx="2" {paint}/>'
                 f'<path d="M{l + 8:.1f},{top:.1f} V{b:.1f} M{r - 8:.1f},{top:.1f} V{b:.1f}" '
@@ -592,6 +690,9 @@ def check(spec):
     for g in spec.get("groups", []):
         if g.get("aws") and g["aws"] not in GROUPS:
             raise ValueError(f"no AWS group '{g['aws']}'; use one of {', '.join(GROUPS)}")
+        if g.get("style") not in (None, *GROUP_STYLES):
+            raise ValueError(f"group '{g.get('label')}': style must be one of "
+                             f"{', '.join(GROUP_STYLES)}")
         if not g.get("nodes") or set(g["nodes"]) - ids:
             raise ValueError(f"group '{g.get('label')}' names nodes that do not exist")
     for a, b in (spec.get("ticket") or {}).get("path", []):
@@ -613,7 +714,8 @@ def draw(spec, theme):
     seen = []
     for bx in boxes.values():
         seen += [bx["cell"][:2], bx["cell"][2:]]
-    groups = draw_groups(spec, boxes, t, seen)
+    front = []
+    groups = draw_groups(spec, boxes, t, seen, front)
 
     edges, labels = [], []
     for e in spec.get("edges", []):
@@ -621,25 +723,36 @@ def draw(spec, theme):
         seen += pts
         tone = e.get("tone")
         color = t["tones"].get(tone, t["edge"])
-        flow = "side" if e.get("dashed") else "main"
-        edges.append(f'<path class="{flow}" d="{rounded(pts)}" fill="none" stroke="{color}" '
-                     f'stroke-linecap="round" stroke-linejoin="round" '
-                     f'marker-end="url(#arrow-{tone or "plain"})"/>')
+        if e.get("arrow", True):
+            flow = "side" if e.get("dashed") else "main"
+            edges.append(f'<path class="{flow}" d="{rounded(pts)}" fill="none" stroke="{color}" '
+                         f'stroke-linecap="round" stroke-linejoin="round" '
+                         f'marker-end="url(#arrow-{tone or "plain"})"/>')
+        else:
+            edges.append(f'<path class="line" d="{rounded(pts)}" fill="none" stroke="{color}" '
+                         f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>')
         if e.get("label"):
             w, h = label_size(e["label"])
             ink = t["tones"].get(tone, t["sub"])
             frame = t["tones"].get(tone, t["border"])
             seen += [(mid[0] - w / 2, mid[1] - h / 2), (mid[0] + w / 2, mid[1] + h / 2)]
-            labels.append(f'<rect x="{mid[0] - w / 2:.1f}" y="{mid[1] - h / 2:.1f}" '
+            labels.append(f'<rect class="label" x="{mid[0] - w / 2:.1f}" y="{mid[1] - h / 2:.1f}" '
                           f'width="{w:.1f}" height="{h}" rx="3" fill="{t["page"]}" '
                           f'stroke="{frame}" stroke-width="1"/>')
-            labels.append(f'<text x="{mid[0]:.1f}" y="{mid[1] + 3.8:.1f}" text-anchor="middle" '
-                          f'font-size="{LABEL}" fill="{ink}">{escape(e["label"])}</text>')
+            for j, line in enumerate(e["label"].split("\n")):
+                y = mid[1] - h / 2 + 13.8 + 14 * j
+                labels.append(f'<text x="{mid[0]:.1f}" y="{y:.1f}" text-anchor="middle" '
+                              f'font-size="{LABEL}" fill="{ink}">{escape(line)}</text>')
 
     body = []
     for i, n in enumerate(spec["nodes"]):
         body += draw_node(n, boxes[n["id"]], t, i)
     ticket = travel(spec, boxes, lanes, t) if spec.get("ticket") else []
+    if spec.get("heading"):
+        hx, hy = min(p[0] for p in seen), min(p[1] for p in seen) - 16
+        seen += [(hx, hy - 14), (hx + text_width(spec["heading"], 16), hy)]
+        labels.append(f'<text x="{hx:.1f}" y="{hy:.1f}" font-size="16" font-weight="700" '
+                      f'fill="{t["text"]}">{escape(spec["heading"])}</text>')
 
     x0 = min(p[0] for p in seen) - MARGIN
     y0 = min(p[1] for p in seen) - MARGIN
@@ -667,4 +780,4 @@ def draw(spec, theme):
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="url(#grid)"/>',
     ]
-    return "\n".join(head + groups + edges + body + labels + ticket + ["</svg>"]) + "\n"
+    return "\n".join(head + groups + edges + front + body + labels + ticket + ["</svg>"]) + "\n"

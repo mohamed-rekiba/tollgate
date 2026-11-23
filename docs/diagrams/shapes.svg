@@ -5,12 +5,15 @@
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-17" y="-24" width="751" height="474" fill="#ffffff"/>
 <rect x="-17" y="-24" width="751" height="474" fill="url(#grid)"/>
+<g class="start">
 <rect x="7.4" y="10.5" width="190.0" height="103.0" rx="51.5" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(63.1,23.5) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
 <text x="89.1" y="36.5" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">"start"</text>
 <text x="102.4" y="63.5" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Start or end</text>
 <text x="102.4" y="81.5" text-anchor="middle" font-size="12" fill="#59636e">where the flow</text>
 <text x="102.4" y="98.5" text-anchor="middle" font-size="12" fill="#59636e">begins and ends</text>
+</g>
+<g class="step">
 <rect x="260.1" y="10.5" width="190.0" height="103.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M269.1,6.5 H256.1 V19.5" fill="none" stroke="#8250df" stroke-width="1.2"/>
 <path d="M441.1,117.5 H454.1 V104.5" fill="none" stroke="#8250df" stroke-width="1.2"/>
@@ -18,42 +21,57 @@
 <text x="300.1" y="35.5" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">"step"</text>
 <text x="274.1" y="62.5" font-size="14" font-weight="700" fill="#1f2328">Step</text>
 <text x="274.1" y="80.5" font-size="12" fill="#59636e">something is done</text>
+</g>
+<g class="decision">
 <polygon points="607.9,0.0 710.2,62.0 607.9,124.0 505.5,62.0" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(557.4,32.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
 <text x="583.4" y="45.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">"decision"</text>
 <text x="607.9" y="72.0" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Decision</text>
 <text x="607.9" y="90.0" text-anchor="middle" font-size="12" fill="#59636e">yes or no?</text>
+</g>
+<g class="io">
 <polygon points="21.4,164.0 197.4,164.0 183.4,283.0 7.4,283.0" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(37.4,176.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M4.5 13h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/></g>
 <text x="63.4" y="189.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">"io"</text>
 <text x="37.4" y="216.0" font-size="14" font-weight="700" fill="#1f2328">In or out</text>
 <text x="37.4" y="234.0" font-size="12" fill="#59636e">something comes in</text>
 <text x="37.4" y="251.0" font-size="12" fill="#59636e">or goes out</text>
+</g>
+<g class="document">
 <path d="M260.1,164.0 H450.1 V275.0 C402.6,267.0 374.1,291.0 260.1,279.0 Z" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(274.1,176.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M4.5 13h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/></g>
 <text x="300.1" y="189.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">"document"</text>
 <text x="274.1" y="216.0" font-size="14" font-weight="700" fill="#1f2328">Document</text>
 <text x="274.1" y="234.0" font-size="12" fill="#59636e">a page a person reads</text>
+</g>
+<g class="data">
 <path d="M512.9,172.0 A95.0,8 0 0 1 702.9,172.0 V275.0 A95.0,8 0 0 1 512.9,275.0 Z" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/><path d="M512.9,172.0 A95.0,8 0 0 0 702.9,172.0" fill="none" stroke="#1a7f37" stroke-width="1.3"/>
 <g transform="translate(526.9,188.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M4.5 13h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/></g>
 <text x="552.9" y="201.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">"data"</text>
 <text x="526.9" y="228.0" font-size="14" font-weight="700" fill="#1f2328">Stored data</text>
 <text x="526.9" y="246.0" font-size="12" fill="#59636e">a database,</text>
 <text x="526.9" y="263.0" font-size="12" fill="#59636e">locked tests</text>
+</g>
+<g class="subprocess">
 <rect x="7.4" y="323.0" width="190.0" height="103.0" rx="2" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/><path d="M15.4,323.0 V426.0 M189.4,323.0 V426.0" stroke="#8250df" stroke-width="1.3"/>
 <g transform="translate(31.4,335.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
 <text x="57.4" y="348.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">"subprocess"</text>
 <text x="31.4" y="375.0" font-size="14" font-weight="700" fill="#1f2328">Sub-process</text>
 <text x="31.4" y="393.0" font-size="12" fill="#59636e">a step with its</text>
 <text x="31.4" y="410.0" font-size="12" fill="#59636e">own diagram</text>
+</g>
+<g class="wait">
 <path d="M260.1,323.0 H398.6 A51.5,51.5 0 0 1 398.6,426.0 H260.1 Z" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(274.1,335.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
 <text x="300.1" y="348.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">"wait"</text>
 <text x="274.1" y="375.0" font-size="14" font-weight="700" fill="#1f2328">Wait</text>
 <text x="274.1" y="393.0" font-size="12" fill="#59636e">for a person or time</text>
+</g>
+<g class="manual">
 <polygon points="512.9,323.0 702.9,323.0 688.9,426.0 526.9,426.0" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
 <g transform="translate(542.9,335.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
 <text x="568.9" y="348.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">"manual"</text>
 <text x="542.9" y="375.0" font-size="14" font-weight="700" fill="#1f2328">By hand</text>
 <text x="542.9" y="393.0" font-size="12" fill="#59636e">a person does it</text>
+</g>
 </svg>
