@@ -1,6 +1,6 @@
 """Diagrams as SVG, in a light and a dark theme, that people can read.
 
-Six kinds, chosen by "type" in the spec:
+The kinds, chosen by "type" in the spec:
 
 - "flow" (the default): a flat blueprint flowchart. Steps in the standard
   flowchart shapes, arrows, groups, AWS icons. Format: diagram/flow.py.
@@ -13,6 +13,8 @@ Six kinds, chosen by "type" in the spec:
   Format: diagram/c4.py.
 - "usecase": a UML use case diagram. Actors, the use cases of one system, and
   the links between them. Built on the flow. Format: diagram/usecase.py.
+- "class" and "er": a UML class diagram, or an entity relationship diagram
+  with crow's foot ends. Format: diagram/model.py.
 - "scene": an isometric picture of places and things, with lanes between
   them and one change that travels. Format below.
 
@@ -88,5 +90,10 @@ def draw(spec: dict, theme: str) -> str:
         return usecase.draw(spec, theme)
     if kind != "flow":
         raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, c4, usecase, "
+    if kind in ("class", "er"):
+        from diagram import model
+        return model.draw(spec, theme)
+    if kind != "flow":
+        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, class, er, "
                          "or scene")
     return flow.draw(spec, theme)

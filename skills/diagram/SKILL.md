@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, a C4 diagram of software architecture, a UML use case diagram, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, a C4 or architecture picture, a use case diagram, or icons. Never use Mermaid or a picture of text.
+description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, a C4 diagram of software architecture, a UML use case diagram, a UML class diagram, an ER diagram, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, a C4 or architecture picture, a use case, class, or ER diagram, or icons. Never use Mermaid or a picture of text.
 ---
 
 # Draw a diagram
@@ -30,6 +30,8 @@ The reader has never seen the project's code. Every word in the picture is for t
 - One thing with a lifecycle, the states it is in and the events that move it, such as an order or a task: a **state machine**. See below.
 - The software architecture of a system, the C4 way: who uses it and what it talks to (context), the parts it runs as (container), the parts inside one of those (component), one scenario as numbered steps (dynamic), or where each part runs (deployment): a **C4 diagram**. See below.
 - Who uses a system, and for what: a **use case diagram**. See below.
+- Types and how they relate: what each holds, what inherits, owns, or uses what: a **class diagram**. See below.
+- Stored data: tables or records, their keys, and how many of one go with another: an **ER diagram**. See below.
 - The big picture: places, who holds what, what talks to what: a **scene**. See below.
 - Cloud infrastructure on AWS: a **flow** with AWS icons and AWS groups. See below.
 
@@ -97,6 +99,23 @@ A UML use case diagram, built on the flow. Set `"type": "usecase"`. The format, 
 - `actors`: people or roles, drawn as a person, outside the border, on a grid of `col` and `row`.
 - `cases`: ovals inside the border, each a goal in a few words, such as "Approve a change".
 - `links`: a plain line from an actor to a use case. `"type": "include"` or `"extend"` joins two use cases with a dashed arrow labeled «include» or «extend». Put the two in one column or one row, so the label has room.
+
+## A class diagram
+
+A UML class diagram: the types of one part and how they relate. Set `"type": "class"`. The format, with every option, is at the top of `$TG/diagram/model.py`. In short:
+
+- `classes`: boxes on a grid of `col` and `row`, in three compartments: the `name`, the `fields`, the `methods`. Leave out `fields` or `methods` and that compartment is not drawn. `stereotype` goes over the name in guillemets; `"abstract": true` sets the name in italics. `kind`, `icon`, and `names` work as in a flow.
+- `relations`: read each as a sentence, `from` first. `type` is `inherits` or `implements` (a hollow triangle at `to`), `owns` (a filled diamond at `from`, the whole), `has` (a hollow diamond at `from`), `association` (a plain line; `"arrow": true` adds an open arrow), or `uses` (a dashed line with an open arrow). `composition`, `aggregation`, and `dependency` are the UML names for owns, has, and uses.
+- `ends`: the multiplicity by each end, such as `["1", "0..*"]`; `roles` a role name before it. `label` sits in the middle. `route`, `loop`, and `shift` work as in a state machine.
+- Field and method names are names the reader types, so write them as in the code. About eight classes; leave out the fields that do not matter to the point.
+
+## An ER diagram
+
+An entity relationship diagram: what is stored, and the keys that link it. Set `"type": "er"`. The format is at the top of `$TG/diagram/model.py`. In short:
+
+- `tables`: boxes on a grid of `col` and `row`, with a `name` and `columns`: each a `name`, a `type`, and a `key` of `pk`, `fk`, or `pk fk`, drawn as small PK and FK tags.
+- `relations`: a line with a crow's foot end at each table. `ends` names them, the end at `from` first: `exactly one`, `zero or one`, `one or many`, `zero or many` (`one` and `many` for short). `label`, `route`, `loop`, and `shift` work as in a class diagram.
+- When the data is not in a database, such as signed files, draw the records and the keys that truly link them, and say so in `desc`.
 
 ## A scene
 
