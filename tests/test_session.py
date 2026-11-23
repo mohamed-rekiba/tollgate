@@ -21,7 +21,8 @@ from tests.driver_fakes import FAKE_ROLE, FakeStore, Sample, driver, sh
 
 def fake_answer(step: dict, mode: str = "pass2") -> str:
     """What the subagent says: the fake role run in the step's folder with its prompt."""
-    done = subprocess.run([sys.executable, FAKE_ROLE, mode, "cost=0.1"], input=step["prompt"],
+    done = subprocess.run([sys.executable, FAKE_ROLE, *mode.split(), "cost=0.1"],
+                          input=step["prompt"],
                           cwd=step["cwd"] if "cwd" in step else step["copy"],
                           capture_output=True, text=True, check=True)
     return json.loads(done.stdout)["result"]
@@ -362,6 +363,71 @@ class StepTest(Case):
         report = Path(state.path(str(s.project), "reports", "demo.md")).read_text()
         self.assertIn("Cost: unknown", report)
 
+    def run_task(self, s, store, role="pass2", decide=None, rounds=150):
+        """next and answer until the task is done or parked. decide answers a question."""
+        code, out = self.next(s, store)
+        for _ in range(rounds):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                options = out["question"]["options"]
+                pick = ("approve" if "approve" in options else "continue" if "continue" in options
+                        else decide(out["question"]))
+                store.answer(out["question"]["n"], f"tollgate decide {pick}")
+                code, out = self.next(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                return out
+            code, out = self.answer(s, store, out, fake_answer(out, role))
+        self.fail(f"the task did not end: {out}")
+
+    @staticmethod
+    def style_check(times="BADSTYLE"):
+        """A writing check that fails, naming the new test file, while it holds the mark."""
+        py = sys.executable
+        bad = (f"{py} -c \"import sys,pathlib;p=pathlib.Path('tests/test_t1.py');"
+               f"b=p.exists() and '{times}' in p.read_text();"
+               "print('tests/test_t1.py:9: bad style'*b);sys.exit(b)\"")
+        return {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                "writing": {"run": bad}}
+
+    def test_a_replay_logs_each_event_once(self):
+        s, store = self.task_sample(checks=self.style_check())
+        out = self.run_task(s, store, "pass2 tw_bad=1")
+        self.assertTrue(out.get("done"), out)
+
+        def counts(name):
+            from collections import Counter
+            return Counter(e["event"] for e in s.log(name))
+        ticket = counts("demo-1")
+        self.assertEqual([e["event"] for e in s.log("demo-1")], [
+            "started", "tests_written", "tests_rejected", "tests_written", "tests_reviewed",
+            "frozen", "try_started", "builder_said", "try_failed", "try_started",
+            "builder_said", "try_passed", "ready", "waiting_for_merge"])
+        self.assertEqual(ticket["started"], 1)
+        self.assertEqual(ticket["tests_written"], 2)
+        self.assertEqual(ticket["tests_rejected"], 1)
+        self.assertEqual(ticket["try_started"], 2)
+        self.assertEqual(ticket["try_failed"], 1)
+        self.assertEqual(ticket["stopped"], 0)
+        task = counts("task-demo")
+        self.assertEqual(task["started"], 1)
+        self.assertEqual(task["plan_reviewed"], 3)
+        self.assertEqual(task["analysis_written"], 1)
+        for name in ("demo-2", "task-demo"):
+            lines = [json.dumps({k: v for k, v in e.items() if k != "at"}, sort_keys=True)
+                     for e in s.log(name)]
+            self.assertEqual(len(lines), len(set(lines)), name)
+
+
+    def test_the_stop_rule_counts_only_the_real_rejections(self):
+        # Two real rejections are under the limit, however many times next replays them.
+        s, store = self.task_sample(checks=self.style_check())
+        count = Path(s.root, "written")
+        out = self.run_task(s, store, f"pass2 tw_bad=2 tw_count={count}")
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("demo-1")]
+        self.assertEqual(events.count("tests_rejected"), 2)
+        self.assertNotIn("stopped", events)
 
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):

@@ -15,6 +15,9 @@ c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the c
 reviewer adds its inputs to this file). Like a real reviewer, it judges only the items
 that are not in `tested`.
 A plan written with a hint from the review of the whole task adds a third ticket, loud.
+Test writer options: tw_bad=1 (the first tests it writes break the style check),
+tw_bad=<n> tw_count=<path> (the first n do, counted in that file), tw_bad=hint (each
+does, until the inputs hold a hint).
 Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
@@ -282,7 +285,12 @@ def main() -> int:
                               {"item": "C2", "file": "tests/test_t2.py",
                                "name": "test_c2_greet_kept"}]}, cost)
             return 0
-        bad = opts.get("tw_bad") and not data.get("rejected")
+        bad = opts.get("tw_bad") == "1" and not data.get("rejected")
+        if opts.get("tw_bad", "").isdigit() and opts.get("tw_count"):
+            # Bad for the first tw_bad tests it writes, counted in the file tw_count.
+            bad = count_marker(opts["tw_count"]) <= int(opts["tw_bad"])
+        if opts.get("tw_bad") == "hint":
+            bad = not data.get("hint")
         Path("tests/test_t1.py").write_text(TESTS + ("# BADSTYLE\n" if bad else ""))
         answer({"tests": [{"item": "C1", "file": "tests/test_t1.py", "name": "test_c1_shout"},
                           {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"}]},

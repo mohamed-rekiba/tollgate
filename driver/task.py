@@ -466,7 +466,11 @@ class Task:
                 self.caller = session.caller(self.settings, self.runner)
                 if self.runner is None:
                     self.runner = self.settings["runner"]
-                self.log.add("started")
+                if isinstance(self.caller, session.Session):
+                    # Session mode replays the step it stopped in: log each event once.
+                    self.log.replay()
+                if not (self.log.replaying() and events):
+                    self.log.add("started")
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
                         if "plan_written" not in kinds:
@@ -504,6 +508,8 @@ class Task:
             return 5
         except Parked as parked:
             with Log(self.log_path, task=self.id) as log:
+                if self.runner == "session":
+                    log.replay()
                 log.add("task_waiting", reason=str(parked))
             report.write(self.project, self.id)
             return 3

@@ -132,6 +132,8 @@ The driver asks for each role through one caller. In session mode, the caller wo
 
 Each `next` starts the driver again, and the driver repeats no finished step: it reads its log, as it does after any restart, and each role it asks again gets its saved answer at once. So a step costs one run of the driver up to the point where it stopped.
 
+A step that was not finished runs again from its start, and logs the same events again up to the role that just answered. So in session mode the log does not write them: while the events of a run match the end of the log, it holds them back, and once they reach the end it drops them. The first event that does not match ends the replay, and from then on each event is written. `started` is logged once for a ticket or a task. So the log holds each event once, and the stop rules, the counts, and the report read only what really happened. The test writer's rounds are numbered, so two rounds that wrote the same tests stay two events. Background mode repeats no role, and its log writes every event.
+
 Each try starts from the best try so far, so the driver resets the copy before the builder's step, which would wipe the builder's edits on a replay. So `answer`, for the builder or the test writer, saves the copy's work tree as a commit on `refs/tollgate/answers/<key>` in the copy. On a replay the caller puts that work back in the copy before it returns the saved answer.
 
 ### The copy of a subagent

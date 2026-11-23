@@ -337,11 +337,17 @@ class Driver:
     # Steps.
 
     def write_tests(self, st_: history.Ticket):
-        rejected = []
+        """Go on from the log: the findings of the last rejection, and its count."""
+        rejected = st_.rejected
+        if st_.rejections > MAX_REJECTIONS:
+            raise Stop(f"the tests were rejected {st_.rejections} times")
         while not st_.tests_done:
-            answer = self.role("test_writer", {"ticket": self.ticket_text, "ticket_id":
-                               self.ticket_id, "rejected": rejected})
-            self.log.add("tests_written", cost_usd=answer.cost_usd,
+            # The round tells two rounds apart, in the log and in session mode's saved answers.
+            n = st_.rejections + 1
+            inputs = {"ticket": self.ticket_text, "ticket_id": self.ticket_id,
+                      "rejected": rejected, "round": n}
+            answer = self.role("test_writer", inputs)
+            self.log.add("tests_written", round=n, cost_usd=answer.cost_usd,
                          tests=answer.data.get("tests"))
             review = self.role("reviewer", {"ticket": self.ticket_text,
                                "tests": answer.data.get("tests", [])}, lens="test_fit")
@@ -369,10 +375,10 @@ class Driver:
                     st_.tests_done = True
                     break
             st_.rejections += 1
-            self.log.add("tests_rejected", cost_usd=review.cost_usd, findings=findings)
+            self.log.add("tests_rejected", round=n, cost_usd=review.cost_usd, findings=findings)
+            rejected = st_.rejected = findings
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the tests were rejected {st_.rejections} times")
-            rejected = findings
 
     def freeze(self, st_: history.Ticket):
         commit = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
@@ -385,7 +391,8 @@ class Driver:
         except (StoreError, mf.FreezeError) as err:
             st_.rejections += 1
             st_.tests_done = False
-            self.log.add("tests_rejected", findings=[{"level": "blocking", "text": str(err)}])
+            st_.rejected = [{"level": "blocking", "text": str(err)}]
+            self.log.add("tests_rejected", findings=st_.rejected)
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the freeze refused the tests: {err}") from None
             return
@@ -592,7 +599,11 @@ class Driver:
                     path.write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
                 self.caller = self.caller or session.caller(self.settings, self.runner)
-                self.log.add("started", attempts_done=st_.attempts)
+                if isinstance(self.caller, session.Session):
+                    # Session mode replays the step it stopped in: log each event once.
+                    self.log.replay()
+                if not (self.log.replaying() and st_.state != "not started"):
+                    self.log.add("started", attempts_done=st_.attempts)
                 question = advisor.pending(self.log_path)
                 if question:
                     # Read the answer before doing anything else.
