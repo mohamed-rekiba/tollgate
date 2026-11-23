@@ -95,7 +95,7 @@ def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, 
     ticket = ticket_at(repo, commit, ticket_id)
     check_guarded(ticket, settings)
     found = {i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in tests.items()}
-    built = mf.build(repo, commit, ticket, found)
+    built = mf.build(repo, commit, ticket, found, base_commit)
     return {
         "ticket": ticket_id,
         "base_commit": base_commit,

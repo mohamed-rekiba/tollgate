@@ -39,17 +39,43 @@ class BuildTest(LoopCase):
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
 
-    def test_an_existing_test_keeps_a_behavior_under_its_own_name(self):
+    def greet_sample(self, tw_map):
         from tests.driver_fakes import sh
         from tests.fakes import TICKET
-        s = self.sample(builder="pass2 tw_map=1")
+        s = self.sample(builder=f"pass2 tw_map={tw_map}")
         Path(s.project, "tests/test_greet.py").write_text(
             "import unittest\n\nimport app\n\n\nclass G(unittest.TestCase):\n"
             "    def test_greet(self):\n        self.assertEqual(app.greet('ann'), 'hello ann')\n")
-        Path(s.project, ".tollgate/tickets/T-1/ticket.md").write_text(TICKET.replace(
-            "tests: tests/test_t1.py", "tests: tests/test_t1.py, tests/test_greet.py"))
+        ticket = TICKET.replace("tests: tests/test_t1.py",
+                                "tests: tests/test_t1.py, tests/test_greet.py")
+        if tw_map == "next":
+            ticket = ticket.replace("- [C3, error]", "- [C4, edge] shout has a docstring.\n"
+                                    "- [C3, error]").replace("- edge: the input is one fixed "
+                                                             "name.\n", "")
+        Path(s.project, ".tollgate/tickets/T-1/ticket.md").write_text(ticket)
         sh(s.project, "git", "add", "-A")
         sh(s.project, "git", "commit", "-q", "-m", "an existing test")
+        return s
+
+    def test_a_weakened_existing_test_is_refused_at_the_freeze(self):
+        s = self.greet_sample("weaken")
+        d, _ = driver(s)
+        d.run()
+        rejected = [e for e in s.log() if e["event"] == "tests_rejected"]
+        self.assertIn("test_greet was there at the start, and it changed",
+                      rejected[0]["findings"][0]["text"])
+
+    def test_a_new_test_next_to_an_existing_one_is_locked(self):
+        s = self.greet_sample("next")
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        items = d.lock()["manifest"]["items"]
+        self.assertEqual(items["tests.test_greet::test_c4_greet_has_a_docstring"], "C4")
+        self.assertEqual(items["tests.test_greet::test_greet"], "C2")
+
+    def test_an_existing_test_keeps_a_behavior_under_its_own_name(self):
+        from tests.driver_fakes import sh
+        s = self.greet_sample(1)
         d, _ = driver(s)
         self.assertEqual(d.run(), 0)
         lock = d.lock()["manifest"]

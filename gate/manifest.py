@@ -8,8 +8,14 @@ the test map: .tollgate/tickets/<ticket>/tests.json, a JSON list of
 The map lets an existing test cover an item under its own name. The map and
 each test file are locked whole. A test that maps to no item is not one of the
 ticket's tests, but a test file none of whose tests maps to an item is refused.
+
+A test that was in a test file at the ticket's start stays as it was: the freeze
+refuses one whose source changed, or that is gone or renamed. New tests may go
+next to it. A mapped test that is not there at the start must carry its item
+in its name, as a new test does.
 """
 
+import ast
 import json
 
 from gate import junit
@@ -48,11 +54,50 @@ def read_map(repo, commit: str, ticket_id: str) -> list:
     return found
 
 
-def build(repo, commit: str, ticket, test_results: dict) -> dict:
+def python_tests(data: bytes | None) -> dict:
+    """{test name: the test's source, as its syntax tree} for each test function in a
+    Python file, in a class or not. {} for a file that is missing or does not parse."""
+    if data is None:
+        return {}
+    try:
+        tree = ast.parse(data.decode())
+    except (SyntaxError, UnicodeDecodeError, ValueError):
+        return {}
+    return {n.name: ast.dump(n) for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name.startswith("test")}
+
+
+def check_kept(repo, commit: str, start: str, ticket, mapped: list) -> None:
+    """Refuse a change to a test that was there at the start, and a mapped test that is
+    neither there at the start nor named for its item."""
+    before_all = {}
+    for path in ticket.tests:
+        if not path.endswith(".py"):
+            continue
+        before = python_tests(show_bytes(repo, start, path))
+        now = python_tests(show_bytes(repo, commit, path))
+        before_all[path] = before
+        for name, source in sorted(before.items()):
+            if name not in now:
+                raise FreezeError(f"{path}::{name} was there at the start, and it was removed "
+                                  "or renamed. Leave existing tests as they are")
+            if now[name] != source:
+                raise FreezeError(f"{path}::{name} was there at the start, and it changed. "
+                                  "Leave existing tests as they are")
+    for entry in mapped:
+        if entry["file"].endswith(".py") and entry["name"] not in before_all.get(entry["file"], {}) \
+                and item_of_test(entry["name"]) != entry["item"]:
+            raise FreezeError(f"{entry['file']}::{entry['name']} is mapped to {entry['item']}, "
+                              f"but it was not there at the start, so it must be a new test "
+                              f"named for its item, such as test_{entry['item'].lower()}_")
+
+
+def build(repo, commit: str, ticket, test_results: dict, start: str | None = None) -> dict:
     """Return the manifest for a ticket at a commit.
 
     test_results maps a test id to a junit.TestResult from a run of the tests
-    at that commit, before any code is built.
+    at that commit, before any code is built. start is the commit the ticket
+    started from: its tests must be kept as they were.
     """
     mapped = read_map(repo, commit, ticket.id)
     files = {}
@@ -75,6 +120,8 @@ def build(repo, commit: str, ticket, test_results: dict) -> dict:
             raise FreezeError(f"{entry['file']}::{entry['name']} is mapped to {entry['item']}, "
                               "which is not a checklist item")
         items.update(dict.fromkeys(found, entry["item"]))
+    if start:
+        check_kept(repo, commit, start, ticket, mapped)
     for test_id in mine:
         if test_id not in items and ticket.item(item_of_test(test_id) or ""):
             items[test_id] = item_of_test(test_id)

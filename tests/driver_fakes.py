@@ -145,7 +145,7 @@ class FakeStore:
         found = {i: junit.TestResult(i, r["status"], r.get("file", ""))
                  for i, r in results.tests.items()}
         try:
-            built = mf.build(self.project, commit, tk, found)
+            built = mf.build(self.project, commit, tk, found, base)
         except mf.FreezeError as err:
             raise StoreError(f"the ticket cannot be frozen: {err}") from None
         files, tests, keeps = built["files"], built["tests"], built["keeps_behavior"]

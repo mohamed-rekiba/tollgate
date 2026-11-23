@@ -65,6 +65,23 @@ class FreezeTest(unittest.TestCase):
 
 
 
+CALC = """import unittest
+
+import calc
+
+
+class Calc(unittest.TestCase):
+    def test_add(self):
+        self.assertEqual(calc.add(2, 3), 5)
+
+    def test_subtract(self):
+        self.assertEqual(calc.subtract(5, 3), 2)
+
+    def test_round(self):
+        self.assertEqual(calc.round_half(2.5), 3)
+"""
+
+
 class TestMapTest(unittest.TestCase):
     """The test writer may point an item at an existing test, which keeps its own name."""
 
@@ -75,8 +92,8 @@ class TestMapTest(unittest.TestCase):
         self.repo.write(mf.ticket_path("T-1"), TICKET.replace(
             "tests: tests/test_t1.py", "tests: tests/test_t1.py, tests/test_calc.py"))
         self.repo.write("tests/test_t1.py", "# tests\n")
-        self.repo.write("tests/test_calc.py", "# tests that were there before\n")
-        self.repo.commit()
+        self.repo.write("tests/test_calc.py", CALC)
+        self.start = self.repo.commit()
         self.settings = st.load_from_ref(str(self.repo.path), "main")
 
     def lock(self, mapped, **status):
@@ -89,7 +106,7 @@ class TestMapTest(unittest.TestCase):
                  "tests.test_calc::test_add": "passed", "tests.test_calc::test_subtract": "passed",
                  "tests.test_calc::test_round": "passed", **status}
         found = {i: {"status": s, "file": ""} for i, s in tests.items()}
-        return freeze.record(str(self.repo.path), "T-1", commit, "b" * 40, self.settings,
+        return freeze.record(str(self.repo.path), "T-1", commit, self.start, self.settings,
                              found, 1)["manifest"]
 
     ADD: ClassVar[dict] = {"item": "C2", "file": "tests/test_calc.py", "name": "test_add"}
@@ -122,6 +139,31 @@ class TestMapTest(unittest.TestCase):
         with self.assertRaisesRegex(mf.FreezeError, "passed before the build"):
             self.lock([self.ADD, {"item": "C1", "file": "tests/test_calc.py",
                                   "name": "test_round"}])
+
+    def test_an_existing_test_the_test_writer_weakened_is_refused(self):
+        self.repo.write("tests/test_calc.py", CALC.replace(
+            "self.assertEqual(calc.add(2, 3), 5)", "self.assertTrue(True)"))
+        with self.assertRaisesRegex(mf.FreezeError, "test_add.*changed"):
+            self.lock([self.ADD, self.SUBTRACT])
+
+    def test_an_existing_test_renamed_or_removed_is_refused(self):
+        self.repo.write("tests/test_calc.py", CALC.replace("def test_round", "def test_c4_round"))
+        with self.assertRaisesRegex(mf.FreezeError, "test_round.*removed or renamed"):
+            self.lock([self.ADD, self.SUBTRACT])
+
+    def test_a_mapped_test_that_is_neither_new_by_name_nor_there_before_is_refused(self):
+        self.repo.write("tests/test_calc.py", CALC + "\n    def test_add_more(self):\n"
+                        "        self.assertEqual(calc.add(1, 1), 2)\n")
+        with self.assertRaisesRegex(mf.FreezeError, "test_add_more.*not there at the start"):
+            self.lock([self.ADD, dict(self.ADD, name="test_add_more")],
+                      **{"tests.test_calc::test_add_more": "passed"})
+
+    def test_a_new_test_next_to_the_existing_ones_is_fine(self):
+        self.repo.write("tests/test_calc.py", CALC + "\n    def test_c1_retries(self):\n"
+                        "        self.assertEqual(calc.retry(), 3)\n")
+        manifest = self.lock([self.ADD, self.SUBTRACT],
+                             **{"tests.test_calc::test_c1_retries": "failed"})
+        self.assertEqual(manifest["items"]["tests.test_calc::test_c1_retries"], "C1")
 
 
 class PrepareTest(unittest.TestCase):
