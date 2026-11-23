@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/tollgate-ai/tollgate/compare/v0.4.0...v0.5.0) (2026-11-23)
+
+
+### Features
+
+* **diagram:** draw C4, use case, class, and ER diagrams, and a C4 context as a scene ([#122](https://github.com/tollgate-ai/tollgate/issues/122)) ([31313e1](https://github.com/tollgate-ai/tollgate/commit/31313e19b75f95265bc3e8ae49c12d3af6ce4470))
+* **setup:** check the words drawn in a diagram against the word list ([#124](https://github.com/tollgate-ai/tollgate/issues/124)) ([556a87b](https://github.com/tollgate-ai/tollgate/commit/556a87b10a33d4fcf6d83f6b94d38309d9211749))
+
+
+### Bug Fixes
+
+* **session:** log each event once on a replay, and let existing tests cover a kept behavior ([#125](https://github.com/tollgate-ai/tollgate/issues/125)) ([edbeb06](https://github.com/tollgate-ai/tollgate/commit/edbeb06a29ec65e4c7c3ffe3d2a04bd4f78aa7bf))
+
 ## [0.4.0](https://github.com/tollgate-ai/tollgate/compare/v0.3.0...v0.4.0) (2026-11-23)
 
 
