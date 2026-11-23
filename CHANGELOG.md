@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/tollgate-ai/tollgate/compare/v0.5.0...v0.6.0) (2026-11-23)
+
+
+### Features
+
+* **brainstorm:** turn a rough idea into a brief ([#128](https://github.com/tollgate-ai/tollgate/issues/128)) ([5f1a844](https://github.com/tollgate-ai/tollgate/commit/5f1a8448f1fc4a35adbbd087e7b2156d957af1e5))
+
+
+### Bug Fixes
+
+* **diagram:** draw pre-commit as its own object, and keep one meaning for each object ([#127](https://github.com/tollgate-ai/tollgate/issues/127)) ([e9a87e9](https://github.com/tollgate-ai/tollgate/commit/e9a87e9f471048041384e899c823939628e3d432))
+* **task:** send back a plan that leaves the required README missing, and replay it ([#126](https://github.com/tollgate-ai/tollgate/issues/126)) ([8f6d87a](https://github.com/tollgate-ai/tollgate/commit/8f6d87a6741110d37483c684f101ffb20a522bc5))
+
 ## [0.5.0](https://github.com/tollgate-ai/tollgate/compare/v0.4.0...v0.5.0) (2026-11-23)
 
 
