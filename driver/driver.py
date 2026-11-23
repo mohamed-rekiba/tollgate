@@ -35,6 +35,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import diagram
 from driver import advisor, history, roles, session, stop
 from driver.log import Log, read
 from gate import checks, prepare, state, tickets
@@ -137,23 +138,23 @@ def diagram_guide(ticket_text: str) -> str:
     formats, so the builder can write a spec. Empty for any other ticket."""
     if "diagram" not in ticket_text.lower():
         return ""
-    import diagram
-    from diagram import c4, flow, model, sequence, state, usecase
     root = Path(__file__).resolve().parent.parent
     skill = (root / "skills" / "diagram" / "SKILL.md").read_text()
+    formats, seen = [], set()
+    for kind, (module, label) in diagram.KINDS.items():
+        if module in seen:
+            continue
+        seen.add(module)
+        # The scene's format is the package's own docstring.
+        doc = diagram.__doc__ if kind == "scene" else diagram.module_of(kind).__doc__
+        formats.append(f"## The format of {label}\n\n" + (doc or ""))
     return "\n\n".join([
         ("You write the spec in <folder>/src/<name>.json. Tollgate draws the SVG files from "
          "it after your try, so leave the build command and the SVG files to it."),
-        skill, "## The format of a flow\n\n" + (flow.__doc__ or ""),
-        "## The format of a sequence diagram\n\n" + (sequence.__doc__ or ""),
-        "## The format of a state machine\n\n" + (state.__doc__ or ""),
-        "## The format of a C4 diagram\n\n" + (c4.__doc__ or ""),
-        "## The format of a use case diagram\n\n" + (usecase.__doc__ or ""),
-        "## The format of a class or ER diagram\n\n" + (model.__doc__ or ""),
-        "## The format of a scene\n\n" + (diagram.__doc__ or "")])
+        skill, *formats])
 
 
-DIAGRAM_TYPES = ("flow", "sequence", "state", "c4", "usecase", "class", "er", "scene")
+DIAGRAM_TYPES = tuple(diagram.KINDS)
 
 
 def _is_spec(path: Path) -> bool:

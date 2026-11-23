@@ -20,6 +20,39 @@ def words(svg):
     return " ".join(e.text or "" for e in ET.fromstring(svg).iter())
 
 
+class RegistryTest(unittest.TestCase):
+    """One line in diagram.KINDS adds a kind: draw, the driver, and the guide follow."""
+
+    def test_every_kind_draws_from_its_own_module(self):
+        import diagram
+        for kind in diagram.KINDS:
+            with self.subTest(kind=kind):
+                try:
+                    svg = draw({"type": kind, "title": "t", "desc": "d"}, "light")
+                except ValueError as err:
+                    self.assertNotIn("no diagram type", str(err))
+                else:
+                    self.assertTrue(svg.startswith("<svg"))
+
+    def test_an_unknown_type_names_every_kind(self):
+        import diagram
+        with self.assertRaises(ValueError) as err:
+            draw({"type": "pie"}, "light")
+        for kind in diagram.KINDS:
+            self.assertIn(kind, str(err.exception))
+
+    def test_the_driver_knows_every_kind_and_the_guide_has_its_format(self):
+        import diagram
+        from driver.driver import DIAGRAM_TYPES, diagram_guide
+        self.assertEqual(DIAGRAM_TYPES, tuple(diagram.KINDS))
+        guide = diagram_guide("a diagram")
+        for kind, (_, label) in diagram.KINDS.items():
+            with self.subTest(kind=kind):
+                head = f"## The format of {label}\n\n"
+                self.assertIn(head, guide)
+                self.assertTrue(guide.split(head, 1)[1].strip())
+
+
 class ShapesTest(unittest.TestCase):
     def test_every_shape_draws_with_its_text(self):
         nodes = [{"id": s, "text": f"{s} title\nline", "col": i % 4, "row": i // 4, "shape": s}

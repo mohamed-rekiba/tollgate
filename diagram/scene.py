@@ -745,6 +745,11 @@ def check_object(o):
         raise ValueError(f"{name}: size must be a number above 0")
 
 
+def draw(spec: dict, theme: str) -> str:
+    """Draw a scene from a spec, as every kind's module does."""
+    return from_spec(spec, theme)
+
+
 def from_spec(spec: dict, theme: str) -> str:
     """Draw a scene from a spec. See the format in diagram/__init__.py."""
     for key in ("title", "desc"):

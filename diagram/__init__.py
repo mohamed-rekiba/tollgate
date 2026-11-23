@@ -74,29 +74,32 @@ bottom. A line wraps to at most two lines in its column; shorten a longer one.
 "kind" sets the color.
 """
 
-from diagram import flow, scene
+import importlib
+
+# Every kind of diagram, by its "type" in the spec: the module that draws it, and
+# what the format guide calls it, in the order the guide shows them. A new kind
+# needs one line here and a module with draw(spec, theme) and its format on top.
+KINDS = {
+    "flow": ("flow", "a flow"),
+    "sequence": ("sequence", "a sequence diagram"),
+    "state": ("state", "a state machine"),
+    "c4": ("c4", "a C4 diagram"),
+    "usecase": ("usecase", "a use case diagram"),
+    "class": ("model", "a class or ER diagram"),
+    "er": ("model", "a class or ER diagram"),
+    "scene": ("scene", "a scene"),
+}
+
+
+def module_of(kind: str):
+    """The module that draws a kind, imported on first use."""
+    return importlib.import_module(f"diagram.{KINDS[kind][0]}")
 
 
 def draw(spec: dict, theme: str) -> str:
     kind = spec.get("type", "flow")
-    if kind == "scene":
-        return scene.from_spec(spec, theme)
-    if kind == "sequence":
-        from diagram import sequence
-        return sequence.draw(spec, theme)
-    if kind == "state":
-        from diagram import state
-        return state.draw(spec, theme)
-    if kind == "c4":
-        from diagram import c4
-        return c4.draw(spec, theme)
-    if kind == "usecase":
-        from diagram import usecase
-        return usecase.draw(spec, theme)
-    if kind in ("class", "er"):
-        from diagram import model
-        return model.draw(spec, theme)
-    if kind != "flow":
-        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, c4, usecase, "
-                         "class, er, or scene")
-    return flow.draw(spec, theme)
+    if kind not in KINDS:
+        names = list(KINDS)
+        raise ValueError(f"no diagram type '{kind}'; use {', '.join(names[:-1])}, "
+                         f"or {names[-1]}")
+    return module_of(kind).draw(spec, theme)
