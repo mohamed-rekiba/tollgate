@@ -295,7 +295,7 @@ class C4Test(unittest.TestCase):
     def test_the_examples_draw_tollgate(self):
         expect = {"c4-context": ("Tollgate", "You", "GitHub"),
                   "c4-container": ("The driver", "The gate", "The store", "The state folder"),
-                  "c4-component": ("Component diagram for The driver",),
+                  "c4-component": ("Component diagram for The driver", "Asking the advisor"),
                   "c4-dynamic": ("1. Types the task", "8. Merges the change"),
                   "c4-deployment": ("Your machine", "«execution environment»")}
         for name, texts in expect.items():

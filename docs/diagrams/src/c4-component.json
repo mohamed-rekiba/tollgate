@@ -2,7 +2,7 @@
  "type": "c4",
  "level": "component",
  "title": "The driver",
- "desc": "Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the advisor decides.",
+ "desc": "Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the stop rules hand the stop to the part that asks the advisor, who decides.",
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "driver", "name": "The driver", "type": "Container: Python"}],
  "elements": [
@@ -12,7 +12,7 @@
   {"id": "stop", "type": "component", "kind": "check", "name": "The stop rules", "tech": "Python", "description": "Tries, time, and cost", "col": 0, "row": 2, "parent": "driver", "icon": "clock"},
   {"id": "ticket", "type": "component", "name": "The ticket loop", "tech": "Python", "description": "Tests first, then tries", "col": 1, "row": 2, "parent": "driver", "icon": "ticket"},
   {"id": "caller", "type": "component", "kind": "ai", "name": "The role caller", "tech": "Python", "description": "A step in session mode, a process in background mode", "col": 2, "row": 2, "parent": "driver", "icon": "ai"},
-  {"id": "advisor", "type": "component", "kind": "advisor", "name": "The advisor", "tech": "Python", "description": "Asks who decides when the tries stop", "col": 0, "row": 3, "parent": "driver"},
+  {"id": "advisor", "type": "component", "kind": "advisor", "name": "Asking the advisor", "tech": "Python", "description": "Asks who decides when the tries stop", "col": 0, "row": 3, "parent": "driver"},
   {"id": "gate", "type": "container", "kind": "check", "name": "The gate", "tech": "Python", "description": "Decides whether a try passes", "col": 1, "row": 4, "icon": "gate"},
   {"id": "state", "type": "database", "name": "The state folder", "tech": "files", "description": "The step file and the saved answers", "col": 2, "row": 4}
  ],

@@ -179,7 +179,7 @@ class ErTest(unittest.TestCase):
 
     def test_the_store_records_example_draws(self):
         svg = draw(json.loads(EXAMPLE.read_text()), "light")
-        for text in ("locks", "passes", "approvals", "PK", "FK"):
+        for text in ("locks", "pass records", "approvals", "PK", "FK"):
             self.assertIn(text, words(svg))
 
 

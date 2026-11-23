@@ -51,7 +51,7 @@ The components of one container, the driver.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="c4-component-dark.svg">
-  <img alt="Inside the driver: the step commands, the task runner, the ticket runner, the stop rules, the role caller, and the advisor" src="c4-component.svg">
+  <img alt="Inside the driver: the step commands, the task loop, the ticket loop, the stop rules, the role caller, and asking the advisor" src="c4-component.svg">
 </picture>
 
 A dynamic diagram: one scenario as numbered steps. This one is one ticket in background mode.

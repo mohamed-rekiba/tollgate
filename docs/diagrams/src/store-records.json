@@ -1,7 +1,7 @@
 {
  "type": "er",
  "title": "The signed records the store keeps, and the keys that link them",
- "desc": "The store keeps signed records as files in the state folder, not in a database. A plan lock lists the tickets of a task; each ticket has a lock of its tests, and at most one older lock it replaced. A pass record names its ticket and the fingerprint of the lock, and the commit it started from, which has its own pass record unless it is main. A ready change and an owner's approval name the commit of a pass.",
+ "desc": "The store keeps signed records as files in the state folder, not in a database. A plan lock lists the tickets of a task; each ticket has a lock of its tests, and at most one older lock it replaced. A pass record names its ticket and the fingerprint of the lock, and the commit it started from, which has its own pass record unless it is main. A ready change and an owner's approval name the commit of a pass record.",
  "names": {"server": "Store", "check": "Gate", "you": "Owner"},
  "tables": [
   {"id": "plans", "name": "plan locks", "col": 0, "row": 0, "kind": "server", "icon": "plan",
@@ -23,7 +23,7 @@
                {"name": "manifest", "type": "object"},
                {"name": "number", "type": "1 or 2"},
                {"name": "at", "type": "time"}]},
-  {"id": "passes", "name": "passes", "col": 1, "row": 1, "kind": "check", "icon": "gate",
+  {"id": "passes", "name": "pass records", "col": 1, "row": 1, "kind": "check", "icon": "gate",
    "columns": [{"name": "commit", "type": "commit", "key": "pk"},
                {"name": "ticket", "type": "text", "key": "fk"},
                {"name": "lock_sha256", "type": "text", "key": "fk"},

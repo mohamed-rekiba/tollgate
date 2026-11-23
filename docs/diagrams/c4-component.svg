@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -54 1104 1027" width="1104" height="1027" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Component diagram for The driver</title>
-<desc id="desc">Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the advisor decides.</desc>
+<desc id="desc">Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the stop rules hand the stop to the part that asks the advisor, who decides.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-40" y="-54" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-40" y="-54" width="1104" height="1027" fill="#ffffff"/>
@@ -91,7 +91,7 @@
 <path d="M220.6,777.0 H233.6 V764.0" fill="none" stroke="#bc4c00" stroke-width="1.2"/>
 <g transform="translate(14.0,665.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
 <text x="40.0" y="678.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
-<text x="14.0" y="705.0" font-size="14" font-weight="700" fill="#1f2328">The advisor</text>
+<text x="14.0" y="705.0" font-size="14" font-weight="700" fill="#1f2328">Asking the advisor</text>
 <text x="14.0" y="723.0" font-size="12" fill="#59636e">[Component: Python]</text>
 <text x="14.0" y="740.0" font-size="12" fill="#59636e">Asks who decides when</text>
 <text x="14.0" y="757.0" font-size="12" fill="#59636e">the tries stop</text>

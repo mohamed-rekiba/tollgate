@@ -115,6 +115,7 @@ An entity relationship diagram: what is stored, and the keys that link it. Set `
 
 - `tables`: boxes on a grid of `col` and `row`, with a `name` and `columns`: each a `name`, a `type`, and a `key` of `pk`, `fk`, or `pk fk`, drawn as small PK and FK tags.
 - `relations`: a line with a crow's foot end at each table. `ends` names them, the end at `from` first: `exactly one`, `zero or one`, `one or many`, `zero or many` (`one` and `many` for short). `label`, `route`, `loop`, and `shift` work as in a class diagram.
+- Table and column names are names the reader types, so write them as in the code or the database, such as `base_commit`.
 - When the data is not in a database, such as signed files, draw the records and the keys that truly link them, and say so in `desc`.
 
 ## A scene
