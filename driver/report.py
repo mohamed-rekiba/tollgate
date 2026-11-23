@@ -54,7 +54,7 @@ def render(project: str, task: str) -> str:
                                 for e in read(str(p)) if e.get("task") == task]
     plan_cost = history.cost(task_events) if history.cost_known(task_events) else None
     total = roles.add_cost(plan_cost, *(r["cost_usd"] for r in tickets))
-    waiting = [e for e in task_events if e["event"] == "task_waiting"]
+    waiting = still_waiting(task_events)
     pic = ('<picture>\n'
            f'  <source media="(prefers-color-scheme: dark)" srcset="{task}-dark.svg">\n'
            f'  <img alt="Task {task}: where each ticket stands" src="{task}.svg">\n'
@@ -82,6 +82,18 @@ def render(project: str, task: str) -> str:
     if reviewed:
         lines += ["", "## The review of the whole task", "", reviewed[-1]["text"]]
     return "\n".join(lines) + "\n"
+
+
+def still_waiting(task_events: list) -> list:
+    """The task's last task_waiting, while nothing but a new start or a question that
+    still waits came after it; [] once the task went on."""
+    for i in range(len(task_events) - 1, -1, -1):
+        kind = task_events[i]["event"]
+        if kind == "task_waiting":
+            return [task_events[i]]
+        if kind not in ("started", "still_waiting"):
+            return []
+    return []
 
 
 def _analysis_line(task_events: list) -> str:

@@ -458,6 +458,12 @@ class StepTest(Case):
         out = self.run_task(s, store, "pass2 tw_bad=hint decision=retry")
         self.assert_tests_written_again_with_the_hint(s, out, "try harder")
 
+    def test_a_parked_ticket_is_named_not_an_answered_question(self):
+        s, store = self.task_sample(checks=self.style_check())
+        out = self.run_task(s, store, "pass2 tw_bad=hint", decide=lambda q: "park")
+        self.assertIn("demo-1: a person chose park", out["parked"])
+        self.assertNotIn("question 1", out["parked"])
+
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):
         s = self.sample()
