@@ -23,7 +23,7 @@ A spec is a dict, often read from JSON:
 The design follows UML, drawn in Tollgate's style:
 - An actor is a person: a head over a box with round shoulders, with its name
   and an optional short description. Put actors outside the system, in their
-  own columns, to its left or right.
+  own columns, to its left or right; an actor in the system's box is an error.
 - A use case is an oval with its name, a goal in a few words, such as
   "Approve a change". Every use case sits inside the system's border, a plain
   box with "system" as its name in bold.
@@ -130,6 +130,12 @@ def check(spec):
             raise ValueError("every actor and use case needs an 'id' and a 'name'")
     if actors & cases:
         raise ValueError(f"an actor and a use case share the id '{min(actors & cases)}'")
+    cols = [c["col"] for c in spec["cases"]]
+    rows = [c["row"] for c in spec["cases"]]
+    for a in spec.get("actors", []):
+        if min(cols) <= a["col"] <= max(cols) and min(rows) <= a["row"] <= max(rows):
+            raise ValueError(f"actor '{a['id']}' sits in the box of the system "
+                             f"'{spec['system']}': move it to another col or row")
     for link in spec.get("links", []):
         for end in ("from", "to"):
             if link.get(end) not in actors | cases:

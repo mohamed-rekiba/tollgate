@@ -105,6 +105,12 @@ class UseCaseTest(unittest.TestCase):
             (spec(system=""), "system"),
             (spec(actors=[dict(SPEC["actors"][0], kind="robot"), SPEC["actors"][1]]), "kind"),
             (spec(title=""), "title"),
+            (spec(actors=[*SPEC["actors"], {"id": "guest", "name": "Guest", "col": 2,
+                                            "row": 2}],
+                  cases=[*SPEC["cases"], {"id": "read", "name": "Read", "col": 1, "row": 3}]),
+             "actor 'guest' sits in the box of the system"),
+            (spec(actors=[*SPEC["actors"], {"id": "guest", "name": "Guest", "col": 1,
+                                            "row": 1}]), "actor 'guest' sits in the box of the system"),
         ]
         for bad, says in cases:
             with self.subTest(says=says), self.assertRaises(ValueError) as err:
