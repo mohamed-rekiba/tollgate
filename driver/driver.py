@@ -395,7 +395,7 @@ class Driver:
             st_.rejections += 1
             st_.tests_done = False
             st_.rejected = [{"level": "blocking", "text": str(err)}]
-            self.log.add("tests_rejected", findings=st_.rejected)
+            self.log.add("tests_rejected", round=st_.rejections, findings=st_.rejected)
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the freeze refused the tests: {err}") from None
             return
@@ -592,10 +592,12 @@ class Driver:
         lock = run_lock(self.project, self.ticket_id)
         lock.acquire()
         try:
-            st_ = history.replay(read(self.log_path))
+            events = read(self.log_path)
+            st_ = history.replay(events)
             with Log(self.log_path, ticket=self.ticket_id, task=self.ticket.plan) as self.log:
                 self.copy = roles.make_copy(self.project, self.ticket_id)
-                if not st_.tests_done and not st_.frozen:
+                # The branch starts once: tests written again after a rejection build on it.
+                if not st_.frozen and not any(e["event"] == "tests_written" for e in events):
                     if self.start != self.base:
                         # The ready change this ticket builds on lives in the project.
                         git(self.copy, "fetch", "-q", self.project,

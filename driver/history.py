@@ -58,6 +58,8 @@ def replay(events: list) -> Ticket:
         if kind == "tests_reviewed":
             t.tests_done, t.rejected = True, []
         elif kind == "tests_rejected":
+            # The freeze can refuse tests the reviewer passed: they are written again.
+            t.tests_done = False
             t.rejections += 1
             t.rejected = e.get("findings", [])
         elif kind == "frozen":

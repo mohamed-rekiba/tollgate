@@ -481,6 +481,39 @@ class StepTest(Case):
         self.assertEqual(events.count("plan_reviewed"), 3)
         self.assertIn("plan_locked", events)
 
+    def test_tests_the_freeze_refused_are_reviewed_again_once_rewritten(self):
+        s, store = self.task_sample()
+        reviewed = []
+        code, out = self.next(s, store)
+        for _ in range(150):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                store.answer(out["question"]["n"], "tollgate decide " + (
+                    "approve" if "approve" in out["question"]["options"] else "continue"))
+                code, out = self.next(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                break
+            if "# Lens: test fit" in out["prompt"]:
+                reviewed.append(out["key"])
+            code, out = self.answer(s, store, out, fake_answer(out, "pass2 tw_freeze=1"))
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("demo-1")]
+        self.assertEqual(events[:8], [
+            "started", "tests_written", "tests_reviewed", "tests_rejected", "tests_written",
+            "tests_reviewed", "frozen", "try_started"])
+        self.assertEqual(len(reviewed), 2, "the new tests get their own review")
+        self.assertEqual(events.count("frozen"), 1)
+
+    def test_logging_goes_on_once_a_role_has_no_saved_answer(self):
+        s, store = self.task_sample()
+        session.replay_path(str(s.project)).write_text("a step no run reaches\n")
+        _, out = self.next(s, store)
+        self.assertEqual(session.replay_path(str(s.project)).read_text().strip(), out["key"])
+        self.answer(s, store, out, fake_answer(out))
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("analysis_written"), 1)
+
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):
         s = self.sample()

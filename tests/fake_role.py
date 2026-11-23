@@ -17,7 +17,8 @@ that are not in `tested`.
 A plan written with a hint from the review of the whole task adds a third ticket, loud.
 Test writer options: tw_bad=1 (the first tests it writes break the style check),
 tw_bad=<n> tw_count=<path> (the first n do, counted in that file), tw_bad=hint (each
-does, until the inputs hold a hint).
+does, until the inputs hold a hint), tw_freeze=1 (the first tests it writes hold a C1
+test that passes before the build, so the freeze refuses them).
 Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
@@ -291,7 +292,11 @@ def main() -> int:
             bad = count_marker(opts["tw_count"]) <= int(opts["tw_bad"])
         if opts.get("tw_bad") == "hint":
             bad = not data.get("hint")
-        Path("tests/test_t1.py").write_text(TESTS + ("# BADSTYLE\n" if bad else ""))
+        text = TESTS
+        if opts.get("tw_freeze") and not data.get("rejected"):
+            # A C1 test that already passes, so the freeze refuses it.
+            text = TESTS.replace('app.shout("ann"), "HELLO ANN"', 'app.greet("ann"), "hello ann"')
+        Path("tests/test_t1.py").write_text(text + ("# BADSTYLE\n" if bad else ""))
         answer({"tests": [{"item": "C1", "file": "tests/test_t1.py", "name": "test_c1_shout"},
                           {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"}]},
                cost)
