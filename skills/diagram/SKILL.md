@@ -90,6 +90,8 @@ A diagram of software architecture, as C4 draws it, built on the flow. Set `"typ
 - At the `dynamic` level the arrows are numbered 1, 2, 3 in the order you list them.
 - At the `deployment` level each of the `boundaries` is a UML node: a box in three dimensions, with its `type` as a stereotype, as in "Your machine «device»". Nest a Docker or Python «execution environment» inside it. A `node` element with a `stereotype` is a node that holds nothing.
 - Keep two lines in a box: a short description, wrapped. Put an arrow's label where the gap has room: an arrow that goes straight across or straight down gets room for its label.
+- `"style": "isometric"`: the same spec, at any level, drawn in three dimensions, in the look of the hero pictures. The layout comes from your grid. A boundary is a raised zone, and nested deployment nodes stack as platforms. Each type has its own object: a person, a building, a box with a lid for a container, a cylinder, a pipe, a small block for a component, and a cloud for a node whose stereotype says cloud. Each relation is a lane with moving dots; at the `dynamic` level one dot follows the numbered steps in order. Pick isometric for the big picture: a README, a talk, a first look. Pick flat, the default, for detail a reader studies.
+- To draw one spec both ways, add a second file with one line: `{"from": "c4-container.json", "style": "isometric"}`. It draws the first spec with its own keys on top, and follows every change to it.
 
 ## A use case diagram
 
@@ -122,8 +124,8 @@ An entity relationship diagram: what is stored, and the keys that link it. Set `
 
 An isometric picture: zones on the ground, objects on them, lanes with moving dots between them, and labels. Set `"type": "scene"`. The format is at the top of `$TG/diagram/__init__.py`.
 
-- Objects: `room` (a glass room with a worker inside), `gate` (a booth with a barrier), `server`, `database`, `vault` (a locked box), `papers`, `laptop`, `board` (a chart), `house`, `wall`, `pedestal` (a stand with any icon), `aws` (an AWS icon on a stand), `person` (someone who uses the system, in the color of its kind), `external` (a system that is not ours: a gray building, gray whatever its kind).
-- A C4 system context as a scene: a `person` for each user, your system on its own zone in the middle, an `external` for each outside system, and a lane with a label for what flows between each pair.
+- Objects: `room` (a glass room with a worker inside), `gate` (a booth with a barrier), `server`, `database`, `vault` (a locked box), `papers`, `laptop`, `board` (a chart), `house`, `wall`, `pedestal` (a stand with any icon), `aws` (an AWS icon on a stand), `person` (someone who uses the system, in the color of its kind), `external` (a system that is not ours: a gray building, gray whatever its kind), `building` (a system of ours), `container` (a box with a lid), `queue` (a pipe), `cloud` (a cloud service), `component` (a small block). A zone with `z` and `height` stands on another, as a platform; an object with `z` stands on it.
+- A C4 diagram in this look: write it as a C4 spec with `"style": "isometric"`, and the layout is worked out for you.
 - Ground units: x runs down-right on the page, y runs down-left. Put things that happen first on the left.
 - Put each label beside its object, never over another object or label.
 - A `ticket` travels the lanes; `lift` names the leg during which a gate opens.

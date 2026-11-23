@@ -7,6 +7,7 @@ A spec is a dict, often read from JSON:
 
     {"type": "c4",
      "level": "context" | "container" | "component" | "dynamic" | "deployment",
+     "style": "flat" | "isometric",
      "title": "Tollgate",
      "desc": "What it shows, in one or two sentences, for a screen reader.",
      "names": {"server": "Tollgate"},
@@ -59,6 +60,22 @@ The design follows C4 (c4model.com), drawn in Tollgate's style:
 - A relation is an arrow with a label: what happens, then on a second line
   how, in brackets, from "tech". Every relation needs a "label". "tone",
   "dashed", "loop", and "route" work as in a flow.
+- "style": "isometric" draws the same spec, at any level, as an isometric
+  scene, in the look of the hero pictures; "flat", the default, draws boxes
+  and arrows. The layout is worked out from the grid: "col" runs down to the
+  right, "row" down to the left, and the grid spreads out until no label
+  covers another or a part. A boundary is a raised zone in its kind's color;
+  one with no kind takes the kind of what it holds when all of it is one kind.
+  A boundary inside another stands on it, one level higher, so nested
+  deployment nodes stack. Each type has its object: a person, a building for a
+  system (gray when external), a box with a lid for a container, a cylinder
+  for a database, a pipe for a queue, a small block for a component, a cloud
+  for a node whose stereotype says cloud, and a server for any other node. At
+  the context level the system the diagram is about stands on its own zone.
+  "icon" floats over the object. A relation is a lane with dots that move; at
+  the dynamic level one dot follows the steps in order. "loop" is not drawn.
+  Pick isometric for the big picture: a README, a talk, a first look. Pick
+  flat for detail a reader studies.
 
 The output is plain SVG: real text, a viewBox, role="img" with a title and a
 description named by aria-labelledby, no scripts, and no external files.
@@ -180,6 +197,12 @@ def to_flow(spec):
 
 
 def draw(spec, theme):
+    style = spec.get("style", "flat") if isinstance(spec, dict) else "flat"
+    if style == "isometric":
+        from diagram import c4iso
+        return c4iso.draw(spec, theme)
+    if style != "flat":
+        raise ValueError("the style must be flat or isometric")
     return flow.draw(to_flow(spec), theme)
 
 
@@ -192,7 +215,7 @@ def check_types(spec):
     says which one does not. The error is a ValueError, as for any bad spec."""
     if not isinstance(spec, dict):
         raise ValueError("the spec must be an object")  # noqa: TRY004
-    for key in ("title", "desc", "level"):
+    for key in ("title", "desc", "level", "style"):
         if not isinstance(spec.get(key, ""), str):
             raise ValueError(f"the diagram's '{key}' must be text")  # noqa: TRY004
     names = spec.get("names", {})
