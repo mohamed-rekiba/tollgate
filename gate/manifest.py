@@ -19,6 +19,7 @@ the map.
 
 import ast
 import json
+from pathlib import PurePosixPath
 
 from gate import junit
 from gate.gitio import fingerprint, show_bytes
@@ -53,7 +54,18 @@ def read_map(repo, commit: str, ticket_id: str) -> list:
                                         for k in ("item", "file", "name")) for e in found):
         raise FreezeError(f"{map_path(ticket_id)} must be a list of "
                           '{"item", "file", "name"}')
+    for e in found:
+        parts = PurePosixPath(e["file"]).parts
+        if e["file"].startswith("/") or ".." in parts or parts[:1] == (".tollgate",):
+            raise FreezeError(f"{map_path(ticket_id)} names a file outside the project's "
+                              f"tests: {e['file']}")
     return found
+
+
+def test_files(ticket, mapped: list) -> list:
+    """The ticket's test files: those under tests:, then each other file the map names.
+    The test writer cannot change the ticket, so the map may add a file."""
+    return list(dict.fromkeys([*ticket.tests, *(e["file"] for e in mapped)]))
 
 
 def python_tests(data: bytes | None) -> dict:
@@ -69,11 +81,11 @@ def python_tests(data: bytes | None) -> dict:
             if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name.startswith("test")}
 
 
-def check_kept(repo, commit: str, start: str, ticket, mapped: list) -> None:
+def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None:
     """Refuse a change to a test that was there at the start, and a mapped test that is
     neither there at the start nor named for its item."""
     before_all = {}
-    for path in ticket.tests:
+    for path in paths:
         if not path.endswith(".py"):
             continue
         before = python_tests(show_bytes(repo, start, path))
@@ -102,13 +114,14 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     started from: its tests must be kept as they were.
     """
     mapped = read_map(repo, commit, ticket.id)
+    paths = test_files(ticket, mapped)
     files = {}
-    for path in [ticket_path(ticket.id), *ticket.tests] + ([map_path(ticket.id)] if mapped else []):
+    for path in [ticket_path(ticket.id), *paths] + ([map_path(ticket.id)] if mapped else []):
         data = show_bytes(repo, commit, path)
         if data is None:
             raise FreezeError(f"{path} is not in commit {commit}")
         files[path] = fingerprint(data)
-    mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, ticket.tests)}
+    mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, paths)}
     if not mine:
         raise FreezeError("the test report has no test from the ticket's test files")
     items = {}
@@ -123,17 +136,17 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
                               "which is not a checklist item")
         items.update(dict.fromkeys(found, entry["item"]))
     if start:
-        check_kept(repo, commit, start, ticket, mapped)
+        check_kept(repo, commit, start, paths, mapped)
     # A test that was there at the start, such as an earlier ticket's test_c1_, maps
     # only through the map: only a new test maps by its name.
     old = {path: python_tests(show_bytes(repo, start, path)) if start else {}
-           for path in ticket.tests}
+           for path in paths}
     for test_id, result in mine.items():
         was_there = any(test_id.split("::")[-1] in names and junit.in_files(result, [path])
                         for path, names in old.items())
         if test_id not in items and not was_there and ticket.item(item_of_test(test_id) or ""):
             items[test_id] = item_of_test(test_id)
-    for path in ticket.tests:
+    for path in paths:
         in_file = [t for t, r in mine.items() if junit.in_files(r, [path])]
         if in_file and not any(t in items for t in in_file):
             raise FreezeError(f"{in_file[0]} names no checklist item, such as c1_ in its name,"

@@ -178,6 +178,23 @@ class TestMapTest(unittest.TestCase):
         self.assertEqual(manifest["items"]["tests.test_calc::test_c1_retries"], "C1")
         self.assertNotIn("tests.test_calc::test_c1_divide", manifest["items"])
 
+    def test_a_file_the_map_names_is_one_of_the_ticket_s_test_files(self):
+        # tests/test_divide.py is not under tests: in the ticket, and the test writer
+        # cannot change the ticket.
+        self.repo.write("tests/test_divide.py", CALC.replace("test_add", "test_c9_divide"))
+        self.start = self.repo.commit()
+        manifest = self.lock([self.ADD, {"item": "C2", "file": "tests/test_divide.py",
+                                         "name": "test_c9_divide"}],
+                             **{"tests.test_divide::test_c9_divide": "passed"})
+        self.assertEqual(manifest["items"]["tests.test_divide::test_c9_divide"], "C2")
+        self.assertIn("tests/test_divide.py", manifest["files"])
+        self.assertIn("tests.test_divide::test_c9_divide", manifest["keeps_behavior"])
+
+    def test_the_map_names_no_file_outside_the_project_s_tests(self):
+        for path in ("../x.py", "/etc/x.py", ".tollgate/settings.json"):
+            with self.subTest(path=path), self.assertRaisesRegex(mf.FreezeError, "outside"):
+                self.lock([self.ADD, dict(self.ADD, file=path)])
+
 
 class PrepareTest(unittest.TestCase):
     def setUp(self):
