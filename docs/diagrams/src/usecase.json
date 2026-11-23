@@ -1,0 +1,35 @@
+{
+ "type": "usecase",
+ "title": "Who does what with Tollgate",
+ "desc": "The owner gives a task, merges a ready change, and approves a change of tier 3 or 4, which extends the merge. The advisor answers questions. The builder builds a ticket, which always includes passing the gate; the reviewer reviews a try; the test writer writes the locked tests.",
+ "names": {"server": "The store"},
+ "system": "Tollgate",
+ "actors": [
+  {"id": "owner", "name": "Owner", "description": "Signs approvals with their own SSH key", "col": 0, "row": 0},
+  {"id": "advisor", "name": "Advisor", "description": "A person, or an AI on another model", "col": 0, "row": 3, "kind": "advisor"},
+  {"id": "builder", "name": "Builder", "description": "Writes plans, tickets, and code", "col": 3, "row": 0, "kind": "ai"},
+  {"id": "reviewer", "name": "Reviewer", "description": "Reads through one lens", "col": 3, "row": 2, "kind": "ai"},
+  {"id": "tester", "name": "Test writer", "description": "Writes a test for each must-have item", "col": 3, "row": 3, "kind": "ai"}
+ ],
+ "cases": [
+  {"id": "task", "name": "Give a task", "col": 1, "row": 0, "kind": "you"},
+  {"id": "merge", "name": "Merge a ready change", "col": 1, "row": 1},
+  {"id": "approve", "name": "Approve a change", "description": "Tier 3 or 4", "col": 1, "row": 2, "kind": "you", "icon": "key"},
+  {"id": "answer", "name": "Answer a question", "col": 1, "row": 3, "kind": "advisor"},
+  {"id": "build", "name": "Build a ticket", "col": 2, "row": 0, "kind": "ai"},
+  {"id": "gate", "name": "Pass the gate", "col": 2, "row": 1, "kind": "check", "icon": "gate"},
+  {"id": "review", "name": "Review a try", "col": 2, "row": 2, "kind": "ai"},
+  {"id": "tests", "name": "Write the tests", "col": 2, "row": 3, "kind": "ai", "icon": "test"}
+ ],
+ "links": [
+  {"from": "owner", "to": "task"},
+  {"from": "owner", "to": "merge", "route": "vh"},
+  {"from": "owner", "to": "approve", "route": "vh"},
+  {"from": "advisor", "to": "answer"},
+  {"from": "builder", "to": "build"},
+  {"from": "reviewer", "to": "review"},
+  {"from": "tester", "to": "tests"},
+  {"from": "build", "to": "gate", "type": "include"},
+  {"from": "approve", "to": "merge", "type": "extend"}
+ ]
+}

@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, an architecture picture, or icons. Never use Mermaid or a picture of text.
+description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, a C4 diagram of software architecture, a UML use case diagram, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, a C4 or architecture picture, a use case diagram, or icons. Never use Mermaid or a picture of text.
 ---
 
 # Draw a diagram
@@ -28,6 +28,8 @@ The reader has never seen the project's code. Every word in the picture is for t
 - A process, steps, choices: a **flow**. See below.
 - One scenario between parts over time, such as a request between services or an API call: a **sequence**. See below.
 - One thing with a lifecycle, the states it is in and the events that move it, such as an order or a task: a **state machine**. See below.
+- The software architecture of a system, the C4 way: who uses it and what it talks to (context), the parts it runs as (container), the parts inside one of those (component), one scenario as numbered steps (dynamic), or where each part runs (deployment): a **C4 diagram**. See below.
+- Who uses a system, and for what: a **use case diagram**. See below.
 - The big picture: places, who holds what, what talks to what: a **scene**. See below.
 - Cloud infrastructure on AWS: a **flow** with AWS icons and AWS groups. See below.
 
@@ -72,6 +74,29 @@ A UML state machine: the states one thing is in, and the events that move it. Se
 - `transitions`: arrows labeled with the `event`, then the `guard` in brackets, both optional. A transition from a state to itself is a loop, such as another try. `loop`, `route`, and `tone` work as in a flow; `shift` moves an arrow along a side so two arrows can share it.
 - `ticket`: one dot follows a path of transitions, such as the path that works.
 - About eight to twelve states. Name each for what is true while the thing waits there, such as "At the gate", not for a function.
+
+## A C4 diagram
+
+A diagram of software architecture, as C4 draws it, built on the flow. Set `"type": "c4"` and a `level`. The format, with every option, is at the top of `$TG/diagram/c4.py`. In short:
+
+- `level`: `context`, `container`, `component`, `dynamic`, or `deployment`. It titles the picture, as in "Container diagram for Tollgate", and decides which elements it may hold: a wrong one is an error.
+- `elements`: on a grid of `col` and `row`. Each has a `type`: `person` (a head over round shoulders), `system`, `container`, `database` (a cylinder), `queue` (a pipe), `component`, or `node` (a box in three dimensions). Give it a `name`, a `tech` for a container or a component, and a `description` of a few words. The type line comes from these, as in "[Container: Python]".
+- `"external": true`: outside the thing the diagram is about. It is gray, and says so: "[External System]".
+- `kind` and `names` work as in a flow. A person is `you` and the rest `server` by default.
+- `boundaries`: a dashed box around the elements whose `parent` names it, as in "Tollgate [Software System]". One nests in another through its own `parent`. Keep the cells inside such a box for its own elements: the drawing refuses one that sits there without being inside.
+- `relations`: arrows. `label` says what happens, `tech` says how; the drawing puts it under the label in brackets. Every relation needs a label.
+- At the `dynamic` level the arrows are numbered 1, 2, 3 in the order you list them.
+- At the `deployment` level each of the `boundaries` is a UML node: a box in three dimensions, with its `type` as a stereotype, as in "Your machine «device»". Nest a Docker or Python «execution environment» inside it. A `node` element with a `stereotype` is a node that holds nothing.
+- Keep two lines in a box: a short description, wrapped. Put an arrow's label where the gap has room: an arrow that goes straight across or straight down gets room for its label.
+
+## A use case diagram
+
+A UML use case diagram, built on the flow. Set `"type": "usecase"`. The format, with every option, is at the top of `$TG/diagram/usecase.py`. In short:
+
+- `system`: the name of the system. Its border holds every use case.
+- `actors`: people or roles, drawn as a person, outside the border, on a grid of `col` and `row`.
+- `cases`: ovals inside the border, each a goal in a few words, such as "Approve a change".
+- `links`: a plain line from an actor to a use case. `"type": "include"` or `"extend"` joins two use cases with a dashed arrow labeled «include» or «extend». Put the two in one column or one row, so the label has room.
 
 ## A scene
 

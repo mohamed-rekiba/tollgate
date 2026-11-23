@@ -128,6 +128,7 @@
 </g>
 <text class="note" x="143.1" y="1040.0" text-anchor="middle" font-size="10.5" fill="#59636e">you merge tier 3 and 4</text>
 <g class="participant" data-of="driver">
+<g class="step">
 <rect x="-75.0" y="0.0" width="150.0" height="69.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M-66.0,-4.0 H-79.0 V9.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <path d="M66.0,73.0 H79.0 V60.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
@@ -135,7 +136,9 @@
 <text x="-35.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
 <text x="-61.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">The driver</text>
 </g>
+</g>
 <g class="participant" data-of="writer">
+<g class="step">
 <rect x="211.2" y="0.0" width="150.0" height="69.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M220.2,-4.0 H207.2 V9.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
 <path d="M352.2,73.0 H365.2 V60.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
@@ -143,7 +146,9 @@
 <text x="251.2" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
 <text x="225.2" y="52.0" font-size="14" font-weight="700" fill="#1f2328">Test writer</text>
 </g>
+</g>
 <g class="participant" data-of="store">
+<g class="step">
 <rect x="389.2" y="0.0" width="150.0" height="69.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M398.2,-4.0 H385.2 V9.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <path d="M530.2,73.0 H543.2 V60.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
@@ -151,7 +156,9 @@
 <text x="429.2" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
 <text x="403.2" y="52.0" font-size="14" font-weight="700" fill="#1f2328">The store</text>
 </g>
+</g>
 <g class="participant" data-of="builder">
+<g class="step">
 <rect x="591.0" y="0.0" width="150.0" height="69.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M600.0,-4.0 H587.0 V9.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
 <path d="M732.0,73.0 H745.0 V60.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
@@ -159,7 +166,9 @@
 <text x="631.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
 <text x="605.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">Builder</text>
 </g>
+</g>
 <g class="participant" data-of="gate">
+<g class="step">
 <rect x="769.0" y="0.0" width="150.0" height="69.0" rx="4" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M778.0,-4.0 H765.0 V9.0" fill="none" stroke="#9a6700" stroke-width="1.2"/>
 <path d="M910.0,73.0 H923.0 V60.0" fill="none" stroke="#9a6700" stroke-width="1.2"/>
@@ -167,13 +176,16 @@
 <text x="809.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">CHECK</text>
 <text x="783.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">The gate</text>
 </g>
+</g>
 <g class="participant" data-of="reviewer">
+<g class="step">
 <rect x="949.8" y="0.0" width="150.0" height="69.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M958.8,-4.0 H945.8 V9.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
 <path d="M1090.8,73.0 H1103.8 V60.0" fill="none" stroke="#8250df" stroke-width="1.2"/>
 <g transform="translate(963.8,12.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
 <text x="989.8" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
 <text x="963.8" y="52.0" font-size="14" font-weight="700" fill="#1f2328">Reviewer</text>
+</g>
 </g>
 <g class="ticket">
 <circle r="13" fill="#8250df" opacity="0.2"><animate attributeName="fill" values="#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#8250df;#1a7f37;#1a7f37;#cf222e;#8250df;#1a7f37" keyTimes="0.0000;0.0404;0.0732;0.1222;0.1377;0.2051;0.2725;0.3561;0.4397;0.5397;0.6397;0.7233;0.8069;0.8559;0.8714;0.9204" calcMode="discrete" dur="45.76s" repeatCount="indefinite"/></circle>
