@@ -90,7 +90,13 @@ class PromptsMatchTheGateTest(unittest.TestCase):
     def test_the_planner_s_example_ticket_passes_the_gate(self):
         examples = [b for b in fenced_blocks(self.read("roles/builder.md")) if "## Checklist" in b]
         self.assertEqual(len(examples), 1)
-        tickets.parse(examples[0])
+        ticket = tickets.parse(examples[0])
+        keeps = [i for i in ticket.items if i.keeps_behavior]
+        self.assertTrue(keeps, "the example ticket needs a keeps behavior item")
+        self.assertTrue(all(i.must for i in keeps))
+
+    def test_the_planner_says_a_keeps_behavior_item_is_a_must_have(self):
+        self.assertIn("`[C7, must, keeps behavior]`", self.read("roles/builder.md"))
 
     def test_the_test_writer_defines_every_kind(self):
         text = self.read("roles/test_writer.md")
