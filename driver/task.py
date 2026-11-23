@@ -511,7 +511,11 @@ class Task:
                     self.log.add("started")
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
-                        if "plan_written" not in kinds:
+                        # A plan the driver sent back is written again: the last of
+                        # plan_written and plan_invalid tells which came last.
+                        writes = [e["event"] for e in events
+                                  if e["event"] in ("plan_written", "plan_invalid")]
+                        if not writes or writes[-1] == "plan_invalid":
                             if "analysis_written" not in kinds:
                                 git(self.copy, "checkout", "-q", "-B", f"tg-plan/{self.id}",
                                     self.base)

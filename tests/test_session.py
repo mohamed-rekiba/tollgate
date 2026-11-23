@@ -420,6 +420,24 @@ class StepTest(Case):
             self.assertEqual(len(lines), len(set(lines)), name)
 
 
+    def test_a_plan_sent_back_by_the_driver_is_replayed_to_its_new_version(self):
+        # The driver sends the first plan back, with no README. The next run must replay
+        # the new plan's answer and log it, not take the plan as written already.
+        s, store = self.task_sample()
+        from tests.driver_fakes import sh
+        Path(s.project, ".tollgate/checks").mkdir(parents=True, exist_ok=True)
+        Path(s.project, ".tollgate/checks/check_writing.py").write_text("")
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "chore(tollgate): add the writing check")
+        out = self.run_task(s, store)
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("plan_invalid"), 1)
+        self.assertEqual(events.count("plan_written"), 2)
+        self.assertLess(events.index("plan_invalid"), len(events) - events[::-1].index("plan_written"))
+        plan = sh(s.project, "git", "show", "tg-plan/demo:.tollgate/plans/demo.md")
+        self.assertIn("create README.md", plan)
+
     def test_the_stop_rule_counts_only_the_real_rejections(self):
         # Two real rejections are under the limit, however many times next replays them.
         s, store = self.task_sample(checks=self.style_check())
