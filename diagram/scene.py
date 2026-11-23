@@ -77,7 +77,7 @@ class Scene:
         return accent, mix(tint, accent, 0.18), tint, mix(tint, "#000000", 0.35)
 
     # Shapes -------------------------------------------------------------------
-    def prism(self, x0, y0, x1, y1, z0, z1, kind, into=None, glass=False):
+    def prism(self, x0, y0, x1, y1, z0, z1, kind, into=None, glass=False, cls=None):
         stroke, top, left, right = self.faces(kind)
         a, b = self.iso(x0, y1, z1), self.iso(x1, y1, z1)
         c, d = self.iso(x1, y0, z1), self.iso(x0, y0, z1)
@@ -85,6 +85,8 @@ class Scene:
         fill = ' fill-opacity="0.3"' if glass else ""
         dash = ' stroke-dasharray="3 4"' if glass else ""
         common = f'stroke="{stroke}" stroke-width="1.3" stroke-linejoin="round"{fill}{dash}'
+        if cls:
+            common = f'class="{cls}" {common}'
         (self.out if into is None else into).extend([
             f'<polygon points="{self.pts([a, b, b0, a0])}" fill="{left}" {common}/>',
             f'<polygon points="{self.pts([b, c, c0, b0])}" fill="{right}" {common}/>',
@@ -119,13 +121,14 @@ class Scene:
                         f'stroke="{accent}" stroke-width="1.4"/>')
         self.out.append(icon(name, px - 10, py - 10, 20, accent, 1.7))
 
-    def pill(self, px, py, label, color=None):
+    def pill(self, px, py, label, color=None, lane=None):
         """A label in a frame, centered on a page point. A line break starts a second line."""
         color = color or self.c["sub"]
         lines = label.split("\n")
         w = max(len(line) for line in lines) * 6.6 + 16
         h = 20 + PILL_STEP * (len(lines) - 1)
-        self.front.append(f'<rect class="pill" x="{px - w / 2:.1f}" y="{py - h / 2:.1f}" '
+        tie = f' data-lane="{lane}"' if lane else ""
+        self.front.append(f'<rect class="pill"{tie} x="{px - w / 2:.1f}" y="{py - h / 2:.1f}" '
                           f'width="{w:.1f}" height="{h}" rx="3" fill="{self.c["page"]}" '
                           f'stroke="{color}"/>')
         for k, line in enumerate(lines):
@@ -139,13 +142,15 @@ class Scene:
         color = self.c["tones"].get(tone, self.c["edge"] if side else self.c["kinds"]["ai"][0])
         points = [self.iso(*p) if len(p) == 3 else self.iso(*p, z) for p in ground]
         marker = f"arrow-{tone or ('side' if side else 'main')}"
+        self.lanes = getattr(self, "lanes", 0) + 1
         self.back.append(f'<polyline class="{"side" if side else "main"}" '
+                         f'data-lane="{self.lanes}" '
                          f'points="{self.pts(points)}" fill="none" stroke="{color}" '
                          f'stroke-linecap="round" stroke-linejoin="round" '
                          f'marker-end="url(#{marker})"/>')
         if label:
             px, py = self.along(points, at)
-            self.pill(px, py, label, self.c["tones"].get(tone, self.c["sub"]))
+            self.pill(px, py, label, self.c["tones"].get(tone, self.c["sub"]), self.lanes)
         return points
 
     @staticmethod
@@ -473,7 +478,10 @@ class Scene:
         now += rest
         marks.append((now, dist))
         dur, total = now, dist
-        path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
+        # The dot rests at its start when nothing moves, as in a preview or a PNG: the
+        # group stands there, and the motion runs from it.
+        sx, sy = points[0]
+        path = "M" + " L".join(f"{x - sx:.1f},{y - sy:.1f}" for x, y in points)
         key_times = ";".join(f"{t / dur:.4f}" for t, _ in marks)
         key_points = ";".join(f"{d / total:.4f}" for _, d in marks)
         shared = f'dur="{dur:.2f}s" repeatCount="indefinite"'
@@ -482,7 +490,7 @@ class Scene:
                 f'{shared}/>')
         base = colors[0][1]
         self.front.extend([
-            '<g class="ticket">',
+            f'<g class="ticket" transform="translate({sx:.1f} {sy:.1f})">',
             f'<circle r="12" fill="{base}" opacity="0.22">{fill}</circle>',
             f'<circle r="6" fill="{base}" stroke="{self.c["page"]}" stroke-width="2">{fill}</circle>',
             (f'<animateMotion path="{path}" keyPoints="{key_points}" keyTimes="{key_times}" '
@@ -892,7 +900,7 @@ def from_spec(spec: dict, theme: str) -> str:
         x0, y0, x1, y1 = zone["at"]
         z0 = zone.get("z", 0)
         s.prism(x0, y0, x1, y1, z0, z0 + zone.get("height", 8), zone.get("kind", "neutral"),
-                into=s.back)
+                into=s.back, cls="zone")
     for lane in spec.get("lanes", []):
         s.lane([tuple(p) for p in lane["path"]], lane.get("label"), lane.get("at", 0.5),
                lane.get("tone"), lane.get("side", False))
@@ -904,6 +912,7 @@ def from_spec(spec: dict, theme: str) -> str:
         x, y = o["at"][:2]
         # An object on a platform stands "z" above the ground: lift the whole page.
         s.oy = oy - o.get("z", 0) * s.s
+        first = len(s.out)
         kind = o.get("kind")
         what = o["type"]
         if what == "room":
@@ -947,6 +956,10 @@ def from_spec(spec: dict, theme: str) -> str:
             s.wall(x, y, x1, y1, o.get("height", 46), kind or "neutral")
         else:
             raise ValueError(f"unknown object '{what}'; use one of {', '.join(OBJECTS)}")
+        if o.get("name"):
+            # A page can find each named part, and so can a test.
+            s.out.insert(first, f'<g class="part" data-name="{escape(o["name"], {chr(34): "&quot;"})}">')
+            s.out.append("</g>")
     s.oy = oy
     for b in spec.get("badges", []):
         s.badge(*b["at"], b["icon"], b.get("kind", "neutral"))

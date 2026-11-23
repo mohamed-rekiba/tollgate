@@ -26,23 +26,24 @@ from itertools import pairwise
 from diagram import c4, scene
 from diagram.flow import text_width
 
-PITCHES = (330, 370, 410, 450, 500)   # ground units from one cell to the next, to try
-SCALE = 0.56
+PITCHES = tuple(range(330, 760, 25))   # ground units from one cell to the next, to try
+SCALE = 0.6
 STEP = 16          # from one line of a label to the next
 PLATE = 18         # the height of one platform
 PAD = 100          # from an element's center to the edge of its zone
 NEST = 34          # from a zone to the edge of the zone that holds it
 MARGIN = 40
-SLACK = 600        # page area a label may cover of an object's box, in square pixels
+NEAR = 26          # the farthest a name may sit from its part, in pixels
+SLACK = 200        # page area a label may cover of an object's box, in square pixels
 TOP = 120          # room for the caption
-WRAP = 28
+WRAP = 24
 PILL_WRAP = 24     # characters on a line of a lane's label
 
 # Each element type: the scene object, half its footprint along x and y, its height.
-SHAPES = {"person": ("person", 30, 30, 104), "system": ("building", 45, 45, 106),
-          "container": ("container", 45, 45, 68), "database": ("database", 42, 42, 64),
-          "queue": ("queue", 22, 48, 46), "component": ("component", 30, 30, 42),
-          "cloud": ("cloud", 44, 44, 104), "node": ("server", 45, 45, 54)}
+SHAPES = {"person": ("person", 22, 22, 111), "system": ("building", 49, 49, 105),
+          "container": ("container", 45, 45, 62), "database": ("database", 25, 25, 60),
+          "queue": ("queue", 20, 48, 44), "component": ("component", 28, 28, 39),
+          "cloud": ("cloud", 38, 38, 108), "node": ("server", 45, 45, 52)}
 SUBS = {"context": "who uses it, and the systems around it",
         "container": "the parts inside it, and what flows between them",
         "component": "the parts of one container, and what flows between them",
@@ -88,13 +89,25 @@ def box_of(points):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def crosses_box(a, b, box):
-    """True when the page segment a-b passes through the box."""
-    for k in range(21):
-        x, y = a[0] + (b[0] - a[0]) * k / 20, a[1] + (b[1] - a[1]) * k / 20
-        if box[0] <= x <= box[2] and box[1] <= y <= box[3]:
-            return True
-    return False
+def crosses_box(a, b, box, pad=2):
+    """True when the page segment a-b passes through the box, grown by pad: an exact
+    clip of the segment to the box."""
+    lo, hi = 0.0, 1.0
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    for p, q in ((-dx, a[0] - box[0] + pad), (dx, box[2] + pad - a[0]),
+                 (-dy, a[1] - box[1] + pad), (dy, box[3] + pad - a[1])):
+        if p == 0:
+            if q < 0:
+                return False
+            continue
+        t = q / p
+        if p < 0:
+            lo = max(lo, t)
+        else:
+            hi = min(hi, t)
+        if lo > hi:
+            return False
+    return True
 
 
 class Layout:
@@ -105,7 +118,9 @@ class Layout:
         self.level = spec["level"]
         self.bounds = {b["id"]: b for b in spec.get("boundaries", [])}
         self.items = {e["id"]: self.item(e) for e in spec["elements"]}
-        self.zones = self.place_zones()
+        self.spots = {}   # the page box of each element's label, once placed
+        self.first = {}   # where each element's label went the first time
+        self.zones = []
         self.blocked = [i["box"] for i in self.items.values()]
         self.lanes = [self.route(n, r) for n, r in enumerate(spec.get("relations", []))]
         self.labels = []
@@ -154,15 +169,54 @@ class Layout:
                 kinds.add(i["kind"])
         return kinds.pop() if len(kinds) == 1 else "neutral"
 
+    @staticmethod
+    def on_ground(box, z):
+        """The ground rectangle, at height z, that holds a page box."""
+        lift = z * SCALE
+        corners = [ground(px, py + lift) for px in (box[0] - 10, box[2] + 10)
+                   for py in (box[1] - 10, box[3] + 10)]
+        return (min(c[0] for c in corners), min(c[1] for c in corners),
+                max(c[0] for c in corners), max(c[1] for c in corners))
+
+    def room(self, eid):
+        """The ground an element needs on its zone: its own, and its label's."""
+        i = self.items[eid]
+        parts = [(i["x"] - PAD, i["y"] - PAD, i["x"] + PAD, i["y"] + PAD)]
+        if eid in self.spots:
+            parts.append(self.on_ground(self.spots[eid], i["z"]))   # on the zone's top
+        return (min(p[0] for p in parts), min(p[1] for p in parts),
+                max(p[2] for p in parts), max(p[3] for p in parts))
+
+    def chain(self, eid):
+        """The boundaries an element is in, the innermost first."""
+        out, at = [], self.items[eid]["e"].get("parent")
+        while at:
+            out.append(at)
+            at = self.bounds[at].get("parent")
+        return out
+
+    def lane_room(self, bid):
+        """The ground the labels of lanes inside a boundary need on it."""
+        out = []
+        for lane in self.lanes:
+            if "box" not in lane:
+                continue
+            a, b = self.chain(lane["r"]["from"]), self.chain(lane["r"]["to"])
+            shared = next((k for k in a if k in b), None)
+            if shared == bid:
+                out.append(self.on_ground(lane["box"], self.depth(bid) * PLATE))
+        return out
+
     def place_zones(self):
-        """Each boundary's rectangle on the ground, from what it holds, inner ones first."""
+        """Each boundary's rectangle on the ground, from what it holds and the labels of
+        what it holds, inner ones first."""
         rects = {}
 
         def rect(bid):
             if bid in rects:
                 return rects[bid]
-            parts = [(i["x"] - PAD, i["y"] - PAD, i["x"] + PAD, i["y"] + PAD)
-                     for i in self.items.values() if i["e"].get("parent") == bid]
+            parts = [self.room(k) for k, i in self.items.items() if i["e"].get("parent") == bid]
+            parts += self.lane_room(bid)
             parts += [(a - NEST, b - NEST, c + NEST, d + NEST) for a, b, c, d in
                       (rect(k) for k, b in self.bounds.items() if b.get("parent") == bid)]
             rects[bid] = (min(p[0] for p in parts), min(p[1] for p in parts),
@@ -174,11 +228,10 @@ class Layout:
             d = self.depth(bid)
             out.append({"id": bid, "b": b, "at": rect(bid), "z": (d - 1) * PLATE, "depth": d,
                         "kind": b.get("kind") or self.held_kind(bid)})
-        for i in self.items.values():
+        for k, i in self.items.items():
             if self.focus(i["e"]):
-                x, y = i["x"], i["y"]
-                out.append({"id": None, "b": {}, "at": (x - PAD, y - PAD, x + PAD, y + PAD),
-                            "z": 0, "depth": 1, "kind": i["kind"]})
+                out.append({"id": None, "b": {}, "at": self.room(k), "z": 0, "depth": 1,
+                            "kind": i["kind"]})
         return sorted(out, key=lambda z: z["depth"])
 
     # Lanes ----------------------------------------------------------------------
@@ -257,60 +310,71 @@ class Layout:
         return out
 
     # Labels ---------------------------------------------------------------------
-    def block(self, head, subs, x, y, anchor):
-        """The page box of a label whose head sits at (x, y)."""
-        width = max([text_width(head.upper(), 12, 1.4)] + [text_width(s, 12) for s in subs])
-        left = x - width / 2 if anchor == "middle" else x - width if anchor == "end" else x
-        return left, y - 11, left + width, y + STEP * len(subs) + 4
+    def rows(self, head, subs, x, y, anchor):
+        """The page box of each line of a label whose head sits at (x, y): a line may
+        pass beside a short line of a label, where it would cut a long one."""
+        out = []
+        for k, (text, width) in enumerate([(head, text_width(head.upper(), 12, 1.4))] +
+                                          [(t, text_width(t, 12)) for t in subs]):
+            left = x - width / 2 if anchor == "middle" else x - width if anchor == "end" else x
+            base = y + STEP * k
+            out.append((left - 2, base - 11, left + width + 2, base + 4))
+        return out
 
-    def covers(self, box):
-        """How much a label covers objects and other words."""
-        # An object's box holds empty corners, so a small overlap is still clear.
-        return (sum(max(area(box, o) - SLACK, 0) for o in self.blocked)
-                + sum(10000 + area(box, o) for o in self.words if overlap(box, o, 2)))
-
-    def free(self, box, lanes=True):
-        cost = sum(area(box, o) + 1 for o in self.blocked if overlap(box, o))
-        # Words on words cannot be read at all: far worse than words on a picture.
-        cost += sum(10000 + area(box, o) for o in self.words if overlap(box, o))
-        for p, q in self.edges():
-            if crosses_box(p, q, box):
-                cost += 150
-        if lanes:
-            for lane in self.lanes:
-                pts = [page(*p) for p in lane["ground"]]
-                cost += sum(400 for p, q in pairwise(pts) if crosses_box(p, q, box))
-        return cost
-
-    def edges(self):
-        """The outline of each zone on the page: a label that crosses one is harder to read."""
-        if not hasattr(self, "_edges"):
-            self._edges = []
+    def lines(self):
+        """Every line on the page: the edges of each zone, and each lane with its number."""
+        if not hasattr(self, "_lines"):
+            out = []
             for z in self.zones:
                 x0, y0, x1, y1 = z["at"]
-                top = z["z"] + PLATE
-                ring = [page(x0, y0, top), page(x1, y0, top), page(x1, y1, top),
-                        page(x0, y1, top)]
-                self._edges += list(zip(ring, ring[1:] + ring[:1], strict=True))
-                self._edges += [(page(x1, y0, z["z"]), page(x1, y1, z["z"])),
-                                (page(x1, y1, z["z"]), page(x0, y1, z["z"]))]
-        return self._edges
+                lo, hi = z["z"], z["z"] + PLATE
+                a, b, c, d = (page(x0, y1, hi), page(x1, y1, hi), page(x1, y0, hi),
+                              page(x0, y0, hi))
+                a0, b0, c0 = page(x0, y1, lo), page(x1, y1, lo), page(x1, y0, lo)
+                for p, q in ((a, b), (b, c), (c, d), (d, a), (a, a0), (b, b0), (c, c0),
+                             (a0, b0), (b0, c0)):
+                    out.append((p, q, None))
+            for lane in self.lanes:
+                pts = [page(*p) for p in lane["ground"]]
+                out += [(p, q, lane["n"]) for p, q in pairwise(pts)]
+            self._lines = out
+        return self._lines
+
+    def crossings(self, box, own=None):
+        """How many lines cross the box, but for the lane it labels."""
+        return sum(1 for p, q, n in self.lines() if (own is None or n != own)
+                   and crosses_box(p, q, box))
+
+    def covers(self, rows, own=None):
+        """How much a label covers what it should not: objects, words, and lines."""
+        # An object's box holds empty corners, so a small overlap is still clear.
+        return sum(max(area(box, o) - SLACK, 0) for box in rows for o in self.blocked) + sum(
+            sum(10000 + area(box, o) for o in self.words if overlap(box, o, 2))
+            + 10000 * self.crossings(box, own) for box in rows)
+
+    def free(self, rows, own=None):
+        """The cost of a spot: words on words, or a line through words, cannot be read,
+        so they cost far more than words on the edge of a picture."""
+        return sum(sum(area(box, o) + 1 for o in self.blocked if overlap(box, o))
+                   + sum(10000 + area(box, o) for o in self.words if overlap(box, o))
+                   + 10000 * self.crossings(box, own) for box in rows)
 
     def place_label(self, head, subs, spots):
-        """Put a label at the first spot where it touches nothing, or the least bad one."""
+        """Put a label at the first spot where it touches nothing, or the least bad one.
+        Return the page box of the whole label."""
         best = None
         for x, y, anchor in spots:
-            box = self.block(head, subs, x, y, anchor)
-            cost = self.free(box)
-            if cost == 0:
-                best = (0, x, y, anchor, box)
-                break
+            rows = self.rows(head, subs, x, y, anchor)
+            cost = self.free(rows)
             if best is None or cost < best[0]:
-                best = (cost, x, y, anchor, box)
-        _, x, y, anchor, box = best
-        self.misses += self.covers(box)
-        self.words.append(box)
+                best = (cost, x, y, anchor, rows)
+            if cost == 0:
+                break
+        _, x, y, anchor, rows = best
+        self.misses += self.covers(rows)
+        self.words.extend(rows)
         self.labels.append({"head": head, "sub": subs, "page": (x, y), "anchor": anchor})
+        return box_of([(r[0], r[1]) for r in rows] + [(r[2], r[3]) for r in rows])
 
     def label_elements(self):
         for i in self.items.values():
@@ -319,13 +383,19 @@ class Layout:
             for part in (e.get("description") or "").split("\n"):
                 subs += balanced(part, WRAP)
             l, t, r, b = i["box"]
-            cx, cy = (l + r) / 2, (t + b) / 2
+            cx = (l + r) / 2
             h = STEP * len(subs)
-            self.place_label(e["name"], subs, [
-                (cx, b + 20, "middle"), (r + 14, cy - h / 2 + 4, "start"),
-                (l - 14, cy - h / 2 + 4, "end"), (cx, t - 10 - h, "middle"),
-                (r + 14, b - h, "start"), (l - 14, b - h, "end"),
-                (r + 14, t + 10, "start"), (l - 14, t + 10, "end")])
+            # Every spot keeps the name within NEAR of its part: beside it, under it,
+            # or over it, sliding along that side.
+            spots = [(cx + dx, b + 20, "middle") for dx in (0, -30, 30, -60, 60)]
+            for y in range(int(t + 10), int(b + NEAR), 12):
+                spots += [(r + 14, y, "start"), (l - 14, y, "end")]
+            spots += [(cx + dx, t - 10 - h, "middle") for dx in (0, -30, 30)
+                      if h <= NEAR]
+            if e["id"] in self.first:
+                spots.insert(0, self.first[e["id"]])   # the spot its zone grew to hold
+            self.spots[e["id"]] = self.place_label(e["name"], subs, spots)
+            self.first.setdefault(e["id"], self.labels[-1]["page"] + (self.labels[-1]["anchor"],))
 
     def label_zones(self):
         for z in self.zones:
@@ -338,14 +408,23 @@ class Layout:
             subs = [kind] if kind else []
             x0, y0, x1, y1 = z["at"]
             top = z["z"] + PLATE
+            h = STEP * len(subs)
+            spots = []
+            # On the zone, near its left corner, then along its back edges; then outside.
+            for k in range(7):
+                f = k / 6
+                p = page(x0 + 24, y1 - 30 - (y1 - y0 - 60) * f, top)
+                spots.append((p[0] + 6, p[1] - h - 4, "start"))
+                q = page(x0 + 30 + (x1 - x0 - 60) * f, y0 + 24, top)
+                spots.append((q[0], q[1] + 22, "middle"))
             left, back = page(x0, y1, top), page(x0, y0, top)
             right, front = page(x1, y0, top), page(x1, y1, top)
-            inner = page(x0 + 30, y1 - 30, top)
-            self.place_label(b["name"], subs, [
-                (inner[0] + 4, inner[1] - 8, "start"),
-                (left[0] - 14, left[1] - 6, "end"), (back[0], back[1] - 14 - STEP * len(subs),
-                                                     "middle"),
-                (right[0] + 14, right[1] - 6, "start"), (front[0], front[1] + 22, "middle")])
+            for dy in (0, -20, 20, -40):
+                spots += [(left[0] - 16, left[1] + dy, "end"), (right[0] + 16, right[1] + dy,
+                                                                "start")]
+            spots += [(back[0] + dx, back[1] - 14 - h, "middle") for dx in (0, -80, 80)]
+            spots += [(front[0] + dx, front[1] + 40, "middle") for dx in (0, -80, 80)]
+            self.place_label(b["name"], subs, spots)
 
     def place_pills(self):
         for lane in self.lanes:
@@ -359,21 +438,31 @@ class Layout:
             h = 20 + scene.PILL_STEP * (len(lines) - 1)
             pts = [page(*p) for p in lane["ground"]]
             best = None
-            for at in sorted((k / 50 for k in range(5, 46)), key=lambda t: abs(t - 0.5)):
+            tries = sorted((k / 50 for k in range(5, 46)), key=lambda t: abs(t - 0.5))
+            if "at" in lane:
+                tries.insert(0, lane["at"])   # where its zone grew to hold it
+            for at in tries:
                 px, py = scene.Scene.along(pts, at)
                 box = (px - w / 2, py - h / 2, px + w / 2, py + h / 2)
-                cost = self.free(box, lanes=False)
+                cost = self.free([box], own=lane["n"])
                 if best is None or cost < best[0]:
                     best = (cost, at, box)
                 if cost == 0:
                     break
             _, at, box = best
-            self.misses += self.covers(box)
+            self.misses += self.covers([box], own=lane["n"])
             self.words.append(box)
             lane.update(label=text, at=at, box=box)
 
     # The scene ------------------------------------------------------------------
     def scene(self):
+        # First the labels with no zones; then each zone grows to hold its parts and
+        # their labels, and the labels are placed again, now clear of every edge.
+        self.label_elements()
+        self.place_pills()
+        self.zones = self.place_zones()
+        self.words, self.labels, self.misses = [], [], 0.0
+        del self._lines
         self.label_elements()
         self.label_zones()
         self.place_pills()
@@ -410,7 +499,8 @@ class Layout:
                 entry["side"] = True
             out["lanes"].append(entry)
         for i in self.items.values():
-            o = {"type": i["object"], "at": [i["x"], i["y"]], "z": i["z"]}
+            o = {"type": i["object"], "at": [i["x"], i["y"]], "z": i["z"],
+                 "name": i["e"]["name"]}
             if i["object"] != "external":
                 o["kind"] = i["kind"]
             out["objects"].append(o)
@@ -432,6 +522,10 @@ class Layout:
 def to_scene(spec):
     """The C4 spec as a scene spec."""
     c4.check(spec)
+    for r in spec.get("relations", []):
+        if r.get("loop") or r["from"] == r["to"]:
+            raise ValueError(f"the relation {r['from']} -> {r['to']} is a loop, and an "
+                             "isometric drawing has no loops: draw it flat, or leave it out")
     # The tightest grid on which no label covers an object or another label.
     best = None
     for pitch in PITCHES:

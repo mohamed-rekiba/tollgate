@@ -73,7 +73,10 @@ The design follows C4 (c4model.com), drawn in Tollgate's style:
   for a node whose stereotype says cloud, and a server for any other node. At
   the context level the system the diagram is about stands on its own zone.
   "icon" floats over the object. A relation is a lane with dots that move; at
-  the dynamic level one dot follows the steps in order. "loop" is not drawn.
+  the dynamic level one dot follows the steps in order, and rests at the
+  first step's start when nothing moves. Each name sits next to its part, and
+  no lane and no edge of a zone runs through a label. A relation with "loop",
+  or from an element to itself, is refused: draw that diagram flat.
   Pick isometric for the big picture: a README, a talk, a first look. Pick
   flat for detail a reader studies.
 
