@@ -26,7 +26,8 @@ A scene spec:
      "lanes":   [{"path": [[x, y], [x, y]], "label": "the change", "at": 0.5,
                   "tone": "pass" | "fail", "side": true}],
      "objects": [{"type": "room" | "gate" | "server" | "vault" | "papers" | "laptop" |
-                          "board" | "house" | "database" | "pedestal" | "aws" | "wall",
+                          "board" | "house" | "database" | "pedestal" | "aws" | "wall" |
+                          "person" | "external",
                   "at": [x, y], "kind": "server", ...}],
      "labels":  [{"at": [x, y, z], "head": "Main", "sub": ["line", "line"],
                   "anchor": "start" | "middle" | "end",
@@ -40,6 +41,10 @@ A scene spec:
 Ground units: x runs down-right on the page, y runs down-left, z runs up.
 "gate" takes "arm_to" (where the barrier ends) and "axis" ("x" or "y");
 "pedestal" takes "icon"; "aws" takes "aws" (a service name); "wall" takes "to".
+"person" is someone who uses the system, in the color of its kind. "external" is
+a system that is not ours: a gray building, gray whatever its kind, with an
+optional "size". A person, your system in a zone, and external systems around
+it, with lanes for what flows, draw a C4 system context as a scene.
 "lift" names the ticket leg during which the gate's barrier is up.
 
 A label with "pin" is tied to its part: a flat ring on the point "pin" names,

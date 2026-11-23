@@ -77,7 +77,8 @@ A UML state machine: the states one thing is in, and the events that move it. Se
 
 An isometric picture: zones on the ground, objects on them, lanes with moving dots between them, and labels. Set `"type": "scene"`. The format is at the top of `$TG/diagram/__init__.py`.
 
-- Objects: `room` (a glass room with a worker inside), `gate` (a booth with a barrier), `server`, `database`, `vault` (a locked box), `papers`, `laptop`, `board` (a chart), `house`, `wall`, `pedestal` (a stand with any icon), `aws` (an AWS icon on a stand).
+- Objects: `room` (a glass room with a worker inside), `gate` (a booth with a barrier), `server`, `database`, `vault` (a locked box), `papers`, `laptop`, `board` (a chart), `house`, `wall`, `pedestal` (a stand with any icon), `aws` (an AWS icon on a stand), `person` (someone who uses the system, in the color of its kind), `external` (a system that is not ours: a gray building, gray whatever its kind).
+- A C4 system context as a scene: a `person` for each user, your system on its own zone in the middle, an `external` for each outside system, and a lane with a label for what flows between each pair.
 - Ground units: x runs down-right on the page, y runs down-left. Put things that happen first on the left.
 - Put each label beside its object, never over another object or label.
 - A `ticket` travels the lanes; `lift` names the leg during which a gate opens.
