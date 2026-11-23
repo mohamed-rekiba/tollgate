@@ -284,6 +284,48 @@ class Scene:
         self.out.append(aws.place(aws.service(name, prefix=f"s{self.ids}"), px - size / 2,
                                   py - size / 2, size))
 
+    def person(self, x, y, kind="you"):
+        """A person on a small round base: someone who uses the system."""
+        stroke, top, left, right = self.faces(kind)
+        cx, cy = self.iso(x, y, 0)
+        rx, ry = 30 * 1.2247 * self.s, 30 * 0.7071 * self.s
+        _, cy1 = self.iso(x, y, 6)
+        self.out.append(f'<path d="M{cx - rx:.1f},{cy1:.1f} V{cy:.1f} A{rx:.1f},{ry:.1f} 0 0 0 '
+                        f'{cx + rx:.1f},{cy:.1f} V{cy1:.1f} Z" fill="{left}" stroke="{stroke}" '
+                        f'stroke-width="1.3"/>')
+        self.out.append(f'<ellipse cx="{cx:.1f}" cy="{cy1:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
+                        f'fill="{top}" stroke="{stroke}" stroke-width="1.3"/>')
+        self.prism(x - 7, y - 13, x + 7, y - 2, 6, 40, kind)    # the legs
+        self.prism(x - 7, y + 2, x + 7, y + 13, 6, 40, kind)
+        self.prism(x - 9, y - 17, x + 9, y + 17, 40, 78, kind)  # the body
+        hx, hy = self.iso(x, y, 96)
+        r = 15 * self.s
+        self.out.append(f'<circle cx="{hx:.1f}" cy="{hy:.1f}" r="{r:.1f}" fill="{right}" '
+                        f'stroke="{stroke}" stroke-width="1.3"/>')
+        self.out.append(f'<circle cx="{hx - r * 0.3:.1f}" cy="{hy - r * 0.3:.1f}" '
+                        f'r="{r * 0.55:.1f}" fill="{top}"/>')
+
+    def external(self, x, y, size=90):
+        """A gray building with rows of windows: a system that is not ours. Always
+        gray, whatever the kind, the way C4 draws an external system."""
+        stroke = self.faces("neutral")[0]
+        h, tall = size / 2, size * 1.1
+        self.prism(x - h, y - h, x + h, y + h, 0, tall, "neutral")
+        self.prism(x - h - 4, y - h - 4, x + h + 4, y + h + 4, tall, tall + 6, "neutral")
+        rows = int((tall - 24) // 22)
+        for k in range(rows):
+            z0 = 14 + k * 22
+            for n in range(3):
+                d0 = -h + 10 + n * (size - 20) / 3
+                d1 = d0 + (size - 20) / 3 - 8
+                for face in ([(x + d0, y + h), (x + d1, y + h)],     # the left face
+                             [(x + h, y - d0), (x + h, y - d1)]):    # the right face
+                    (ax, ay), (bx, by) = face
+                    p = [self.iso(ax, ay, z0), self.iso(bx, by, z0),
+                         self.iso(bx, by, z0 + 12), self.iso(ax, ay, z0 + 12)]
+                    self.out.append(f'<polygon points="{self.pts(p)}" fill="{stroke}" '
+                                    f'fill-opacity="0.45"/>')
+
     def wall(self, x0, y0, x1, y1, h=46, kind="neutral"):
         self.prism(x0, y0, x1, y1, 8, h, kind)
 
@@ -539,7 +581,7 @@ class Scene:
 
 
 OBJECTS = ("room", "gate", "server", "vault", "papers", "laptop", "board", "house",
-           "database", "pedestal", "wall", "aws")
+           "database", "pedestal", "wall", "aws", "person", "external")
 
 # Callouts ---------------------------------------------------------------------
 # A callout is a numbered label in a column beside the scene, with a dotted
@@ -689,6 +731,20 @@ def bottom_width(c):
     return 2 * BADGE + 12 + len(c["head"]) * HEAD_CHAR + 14 + len(c["line"]) * LINE_CHAR
 
 
+def check_object(o):
+    """Refuse an object that cannot be drawn, with a message that says how to fix it."""
+    kinds = set(THEMES["light"]["kinds"])
+    name = f"the {o.get('type', 'object')} object"
+    at = o.get("at")
+    if not isinstance(at, list) or len(at) < 2:
+        raise ValueError(f"{name} needs 'at': the [x, y] point it stands on")
+    if o.get("kind", "neutral") not in kinds:
+        raise ValueError(f"{name}: kind must be one of {', '.join(sorted(kinds))}")
+    size = o.get("size", 1)
+    if isinstance(size, bool) or not isinstance(size, int | float) or size <= 0:
+        raise ValueError(f"{name}: size must be a number above 0")
+
+
 def from_spec(spec: dict, theme: str) -> str:
     """Draw a scene from a spec. See the format in diagram/__init__.py."""
     for key in ("title", "desc"):
@@ -717,6 +773,8 @@ def from_spec(spec: dict, theme: str) -> str:
     for lane in spec.get("lanes", []):
         s.lane([tuple(p) for p in lane["path"]], lane.get("label"), lane.get("at", 0.5),
                lane.get("tone"), lane.get("side", False))
+    for o in spec.get("objects", []):
+        check_object(o)
     # Objects from back to front, so nearer ones cover farther ones.
     for o in sorted(spec.get("objects", []), key=lambda o: o["at"][0] + o["at"][1]):
         x, y = o["at"][:2]
@@ -744,6 +802,10 @@ def from_spec(spec: dict, theme: str) -> str:
             s.pedestal(x, y, kind or "neutral", o.get("icon"))
         elif what == "aws":
             s.pedestal(x, y, kind or "neutral", aws_name=o["aws"])
+        elif what == "person":
+            s.person(x, y, kind or "you")
+        elif what == "external":
+            s.external(x, y, o.get("size", 90))
         elif what == "wall":
             x1, y1 = o["to"]
             s.wall(x, y, x1, y1, o.get("height", 46), kind or "neutral")

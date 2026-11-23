@@ -73,6 +73,36 @@ class SceneTest(unittest.TestCase):
             draw(spec, "light")
         self.assertIn("room", str(err.exception))
 
+    def test_a_person_stands_in_the_color_of_its_kind(self):
+        for theme in ("light", "dark"):
+            for kind in ("you", "check"):
+                spec = {"type": "scene", "title": "t", "desc": "d",
+                        "objects": [{"type": "person", "at": [0, 0], "kind": kind}]}
+                with self.subTest(theme=theme, kind=kind):
+                    svg = draw(spec, theme)
+                    self.assertIn(flow.THEMES[theme]["kinds"][kind][0], svg)
+
+    def test_an_external_system_is_gray_whatever_its_kind(self):
+        for theme in ("light", "dark"):
+            kinds = flow.THEMES[theme]["kinds"]
+            spec = {"type": "scene", "title": "t", "desc": "d",
+                    "objects": [{"type": "external", "at": [0, 0], "kind": "you"}]}
+            with self.subTest(theme=theme):
+                svg = draw(spec, theme)
+                self.assertIn(kinds["neutral"][0], svg)
+                self.assertNotIn(kinds["you"][0], svg, "not ours: never in a kind's color")
+
+    def test_a_bad_person_or_external_field_says_how_to_fix_it(self):
+        cases = [({"type": "person", "at": [0, 0], "kind": "boss"}, "kind must be one of"),
+                 ({"type": "person"}, "needs 'at'"),
+                 ({"type": "external", "at": [0]}, "needs 'at'"),
+                 ({"type": "external", "at": [0, 0], "size": "big"}, "size must be a number")]
+        for o, message in cases:
+            spec = {"type": "scene", "title": "t", "desc": "d", "objects": [o]}
+            with self.subTest(o=o), self.assertRaises(ValueError) as err:
+                draw(spec, "light")
+            self.assertIn(message, str(err.exception))
+
 
 def callout_spec(callouts, size=(600, 400)):
     return {"type": "scene", "title": "t", "desc": "d", "size": list(size),
