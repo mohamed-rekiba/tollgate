@@ -466,10 +466,11 @@ class Task:
                 self.caller = session.caller(self.settings, self.runner)
                 if self.runner is None:
                     self.runner = self.settings["runner"]
-                if isinstance(self.caller, session.Session):
+                in_session = isinstance(self.caller, session.Session)
+                if in_session:
                     # Session mode replays the step it stopped in: log each event once.
-                    self.log.replay()
-                if not (self.log.replaying() and events):
+                    self.log.hold_while(lambda: session.replaying(self.project))
+                if not (in_session and events):
                     self.log.add("started")
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
@@ -501,15 +502,15 @@ class Task:
                     if self.review_task():
                         self.merge_ready()
                         break
+                session.end_replay(self.project)
                 path = report.write(self.project, self.id)
                 self.log.add("reported", path=path, tickets=done)
                 return 0 if all(c == 0 for c in done.values()) else 3
         except session.Pause:
             return 5
         except Parked as parked:
+            session.end_replay(self.project)
             with Log(self.log_path, task=self.id) as log:
-                if self.runner == "session":
-                    log.replay()
                 log.add("task_waiting", reason=str(parked))
             report.write(self.project, self.id)
             return 3

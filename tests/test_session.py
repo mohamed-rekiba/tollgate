@@ -381,12 +381,13 @@ class StepTest(Case):
         self.fail(f"the task did not end: {out}")
 
     @staticmethod
-    def style_check(times="BADSTYLE"):
-        """A writing check that fails, naming the new test file, while it holds the mark."""
+    def style_check():
+        """A writing check that fails, naming the new test file, while it holds the mark.
+        Its output also holds the time, so it differs on each run."""
         py = sys.executable
-        bad = (f"{py} -c \"import sys,pathlib;p=pathlib.Path('tests/test_t1.py');"
-               f"b=p.exists() and '{times}' in p.read_text();"
-               "print('tests/test_t1.py:9: bad style'*b);sys.exit(b)\"")
+        bad = (f"{py} -c \"import sys,time,pathlib;p=pathlib.Path('tests/test_t1.py');"
+               "b=p.exists() and 'BADSTYLE' in p.read_text();"
+               "print(time.time());print('tests/test_t1.py:9: bad style'*b);sys.exit(b)\"")
         return {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
                 "writing": {"run": bad}}
 
@@ -463,6 +464,22 @@ class StepTest(Case):
         out = self.run_task(s, store, "pass2 tw_bad=hint", decide=lambda q: "park")
         self.assertIn("demo-1: a person chose park", out["parked"])
         self.assertNotIn("question 1", out["parked"])
+
+    def test_a_run_that_no_longer_reaches_its_saved_answer_still_logs_what_is_new(self):
+        s, store = self.task_sample()
+        _, out = self.next(s, store)                       # the analyst
+        _, out = self.answer(s, store, out, fake_answer(out))
+        self.assertEqual(out["agent"], "tollgate:builder")  # the plan
+        # The request changes, so the plan's question has a new key: the step it paused
+        # at is never reached again.
+        Path(s.project, ".tollgate/requests/demo.md").write_text("Add shout and whisper, now.\n")
+        out = self.run_task(s, store)
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("analysis_written"), 1)
+        self.assertEqual(events.count("plan_written"), 1)
+        self.assertEqual(events.count("plan_reviewed"), 3)
+        self.assertIn("plan_locked", events)
 
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):

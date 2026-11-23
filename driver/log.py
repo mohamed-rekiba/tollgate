@@ -1,12 +1,7 @@
 """The log: one JSON line for each event, one writer for each file.
 
-In session mode each `driver.step next` runs the driver again from where its log
-says it stands, and the part of the step it repeats, up to the role that just
-answered, logs the same events again. A log in replay mode writes none of them:
-it holds each event back while the events of this run match the end of the log,
-and drops them once they reach it. The first event that does not match ends the
-replay, and from then on each event is written. Only what really happened is in
-the log, so whatever counts its events counts each one once.
+A log in session mode is quiet while the run replays what an earlier run of
+`driver.step next` already logged: see driver/session.py.
 """
 
 import fcntl
@@ -36,43 +31,22 @@ class Log:
         except BlockingIOError:
             self._file.close()
             raise LogBusy(f"another writer holds {path}") from None
-        self._prior = None      # in replay mode: the events already logged, without "at"
-        self._held = []
+        self.quiet = None
 
-    def replay(self) -> None:
-        """Replay mode: an event this run repeats from the end of the log is not written."""
-        self._prior = [_bare(e) for e in read(self.path)]
-        self._held = []
-
-    def replaying(self) -> bool:
-        return self._prior is not None
+    def hold_while(self, quiet) -> None:
+        """Session mode: write no event while quiet() is true, the replay of a step."""
+        self.quiet = quiet
 
     def add(self, event: str, **fields) -> dict:
         line = {"at": now(), **self.fixed, "event": event, **fields}
-        if self._prior is None:
-            self._write(line)
+        if self.quiet is not None and self.quiet():
             return line
-        held = [*self._held, line]
-        bare = [_bare(json.loads(json.dumps(e))) for e in held]
-        n, prior = len(bare), self._prior
-        if prior[len(prior) - n:] == bare:
-            # The run has caught up with the end of the log: every event after this is new.
-            self._prior, self._held = None, []
-        elif any(prior[p:p + n] == bare for p in range(len(prior) - n)):
-            self._held = held
-        else:
-            self._prior, self._held = None, []
-            for e in held:
-                self._write(e)
-        return line
-
-    def _write(self, line: dict) -> None:
         self._file.write(json.dumps(line, sort_keys=False) + "\n")
         self._file.flush()
         os.fsync(self._file.fileno())
+        return line
 
     def close(self):
-        # Events still held back match events already in the log, so they are not written.
         if not self._file.closed:
             fcntl.flock(self._file, fcntl.LOCK_UN)
             self._file.close()
@@ -82,10 +56,6 @@ class Log:
 
     def __exit__(self, *exc):
         self.close()
-
-
-def _bare(event: dict) -> dict:
-    return {k: v for k, v in event.items() if k != "at"}
 
 
 def read(path: str) -> list:

@@ -606,10 +606,11 @@ class Driver:
                     path.write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
                 self.caller = self.caller or session.caller(self.settings, self.runner)
-                if isinstance(self.caller, session.Session):
+                in_session = isinstance(self.caller, session.Session)
+                if in_session:
                     # Session mode replays the step it stopped in: log each event once.
-                    self.log.replay()
-                if not (self.log.replaying() and st_.state != "not started"):
+                    self.log.hold_while(lambda: session.replaying(self.project))
+                if not (in_session and st_.state != "not started"):
                     self.log.add("started", attempts_done=st_.attempts)
                 question = advisor.pending(self.log_path)
                 if question:

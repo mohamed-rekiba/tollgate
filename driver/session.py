@@ -22,6 +22,13 @@ A role that writes, the builder or the test writer, leaves its work in the
 copy. Its answer saves that work as a commit on refs/tollgate/answers/<key> in
 the copy, and a replay puts the work back, because each try starts again from
 the best try so far.
+
+A run replays the step it stopped in, and each event of that part was logged by
+the run before, which went at least as far. So when a run pauses, it notes the
+key of the role it paused at in run/replay. The next run's logs write nothing
+until the run reaches that role again: once it gets that role's answer, or
+pauses at any role with no saved answer, it writes each event, whatever the
+event holds. A task that ends without a pause clears the note.
 """
 
 import hashlib
@@ -75,6 +82,30 @@ def key(role: str, lens: str | None, inputs: dict) -> str:
     """The name of one question to a role: the same role, lens, and inputs give the same key."""
     data = json.dumps([role, lens or "", inputs], sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(data.encode()).hexdigest()
+
+
+def replay_path(project: str) -> Path:
+    return state.path(project, "run", "replay")
+
+
+def replaying(project: str) -> bool:
+    """True while this run replays what the run before it already logged."""
+    return replay_path(project).exists()
+
+
+def end_replay(project: str) -> None:
+    replay_path(project).unlink(missing_ok=True)
+
+
+def _mark_replay(project: str, found_key: str) -> None:
+    replay_path(project).write_text(found_key + "\n")
+
+
+def _replay_key(project: str) -> str:
+    try:
+        return replay_path(project).read_text().strip()
+    except OSError:
+        return ""
 
 
 def step_path(project: str) -> Path:
@@ -232,6 +263,8 @@ class Session:
         found_key = key(call.role, call.lens, call.inputs)
         found = saved(call.project, call.log, found_key)
         if found and (not found.get("work") or restore_work(call.copy, found["work"])):
+            if found_key == _replay_key(call.project):
+                end_replay(call.project)    # the run is where the run before it paused
             text = found["text"]
             return roles.Answer(roles.last_block(text), None, float(found.get("seconds") or 0),
                                 text)
@@ -241,6 +274,7 @@ class Session:
                 "log": call.log, "ticket": call.ticket, "task": call.task,
                 "asked_at": time.time()}
         _write_step(call.project, step)
+        _mark_replay(call.project, found_key)
         raise Pause(step)
 
 
