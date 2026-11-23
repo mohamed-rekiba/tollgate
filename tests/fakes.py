@@ -47,9 +47,19 @@ There is no shout.
 shout returns the greeting in capitals.
 
 ## Checklist
-- [C1, must] shout("ann") returns "HELLO ANN".
+- [C1, must, happy] shout("ann") returns "HELLO ANN".
 - [C2, must, keeps behavior] greet("ann") still returns "hello ann".
-- [C3] shout has a docstring.
+- [C3, error] shout has a docstring that says what an empty name gives.
+
+## Not covered
+- edge: the input is one fixed name.
+- boundary: the input has no limit.
+- regression: no bug is fixed.
+- integration: the change stays in one module.
+- e2e: there is no screen.
+- security: the change reads nothing from a user.
+- performance: no time limit is asked for.
+- concurrency: nothing runs at the same time.
 
 ## Out of scope
 Other languages.

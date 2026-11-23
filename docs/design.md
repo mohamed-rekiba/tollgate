@@ -53,7 +53,7 @@ When the first review of the whole task finds a blocking or major problem, the t
 ### The steps
 
 1. The test writer writes one test at a seam for each must-have item, in the builder's copy.
-2. A reviewer confirms three things for each test: it fits its item, it can fail, and its expected result does not come from the code it tests.
+2. A reviewer confirms four things for each test: it fits its item, it can fail, its expected result does not come from the code it tests, and it is the kind of test its item is marked with.
 3. The driver fetches the ticket and its tests into the branch `tg/<ticket id>` of your project. The store locks them: it runs the tests once in a clean clone with main's harness, confirms that none passes yet, and signs the lock.
 4. The builder builds in its copy, from the best try so far. It writes its own smaller tests as it goes.
 5. The driver puts back main's harness and the locked files, runs the checks, and runs the gate. If a locked test or a check fails, the findings go to the builder and step 4 repeats.
@@ -201,15 +201,15 @@ Every reviewer is the same role with a different lens. The analyst, a separate r
 | --- | --- | --- | --- |
 | Simplicity | The whole plan and the analysis | Plan review | Is this needed? Does the code already have it? Is anything built for a need nobody has? Does it fit the architecture the analysis found? |
 | Fresh reader | The plan alone | Plan review | It writes in its own words what the plan proposes. A part it cannot restate is a blocking finding. |
-| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? |
-| Test fit | A ticket and its tests | Before the lock | The three points in step 2. |
+| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? Is each reason under Not covered true? |
+| Test fit | A ticket and its tests | Before the lock | The four points in step 2. |
 | Checklist | A ticket and the change | Step 6, every tier | Each item with no test. |
 | Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity. |
 | Security | The change | Step 6, tier 3 and 4 | Ways to misuse the change. |
 
 ### Plan review
 
-The builder writes the plan, with its tickets, checklists, and must-have marks. The first three lenses read it in each round. The builder answers each finding in one of three ways:
+The builder writes the plan, with its tickets, checklists, must-have marks, and kinds of test. The first three lenses read it in each round. The builder answers each finding in one of three ways:
 
 - **Fix.** The finding is right.
 - **Contest.** The finding is wrong, and the builder points to evidence that the reviewer could read.
@@ -440,16 +440,32 @@ A failed delivery is dropped.
 A failed delivery is tried again up to 5 times, with a longer wait each time.
 
 ## Checklist
-- [C1, must] A delivery that fails twice and then succeeds is marked delivered.
-- [C2, must] A delivery that fails 5 times is marked failed.
-- [C3, must, keeps behavior] A delivery that succeeds at once is sent one time.
-- [C4] The wait between tries is written to the log.
+- [C1, must, happy] A delivery that fails twice and then succeeds is marked delivered.
+- [C2, must, error] A delivery that fails 5 times is marked failed.
+- [C3, must, keeps behavior, regression] A delivery that succeeds at once is sent one time.
+- [C4, boundary] A delivery that fails 4 times and then succeeds is marked delivered.
+- [C5, concurrency] 2 deliveries to one address at the same time are each sent one time.
+
+## Not covered
+- edge: a delivery has no input that can be empty.
+- integration: C1 already goes through the web address and the queue.
+- e2e: there is no screen.
+- security: the change reads nothing new from a sender.
+- performance: no time limit is asked for.
 
 ## Out of scope
 A screen to retry by hand.
 ```
 
-A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`.
+A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`. The optional header key `fixes` names the bug that the ticket fixes, in one line.
+
+A checklist has 3 to 10 items. Each item may carry one kind of test: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, or `concurrency`. The gate works out from the marks which kinds the ticket covers:
+
+- Each of the 10 kinds is marked on an item, or listed under the optional section Not covered, one line for each kind: `- <kind>: <reason>`. The reason cannot be empty. A kind cannot be both.
+- A ticket with an item that is not `keeps behavior` needs a `happy` item and an `error` item. A ticket with `fixes` needs a `regression` item. These kinds cannot go under Not covered.
+- The text of a `performance` or `concurrency` item holds a number, such as a time, a count, or a size, so that a test can fail.
+
+A ticket that marks no kind fails, and the message says what to add.
 
 ### A lock
 
@@ -563,6 +579,9 @@ These rules live in the role files and the lens files. Each rule names what enfo
 | --- | --- |
 | It can be shown working alone. It goes through every layer that it needs. | Readiness lens |
 | It states current behavior, desired behavior, a checklist, and what is out of scope. | `gate/tickets.py` |
+| Each kind of test is marked on an item, or listed under Not covered with a reason. | `gate/tickets.py` |
+| It has a `happy` and an `error` item, unless every item keeps behavior, and a `regression` item when it has `fixes`. | `gate/tickets.py` |
+| A `performance` or `concurrency` item names a number that a test can check. | `gate/tickets.py` |
 | Each must-have item has a locked test. | The store, when it locks the tests |
 | Each item names a result that someone can observe. | Test fit lens |
 | A change that prepares the way is its own ticket and goes first. | Readiness lens |

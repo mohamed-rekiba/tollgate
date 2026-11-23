@@ -111,8 +111,8 @@ class TicketsTest(unittest.TestCase):
         self.assertEqual(t.tests, ["tests/test_t1.py"])
 
     def test_needs_three_items(self):
-        short = TICKET.replace("- [C3] The wait between tries is written to the log.\n", "")
-        with self.assertRaisesRegex(tickets.TicketError, "3 to 7 items"):
+        short = TICKET.replace("- [C3, error] A delivery that fails 5 times is marked failed.\n", "")
+        with self.assertRaisesRegex(tickets.TicketError, "3 to 10 items"):
             tickets.parse(short)
 
     def test_needs_a_must_have_item(self):
@@ -126,8 +126,103 @@ class TicketsTest(unittest.TestCase):
             tickets.parse(text)
 
     def test_a_long_broken_mark_list_is_refused_quickly(self):
-        text = TICKET.replace("- [C3] ", "- [C3," + " ," * 40 + " ")
+        text = TICKET.replace("- [C3, error] ", "- [C3," + " ," * 40 + " ")
         with within(2), self.assertRaisesRegex(tickets.TicketError, "must look like"):
+            tickets.parse(text)
+
+    def test_reads_kinds_and_not_covered(self):
+        t = tickets.parse(TICKET)
+        self.assertEqual([i.kind for i in t.items], ["happy", "regression", "error"])
+        self.assertEqual(t.not_covered["e2e"], "there is no screen.")
+        self.assertEqual(t.fixes, "")
+
+    def test_two_kinds_on_one_item_are_refused(self):
+        text = TICKET.replace("C1, must, happy", "C1, must, happy, edge")
+        with self.assertRaisesRegex(tickets.TicketError, "C1 has two kinds"):
+            tickets.parse(text)
+
+    def test_an_unknown_mark_is_refused(self):
+        text = TICKET.replace("C1, must, happy", "C1, must, quick")
+        with self.assertRaisesRegex(tickets.TicketError, "unknown mark on C1: quick"):
+            tickets.parse(text)
+
+    def test_each_kind_is_marked_or_not_covered(self):
+        text = TICKET.replace("- concurrency: one delivery runs at a time.\n", "")
+        with self.assertRaisesRegex(tickets.TicketError, "concurrency"):
+            tickets.parse(text)
+
+    def test_a_kind_marked_and_not_covered_is_refused(self):
+        text = TICKET.replace("- e2e: there is no screen.", "- e2e: no screen.\n- error: none.")
+        with self.assertRaisesRegex(tickets.TicketError, "error is marked on an item"):
+            tickets.parse(text)
+
+    def test_an_unknown_kind_under_not_covered_is_refused(self):
+        text = TICKET.replace("- e2e: there is no screen.", "- e2e: no screen.\n- smoke: none.")
+        with self.assertRaisesRegex(tickets.TicketError, "unknown kind under Not covered: smoke"):
+            tickets.parse(text)
+
+    def test_not_covered_needs_a_reason(self):
+        text = TICKET.replace("- e2e: there is no screen.", "- e2e:")
+        with self.assertRaisesRegex(tickets.TicketError, "e2e under Not covered needs a reason"):
+            tickets.parse(text)
+
+    def test_happy_and_error_cannot_be_not_covered(self):
+        text = (TICKET.replace("C3, error", "C3, edge")
+                .replace("- edge: a delivery has no input of its own.", "- error: no failure."))
+        with self.assertRaisesRegex(tickets.TicketError, "needs an error item"):
+            tickets.parse(text)
+        text = (TICKET.replace("C1, must, happy", "C1, must, edge")
+                .replace("- edge: a delivery has no input of its own.", "- happy: none."))
+        with self.assertRaisesRegex(tickets.TicketError, "needs a happy item"):
+            tickets.parse(text)
+
+    def test_a_ticket_that_only_keeps_behavior_needs_no_happy_or_error(self):
+        text = (TICKET.replace("C1, must, happy", "C1, must, keeps behavior, edge")
+                .replace("C3, error", "C3, must, keeps behavior, boundary")
+                .replace("- edge: a delivery has no input of its own.", "- happy: no new behavior.")
+                .replace("- boundary: the only limit, 5 tries, is in C3.", "- error: no new failure."))
+        self.assertEqual(tickets.parse(text).item("C3").kind, "boundary")
+
+    def test_a_fix_needs_a_regression_item(self):
+        fixes = TICKET.replace("tests: tests/test_t1.py", "tests: tests/test_t1.py\nfixes: a dropped delivery")
+        self.assertEqual(tickets.parse(fixes).fixes, "a dropped delivery")
+        text = (fixes.replace("C2, must, keeps behavior, regression", "C2, must, keeps behavior")
+                .replace("- e2e: there is no screen.", "- e2e: no screen.\n- regression: none."))
+        with self.assertRaisesRegex(tickets.TicketError, "needs a regression item"):
+            tickets.parse(text)
+
+    def test_a_performance_item_names_a_number(self):
+        text = (TICKET.replace("C3, error] A delivery that fails 5 times is marked failed.",
+                               "C3, performance] A delivery is sent within 2 seconds.\n"
+                               "- [C4, error] A delivery that fails 5 times is marked failed.")
+                .replace("- performance: no time limit is asked for.\n", ""))
+        self.assertEqual(tickets.parse(text).item("C3").kind, "performance")
+        with self.assertRaisesRegex(tickets.TicketError, "C3 is a performance item"):
+            tickets.parse(text.replace("within 2 seconds", "quickly"))
+
+    def test_a_concurrency_item_names_a_number(self):
+        text = (TICKET.replace("C3, error] A delivery that fails 5 times is marked failed.",
+                               "C3, concurrency] 2 deliveries at once are each sent one time.\n"
+                               "- [C4, error] A delivery that fails 5 times is marked failed.")
+                .replace("- concurrency: one delivery runs at a time.\n", ""))
+        self.assertEqual(tickets.parse(text).item("C3").kind, "concurrency")
+        with self.assertRaisesRegex(tickets.TicketError, "C3 is a concurrency item"):
+            tickets.parse(text.replace("2 deliveries", "Many deliveries"))
+
+    def test_the_checklist_holds_up_to_ten_items(self):
+        extra = "".join(f"- [C{n}] Line {n} is written to the log.\n" for n in range(4, 11))
+        text = TICKET.replace("## Not covered", extra + "\n## Not covered", 1)
+        self.assertEqual(len(tickets.parse(text).items), 10)
+        text = text.replace("## Not covered", "- [C11] One more line.\n\n## Not covered", 1)
+        with self.assertRaisesRegex(tickets.TicketError, "3 to 10 items, not 11"):
+            tickets.parse(text)
+
+    def test_an_old_ticket_with_no_kinds_names_what_to_add(self):
+        text = (TICKET.replace(", happy]", "]").replace(", regression]", "]").replace(", error]", "]")
+                .split("## Not covered")[0] + "## Out of scope\nNothing.\n")
+        with self.assertRaisesRegex(tickets.TicketError,
+                                    r"marks no kinds of test: mark items such as \[C1, must, happy\]"
+                                    r" and list kinds that do not apply under ## Not covered"):
             tickets.parse(text)
 
     def test_item_of_test(self):

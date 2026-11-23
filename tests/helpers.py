@@ -20,9 +20,18 @@ A failed delivery is dropped.
 A failed delivery is tried again.
 
 ## Checklist
-- [C1, must] A delivery that fails twice and then succeeds is marked delivered.
-- [C2, must, keeps behavior] A delivery that succeeds at once is sent one time.
-- [C3] The wait between tries is written to the log.
+- [C1, must, happy] A delivery that fails twice and then succeeds is marked delivered.
+- [C2, must, keeps behavior, regression] A delivery that succeeds at once is sent one time.
+- [C3, error] A delivery that fails 5 times is marked failed.
+
+## Not covered
+- edge: a delivery has no input of its own.
+- boundary: the only limit, 5 tries, is in C3.
+- integration: the change stays in one module.
+- e2e: there is no screen.
+- security: the change reads nothing from a user.
+- performance: no time limit is asked for.
+- concurrency: one delivery runs at a time.
 
 ## Out of scope
 A screen to retry by hand.

@@ -79,7 +79,8 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- `gate/tickets.py` reads the ticket. A checklist line looks like `- [C1, must] text`.
+- `gate/tickets.py` reads the ticket. A checklist line looks like `- [C1, must, happy] text`: the item id, the marks that apply, and one kind of test.
+- Each kind of test is marked on an item, or listed under Not covered with a reason. Every ticket that changes behavior has a `happy` item and an `error` item.
 - Each must-have item gets a locked test. The gate fails a try when a locked test fails, so no score makes up for a failed must-have item.
 
 **Where it stops.** A checklist can miss what you meant. Only the plan review and you catch that.
@@ -94,7 +95,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- A reviewer checks the tests through the test fit lens: each fits its item, can fail, and does not take its expected result from the code it tests. The driver sends rejected tests back to the test writer, at most 2 times.
+- A reviewer checks the tests through the test fit lens: each fits its item, can fail, does not take its expected result from the code it tests, and is the kind of test its item is marked with. The driver sends rejected tests back to the test writer, at most 2 times.
 - `Store.freeze` runs the tests once in a clean clone, with main's harness. None may pass yet, except an item marked `keeps behavior`. A test must name its item, such as `test_c1_...`.
 - The store writes the lock, `locks/<ticket>.json`, with each locked file and its fingerprint and each locked test, and signs it with the machine key.
 - The gate fails any try that changes a locked file, or in which a locked test did not run, was skipped, or failed.
