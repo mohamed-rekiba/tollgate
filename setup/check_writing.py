@@ -36,6 +36,7 @@ line for each finding: the file and line, then what to change.
 
 import ast
 import io
+import json
 import os
 import re
 import subprocess
@@ -227,6 +228,58 @@ def added_comments(root: Path, base: str, staged: bool = False) -> dict:
     return files
 
 
+# The keys of a diagram spec that hold words a person reads in the picture. Ids,
+# references, settings, and the field names of a class diagram are not words.
+DRAWN = ("title", "desc", "text", "name", "label", "description", "tech", "sub", "head",
+         "caption", "event", "guard", "note", "tag", "stereotype", "line", "system", "roles")
+_STR = r'"(?:[^"\\]|\\.)*"'
+# "key": "words", or "key": ["words", "words"]; an array of objects is read key by key.
+DRAWN_VALUE = re.compile(rf'"(\w+)"\s*:\s*({_STR}|\[\s*{_STR}(?:\s*,\s*{_STR})*\s*\])')
+
+
+def is_diagram_spec(name: str, text: str) -> bool:
+    """A diagram spec: a JSON object in a src folder with a title, a description, and a
+    diagram type or a flow's nodes."""
+    if not name.endswith(".json") or "/src/" not in f"/{name}":
+        return False
+    try:
+        spec = json.loads(text)
+    except json.JSONDecodeError:
+        return False
+    return (isinstance(spec, dict) and "title" in spec and "desc" in spec
+            and ("type" in spec or "nodes" in spec))
+
+
+def drawn_words(line: str, inside_names: bool) -> str:
+    """The words a line of a diagram spec puts in the picture."""
+    words = []
+    for key, value in DRAWN_VALUE.findall(line):
+        if key in DRAWN or inside_names:
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                continue
+            words += [parsed] if isinstance(parsed, str) else [v for v in parsed
+                                                                if isinstance(v, str)]
+    return " ".join(words)
+
+
+def added_drawn_words(root: Path, base: str, staged: bool = False) -> dict:
+    """{file: [(line number, words)]} for each line the change adds to a diagram spec."""
+    files = {}
+    for name, lines in diff_lines(root, base, staged).items():
+        text = content(root, name, staged)
+        if not is_diagram_spec(name, text):
+            continue
+        # "names" renames the labels over the boxes: its values are words too.
+        names = {n for n, t in enumerate(text.splitlines(), 1) if '"names"' in t}
+        kept = [(n, drawn_words(t, n in names)) for n, t in lines]
+        kept = [(n, w) for n, w in kept if w.strip()]
+        if kept:
+            files[name] = kept
+    return files
+
+
 def plain_words(name: str, n: int, words_only: str) -> list:
     """A long dash and filler words: the rules for every word a person reads."""
     found = []
@@ -246,16 +299,25 @@ def check_lines(root: Path, base: str, staged: bool = False) -> list:
     rules = [(re.compile(rf"\b{re.escape(w)}\b", 0 if w != w.lower() else re.IGNORECASE), t)
              for w, t in sorted(words.items(), key=lambda x: -len(x[0]))]
     found = []
+
+    def listed(name, n, words_only):
+        taken = set()  # a longer word wins over a shorter one inside it
+        for rule, term in rules:
+            for m in rule.finditer(words_only):
+                if taken.isdisjoint(range(*m.span())):
+                    taken.update(range(*m.span()))
+                    found.append(f"{name}:{n}: '{m.group(0)}'. The word list says: {term}.")
+
     for name, lines in added_lines(root, base, staged).items():
         for n, text in lines:
             words_only = prose(text)
             found += plain_words(name, n, words_only)
-            taken = set()  # a longer word wins over a shorter one inside it
-            for rule, term in rules:
-                for m in rule.finditer(words_only):
-                    if taken.isdisjoint(range(*m.span())):
-                        taken.update(range(*m.span()))
-                        found.append(f"{name}:{n}: '{m.group(0)}'. The word list says: {term}.")
+            listed(name, n, words_only)
+    # A diagram's words are read like a document's: the same word list and plain words.
+    for name, lines in added_drawn_words(root, base, staged).items():
+        for n, words in lines:
+            found += plain_words(name, n, words)
+            listed(name, n, words)
     # The word list is for documents only: code may name things the list avoids.
     for name, lines in added_comments(root, base, staged).items():
         for n, text in lines:

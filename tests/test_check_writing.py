@@ -194,6 +194,32 @@ class CheckWritingTest(unittest.TestCase):
         self.assertIn("docs/guide.md:1: 'issue'. The word list says: ticket.", out)
         self.assertIn("docs/guide.md:1: 'judge'. The word list says: gate.", out)
 
+    def test_the_words_drawn_in_a_diagram_follow_the_word_list(self):
+        self.repo.write("docs/diagrams/src/shop.json",
+                        '{"type": "flow", "title": "The shop", "desc": "How a ticket moves.",\n'
+                        ' "nodes": [{"id": "judge", "text": "The judge reads it", "kind": "check"},\n'
+                        '           {"id": "t", "text": "One ticket", "kind": "ai"}],\n'
+                        ' "edges": [{"from": "judge", "to": "t", "label": "opens an issue"}]}\n')
+        self.repo.commit("docs(diagrams): draw the shop")
+        code, out = self.repo.check()
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "docs/diagrams/src/shop.json:2: 'judge'. The word list says: gate.\n"
+                              "docs/diagrams/src/shop.json:4: 'issue'. The word list says: ticket.\n")
+
+    def test_ids_and_settings_in_a_diagram_are_not_words(self):
+        self.repo.write("docs/diagrams/src/shop.json",
+                        '{"type": "flow", "title": "The shop", "desc": "How a ticket moves.",\n'
+                        ' "nodes": [{"id": "judge", "text": "The gate", "kind": "check",'
+                        ' "icon": "issue"}],\n'
+                        ' "edges": [{"from": "judge", "to": "judge", "loop": "right"}]}\n')
+        self.repo.commit("docs(diagrams): draw the shop")
+        self.assertEqual(self.repo.check(), (0, ""))
+
+    def test_a_json_file_that_is_not_a_diagram_is_not_checked(self):
+        self.repo.write("data/shop.json", '{"text": "The judge"}\n')
+        self.repo.commit("feat(shop): add data")
+        self.assertEqual(self.repo.check(), (0, ""))
+
     def test_filler_names_the_plain_word_or_says_to_cut(self):
         self.repo.write("docs/guide.md", "We leverage the gate.\nIt's worth noting the ticket.\n")
         self.repo.commit("docs(guide): add a guide")
