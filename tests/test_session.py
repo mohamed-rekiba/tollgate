@@ -514,6 +514,22 @@ class StepTest(Case):
         events = [e["event"] for e in s.log("task-demo")]
         self.assertEqual(events.count("analysis_written"), 1)
 
+    def test_the_fix_round_s_plan_is_reviewed_and_locked_before_its_ticket_is_built(self):
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 taskmajor=1")
+        self.assertTrue(out.get("done"), out)
+        events = [(e["event"], e.get("ticket")) for e in s.log("task-demo")]
+        names = [e for e, _ in events]
+        self.assertEqual(names.count("fix_plan_written"), 1)
+        fixed = names.index("fix_plan_written")
+        built = events.index(("ticket_done", "demo-3"))
+        self.assertLess(fixed, names.index("fix_round"))
+        self.assertLess(names.index("fix_round"), built)
+        self.assertEqual(names[fixed + 1:built].count("plan_reviewed"), 3)
+        self.assertNotIn("plan_reviewed", names[built:])
+        rounds = [e.get("round") for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual(rounds, [0, 1])
+
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):
         s = self.sample()

@@ -87,6 +87,16 @@ class Task:
         p = Path(self.copy, path)
         return p.read_text() if p.exists() else None
 
+    def read_locked(self, path):
+        """A file of the plan as the plan lock has it: the tickets are built from the
+        approved plan, never from a plan the builder is still writing in the copy."""
+        locked = [e for e in read(self.log_path) if e["event"] == "plan_locked"]
+        if not locked:
+            return self.read_copy(path)
+        from gate.gitio import show_bytes
+        data = show_bytes(self.copy, locked[-1]["commit"], path)
+        return data.decode() if data is not None else None
+
     def check_plan(self) -> list:
         text = self.read_copy(pl.plan_path(self.id))
         if text is None:
@@ -294,7 +304,7 @@ class Task:
                      tickets=plan.tickets)
 
     def build_tickets(self) -> dict:
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
         done = {e["ticket"]: e["code"] for e in read(self.log_path) if e["event"] == "ticket_done"}
         start = None    # each ticket starts from the ready change before it
         for tid in plan.tickets:
@@ -302,7 +312,7 @@ class Task:
                 self.ticket_checkpoint(tid)
                 start = self.ready_commit(tid) or start
                 continue
-            text = self.read_copy(f".tollgate/tickets/{tid}/ticket.md")
+            text = self.read_locked(f".tollgate/tickets/{tid}/ticket.md")
             try:
                 code = Driver(self.project, tid, self.store, ticket_text=text,
                               runner=self.runner, base=start, hold=True,
@@ -332,7 +342,7 @@ class Task:
     def ticket_checkpoint(self, tid: str) -> None:
         if "ticket" in self.settings["checkpoints"] and not self.passed_checkpoint("ticket", tid):
             self.checkpoint("ticket", f"Ticket {tid} is a ready change. Go on to the next one?",
-                            {"ticket": self.read_copy(f".tollgate/tickets/{tid}/ticket.md")}, tid)
+                            {"ticket": self.read_locked(f".tollgate/tickets/{tid}/ticket.md")}, tid)
 
     def fix_rounds(self) -> int:
         return sum(1 for e in read(self.log_path) if e["event"] == "fix_round")
@@ -349,7 +359,7 @@ class Task:
             passed, text = found[-1]["passed"], found[-1]["text"]
             findings = found[-1].get("findings", [])
         else:
-            plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+            plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
             parts, reviewed = [], []
             for tid in plan.tickets:
                 ready = [e for e in read(str(Path(self.logs, f"{tid}.jsonl")))
@@ -369,7 +379,7 @@ class Task:
                 return answer.data
 
             passed, findings, text = reviewlib.review(
-                TASK_TIER, self.read_copy(pl.plan_path(self.id)), change, run_role,
+                TASK_TIER, self.read_locked(pl.plan_path(self.id)), change, run_role,
                 lenses=("review",))
             self.log.add("task_reviewed", round=round_no, passed=passed, findings=findings,
                          text=text, tickets=reviewed, cost_usd=roles.add_cost(*cost))
@@ -391,7 +401,7 @@ class Task:
         change of the chain, where the next ticket starts. Only the work tree changes,
         and .tollgate/ stays as the plan has it, so the plan branch still holds only the
         plan and its tickets."""
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
         ready = [c for c in (self.ready_commit(t) for t in plan.tickets) if c]
         if not ready:
             return
@@ -435,7 +445,7 @@ class Task:
         passed. Stop at the first that may not merge: auto merge off, tier 3 or 4, or a
         merge the store refuses. Each later ticket holds the changes before it, so none
         may merge past it. Return the tickets merged."""
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
         merged = []
         for tid in plan.tickets:
             path = str(Path(self.logs, f"{tid}.jsonl"))
