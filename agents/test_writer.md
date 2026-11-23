@@ -34,6 +34,7 @@ Words: an **item** is one line of the ticket's checklist. A **seam** is a public
 4. Run the project's other checks, such as style, on your test files, and fix what they find. The builder may not change a locked test. Done when they pass.
 5. Run the tests. A test for an item that keeps behavior must pass now. Every other test must fail now, because nothing is built. Done when each test fails or passes as it should, and the failure is for the right reason, not a typing error or a missing import.
 6. If `rejected` is in the inputs, read each finding and change only the tests it names. Done when each finding is answered.
+7. If `hint` is in the inputs, the tests were rejected too many times and the advisor sent them back to you with it. Follow it. Done when your tests do what the hint asks.
 
 You may not change any file outside the test files of the ticket. Do not commit, push, or merge: the driver commits the tests.
 

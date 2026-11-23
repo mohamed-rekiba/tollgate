@@ -429,6 +429,35 @@ class StepTest(Case):
         self.assertEqual(events.count("tests_rejected"), 2)
         self.assertNotIn("stopped", events)
 
+    def assert_tests_written_again_with_the_hint(self, s, out, hint):
+        self.assertTrue(out.get("done"), out)
+        log = s.log("demo-1")
+        events = [e["event"] for e in log]
+        self.assertEqual(events.count("tests_rejected"), 3)
+        decided = [e for e in log if e["event"] == "advisor_decided"]
+        self.assertEqual([(e["decision"], e["hint"]) for e in decided], [("retry", hint)])
+        self.assertNotIn("parked", events)
+        self.assertLess(events.index("advisor_decided"), events.index("frozen"))
+
+    def test_a_person_s_retry_before_the_lock_writes_the_tests_again(self):
+        s, store = self.task_sample(checks=self.style_check())
+        asked = []
+
+        def decide(question):
+            asked.append(question)
+            return "retry fix the style"
+        out = self.run_task(s, store, "pass2 tw_bad=hint", decide=decide)
+        self.assertEqual(len(asked), 1)
+        self.assertIn("retry", asked[0]["options"])
+        self.assertIn("the tests were rejected 3 times", asked[0]["body"])
+        self.assert_tests_written_again_with_the_hint(s, out, "fix the style")
+
+    def test_the_ai_advisor_s_retry_before_the_lock_writes_the_tests_again(self):
+        s, store = self.task_sample(checks=self.style_check(),
+                                    advisor=(f"{sys.executable} {FAKE_ROLE} ok",))
+        out = self.run_task(s, store, "pass2 tw_bad=hint decision=retry")
+        self.assert_tests_written_again_with_the_hint(s, out, "try harder")
+
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):
         s = self.sample()

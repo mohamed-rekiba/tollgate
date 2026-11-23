@@ -77,6 +77,9 @@ def replay(events: list) -> Ticket:
             if e.get("decision") in ("retry", "stronger"):
                 t.hint = e.get("hint", "")
                 t.stronger = t.stronger or e.get("decision") == "stronger"
+                if not t.frozen:
+                    # The tests are written again with the hint: the rejections count anew.
+                    t.rejections, t.rejected = 0, []
     return t
 
 

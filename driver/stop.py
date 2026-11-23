@@ -6,7 +6,7 @@ The driver asks before each try. Five rules, each number from the settings
 `stop`:
 
 - tries: the ticket used its tries (`attempts`, 3 by default). Each retry the
-  advisor grants adds one.
+  advisor grants after the tests are locked adds one.
 - same failure: the last try failed the same way as the try before it: the
   same failed checks, or the same failed checklist items at the same score.
 - time: the last try ran past `attempt_minutes` (30 by default).
@@ -46,8 +46,10 @@ def _reason(events: list, limits: dict, task_spent: float, usd: bool = True) -> 
     if usd and task_spent >= limits["task_usd"]:
         return f"the task cost {round(task_spent, 4)} USD; the limit is {limits['task_usd']} USD"
     tries = [e for e in events if e["event"] in TRY_ENDS]
-    decided = [i for i, e in enumerate(events)
-               if e["event"] == "advisor_decided" and e.get("decision") in RETRY]
+    # A retry before the tests are locked writes the tests again; it grants no try.
+    locked = next((i for i, e in enumerate(events) if e["event"] == "frozen"), -1)
+    decided = [i for i, e in enumerate(events) if i > locked
+               and e["event"] == "advisor_decided" and e.get("decision") in RETRY]
     last_decision = decided[-1] if decided else -1
     last_end = max((i for i, e in enumerate(events) if e["event"] in TRY_ENDS), default=-1)
     if tries and last_end > last_decision:

@@ -16,7 +16,7 @@ No decision of yours can make the gate pass.
 
 ## Decisions
 
-- `retry`: one more try. Give a hint for the builder.
+- `retry`: one more try. Give a hint for the builder. If the tests are not locked yet, the test writer writes them again with your hint.
 - `stronger`: one more try with a stronger model.
 - `split`: the ticket is too large. Name the smaller tickets in one line each.
 - `park`: stop work on this ticket. Say why.

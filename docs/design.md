@@ -86,7 +86,7 @@ The driver parks the ticket when it cost 10 USD, or the task cost 60 USD. No adv
 
 ### Two special cases
 
-- **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor.
+- **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor. A `retry` or `stronger` from the advisor then sends the tests back to the test writer with the hint, for up to 2 more rejections.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item `keeps behavior`, and the store accepts that one test as passing.
 
 A locked test can be wrong. The builder cannot change it. The store allows one replacement lock for a ticket, but the driver has no step that asks for one.

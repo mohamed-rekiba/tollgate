@@ -346,7 +346,10 @@ class Driver:
             n = st_.rejections + 1
             inputs = {"ticket": self.ticket_text, "ticket_id": self.ticket_id,
                       "rejected": rejected, "round": n}
-            answer = self.role("test_writer", inputs)
+            if st_.hint:
+                inputs["hint"] = st_.hint
+            stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
+            answer = self.role("test_writer", inputs, command=stronger or None)
             self.log.add("tests_written", round=n, cost_usd=answer.cost_usd,
                          tests=answer.data.get("tests"))
             review = self.role("reviewer", {"ticket": self.ticket_text,
@@ -565,9 +568,13 @@ class Driver:
         raise Parked(reason)
 
     def _decided(self, st_, decision: str, hint: str, who: str) -> bool:
-        if decision in ("retry", "stronger") and st_.frozen:
+        if decision in ("retry", "stronger"):
+            # Before the tests are locked, the test writer writes them again with the hint,
+            # and the rejections count anew; after, the builder gets one more try.
             st_.hint = hint
             st_.stronger = st_.stronger or decision == "stronger"
+            if not st_.frozen:
+                st_.rejections, st_.rejected = 0, []
             return True
         if decision == "split":
             # UNFINISHED: the driver does not split a ticket yet. New tickets would need a
