@@ -540,12 +540,45 @@ def check(spec):
             if rel.get("type", "association") not in RELATIONS:
                 raise ValueError(f"no relation '{rel['type']}'; use one of "
                                  f"{', '.join(RELATIONS)}")
+            if rel.get("type") in PARENTS and rel["from"] == rel["to"]:
+                raise ValueError(f"class '{rel['from']}' {rel['type']} itself")
         else:
             ends = rel.get("ends")
             known = (*CROWS_FEET, *SHORT)
             if not ends or any(e not in known for e in ends):
                 raise ValueError(f"an ER relation {rel['from']} -> {rel['to']} needs 'ends', a "
                                  f"pair of: {', '.join(known)}")
+    if noun == "class":
+        check_parents(spec.get("relations", []))
+
+
+PARENTS = ("inherits", "implements")
+
+
+def check_parents(rels):
+    """No class is its own parent, through any chain of inherits and implements."""
+    up = {}
+    for rel in rels:
+        if rel.get("type") in PARENTS:
+            up.setdefault(rel["from"], []).append(rel["to"])
+    done = set()
+    for start in up:
+        path, stack = [], [(start, iter(up.get(start, [])))]
+        path.append(start)
+        while stack:
+            node, kids = stack[-1]
+            kid = next(kids, None)
+            if kid is None:
+                done.add(node)
+                stack.pop()
+                path.pop()
+            elif kid in path:
+                ring = [*path[path.index(kid):], kid]
+                raise ValueError("inherits and implements go in a circle: "
+                                 + " -> ".join(ring))
+            elif kid not in done:
+                path.append(kid)
+                stack.append((kid, iter(up.get(kid, []))))
 
 
 def draw(spec, theme):

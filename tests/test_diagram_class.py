@@ -198,6 +198,29 @@ class ClassTest(unittest.TestCase):
                 draw(bad, "light")
             self.assertIn(says, str(err.exception))
 
+    def test_a_class_cannot_inherit_from_itself_or_in_a_circle(self):
+        rels = SPEC["relations"]
+        cases = [
+            (spec(relations=[*rels, {"from": "shape", "to": "shape", "type": "inherits"}]),
+             "itself"),
+            (spec(relations=[*rels, {"from": "drawable", "to": "drawable",
+                                     "type": "implements"}]), "itself"),
+            (spec(relations=[*rels, {"from": "shape", "to": "circle", "type": "inherits"}]),
+             "circle"),
+            (spec(relations=[*rels, {"from": "drawable", "to": "circle", "type": "implements"}]),
+             "circle"),
+        ]
+        for bad, says in cases:
+            with self.subTest(bad=bad["relations"][-1]), self.assertRaises(ValueError) as err:
+                draw(bad, "light")
+            self.assertIn(says, str(err.exception))
+
+    def test_a_class_may_hold_or_know_itself(self):
+        for kind in ("association", "owns"):
+            with self.subTest(kind=kind):
+                draw(spec(relations=[*SPEC["relations"],
+                                     {"from": "layer", "to": "layer", "type": kind}]), "light")
+
     def test_a_wrong_type_gives_a_plain_error(self):
         classes = SPEC["classes"]
         cases = [
