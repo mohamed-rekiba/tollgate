@@ -33,6 +33,11 @@ For a checkpoint, the inputs hold `checkpoint` (`ticket` or `task`), the reason,
 - `continue`: the task goes on.
 - `stop`: the task stops here. Say why in the hint.
 
+For a brainstorm, the inputs hold `brainstorm`, the idea, and the answers so far. You decide for the person who had the idea, from the idea, the answers, and the project.
+
+- When `brainstorm` is `question`, the inputs hold `question`. Pick `answer`, with the answer as the hint, or `skip` when the idea, the answers, and the project do not tell you: the question then goes under `Open questions` in the brief. Never guess an answer.
+- When `brainstorm` is `statement`, the inputs hold `statement` and the `additions` so far. Pick `confirm` when it says what the idea means, or `add`, with what it misses as the hint.
+
 ## Steps
 
 1. Read the reason and the last two tries. Done when you can say why it stopped.

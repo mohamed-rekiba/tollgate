@@ -53,6 +53,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 - `gate/plan.py` requires the sections Reuse, Risks, and Assumptions. Each assumption ends with a question mark.
 - `driver/task.py` sends a plan with assumptions to the advisor, even when the plan checkpoint is off. The advisor answers them and sends the plan back, or approves it as it is.
 - The readiness lens reports a part of the plan that rests on an assumed fact and asks nothing about it.
+- A task from a brief, `/tollgate:task --brief`, must list each question under `Open questions` in the brief as an assumption. `driver/task.py` sends a plan that leaves one out back to the builder.
 
 **Where it stops.** The plan writer decides what is unclear. An assumption it does not list is caught only by the readiness lens, or not at all.
 

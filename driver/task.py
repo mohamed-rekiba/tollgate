@@ -2,6 +2,11 @@
 order, then a review of the whole task.
 
     PYTHONPATH=<tollgate> python3 -m driver.task --project . --task retries --request-file r.txt
+    PYTHONPATH=<tollgate> python3 -m driver.task --project . --task retries --brief retries
+
+A brief from /tollgate:brainstorm can be the request: its goals and non-goals set
+the scope of the plan, and each question under its Open questions must be an assumption of
+the plan, so the advisor answers it before the plan is locked.
 
 The task's own log is logs/task-<task id>.jsonl in the state folder, and its
 copy is builders/task-<task id>/. Each ticket keeps its own log. A task that
@@ -43,6 +48,7 @@ from driver import advisor, report, roles, session
 from driver.driver import BASE, Busy, Driver, Parked, fetch_branch, git, run_lock
 from driver.log import Log, read
 from gate import analysis as an
+from gate import brief as bf
 from gate import plan as pl
 from gate import review as reviewlib
 from gate import settings as st
@@ -58,6 +64,32 @@ TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the r
 FIX_ROUNDS = 1  # the fix rounds a task may run after a failed review of the whole task
 
 
+def analyze(role, log, copy: str, request: str, task_id: str) -> None:
+    """The analyst reads the copy and answers with the analysis. The driver checks it,
+    makes each citation that does not exist an assumption, and keeps the text in the
+    log, so no later role can change it. role(name, inputs) asks a role; a brainstorm
+    uses this step too."""
+    commit = git(copy, "rev-parse", "HEAD")
+    problems = []
+    for _ in range(3):
+        answer = role("analyst", {"request": request, "task_id": task_id,
+                                  "commit": commit, "problems": problems})
+        try:
+            found = an.parse(answer.data.get("analysis") or "")
+            if (found.task, found.commit) != (task_id, commit):
+                raise an.AnalysisError(f"the header must say task: {task_id} and "
+                                       f"commit: {commit}")
+        except an.AnalysisError as err:
+            problems = [str(err)]
+            log.add("analysis_invalid", problems=problems, cost_usd=answer.cost_usd)
+            continue
+        missing = an.verify(found, copy)
+        log.add("analysis_written", text=an.render(found), not_found=missing,
+                cost_usd=answer.cost_usd)
+        return
+    raise Parked("the analysis could not be read: " + "; ".join(problems))
+
+
 class Task:
     def __init__(self, project: str, task_id: str, request: str, store=None, driver_args=None,
                  runner: str | None = None):
@@ -66,6 +98,7 @@ class Task:
         self.project = os.path.abspath(project)
         self.id = task_id
         self.request = request
+        self.brief = _brief(request, task_id)
         self.store = store or Store(self.project)
         self.driver_args = driver_args or {}
         self.base = BASE
@@ -114,7 +147,7 @@ class Task:
         problems = [f"ticket id {t} is already used by an earlier lock; pick a new id"
                     for t in used]
         return (problems + self.required_files(plan) + self.kept_tickets(plan)
-                + pl.check_tickets(plan, self.read_copy))
+                + self.brief_questions(plan) + pl.check_tickets(plan, self.read_copy))
 
     def required_files(self, plan) -> list:
         """A file that a check of the project requires, and that the plan leaves missing.
@@ -124,6 +157,19 @@ class Task:
             return [("README.md is missing, and the project's writing check fails without it: "
                      "add 'create README.md' to Files, and a checklist item that covers it")]
         return []
+
+    def brief_questions(self, plan) -> list:
+        """A task from a brief asks each open question of the brief under Assumptions."""
+        if not self.brief:
+            return []
+        return [f"the plan's Assumptions must ask the brief's open question, word for word: "
+                f"{q}" for q in self.brief.open_questions if q not in plan.assumptions]
+
+    def plan_inputs(self, **inputs) -> dict:
+        """The builder's inputs for a plan. From a brief, they add its open questions."""
+        if self.brief:
+            inputs["open_questions"] = self.brief.open_questions
+        return inputs
 
     def kept_tickets(self, plan) -> list:
         """A new version of a locked plan keeps each ticket of the old one, unchanged."""
@@ -149,43 +195,22 @@ class Task:
     # Steps.
 
     def analyze(self):
-        """The analyst reads the copy at main and answers with the analysis. The driver
-        checks it, makes each citation that does not exist an assumption, and keeps the
-        text in the log, so no later role can change it."""
-        commit = git(self.copy, "rev-parse", "HEAD")
-        problems = []
-        for _ in range(3):
-            answer = self.role("analyst", {"request": self.request, "task_id": self.id,
-                                           "commit": commit, "problems": problems})
-            try:
-                found = an.parse(answer.data.get("analysis") or "")
-                if (found.task, found.commit) != (self.id, commit):
-                    raise an.AnalysisError(f"the header must say task: {self.id} and "
-                                           f"commit: {commit}")
-            except an.AnalysisError as err:
-                problems = [str(err)]
-                self.log.add("analysis_invalid", problems=problems, cost_usd=answer.cost_usd)
-                continue
-            missing = an.verify(found, self.copy)
-            self.log.add("analysis_written", text=an.render(found), not_found=missing,
-                         cost_usd=answer.cost_usd)
-            return
-        raise Parked("the analysis could not be read: " + "; ".join(problems))
+        """The analyst reads the copy at main and answers with the analysis."""
+        analyze(self.role, self.log, self.copy, self.request, self.id)
 
     def write_plan(self, problems=None, hint=""):
-        answer = self.role("builder", {"mode": "plan", "task_id": self.id, "request": self.request,
-                                       "analysis": self.analysis_text(),
-                                       "problems": problems or [], "hint": hint})
+        answer = self.role("builder", self.plan_inputs(
+            mode="plan", task_id=self.id, request=self.request, analysis=self.analysis_text(),
+            problems=problems or [], hint=hint))
         self.log.add("plan_written", cost_usd=answer.cost_usd)
         for _ in range(2):
             problems = self.check_plan()
             if not problems:
                 return
             self.log.add("plan_invalid", problems=problems)
-            answer = self.role("builder", {"mode": "plan", "task_id": self.id,
-                                           "request": self.request,
-                                           "analysis": self.analysis_text(),
-                                           "problems": problems})
+            answer = self.role("builder", self.plan_inputs(
+                mode="plan", task_id=self.id, request=self.request,
+                analysis=self.analysis_text(), problems=problems))
             self.log.add("plan_written", cost_usd=answer.cost_usd)
         problems = self.check_plan()
         if problems:
@@ -559,6 +584,22 @@ class Task:
             lock.release()
 
 
+def _brief(request: str, task_id: str):
+    """The brief, when the request is one, or None. A brief in a bad format, or one that
+    needs a roadmap, stops the task with what to do."""
+    if not bf.is_brief(request):
+        return None
+    try:
+        found = bf.parse(request)
+    except bf.BriefError as err:
+        raise pl.PlanError(f"the request is a brief, but it is not valid: {err}") from None
+    if found.size == "roadmap":
+        raise pl.PlanError(f"brief {found.id} says the idea is too big for one task: it needs a "
+                           f"roadmap. Write .tollgate/roadmaps/{task_id}.md as step 3 of "
+                           "/tollgate:task says, with the brief as its request")
+    return found
+
+
 def main(argv=None, store=None) -> int:
     parser = argparse.ArgumentParser(prog="tollgate task", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -566,7 +607,15 @@ def main(argv=None, store=None) -> int:
     parser.add_argument("--task", required=True)
     parser.add_argument("--request", help="the request, in your own words")
     parser.add_argument("--request-file")
+    parser.add_argument("--brief", help="the id of a brief in .tollgate/briefs/, as the request")
     args = parser.parse_args(argv)
+    if args.brief:
+        try:
+            bf.load(args.project, args.brief)
+        except bf.BriefError as err:
+            print(f"tollgate task: {err}", file=sys.stderr)
+            return 1
+        args.request_file = str(Path(args.project, bf.brief_path(args.brief)))
     request = args.request or (Path(args.request_file).read_text() if args.request_file else "")
     if not request.strip():
         print("tollgate task: give --request or --request-file", file=sys.stderr)

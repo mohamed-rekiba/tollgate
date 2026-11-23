@@ -25,7 +25,14 @@ first weakens that test; tw_map=next adds a new test next to it).
 Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
-Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file).
+Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file),
+drop_questions=1 (the plan leaves out the open questions of a brief).
+Brainstorm options: questions=<n> or always (the builder asks n questions, then states the
+idea; always asks one past the cap), idea_to=<path> (the builder adds each idea input to
+that file), brief=bad (the first brief breaks the format) or never, size=roadmap,
+idea=skip (the advisor skips each question), statement=add (the advisor adds to the first
+statement) or always, idea_review_to=<path> (each brainstorm lens adds its lens and inputs
+to that file).
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
 """
@@ -232,6 +239,32 @@ Other marks.
 """
 
 
+STATEMENT = "Shout turns a name into a loud greeting. It helps a user who wants a loud hello."
+
+BRIEF = """---
+id: {id}
+size: {size}
+---
+## Overview
+{statement}
+
+## Analysis
+{analysis}
+
+## Goals
+- shout("ann") returns "HELLO ANN".
+
+## Non-goals
+- Other languages.
+
+## Alternatives weighed
+{alternatives}
+
+## Open questions
+{questions}
+"""
+
+
 def first_changed_line(diff: str) -> tuple:
     """(file, line) of the first line a diff adds, for a finding inside the change."""
     path = None
@@ -316,6 +349,34 @@ def main() -> int:
                 {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"})
         answer({"tests": [{"item": "C1", "file": "tests/test_t1.py", "name": "test_c1_shout"},
                           kept]}, cost)
+    elif first == "# Role: builder" and data.get("mode") == "idea":
+        if opts.get("idea_to"):
+            with open(opts["idea_to"], "a") as f:
+                f.write(json.dumps(data) + "\n")
+        asked = len(data.get("answers", []))
+        want = opts.get("questions", "2")
+        if want == "always" or (asked < int(want) and data["questions_left"] > 0):
+            answer({"question": f"Who uses shout, in round {asked + 1}?"}, cost)
+        else:
+            answer({"statement": STATEMENT}, cost)
+    elif first == "# Role: builder" and data.get("mode") == "brief":
+        lines = []
+        for f in data.get("findings", []):
+            if f["text"] not in lines:     # the brief merges the lenses: no repeats
+                lines.append(f["text"])
+        alternatives = [f"- {a['alternative']}: dropped because {a['trade_off']}"
+                        for a in data.get("alternatives", [])]
+        alternatives = alternatives or ["- Nothing: dropped because the user asked for it."]
+        text = BRIEF.format(id=data["id"], size=opts.get("size", "task"),
+                            statement=data["statement"],
+                            analysis="\n".join(f"- {x}" for x in lines) or "- nothing found.",
+                            alternatives="\n".join(alternatives),
+                            questions="\n".join(f"- {q}" for q in data["open_questions"])
+                            or "none")
+        if opts.get("brief") == "never" or (opts.get("brief") == "bad"
+                                             and not data.get("problems")):
+            text = text.replace("## Goals", "## Aims")
+        answer({"brief": text}, cost)
     elif first == "# Role: builder" and data.get("mode") == "plan":
         task = data["task_id"]
         if opts.get("plan_sees"):
@@ -325,6 +386,9 @@ def main() -> int:
                                     "app": Path("app.py").read_text()}) + "\n")
         Path(".tollgate/plans").mkdir(parents=True, exist_ok=True)
         plan = PLAN.format(task=task, request=data["request"])
+        if data.get("open_questions") and not opts.get("drop_questions"):
+            plan = plan.replace("## Assumptions\nnone", "## Assumptions\n" + "\n".join(
+                f"- {q}" for q in data["open_questions"]))
         if opts.get("ask") and not data.get("hint"):
             plan = plan.replace("## Assumptions\nnone", "## Assumptions\n- Should whisper keep accents?")
         if any("README.md" in problem for problem in data.get("problems", [])):
@@ -413,6 +477,21 @@ def main() -> int:
                 f.write(json.dumps({"lens": lens, "inputs": data}) + "\n")
         answer({"verdict": "pass", "findings": [{"level": "major", "text": "drop T-2?"}]
                 if found else [], "items": []}, cost)
+    elif first == "# Role: reviewer" and any(f"# Lens: {k}\n" in prompt for k in
+                                             ("need", "user", "risk", "shape")):
+        lens = prompt.split("# Lens: ", 1)[1].splitlines()[0]
+        if opts.get("idea_review_to"):
+            with open(opts["idea_review_to"], "a") as f:
+                f.write(json.dumps({"lens": lens, "inputs": data}) + "\n")
+        text = {"need": "greet already builds the greeting [app.py::greet].",
+                "user": "an empty name gives no clear error.",
+                "risk": "greet already builds the greeting [app.py::greet].",
+                "shape": "a second function to keep in step with greet."}[lens]
+        items = ([{"alternative": "A loud flag on greet",
+                   "trade_off": "it changes a function that other code calls."}]
+                 if lens == "shape" else [])
+        answer({"verdict": "pass", "findings": [{"level": "major", "text": text}],
+                "items": items}, cost)
     elif first == "# Role: reviewer" and ("# Lens: review" in prompt or "# Lens: security" in prompt):
         lens = "security" if "# Lens: security" in prompt else "review"
         block = opts.get("block") == lens
@@ -427,13 +506,22 @@ def main() -> int:
             {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]
             if block else []}, cost)
     elif first == "# Role: advisor":
-        if "checkpoint" in data:
+        hint = "try harder"
+        if data.get("brainstorm") == "question":
+            decision = "skip" if opts.get("idea") == "skip" else "answer"
+            hint = "" if decision == "skip" else "Ann, who greets her friends."
+        elif data.get("brainstorm") == "statement":
+            add = opts.get("statement") == "always" or (opts.get("statement") == "add"
+                                                         and not data.get("additions"))
+            decision = "add" if add else "confirm"
+            hint = "It must work for an empty name." if add else ""
+        elif "checkpoint" in data:
             decision = opts.get("checkpoint", "continue")
         elif "plan" in data:
             decision = opts.get("plan_decision", "approve")
         else:
             decision = opts.get("decision", "park")
-        answer({"decision": decision, "hint": "try harder", "reason": "test"}, cost)
+        answer({"decision": decision, "hint": hint, "reason": "test"}, cost)
     else:
         print(f"unknown role: {first}", file=sys.stderr)
         return 2

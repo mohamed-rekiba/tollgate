@@ -220,8 +220,8 @@ def check_names(command: str, copy: str, project: str) -> str:
 # Tollgate's commands that change its state: they answer steps, record your answers,
 # lock, sign, and merge. Only your own session runs them. The hook refuses them as a
 # role would write them plainly; it is not a wall against a role that hides one.
-STATEFUL = ("driver.step", "driver.task", "driver.driver", "driver.roadmap", "driver.retro",
-            "driver.report", "setup.merge", "setup.inbox", "setup.init", "setup.home",
+STATEFUL = ("driver.step", "driver.task", "driver.brainstorm", "driver.driver", "driver.roadmap",
+            "driver.retro", "driver.report", "setup.merge", "setup.inbox", "setup.init", "setup.home",
             "setup.sync_rules", "gate.store", "gate.gate")
 _RUN_FILE = re.compile(r"(.*/)?(" + "|".join(m.replace(".", "/") for m in STATEFUL) + r")\.py")
 GIT_FOLDER = re.compile(r"(\./)?\.git(/|$)")

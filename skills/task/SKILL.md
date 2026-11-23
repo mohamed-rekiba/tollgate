@@ -1,6 +1,6 @@
 ---
 name: task
-description: Run a Tollgate task in this project. It analyzes the project, plans the task, has the plan reviewed, locks the tests, builds each ticket until its tests pass, and reviews the whole task. By default this session runs each role as a subagent, one step at a time; the background driver is the other mode. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
+description: Run a Tollgate task in this project, from a request or from a brief that /tollgate:brainstorm wrote. It analyzes the project, plans the task, has the plan reviewed, locks the tests, builds each ticket until its tests pass, and reviews the whole task. By default this session runs each role as a subagent, one step at a time; the background driver is the other mode. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
 ---
 
 # Run a task
@@ -26,9 +26,17 @@ Words: a **task** is what the user asks for, in their own words. The **driver** 
 
 Done when the file exists.
 
+**From a brief.** When the user gives `--brief <brief id>`, the brief that `/tollgate:brainstorm` wrote is the request. Use the brief id as the task id, unless it matches a file in `.tollgate/plans/` or `.tollgate/roadmaps/`. Then run:
+
+```
+PYTHONPATH="$TG" python3 -P -m gate.brief --project . "<brief id>" --to ".tollgate/requests/<task id>.md"
+```
+
+It checks the brief, copies it as the request, and prints its `size`. If it ends with an error, show it to the user and stop. With size `task`, the brief's goals and non-goals set the scope of the plan, and the driver makes each question under `Open questions` an assumption of the plan. With size `roadmap`, step 3 makes a roadmap: use the brief's goals as the request.
+
 ## 3. One plan, or a roadmap
 
-A request needs a roadmap when one plan cannot hold it: it builds a new service or app, or it names several features that depend on each other, such as "build an order service with login and an admin page". Anything smaller is one task. When in doubt, use one task.
+A brief of size `roadmap` always needs one. A request needs a roadmap when one plan cannot hold it: it builds a new service or app, or it names several features that depend on each other, such as "build an order service with login and an admin page". Anything smaller is one task. When in doubt, use one task.
 
 For one task, go to step 4 in session mode, or step 5 in background mode.
 

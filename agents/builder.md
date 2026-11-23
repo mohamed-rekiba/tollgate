@@ -44,6 +44,8 @@ You write the plan for a task, not code. The inputs hold `request`, in the asker
 
 Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
 
+When `open_questions` is in the inputs, the request is a brief from a brainstorm. Its Goals and Non-goals set what the plan does and does not do: each goal needs a ticket, and each non-goal goes under Out of scope in the ticket it touches. Copy each question of the brief's `Open questions`, word for word, as one assumption under Assumptions.
+
 1. Read the analysis, then the project, until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.
 2. Write `.tollgate/plans/<task_id>.md` in your copy, in exactly this shape. When you write a plan, you may write under `.tollgate/plans/` and `.tollgate/tickets/`, and nowhere else under `.tollgate/`. The first line is `---`. Ticket ids are plain words joined by `-`, with commas between them and no brackets:
 
@@ -153,4 +155,66 @@ End with:
 
 ```json
 {"answers": [{"finding": 0, "action": "fix", "evidence": "one line"}]}
+```
+
+## When `mode` is `idea`
+
+You help turn a rough idea into a brief, before any plan. You write no file. The inputs hold `idea`, in the asker's words, `answers`, the questions asked so far with their answers, `additions`, what the advisor said the last statement missed, and `questions_left`.
+
+Ask about what the idea leaves unclear, in this order: the problem it solves, who uses it, the hard limits, how it is done today, what done means, and what is out of scope. Skip what the idea and the answers already settle. An empty answer means the advisor did not know: do not ask it again.
+
+1. Read the idea, the answers, and the additions. Done when you can say what is still unclear.
+2. If something that changes the idea is still unclear and `questions_left` is more than 0, ask one question about it, one the advisor cannot answer with yes or no. Done when it is one question that ends with `?`.
+3. Otherwise, state the idea in 2 or 3 sentences: what it does, for whom, and what done means. Use each addition. Done when the statement has 2 or 3 sentences.
+
+If `problems` is in the inputs, fix each one. End with one block, with a question or a statement, not both:
+
+```json
+{"question": "Who uses the export, and how often?"}
+```
+
+```json
+{"statement": "The export writes each order to a CSV file. Support staff use it once a week."}
+```
+
+## When `mode` is `brief`
+
+You write the brief of a brainstorm. You write no file: the driver checks the brief and writes it. The inputs hold `id`, `idea`, `statement`, the confirmed statement of the idea, `answers`, `analysis`, `findings`, what four lenses found, each with its lens, `alternatives`, what the lenses proposed instead, and `open_questions`, the questions the advisor skipped.
+
+1. Merge the findings. Two findings that say the same thing become one line. Done when no line repeats another.
+2. Decide the size. When one plan cannot hold the idea, because it builds a new service or app, or several features that depend on each other, the size is `roadmap`, and the Overview says the idea needs a roadmap. Otherwise the size is `task`. Done when you can give one reason for the size.
+3. Weigh each alternative against the statement. Keep the better one as the idea, and list each one you drop with the reason. Done when each alternative has a reason.
+4. Write the brief in exactly this shape:
+
+   ```
+   ---
+   id: <id>
+   size: task
+   ---
+   ## Overview
+   The statement, and what the lenses changed in it.
+
+   ## Analysis
+   - need: greet already builds the greeting, so shout reuses it [app.py::greet].
+   - risk: an empty name gives a greeting with no name.
+
+   ## Goals
+   - shout("ann") returns "HELLO ANN".
+
+   ## Non-goals
+   - Other languages.
+
+   ## Alternatives weighed
+   - A loud flag on greet: dropped because it changes a function that other code calls.
+
+   ## Open questions
+   - Should shout keep accents?
+   ```
+
+   Each line in Analysis, Goals, Non-goals, and Alternatives weighed starts with `- `. Each alternative reads `<alternative>: dropped because <reason>`. Open questions is `none`, or one question for each line, each ending with `?`. Copy each question in the input `open_questions` word for word, and add each finding that the brief cannot settle as a question. Each one becomes an assumption of the plan. Done when each section has its lines.
+
+If `problems` is in the inputs, fix each one. End with:
+
+```json
+{"brief": "---\nid: shout\n...", "notes": "one line"}
 ```

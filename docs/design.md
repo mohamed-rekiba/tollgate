@@ -41,6 +41,20 @@ Before the plan, the analyst reads the project and reports how it is built: each
 
 Steps 4 to 6 repeat for each ticket. Each ticket starts from the ready change of the ticket before it, and the store checks that this start passed the gate before it locks the tests. No ticket merges until the review of the whole task passes. Then the tickets merge in plan order: with `auto_merge` on, the store merges each tier 1 or 2 change, and stops at the first that it may not merge, since each later ticket holds the ones before it. You merge tiers 3 and 4, and every change when `auto_merge` is off.
 
+### Before a task: the brainstorm
+
+An idea that is not clear yet starts with `/tollgate:brainstorm`, not with a task. The brainstorm writes a brief, and `/tollgate:task --brief <id>` takes the brief as its request. The brainstorm signs nothing and changes no code.
+
+1. **Questions first.** The builder asks one question at a time: the problem, who uses it, the hard limits, how it is done today, what done means, and what is out of scope. The advisor answers each one, or skips it; a skipped question goes under `Open questions` in the brief. The builder may ask at most 5 questions. Then it must state the idea.
+2. **Readiness.** The builder states the idea in 2 or 3 sentences. The advisor confirms the statement, or adds what it misses. After 3 additions with no confirmation, the brainstorm parks.
+3. **The analysis.** When the project has code, the analyst reads it, as for a task, so the lenses read facts, not guesses.
+4. **Four lenses.** Four reviewers challenge the idea, each with a fresh context and the same inputs: need, user, risk, and shape. None reads the others' findings. In background mode they run side by side.
+5. **The brief.** The builder merges what the lenses found and writes `.tollgate/briefs/<id>.md`: Overview, Analysis, Goals, Non-goals, Alternatives weighed, and Open questions. `gate/brief.py` checks the format, and the builder writes it again with the problem, up to 3 times.
+
+The advisor is the same chain as for a task, so a brainstorm runs to its end with an AI advisor alone. Each question and answer goes in the log, `logs/brainstorm-<id>.jsonl`. In session mode the brainstorm runs through `driver.step next --brainstorm <id>` and `answer`, with the same replay as a task.
+
+In the task, the brief's goals and non-goals set the scope of the plan. Each question under `Open questions` in the brief must be an assumption of the plan, so the advisor answers it before the plan is locked. A brief of size `roadmap` says the idea is too big for one task: the task skill writes a roadmap from it, as in [Large requests](#large-requests), and the task driver refuses it.
+
 ### The fix round
 
 When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. Before the builder writes it, the task's copy gets the change that the tickets built, from the last ready change, in its work tree; the plan's branch still holds only the plan and its tickets. In a new ticket, behavior that is already built is a `keeps behavior` item, whose test passes now; only what the fix adds is a plain must-have item, whose new test fails until the fix is built. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. The task always builds its tickets from the plan as its last plan lock has it, never from a plan the builder is still writing in the task's copy. If that review still finds a blocking or major problem, the task parks and nothing merges, whatever the advisor would say: the merges wait until the review passes. A ticket that does not end ready, parked or stopped, stops the tickets after it, since each builds on the one before.
@@ -215,6 +229,10 @@ Every reviewer is the same role with a different lens. The analyst, a separate r
 | Checklist | A ticket and the change | Step 6, every tier | Each item with no test. |
 | Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity, though a file that a check of the project requires is never unrequested. |
 | Security | The change | Step 6, tier 3 and 4 | Ways to misuse the change. |
+| Need | The idea, the answers, and the analysis | Brainstorm | Is it needed? Do the project or a library already do most of it? |
+| User | The idea, the answers, and the analysis | Brainstorm | Who uses it? Is it easy to use? Does each error say what to do? |
+| Risk | The idea, the answers, and the analysis | Brainstorm | What it costs. How to migrate and roll back. How you debug it when it breaks. |
+| Shape | The idea, the answers, and the analysis | Brainstorm | What it costs to keep. The trade-off it takes for granted, and a way around it. |
 
 ### Plan review
 
@@ -332,8 +350,9 @@ The machine needs Python 3.11, git, `ssh-keygen`, and pre-commit. Background mod
 | You type in Claude Code | What happens |
 | --- | --- |
 | `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
+| `/tollgate:brainstorm` | Turns a rough idea into a brief: questions to the advisor, a statement the advisor confirms, the analysis, and four lenses that challenge the idea. |
 | `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, makes the machine key, adds your SSH key to `owners`, and installs pre-commit. |
-| `/tollgate:task Add retries to webhook delivery` | Runs a task. In session mode your session runs each role, one step at a time. In background mode the driver runs on its own, so you can close Claude Code. |
+| `/tollgate:task Add retries to webhook delivery` | Runs a task. With `--brief <id>`, the brief is the request. In session mode your session runs each role, one step at a time. In background mode the driver runs on its own, so you can close Claude Code. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, and records your answer. |
 | `/tollgate:merge` | Lists the ready changes, asks you to sign the approval for tier 3 and 4, and merges. |
@@ -361,8 +380,8 @@ When a task ends, you read the report. It has:
 | Signatures | `gate/sign.py` | Sign and verify a record with `ssh-keygen -Y`, in one namespace for each kind. |
 | Store | `gate/store.py`, `gate/freeze.py`, `gate/plantag.py`, `gate/prepare.py` | Lock tests, lock plans, write questions, sign pass records, mark ready changes, merge. |
 | Gate | `gate/gate.py`, `gate/tiers.py`, `gate/review.py`, `gate/checks.py` | The six checks, the tier, the review from tier 2, and running the checks. |
-| Formats | `gate/settings.py`, `gate/analysis.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
-| Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py` | Run one ticket, one task, one roadmap. |
+| Formats | `gate/settings.py`, `gate/analysis.py`, `gate/brief.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
+| Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py`, `driver/brainstorm.py` | Run one ticket, one task, one roadmap, one brainstorm. |
 | Session mode | `driver/session.py`, `driver/step.py` | The caller of each role in each mode, the step file, the saved answers, and the `next` and `answer` commands. |
 | Stop and advisor | `driver/stop.py`, `driver/advisor.py` | When to stop, and how to ask. |
 | Roles | `driver/roles.py`, `roles/`, `lenses/`, `agents/` | Run one AI session in its copy and its isolation. `agents/` holds each role as a Claude Code subagent, written from its role file by `setup/agents.py`. |
@@ -414,6 +433,8 @@ Each setup script does one step, can run twice without harm, and prints one line
   checks/                    committed: Tollgate's checks, copied by init
   lenses/                    committed, only for lenses the project changes
   requests/<task>.md         the request, in your words
+  ideas/<id>.md              the idea of a brainstorm, in your words
+  briefs/<id>.md             the brief that a brainstorm wrote
   analysis/<task>.md         the analysis as the driver checked it, on tg-plan/<task>
   plans/<task>.md            the plan, on tg-plan/<task>
   tickets/<id>/ticket.md     a ticket, on tg/<id>
@@ -690,6 +711,7 @@ Tollgate copies no code from these projects. It uses their ideas. Where a lens o
 | Source | License | What Tollgate takes |
 | --- | --- | --- |
 | Elephant Goldfish Model, by Google | Apache-2.0 | Reviewers with a fresh context. The paraphrase test. The rule that a plan leaves no decision to the builder. Fix, contest, or escalate as the answers to a finding. |
+| The brainstorm skill of the "Elephant Goldfish Model", by Google | Apache-2.0 | The method of `/tollgate:brainstorm`: questions first, a readiness check, fresh reviewers that challenge the idea side by side, then a brief. Tollgate's brainstorm uses none of its code and does not call it. |
 | mattpocock-skills, by Matt Pocock | MIT | Seams. Tickets that work alone. The rules for a good test. The three-step path for a wide change. The ticket format. A map that leaves unclear work unplanned. |
 | ApexYard, by me2resh | See its repository | One view over many projects, and the lesson that a fork as the home makes every upgrade a merge. |
 | Squad OS, by Tollgate's author | MIT | The separate test writer, tiers from path rules, the log, and the numbers for learning. |
