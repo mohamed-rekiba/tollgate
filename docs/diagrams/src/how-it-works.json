@@ -200,7 +200,8 @@
    "at": [
     370,
     -220
-   ]
+   ],
+   "means": "a project's main branch"
   },
   {
    "type": "room",
@@ -208,7 +209,8 @@
     0,
     -220
    ],
-   "size": 104
+   "size": 104,
+   "means": "the AI's copy"
   },
   {
    "type": "gate",
@@ -217,14 +219,16 @@
     -282
    ],
    "arm_to": -160,
-   "axis": "y"
+   "axis": "y",
+   "means": "the gate"
   },
   {
    "type": "vault",
    "at": [
     0,
     -90
-   ]
+   ],
+   "means": "the signed records"
   },
   {
    "type": "pedestal",
@@ -233,7 +237,8 @@
     -60
    ],
    "kind": "advisor",
-   "icon": "advisor"
+   "icon": "advisor",
+   "means": "the advisor"
   },
   {
    "type": "pedestal",
@@ -242,28 +247,32 @@
     40
    ],
    "kind": "check",
-   "icon": "check"
+   "icon": "check",
+   "means": "the plan review"
   },
   {
    "type": "board",
    "at": [
     470,
     40
-   ]
+   ],
+   "means": "the lessons"
   },
   {
    "type": "papers",
    "at": [
     0,
     170
-   ]
+   ],
+   "means": "the plan"
   },
   {
    "type": "laptop",
    "at": [
     0,
     430
-   ]
+   ],
+   "means": "you"
   },
   {
    "type": "pedestal",
@@ -272,7 +281,8 @@
     300
    ],
    "kind": "ai",
-   "icon": "search"
+   "icon": "search",
+   "means": "the analysis"
   }
  ],
  "labels": [

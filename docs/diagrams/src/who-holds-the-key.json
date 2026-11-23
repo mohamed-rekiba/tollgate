@@ -77,14 +77,16 @@
    "to": [
     6,
     -82
-   ]
+   ],
+   "means": "a boundary"
   },
   {
    "type": "vault",
    "at": [
     170,
     -110
-   ]
+   ],
+   "means": "the signed records"
   },
   {
    "type": "server",
@@ -93,7 +95,8 @@
     10
    ],
    "levels": 3,
-   "size": 80
+   "size": 80,
+   "means": "a project's main branch"
   },
   {
    "type": "room",
@@ -101,7 +104,8 @@
     -190,
     0
    ],
-   "size": 110
+   "size": 110,
+   "means": "the AI's copy"
   },
   {
    "type": "gate",
@@ -110,7 +114,8 @@
     -58
    ],
    "arm_to": 62,
-   "axis": "y"
+   "axis": "y",
+   "means": "the gate"
   },
   {
    "type": "wall",
@@ -121,7 +126,8 @@
    "to": [
     6,
     175
-   ]
+   ],
+   "means": "a boundary"
   }
  ],
  "labels": [

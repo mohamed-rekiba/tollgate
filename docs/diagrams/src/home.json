@@ -119,7 +119,8 @@
     -215,
     0
    ],
-   "size": 110
+   "size": 110,
+   "means": "the home"
   },
   {
    "type": "server",
@@ -128,7 +129,8 @@
     -270
    ],
    "levels": 2,
-   "size": 64
+   "size": 64,
+   "means": "a project's main branch"
   },
   {
    "type": "gate",
@@ -138,7 +140,8 @@
    ],
    "arm_to": 110,
    "axis": "x",
-   "name": "still"
+   "name": "still",
+   "means": "the gate"
   },
   {
    "type": "server",
@@ -147,7 +150,8 @@
     -20
    ],
    "levels": 2,
-   "size": 64
+   "size": 64,
+   "means": "a project's main branch"
   },
   {
    "type": "gate",
@@ -157,7 +161,8 @@
    ],
    "arm_to": 110,
    "axis": "x",
-   "name": "still"
+   "name": "still",
+   "means": "the gate"
   },
   {
    "type": "server",
@@ -166,7 +171,8 @@
     230
    ],
    "levels": 2,
-   "size": 64
+   "size": 64,
+   "means": "a project's main branch"
   },
   {
    "type": "gate",
@@ -176,7 +182,8 @@
    ],
    "arm_to": 110,
    "axis": "x",
-   "name": "still"
+   "name": "still",
+   "means": "the gate"
   }
  ],
  "labels": [

@@ -23,7 +23,7 @@ def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
     specs = sorted((base / "src").glob("*.json"))
     if not specs and not extra:
         raise SystemExit(f"No specs in {base / 'src'}. Each diagram is <folder>/src/<name>.json.")
-    makers = {}
+    makers, scenes = {}, {}
     for src in specs:
         spec = json.loads(src.read_text())
         if "from" in spec:
@@ -33,7 +33,10 @@ def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
                                  f"{base / 'src'}")
             spec = json.loads(base_file.read_text()) | {k: v for k, v in spec.items()
                                                         if k != "from"}
+        if spec.get("type") == "scene":
+            scenes[src.name] = spec
         makers[src.stem] = lambda theme, spec=spec: draw(spec, theme)
+    check_meanings(scenes)
     makers.update(extra or {})
     stale = []
     # A drawing whose spec is gone is stale too.
@@ -50,6 +53,32 @@ def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
                 if not check:
                     target.write_text(text)
     return stale
+
+
+def check_meanings(scenes: dict) -> None:
+    """Each object keeps one meaning across the scenes, and each meaning has one object.
+
+    An object is its type, its kind, and its icon. An object with "means" names the
+    thing it stands for; one with no "means" is not checked. A reader who learns that
+    the gate is the gate in one scene must not find it standing for pre-commit in the next.
+    """
+    meaning, drawn = {}, {}   # object -> (meaning, file); meaning -> (object, file)
+    for name, spec in scenes.items():
+        for o in spec.get("objects", []):
+            if "means" not in o:
+                continue
+            thing = (o.get("type"), o.get("kind", ""), o.get("icon", ""))
+            label = " ".join(p for p in thing if p)
+            said = o["means"]
+            if thing in meaning and meaning[thing][0] != said:
+                raise ValueError(f"the {label} means '{meaning[thing][0]}' in {meaning[thing][1]}"
+                                 f" but '{said}' in {name}: give one object one meaning")
+            if said in drawn and drawn[said][0] != thing:
+                other = " ".join(p for p in drawn[said][0] if p)
+                raise ValueError(f"'{said}' is the {other} in {drawn[said][1]} but the {label}"
+                                 f" in {name}: draw one thing one way")
+            meaning.setdefault(thing, (said, name))
+            drawn.setdefault(said, (thing, name))
 
 
 def main(argv=None) -> int:

@@ -129,6 +129,7 @@ An isometric picture: zones on the ground, objects on them, lanes with moving do
 - Ground units: x runs down-right on the page, y runs down-left. Put things that happen first on the left.
 - Put each label beside its object, never over another object or label.
 - A `ticket` travels the lanes; `lift` names the leg during which a gate opens.
+- One object, one meaning. Give each object `means`: the thing it stands for, such as `"means": "the gate"`. `build` refuses a folder where one object (its type, kind, and icon) stands for two things, or one thing is drawn as two objects. `means` is not drawn.
 
 ## AWS architecture
 

@@ -29,6 +29,17 @@ def contrast(a, b):
 
 
 class TestDiagrams(unittest.TestCase):
+    def test_each_object_in_a_scene_says_what_it_means(self):
+        # The build keeps one meaning for each object only where objects say what they mean.
+        import json
+        for src in sorted((DIAGRAMS / "src").glob("*.json")):
+            spec = json.loads(src.read_text())
+            if spec.get("type") != "scene":
+                continue
+            for o in spec["objects"]:
+                with self.subTest(file=src.name, object=o["type"]):
+                    self.assertTrue(o.get("means"), "give the object 'means'")
+
     def test_no_mermaid_in_markdown(self):
         found = [str(p.relative_to(ROOT)) for p in files("*.md")
                  if "```mermaid" in p.read_text(errors="ignore")]
