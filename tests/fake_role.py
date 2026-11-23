@@ -12,7 +12,8 @@ Reviewer options: badline (names a line that does not exist), badcite (the analy
 function that does not exist), block=<lens> (that lens finds a blocking problem),
 taskmajor=<n> (the first n reviews of the whole task find a major problem),
 c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the checklist
-reviewer adds its inputs to this file). Like a real reviewer, it judges only the items
+reviewer adds its inputs to this file), plan_review_to=<path> (each plan lens adds its lens
+and inputs to this file). Like a real reviewer, it judges only the items
 that are not in `tested`.
 A plan written with a hint from the review of the whole task adds a third ticket, loud.
 Test writer options: tw_bad=1 (the first tests it writes break the style check),
@@ -405,6 +406,9 @@ def main() -> int:
         rounds = int(opts.get("planfind", 0))
         lens = prompt.split("# Lens: ", 1)[1].splitlines()[0]
         found = lens == "simplicity" and count_marker(".fake-planfind") <= rounds
+        if opts.get("plan_review_to"):
+            with open(opts["plan_review_to"], "a") as f:
+                f.write(json.dumps({"lens": lens, "inputs": data}) + "\n")
         answer({"verdict": "pass", "findings": [{"level": "major", "text": "drop T-2?"}]
                 if found else [], "items": []}, cost)
     elif first == "# Role: reviewer" and ("# Lens: review" in prompt or "# Lens: security" in prompt):

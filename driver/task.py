@@ -180,8 +180,10 @@ class Task:
         if problems:
             raise pl.PlanError("; ".join(problems))
 
-    def review_plan(self) -> list:
-        """Up to 4 rounds. Return the findings still open, or [] after a clean round."""
+    def review_plan(self, fix: str = "") -> list:
+        """Up to 4 rounds. Return the findings still open, or [] after a clean round.
+        In a fix round, `fix` holds the findings of the review of the whole task: the lenses
+        that judge need and readiness read the plan against them too."""
         open_findings = []
         for round_no in range(1, MAX_ROUNDS + 1):
             text = self.read_copy(pl.plan_path(self.id))
@@ -191,7 +193,7 @@ class Task:
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
                     "plan": text, "tickets": tickets, "request": self.request,
-                    "analysis": self.analysis_text()}
+                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {})}
                 try:
                     data = self.role("reviewer", inputs, lens=lens)
                 except roles.RoleError:
@@ -426,7 +428,7 @@ class Task:
                 self.show_built()
                 self.write_plan(hint=hint)
                 self.log.add("fix_plan_written", findings=findings)
-            open_findings = self.review_plan()
+            open_findings = self.review_plan(fix=hint)
             self.log.add("fix_plan_reviewed", open=open_findings)
         else:
             open_findings = [e for e in events if e["event"] == "fix_plan_reviewed"][-1]["open"]

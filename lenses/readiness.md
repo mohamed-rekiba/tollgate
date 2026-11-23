@@ -15,4 +15,6 @@ You read the plan, the analysis of the project, and the code.
 
 9. **The kinds are honest.** Each reason under `## Not covered` must be true for this change: "no concurrency" is false when the code takes a lock or runs work in parallel. A ticket that fixes a bug and has no `fixes:` line, or a `performance` or `concurrency` item whose number tests nothing that matters, is a `major` finding.
 
+**A fix round.** When your inputs hold `fix`, the plan is a new version of an approved plan, written to fix the problems that `fix` lists. Read the plan against those problems as well as the request: a ticket that fixes one of them is needed. The tickets of the approved plan are locked: do not ask to change, merge into, or drop them. A fix goes in a new ticket with its own test file.
+
 Done when you have checked every name, every ticket, and every line under Risks, Assumptions, and Not covered.

@@ -580,6 +580,19 @@ class FixRoundTest(LoopCase):
         names = sh(s.project, "git", "diff", "--name-only", "main...tg-plan/demo").split()
         self.assertTrue(all(n.startswith(".tollgate/") for n in names), names)
 
+    def test_the_fix_round_s_plan_lenses_see_the_findings_it_fixes(self):
+        # Without them, a lens reads the fix ticket against the first request alone and
+        # asks to drop it, or to change a locked ticket, which the fix round may not do.
+        seen = Path(tempfile.mkdtemp(), "lenses.jsonl")
+        _, _, task = self.task(reviewer=f"ok taskmajor=1 plan_review_to={seen}")
+        self.assertEqual(task.run(), 0)
+        calls = [json.loads(line) for line in seen.read_text().splitlines()]
+        first = [c for c in calls if "fix" not in c["inputs"]]
+        fix = [c for c in calls if "fix" in c["inputs"]]
+        self.assertEqual(sorted(c["lens"] for c in fix), ["readiness", "simplicity"])
+        self.assertIn("loud is missing", fix[0]["inputs"]["fix"])
+        self.assertTrue(first)
+
     def test_each_ticket_starts_from_the_ready_change_before_it(self):
         s, store, task = self.task(reviewer="ok taskmajor=1")
         self.assertEqual(task.run(), 0)

@@ -11,4 +11,6 @@ The plan's Reuse section must name what the code already has. A thing the analys
 A `keeps behavior` item that asks for a new test when an existing test already asserts the behavior is a `major` finding: name the test as `file::test`, and point the item at it.
 A plan that could drop a whole ticket and still do the task gets a `blocking` finding.
 
+**A fix round.** When your inputs hold `fix`, the plan is a new version of an approved plan, written to fix the problems that `fix` lists. Read the plan against those problems as well as the request: a ticket that fixes one of them is needed. The tickets of the approved plan are locked: do not ask to change, merge into, or drop them. A fix goes in a new ticket with its own test file.
+
 Done when every ticket and every file in the plan has been asked all four questions.
