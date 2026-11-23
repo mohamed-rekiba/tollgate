@@ -51,6 +51,7 @@ from gate import tickets as tk
 from gate.store import Store, StoreError
 
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
+WRITING_CHECK = ".tollgate/checks/check_writing.py"
 MAX_ROUNDS = 4
 OPEN_LEVELS = ("blocking", "major")
 TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the review lens only
@@ -112,7 +113,17 @@ class Task:
                 and not Path(self.logs, f"{t}.jsonl").exists()]
         problems = [f"ticket id {t} is already used by an earlier lock; pick a new id"
                     for t in used]
-        return problems + self.kept_tickets(plan) + pl.check_tickets(plan, self.read_copy)
+        return (problems + self.required_files(plan) + self.kept_tickets(plan)
+                + pl.check_tickets(plan, self.read_copy))
+
+    def required_files(self, plan) -> list:
+        """A file that a check of the project requires, and that the plan leaves missing.
+        Today, one: the README that the writing check fails without."""
+        if (Path(self.copy, WRITING_CHECK).exists() and not Path(self.copy, "README.md").exists()
+                and plan.files.get("README.md") != "create"):
+            return [("README.md is missing, and the project's writing check fails without it: "
+                     "add 'create README.md' to Files, and a checklist item that covers it")]
+        return []
 
     def kept_tickets(self, plan) -> list:
         """A new version of a locked plan keeps each ticket of the old one, unchanged."""
