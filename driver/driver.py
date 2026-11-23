@@ -193,15 +193,21 @@ def draw_diagrams(copy: str) -> tuple:
     return names, ""
 
 
-def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
-    """Return (score, {item id: passed}).
+def item_of(test_id: str, items: dict | None = None) -> str | None:
+    """The item a locked test covers: by the lock's map, or else by its name."""
+    return (items or {}).get(test_id) or item_of_test(test_id)
+
+
+def score(ticket, test_status: dict, reviewed: list, workdir: str,
+          items: dict | None = None) -> tuple:
+    """Return (score, {item id: passed}). items is the lock's map of test to item.
 
     An item with tests passes when all its tests pass. Any other item passes when
     the reviewer named a file and a line that exists.
     """
     by_item = {}
     for test_id, status in test_status.items():
-        item = item_of_test(test_id)
+        item = item_of(test_id, items)
         if item:
             by_item.setdefault(item, []).append(status == "passed")
     claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
@@ -217,14 +223,15 @@ def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     return value, passed
 
 
-def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict) -> str:
+def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict,
+                 items: dict | None = None) -> str:
     """Why each failed item failed, for the builder's next try."""
     claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
     out = []
     for item in ticket.items:
         if passed.get(item.id, True):
             continue
-        tests = sorted(t for t in test_status if item_of_test(t) == item.id)
+        tests = sorted(t for t in test_status if item_of(t, items) == item.id)
         if tests:
             failing = [t for t in tests if test_status[t] != "passed"]
             out.append(f"{item.id}: its locked tests fail: {', '.join(failing)}")
@@ -383,7 +390,22 @@ class Driver:
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the tests were rejected {st_.rejections} times")
 
+    def write_map(self) -> None:
+        """Write the test map from the test writer's last answer, when a test in it
+        keeps its own name: an existing test that covers an item."""
+        written = [e for e in read(self.log_path) if e["event"] == "tests_written"]
+        tests = [t for t in (written[-1].get("tests") or [] if written else [])
+                 if isinstance(t, dict) and all(isinstance(t.get(k), str) and t.get(k)
+                                                for k in ("item", "file", "name"))]
+        path = Path(self.copy, mf.map_path(self.ticket_id))
+        if any(item_of_test(t["name"]) != t["item"] for t in tests):
+            path.write_text(json.dumps([{k: t[k] for k in ("item", "file", "name")}
+                                        for t in tests], indent=1) + "\n")
+        else:
+            path.unlink(missing_ok=True)
+
     def freeze(self, st_: history.Ticket):
+        self.write_map()
         commit = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
         fetch_branch(self.project, self.copy, self.branch)
         try:
@@ -445,6 +467,7 @@ class Driver:
         findings = self.gate.evaluate(facts)
         tier = self.gate.tier_of(facts)[0]
         lock = facts.lock or self.lock() or {"manifest": {"tests": []}}
+        mapped = lock["manifest"].get("items", {})
         locked = {t: r["status"] for t, r in results.tests.items()
                   if t in lock["manifest"]["tests"]}
         failed_tests = sorted(t for t in lock["manifest"]["tests"] if locked.get(t) != "passed")
@@ -461,18 +484,19 @@ class Driver:
                        + "; ".join(f["message"] for f in cannot_fix))
         if any(f["fixable"] for f in findings):
             # The score with no review: a lower bound, so the best try can still move.
-            value, passed = score(self.ticket, locked, [], self.copy)
+            value, passed = score(self.ticket, locked, [], self.copy, mapped)
             self.log.add("try_failed", findings=findings, score=value, items=passed, **fields)
             self._keep_if_best(st_, value, commit)
             return
         # Only a locked test vouches for an item: the builder's own tests do not, so the
         # reviewer judges every item that no locked test covers, as score() counts them.
-        tested = sorted({item_of_test(t) for t in locked if item_of_test(t)})
+        tested = sorted({item_of(t, mapped) for t in locked if item_of(t, mapped)})
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
         checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
                                          "diff": diff}, lens="checklist")
         cost = roles.add_cost(cost, checked.cost_usd)
-        value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy)
+        value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy,
+                              mapped)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
         if tier >= 2:
             spent = []
@@ -489,7 +513,8 @@ class Driver:
         fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
-            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed)
+            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed,
+                                   mapped)
             why = blocking or [{"level": "major", "text": f["message"]} for f in findings] or [
                 {"level": "major", "text": (f"must-have items failed: {', '.join(must_failed)}"
                  if must_failed else f"score {value} is under {self.settings['pass_score']}")

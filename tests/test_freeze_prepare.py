@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 from gate import freeze, gate, prepare
 from gate import manifest as mf
@@ -46,7 +47,7 @@ class FreezeTest(unittest.TestCase):
         lock = self.record()
         self.assertEqual((lock["number"], lock["commit"], lock["base_commit"]),
                          (1, self.commit, "b" * 40))
-        self.assertEqual(sorted(lock["manifest"]), ["files", "keeps_behavior", "tests"])
+        self.assertEqual(sorted(lock["manifest"]), ["files", "items", "keeps_behavior", "tests"])
         self.assertEqual(lock["manifest"]["keeps_behavior"], ["tests.test_t1::test_c2_sent_once"])
 
     def test_a_third_lock_is_refused(self):
@@ -61,6 +62,66 @@ class FreezeTest(unittest.TestCase):
     def test_refuses_a_test_that_passes_before_the_build(self):
         with self.assertRaisesRegex(mf.FreezeError, "passed before the build"):
             self.record(test_c1_retries="passed")
+
+
+
+class TestMapTest(unittest.TestCase):
+    """The test writer may point an item at an existing test, which keeps its own name."""
+
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.close)
+        self.repo.write(".tollgate/settings.json", settings_text())
+        self.repo.write(mf.ticket_path("T-1"), TICKET.replace(
+            "tests: tests/test_t1.py", "tests: tests/test_t1.py, tests/test_calc.py"))
+        self.repo.write("tests/test_t1.py", "# tests\n")
+        self.repo.write("tests/test_calc.py", "# tests that were there before\n")
+        self.repo.commit()
+        self.settings = st.load_from_ref(str(self.repo.path), "main")
+
+    def lock(self, mapped, **status):
+        if mapped is not None:
+            import json
+            self.repo.write(mf.map_path("T-1"), json.dumps(mapped))
+        commit = self.repo.commit()
+        tests = {"tests.test_t1::test_c1_retries": "failed",
+                 "tests.test_t1::test_c3_wait_logged": "failed",
+                 "tests.test_calc::test_add": "passed", "tests.test_calc::test_subtract": "passed",
+                 "tests.test_calc::test_round": "passed", **status}
+        found = {i: {"status": s, "file": ""} for i, s in tests.items()}
+        return freeze.record(str(self.repo.path), "T-1", commit, "b" * 40, self.settings,
+                             found, 1)["manifest"]
+
+    ADD: ClassVar[dict] = {"item": "C2", "file": "tests/test_calc.py", "name": "test_add"}
+    SUBTRACT: ClassVar[dict] = {"item": "C2", "file": "tests/test_calc.py",
+                                "name": "test_subtract"}
+
+    def test_an_existing_test_covers_a_keeps_behavior_item_by_the_map(self):
+        manifest = self.lock([self.ADD, self.SUBTRACT])
+        self.assertEqual(manifest["keeps_behavior"],
+                         ["tests.test_calc::test_add", "tests.test_calc::test_subtract"])
+        self.assertEqual(manifest["items"], {
+            "tests.test_calc::test_add": "C2", "tests.test_calc::test_subtract": "C2",
+            "tests.test_t1::test_c1_retries": "C1", "tests.test_t1::test_c3_wait_logged": "C3"})
+        # The whole file is locked, with the map; its other tests are not the ticket's.
+        self.assertIn("tests/test_calc.py", manifest["files"])
+        self.assertIn(mf.map_path("T-1"), manifest["files"])
+        self.assertNotIn("tests.test_calc::test_round", manifest["tests"])
+
+    def test_a_file_none_of_whose_tests_maps_to_an_item_is_refused(self):
+        with self.assertRaisesRegex(mf.FreezeError, "names no checklist item"):
+            self.lock(None)
+
+    def test_a_mapped_test_must_exist(self):
+        with self.assertRaisesRegex(mf.FreezeError, "test_multiply.*did not run"):
+            self.lock([self.ADD, dict(self.ADD, name="test_multiply")])
+
+    def test_a_mapped_keeps_behavior_test_must_pass_and_a_new_test_must_fail(self):
+        with self.assertRaisesRegex(mf.FreezeError, "keeps behavior"):
+            self.lock([self.ADD], **{"tests.test_calc::test_add": "failed"})
+        with self.assertRaisesRegex(mf.FreezeError, "passed before the build"):
+            self.lock([self.ADD, {"item": "C1", "file": "tests/test_calc.py",
+                                  "name": "test_round"}])
 
 
 class PrepareTest(unittest.TestCase):

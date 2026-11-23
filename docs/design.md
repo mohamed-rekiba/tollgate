@@ -466,7 +466,7 @@ A failed delivery is tried again up to 5 times, with a longer wait each time.
 A screen to retry by hand.
 ```
 
-A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`. The optional header key `fixes` names the bug that the ticket fixes, in one line.
+A ticket describes behavior and seams. `tests` lists every file the locked tests need. A new test names its item, such as `test_c1_succeeds_on_third_try`. A `keeps behavior` item names the existing tests that already cover it, as `file::test`, and their files go under `tests`. The test writer points the item at them in its answer, and never renames or edits them. The driver writes that answer as the test map, `.tollgate/tickets/<ticket id>/tests.json`, a list of `{"item", "file", "name"}`, and the freeze maps each test to its item by the map or by its name. Each mapped test must run, a `keeps behavior` test must pass before the build, and a new test must fail. Each test file and the map are locked whole, and a file none of whose tests maps to an item is refused. The lock records which test covers which item, and the score reads it. The optional header key `fixes` names the bug that the ticket fixes, in one line.
 
 A checklist has 3 to 10 items. Each item may carry one kind of test: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, or `concurrency`. The gate works out from the marks which kinds the ticket covers:
 
@@ -487,6 +487,11 @@ A ticket that marks no kind fails, and the message says what to add.
     "files": {
       ".tollgate/tickets/T-042/ticket.md": "sha256:9b1e...",
       "tests/test_webhook_retries.py": "sha256:c07a..."
+    },
+    "items": {
+      "tests.test_webhook_retries::test_c1_succeeds_on_third_try": "C1",
+      "tests.test_webhook_retries::test_c2_fails_after_five": "C2",
+      "tests.test_webhook_retries::test_c3_sent_once": "C3"
     },
     "keeps_behavior": ["tests.test_webhook_retries::test_c3_sent_once"],
     "tests": [

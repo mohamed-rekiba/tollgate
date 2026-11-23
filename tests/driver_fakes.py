@@ -14,14 +14,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from gate import checks, prepare, sign, state, tickets
+from gate import checks, junit, prepare, sign, state, tickets
 from gate import gate as real_gate
 from gate import manifest as mf
 from gate import review as real_review
 from gate import settings as st
 from gate.gitio import fingerprint, show_bytes
 from gate.store import StoreError
-from gate.tickets import item_of_test
 from tests.fakes import RUN_TESTS, TICKET
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")
@@ -143,31 +142,18 @@ class FakeStore:
         if data is None:
             raise StoreError(f"{mf.ticket_path(ticket)} is not in {commit}")
         tk = tickets.parse(data.decode())
-        files = {}
-        for path in [mf.ticket_path(ticket), *tk.tests]:
-            found = show_bytes(self.project, commit, path)
-            if found is None:
-                raise StoreError(f"the ticket cannot be frozen: {path} is missing")
-            files[path] = fingerprint(found)
-        tests, keeps = [], []
-        modules = {f.removesuffix(".py").replace("/", ".") for f in tk.tests}
-        for test_id, result in sorted(results.tests.items()):
-            if test_id.split("::")[0] not in modules:
-                continue    # a test of another ticket, already on the start commit
-            item = tk.item(item_of_test(test_id) or "")
-            if item is None:
-                continue
-            if item.keeps_behavior:
-                if result["status"] != "passed":
-                    raise StoreError(f"the ticket cannot be frozen: {test_id} keeps behavior")
-                keeps.append(test_id)
-            elif result["status"] == "passed":
-                raise StoreError(f"the ticket cannot be frozen: {test_id} passed before the build")
-            tests.append(test_id)
+        found = {i: junit.TestResult(i, r["status"], r.get("file", ""))
+                 for i, r in results.tests.items()}
+        try:
+            built = mf.build(self.project, commit, tk, found)
+        except mf.FreezeError as err:
+            raise StoreError(f"the ticket cannot be frozen: {err}") from None
+        files, tests, keeps = built["files"], built["tests"], built["keeps_behavior"]
         path = state.path(self.project, "locks", f"{ticket}.json")
         number = json.loads(path.read_text())["number"] + 1 if path.exists() else 1
         self._sign(path, {"ticket": ticket, "base_commit": base, "commit": commit,
-                          "manifest": {"files": files, "tests": tests, "keeps_behavior": keeps},
+                          "manifest": {"files": files, "tests": tests, "keeps_behavior": keeps,
+                                       "items": built["items"]},
                           "number": number, "at": "2026-11-22T00:00:00Z"}, "tollgate-lock")
         self.freezes += 1
         return str(path)

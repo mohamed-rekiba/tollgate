@@ -100,6 +100,6 @@ def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, 
         "ticket": ticket_id,
         "base_commit": base_commit,
         "commit": commit,
-        "manifest": {k: built[k] for k in ("files", "tests", "keeps_behavior")},
+        "manifest": {k: built[k] for k in ("files", "tests", "keeps_behavior", "items")},
         "number": number,
     }

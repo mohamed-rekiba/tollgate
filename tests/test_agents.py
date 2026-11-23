@@ -1,5 +1,6 @@
 """Tollgate's roles ship as Claude Code subagents, written from roles/*.md."""
 
+import json
 import re
 import subprocess
 import sys
@@ -97,6 +98,21 @@ class PromptsMatchTheGateTest(unittest.TestCase):
 
     def test_the_planner_says_a_keeps_behavior_item_is_a_must_have(self):
         self.assertIn("`[C7, must, keeps behavior]`", self.read("roles/builder.md"))
+
+    def test_the_example_s_keeps_behavior_item_names_its_tests_in_a_locked_file(self):
+        examples = [b for b in fenced_blocks(self.read("roles/builder.md")) if "## Checklist" in b]
+        ticket = tickets.parse(examples[0])
+        for item in (i for i in ticket.items if i.keeps_behavior):
+            named = re.findall(r"(\S+\.py)::(test_\w+)", item.text)
+            self.assertTrue(named, item.id)
+            for path, _ in named:
+                self.assertIn(path, ticket.tests)
+
+    def test_the_test_writer_maps_existing_tests_and_never_renames_them(self):
+        text = self.read("roles/test_writer.md")
+        self.assertIn("never rename", text)
+        answer = json.loads(fenced_blocks(text.split("## Answer")[1])[0])
+        self.assertTrue(any(not tickets.item_of_test(t["name"]) for t in answer["tests"]))
 
     def test_the_test_writer_defines_every_kind(self):
         text = self.read("roles/test_writer.md")

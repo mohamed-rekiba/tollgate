@@ -39,6 +39,27 @@ class BuildTest(LoopCase):
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
 
+    def test_an_existing_test_keeps_a_behavior_under_its_own_name(self):
+        from tests.driver_fakes import sh
+        from tests.fakes import TICKET
+        s = self.sample(builder="pass2 tw_map=1")
+        Path(s.project, "tests/test_greet.py").write_text(
+            "import unittest\n\nimport app\n\n\nclass G(unittest.TestCase):\n"
+            "    def test_greet(self):\n        self.assertEqual(app.greet('ann'), 'hello ann')\n")
+        Path(s.project, ".tollgate/tickets/T-1/ticket.md").write_text(TICKET.replace(
+            "tests: tests/test_t1.py", "tests: tests/test_t1.py, tests/test_greet.py"))
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "an existing test")
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        lock = d.lock()["manifest"]
+        self.assertEqual(lock["keeps_behavior"], ["tests.test_greet::test_greet"])
+        self.assertEqual(lock["items"]["tests.test_greet::test_greet"], "C2")
+        passed = [e for e in s.log() if e["event"] == "try_passed"][-1]
+        self.assertEqual((passed["score"], passed["items"]["C2"]), (100, True))
+        self.assertEqual(sh(d.copy, "git", "diff", "main", "HEAD", "--", "tests/test_greet.py"),
+                         "")
+
     def test_a_check_that_fails_on_the_new_tests_sends_them_back(self):
         py = sys.executable
         bad = f"{py} -c \"print('tests/test_t1.py:1: a long dash'); raise SystemExit(1)\""
