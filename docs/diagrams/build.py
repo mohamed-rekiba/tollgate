@@ -5,8 +5,9 @@
 
 Two kinds of diagram:
 - Written: a spec in docs/diagrams/src/<name>.json: a flow, a sequence, a state
-  machine, or a scene. The formats are in diagram/__init__.py, diagram/flow.py,
-  diagram/sequence.py, and diagram/state.py.
+  machine, a class or ER diagram, or a scene. The formats are in
+  diagram/__init__.py, diagram/flow.py, diagram/sequence.py, diagram/state.py,
+  and diagram/model.py.
 - Art: a picture drawn in its own code, such as the README banner in hero.py.
 """
 

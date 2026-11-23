@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, an architecture picture, or icons. Never use Mermaid or a picture of text.
+description: Draw a diagram as an SVG file in light and dark, one that a person reads at a glance: a flowchart in the standard shapes, a UML sequence diagram, a UML state machine, a UML class diagram, an ER diagram, an isometric scene for the big picture, or an AWS architecture with the official AWS icons. Use whenever a README, doc, plan, or report needs a diagram, a flowchart, a sequence or state diagram, a class or ER diagram, an architecture picture, or icons. Never use Mermaid or a picture of text.
 ---
 
 # Draw a diagram
@@ -28,6 +28,8 @@ The reader has never seen the project's code. Every word in the picture is for t
 - A process, steps, choices: a **flow**. See below.
 - One scenario between parts over time, such as a request between services or an API call: a **sequence**. See below.
 - One thing with a lifecycle, the states it is in and the events that move it, such as an order or a task: a **state machine**. See below.
+- Types and how they relate: what each holds, what inherits, owns, or uses what: a **class diagram**. See below.
+- Stored data: tables or records, their keys, and how many of one go with another: an **ER diagram**. See below.
 - The big picture: places, who holds what, what talks to what: a **scene**. See below.
 - Cloud infrastructure on AWS: a **flow** with AWS icons and AWS groups. See below.
 
@@ -72,6 +74,23 @@ A UML state machine: the states one thing is in, and the events that move it. Se
 - `transitions`: arrows labeled with the `event`, then the `guard` in brackets, both optional. A transition from a state to itself is a loop, such as another try. `loop`, `route`, and `tone` work as in a flow; `shift` moves an arrow along a side so two arrows can share it.
 - `ticket`: one dot follows a path of transitions, such as the path that works.
 - About eight to twelve states. Name each for what is true while the thing waits there, such as "At the gate", not for a function.
+
+## A class diagram
+
+A UML class diagram: the types of one part and how they relate. Set `"type": "class"`. The format, with every option, is at the top of `$TG/diagram/model.py`. In short:
+
+- `classes`: boxes on a grid of `col` and `row`, in three compartments: the `name`, the `fields`, the `methods`. Leave out `fields` or `methods` and that compartment is not drawn. `stereotype` goes over the name in guillemets; `"abstract": true` sets the name in italics. `kind`, `icon`, and `names` work as in a flow.
+- `relations`: read each as a sentence, `from` first. `type` is `inherits` or `implements` (a hollow triangle at `to`), `owns` (a filled diamond at `from`, the whole), `has` (a hollow diamond at `from`), `association` (a plain line; `"arrow": true` adds an open arrow), or `uses` (a dashed line with an open arrow). `composition`, `aggregation`, and `dependency` are the UML names for owns, has, and uses.
+- `ends`: the multiplicity by each end, such as `["1", "0..*"]`; `roles` a role name before it. `label` sits in the middle. `route`, `loop`, and `shift` work as in a state machine.
+- Field and method names are names the reader types, so write them as in the code. About eight classes; leave out the fields that do not matter to the point.
+
+## An ER diagram
+
+An entity relationship diagram: what is stored, and the keys that link it. Set `"type": "er"`. The format is at the top of `$TG/diagram/model.py`. In short:
+
+- `tables`: boxes on a grid of `col` and `row`, with a `name` and `columns`: each a `name`, a `type`, and a `key` of `pk`, `fk`, or `pk fk`, drawn as small PK and FK tags.
+- `relations`: a line with a crow's foot end at each table. `ends` names them, the end at `from` first: `exactly one`, `zero or one`, `one or many`, `zero or many` (`one` and `many` for short). `label`, `route`, `loop`, and `shift` work as in a class diagram.
+- When the data is not in a database, such as signed files, draw the records and the keys that truly link them, and say so in `desc`.
 
 ## A scene
 

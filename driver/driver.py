@@ -138,7 +138,7 @@ def diagram_guide(ticket_text: str) -> str:
     if "diagram" not in ticket_text.lower():
         return ""
     import diagram
-    from diagram import flow, sequence, state
+    from diagram import flow, model, sequence, state
     root = Path(__file__).resolve().parent.parent
     skill = (root / "skills" / "diagram" / "SKILL.md").read_text()
     return "\n\n".join([
@@ -147,10 +147,11 @@ def diagram_guide(ticket_text: str) -> str:
         skill, "## The format of a flow\n\n" + (flow.__doc__ or ""),
         "## The format of a sequence diagram\n\n" + (sequence.__doc__ or ""),
         "## The format of a state machine\n\n" + (state.__doc__ or ""),
+        "## The format of a class or ER diagram\n\n" + (model.__doc__ or ""),
         "## The format of a scene\n\n" + (diagram.__doc__ or "")])
 
 
-DIAGRAM_TYPES = ("flow", "sequence", "state", "scene")
+DIAGRAM_TYPES = ("flow", "sequence", "state", "scene", "class", "er")
 
 
 def _is_spec(path: Path) -> bool:
