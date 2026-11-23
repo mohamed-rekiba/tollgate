@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -54 1104 1027" width="1104" height="1027" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">Component diagram for The driver</title>
-<desc id="desc">Inside the driver: the step commands run the task runner up to the next step. The task runner runs each ticket in plan order. The ticket runner asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the advisor decides.</desc>
+<desc id="desc">Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the advisor decides.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-40" y="-54" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
 <style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
 <rect x="-40" y="-54" width="1104" height="1027" fill="#ffffff"/>
@@ -48,7 +48,7 @@
 <path d="M624.2,392.0 H637.2 V379.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <g transform="translate(417.6,280.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z"/><path d="M10 8.5v7l6-3.5z"/></g>
 <text x="443.6" y="293.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
-<text x="417.6" y="320.0" font-size="14" font-weight="700" fill="#1f2328">The task runner</text>
+<text x="417.6" y="320.0" font-size="14" font-weight="700" fill="#1f2328">The task loop</text>
 <text x="417.6" y="338.0" font-size="12" fill="#59636e">[Component: Python]</text>
 <text x="417.6" y="355.0" font-size="12" fill="#59636e">Runs the tickets in plan</text>
 <text x="417.6" y="372.0" font-size="12" fill="#59636e">order</text>
@@ -69,7 +69,7 @@
 <path d="M624.2,593.0 H637.2 V580.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
 <g transform="translate(417.6,464.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>
 <text x="443.6" y="477.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
-<text x="417.6" y="504.0" font-size="14" font-weight="700" fill="#1f2328">The ticket runner</text>
+<text x="417.6" y="504.0" font-size="14" font-weight="700" fill="#1f2328">The ticket loop</text>
 <text x="417.6" y="522.0" font-size="12" fill="#59636e">[Component: Python]</text>
 <text x="417.6" y="539.0" font-size="12" fill="#59636e">Tests first, then tries</text>
 </g>

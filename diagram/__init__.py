@@ -93,12 +93,10 @@ def draw(spec: dict, theme: str) -> str:
     if kind == "usecase":
         from diagram import usecase
         return usecase.draw(spec, theme)
-    if kind != "flow":
-        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, c4, usecase, "
     if kind in ("class", "er"):
         from diagram import model
         return model.draw(spec, theme)
     if kind != "flow":
-        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, class, er, "
-                         "or scene")
+        raise ValueError(f"no diagram type '{kind}'; use flow, sequence, state, c4, usecase, "
+                         "class, er, or scene")
     return flow.draw(spec, theme)
