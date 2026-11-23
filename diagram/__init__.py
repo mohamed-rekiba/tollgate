@@ -29,15 +29,17 @@ A scene spec:
     {"type": "scene", "title": "...", "desc": "...",
      "size": [1120, 640], "origin": [560, 330], "scale": 0.8,
      "caption": ["Big title", "one line under it"],
-     "zones":   [{"at": [x0, y0, x1, y1], "kind": "ai"}],
+     "zones":   [{"at": [x0, y0, x1, y1], "kind": "ai", "z": 0, "height": 8}],
      "lanes":   [{"path": [[x, y], [x, y]], "label": "the change", "at": 0.5,
                   "tone": "pass" | "fail", "side": true}],
      "objects": [{"type": "room" | "gate" | "server" | "vault" | "papers" | "laptop" |
                           "board" | "house" | "database" | "pedestal" | "aws" | "wall" |
-                          "person" | "external",
-                  "at": [x, y], "kind": "server", ...}],
+                          "person" | "external" | "building" | "container" | "queue" |
+                          "cloud" | "component",
+                  "at": [x, y], "z": 0, "kind": "server", ...}],
+     "badges":  [{"at": [x, y, z], "icon": "lock", "kind": "server"}],
      "labels":  [{"at": [x, y, z], "head": "Main", "sub": ["line", "line"],
-                  "anchor": "start" | "middle" | "end",
+                  "anchor": "start" | "middle" | "end", "halo": true,
                   "pin": [x, y, z], "n": 1, "kind": "ai", "drop": 60, "route": "level"}],
      "note":    {"n": 8, "head": "Always", "line": "One short line.", "kind": "neutral"},
      "ticket":  {"legs": [{"path": [[x, y], ...], "tone": "fail", "wait": 0.9}],
@@ -52,6 +54,15 @@ Ground units: x runs down-right on the page, y runs down-left, z runs up.
 a system that is not ours: a gray building, gray whatever its kind, with an
 optional "size". A person, your system in a zone, and external systems around
 it, with lanes for what flows, draw a C4 system context as a scene.
+"building" is a system of ours, in its kind's color; "container" a box with a
+lid and a door; "queue" a pipe on its side; "cloud" a cloud tied to a ring on
+the ground; "component" a small block with the tabs of a UML component.
+A zone with "z" stands that high, "height" thick: put one on another to make
+a platform. An object with "z" stands that high, on a platform. A badge is an
+icon in a ring, floating over a point. A lane's path may take [x, y, z]
+points, and its label a line break for a second line. A label with "halo" has
+a rim in the page's color, to stay clear over a line. A c4 spec with
+"style": "isometric" is drawn as a scene like this: see diagram/c4.py.
 "lift" names the ticket leg during which the gate's barrier is up.
 
 A label with "pin" is tied to its part: a flat ring on the point "pin" names,
