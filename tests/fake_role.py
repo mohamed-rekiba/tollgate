@@ -327,6 +327,8 @@ def main() -> int:
         plan = PLAN.format(task=task, request=data["request"])
         if opts.get("ask") and not data.get("hint"):
             plan = plan.replace("## Assumptions\nnone", "## Assumptions\n- Should whisper keep accents?")
+        if any("README.md" in problem for problem in data.get("problems", [])):
+            plan = plan.replace("## Files\nmodify app.py", "## Files\nmodify app.py\ncreate README.md")
         written = [(f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)]
         if FIX_HINT in data.get("hint", ""):
             plan = plan.replace(f"tickets: {task}-1, {task}-2", f"tickets: {task}-1, {task}-2, {task}-3")

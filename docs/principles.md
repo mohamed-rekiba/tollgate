@@ -303,6 +303,7 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 **How Tollgate does it.**
 
 - The plan lists the docs a change alters under Files, and a checklist item covers them. The readiness lens reports a plan that changes behavior and lists no doc.
+- `driver/task.py` sends a plan back, before any lens reads it, when the project's writing check is installed, README.md is missing, and the plan does not create it.
 - The review lens reports a change whose docs still describe the old version, in each ticket and in the whole task.
 - `check_writing.py` fails a change that removes a file or a name that a doc still points at: a link, a path in backticks, or `path::name`. It also fails a new link to a file that does not exist. It runs in pre-commit and in the gate, so the builder fixes the doc in the same loop as the code.
 - The analyst reads the project's own architecture docs, and confirms each fact against the code.
