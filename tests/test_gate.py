@@ -194,6 +194,46 @@ class ChainTest(GateCase):
         self.assertIn(("locked_files", "tests/test_t1.py"), changed)
 
 
+    T1_TESTS = ("def test_c1_retries():\n    assert True\n\n\n"
+                "def test_c2_sent_once():\n    assert 1 == 1\n")
+
+    def shared_file_chain(self, t2_file):
+        """T-1 locked tests/test_t1.py; T-2 adds its own test to the same file and locks it."""
+        r = self.repo
+        r.git("checkout", "-q", "tg/T-1")
+        r.write("tests/test_t1.py", self.T1_TESTS)
+        first = r.commit("lock T-1 again")
+        self.write_lock(dict(self.lock, commit=first, manifest=dict(
+            self.lock["manifest"], files=self.prints(first, TICKET_FILE, "tests/test_t1.py"))))
+        start = r.git("rev-parse", "HEAD").strip()
+        r.git("checkout", "-q", "-b", "tg/T-2")
+        r.write(".tollgate/tickets/T-2/ticket.md", TICKET.replace("id: T-1", "id: T-2"))
+        r.write("tests/test_t1.py", t2_file)
+        commit = r.commit("lock T-2")
+        sign.write(state.path(self.project, "locks", "T-2.json"),
+                   {"ticket": "T-2", "base_commit": start, "commit": commit,
+                    "manifest": {"files": self.prints(commit, ".tollgate/tickets/T-2/ticket.md",
+                                                      "tests/test_t1.py"),
+                                 "tests": [], "keeps_behavior": []},
+                    "number": 1, "at": "2026-11-22T10:00:00Z"}, "tollgate-lock")
+        self.build("def retry():\n    return 2\n")
+        facts = gate.collect(self.project, self.project, "main", "HEAD", "T-2",
+                             passing_results(), None, start=start)
+        return [(f["check"], f["file"]) for f in gate.evaluate(facts)]
+
+    def test_a_later_ticket_may_add_a_test_to_a_file_an_earlier_ticket_locked(self):
+        added = self.T1_TESTS + "\n\ndef test_c1_divide_by_zero():\n    assert 2 == 2\n"
+        self.assertNotIn(("locked_files", "tests/test_t1.py"), self.shared_file_chain(added))
+
+    def test_a_later_ticket_may_not_change_or_drop_an_earlier_ticket_s_test_in_it(self):
+        changed = self.T1_TESTS.replace("assert 1 == 1", "assert True")
+        dropped = self.T1_TESTS.split("\n\n\ndef test_c2")[0] + "\n"
+        for text in (changed, dropped):
+            with self.subTest(text=text):
+                self.setUp()
+                self.assertIn(("locked_files", "tests/test_t1.py"), self.shared_file_chain(text))
+
+
 class TierTest(GateCase):
     def test_a_small_change_is_tier_1_and_locked_files_do_not_count(self):
         self.assertEqual(gate.tier_of(self.facts())[0], 1)

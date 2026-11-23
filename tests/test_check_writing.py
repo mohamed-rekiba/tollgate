@@ -186,6 +186,15 @@ class CheckWritingTest(unittest.TestCase):
         self.repo.commit("chore(main): release 0.1.1")
         self.assertEqual(self.repo.check(), (0, ""))
 
+    def test_the_tollgate_records_are_not_checked(self):
+        # Roles write these files and lenses review them; no builder may edit them,
+        # so a finding there could never be fixed.
+        self.repo.write(".tollgate/analysis/t1.md", "- comments may not use leverage or delve\n")
+        self.repo.write(".tollgate/tickets/t1/ticket.md", "Open an issue for each judge.\n")
+        self.repo.write(".tollgate/checks/check_x.py", "# we leverage the gate\nX = 1\n")
+        self.repo.commit("docs(t1): the plan")
+        self.assertEqual(self.repo.check(), (0, ""))
+
     def test_a_word_to_avoid_names_the_term_to_use(self):
         self.repo.write("docs/guide.md", "Open an issue for each judge.\n")
         self.repo.commit("docs(guide): add a guide")

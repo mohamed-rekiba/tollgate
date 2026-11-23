@@ -87,6 +87,16 @@ class Task:
         p = Path(self.copy, path)
         return p.read_text() if p.exists() else None
 
+    def read_locked(self, path):
+        """A file of the plan as the plan lock has it: the tickets are built from the
+        approved plan, never from a plan the builder is still writing in the copy."""
+        locked = [e for e in read(self.log_path) if e["event"] == "plan_locked"]
+        if not locked:
+            return self.read_copy(path)
+        from gate.gitio import show_bytes
+        data = show_bytes(self.copy, locked[-1]["commit"], path)
+        return data.decode() if data is not None else None
+
     def check_plan(self) -> list:
         text = self.read_copy(pl.plan_path(self.id))
         if text is None:
@@ -170,8 +180,10 @@ class Task:
         if problems:
             raise pl.PlanError("; ".join(problems))
 
-    def review_plan(self) -> list:
-        """Up to 4 rounds. Return the findings still open, or [] after a clean round."""
+    def review_plan(self, fix: str = "") -> list:
+        """Up to 4 rounds. Return the findings still open, or [] after a clean round.
+        In a fix round, `fix` holds the findings of the review of the whole task: the lenses
+        that judge need and readiness read the plan against them too."""
         open_findings = []
         for round_no in range(1, MAX_ROUNDS + 1):
             text = self.read_copy(pl.plan_path(self.id))
@@ -181,7 +193,7 @@ class Task:
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
                     "plan": text, "tickets": tickets, "request": self.request,
-                    "analysis": self.analysis_text()}
+                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {})}
                 try:
                     data = self.role("reviewer", inputs, lens=lens)
                 except roles.RoleError:
@@ -294,7 +306,7 @@ class Task:
                      tickets=plan.tickets)
 
     def build_tickets(self) -> dict:
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
         done = {e["ticket"]: e["code"] for e in read(self.log_path) if e["event"] == "ticket_done"}
         start = None    # each ticket starts from the ready change before it
         for tid in plan.tickets:
@@ -302,7 +314,7 @@ class Task:
                 self.ticket_checkpoint(tid)
                 start = self.ready_commit(tid) or start
                 continue
-            text = self.read_copy(f".tollgate/tickets/{tid}/ticket.md")
+            text = self.read_locked(f".tollgate/tickets/{tid}/ticket.md")
             try:
                 code = Driver(self.project, tid, self.store, ticket_text=text,
                               runner=self.runner, base=start, hold=True,
@@ -332,7 +344,7 @@ class Task:
     def ticket_checkpoint(self, tid: str) -> None:
         if "ticket" in self.settings["checkpoints"] and not self.passed_checkpoint("ticket", tid):
             self.checkpoint("ticket", f"Ticket {tid} is a ready change. Go on to the next one?",
-                            {"ticket": self.read_copy(f".tollgate/tickets/{tid}/ticket.md")}, tid)
+                            {"ticket": self.read_locked(f".tollgate/tickets/{tid}/ticket.md")}, tid)
 
     def fix_rounds(self) -> int:
         return sum(1 for e in read(self.log_path) if e["event"] == "fix_round")
@@ -349,7 +361,7 @@ class Task:
             passed, text = found[-1]["passed"], found[-1]["text"]
             findings = found[-1].get("findings", [])
         else:
-            plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+            plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
             parts, reviewed = [], []
             for tid in plan.tickets:
                 ready = [e for e in read(str(Path(self.logs, f"{tid}.jsonl")))
@@ -369,7 +381,7 @@ class Task:
                 return answer.data
 
             passed, findings, text = reviewlib.review(
-                TASK_TIER, self.read_copy(pl.plan_path(self.id)), change, run_role,
+                TASK_TIER, self.read_locked(pl.plan_path(self.id)), change, run_role,
                 lenses=("review",))
             self.log.add("task_reviewed", round=round_no, passed=passed, findings=findings,
                          text=text, tickets=reviewed, cost_usd=roles.add_cost(*cost))
@@ -386,6 +398,19 @@ class Task:
             self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
         return True
 
+    def show_built(self) -> None:
+        """Put the change the tickets built in the copy's work tree, from the last ready
+        change of the chain, where the next ticket starts. Only the work tree changes,
+        and .tollgate/ stays as the plan has it, so the plan branch still holds only the
+        plan and its tickets."""
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
+        ready = [c for c in (self.ready_commit(t) for t in plan.tickets) if c]
+        if not ready:
+            return
+        git(self.copy, "fetch", "-q", self.project, "+refs/heads/tg/*:refs/tollgate/tickets/*")
+        git(self.copy, "restore", f"--source={ready[-1]}", "--worktree", "--", ".",
+            ":(exclude).tollgate")
+
     def amend_plan(self, findings: list) -> None:
         """The fix round: the builder changes the plan, with the findings of the review of
         the whole task as its hint; it keeps each locked ticket and adds tickets for the
@@ -400,9 +425,10 @@ class Task:
                             for f in findings))
         if "fix_plan_reviewed" not in kinds:
             if "fix_plan_written" not in kinds:
+                self.show_built()
                 self.write_plan(hint=hint)
                 self.log.add("fix_plan_written", findings=findings)
-            open_findings = self.review_plan()
+            open_findings = self.review_plan(fix=hint)
             self.log.add("fix_plan_reviewed", open=open_findings)
         else:
             open_findings = [e for e in events if e["event"] == "fix_plan_reviewed"][-1]["open"]
@@ -421,7 +447,7 @@ class Task:
         passed. Stop at the first that may not merge: auto merge off, tier 3 or 4, or a
         merge the store refuses. Each later ticket holds the changes before it, so none
         may merge past it. Return the tickets merged."""
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
         merged = []
         for tid in plan.tickets:
             path = str(Path(self.logs, f"{tid}.jsonl"))
@@ -466,7 +492,12 @@ class Task:
                 self.caller = session.caller(self.settings, self.runner)
                 if self.runner is None:
                     self.runner = self.settings["runner"]
-                self.log.add("started")
+                in_session = isinstance(self.caller, session.Session)
+                if in_session:
+                    # Session mode replays the step it stopped in: log each event once.
+                    self.log.hold_while(lambda: session.replaying(self.project))
+                if not (in_session and events):
+                    self.log.add("started")
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
                         if "plan_written" not in kinds:
@@ -497,12 +528,14 @@ class Task:
                     if self.review_task():
                         self.merge_ready()
                         break
+                session.end_replay(self.project)
                 path = report.write(self.project, self.id)
                 self.log.add("reported", path=path, tickets=done)
                 return 0 if all(c == 0 for c in done.values()) else 3
         except session.Pause:
             return 5
         except Parked as parked:
+            session.end_replay(self.project)
             with Log(self.log_path, task=self.id) as log:
                 log.add("task_waiting", reason=str(parked))
             report.write(self.project, self.id)

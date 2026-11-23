@@ -1,8 +1,8 @@
 # Lens: test fit
 
-You read a ticket and its new tests, before they are locked. For each test, confirm four things:
+You read a ticket and its tests, before they are locked: the new tests, and the existing tests the test writer points an item at. For each test, confirm four things:
 
-1. **It fits its item.** The test checks what the item says, at a seam, and its name holds the item id.
+1. **It fits its item.** The test checks what the item says, at a seam. A new test's name holds the item id. An existing test keeps its own name, and it must really assert the item's claim: one that only runs near it is blocking.
 2. **It can fail.** Name one plain change to the code that would make it fail. A test that passes whatever the code does is blocking.
 3. **Its expected result comes from the ticket.** An expected value copied from the code under test is blocking.
 4. **It is the kind its item claims.** A `boundary` test checks the limit and one step past it, an `integration` test crosses a real file, process, or database, and so on, as the test writer's role defines each kind. A test of another kind is blocking.

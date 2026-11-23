@@ -98,6 +98,23 @@ class ProgressTest(StateCase):
         _, todo = report.progress(self.p, "blog")
         self.assertEqual(todo, ["Plan for blog: waits for your approval in question 3."])
 
+    def test_the_report_says_the_task_waits_only_while_it_does(self):
+        path = str(self.logs / "task-blog.jsonl")
+        with Log(path, task="blog") as log:
+            log.add("started")
+            log.add("waiting_for_advisor", by="person", question=1, reason="review clean")
+            log.add("task_waiting", reason="asked in question 1")
+            log.add("started")
+            log.add("still_waiting", question=1)
+            log.add("task_waiting", reason="question 1 waits for a decision")
+        self.assertIn("The task waits: question 1 waits for a decision",
+                      report.render(self.p, "blog"))
+        with Log(path, task="blog") as log:
+            log.add("started")
+            log.add("advisor_decided", by="person", question=1, decision="approve", hint="")
+            log.add("plan_locked", path="plans/blog.json")
+        self.assertNotIn("The task waits", report.render(self.p, "blog"))
+
     def test_nothing_run_yet(self):
         with tempfile.TemporaryDirectory() as empty:
             empty = os.path.join(empty, "other")

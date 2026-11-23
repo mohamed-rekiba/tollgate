@@ -27,7 +27,7 @@ from gate import settings as st
 from gate import sign, state, tiers
 from gate.checks import Results
 from gate.gitio import GitError, changed_files, fingerprint, git, show_bytes
-from gate.manifest import ticket_path
+from gate.manifest import python_tests, ticket_path
 
 BRANCH_PREFIX = "tg/"
 CHECKS = ("lock", "plan", "locked_files", "tier", "tests", "review")
@@ -213,8 +213,19 @@ def _is_ancestor(repo, commit: str, head: str) -> bool:
     return True
 
 
+def _tests_kept(repo, lock: dict, path: str, head_sha: str) -> bool:
+    """True when every test of a Python file that an earlier lock froze is still there,
+    unchanged, at the try. Tests added since then may be new."""
+    data = show_bytes(repo, lock["commit"], path)
+    if not path.endswith(".py") or data is None or \
+            fingerprint(data) != lock["manifest"]["files"][path]:
+        return False
+    now = python_tests(show_bytes(repo, head_sha, path))
+    return all(now.get(name) == source for name, source in python_tests(data).items())
+
+
 def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
-                   signers: list) -> list:
+                   signers: list, own: dict | None = None) -> list:
     """The locked files of the other tickets this try builds on, and that are not on main
     yet, which differ at the try. In a task each ticket starts from the ready change
     before it, so its try holds the earlier tickets' locked tests too."""
@@ -231,8 +242,15 @@ def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
                                                                                     base):
             continue
         other, _, _ = _read(project, "locks", path.stem, "tollgate-lock", signers)
-        if other:
-            out += _differ(repo, head_sha, other["manifest"]["files"])
+        if not other:
+            continue
+        for path, print_ in sorted(other["manifest"]["files"].items()):
+            # A file this ticket's own lock covers too may hold this ticket's new tests:
+            # the earlier lock's tests must still be there unchanged. Any other file
+            # stays as the earlier lock froze it.
+            if path in (own or {}) and _tests_kept(repo, other, path, head_sha):
+                continue
+            out += _differ(repo, head_sha, {path: print_})
     return out
 
 
@@ -271,7 +289,7 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
         facts.lock_error = f"the lock commit cannot be compared to its base: {err}"
     facts.locked_now_changed = _differ(repo, head_sha, files)
     facts.locked_now_changed += [p for p in _chain_changed(project, repo, base, head_sha, ticket,
-                                                           signers)
+                                                           signers, files)
                                  if p not in facts.locked_now_changed]
 
     data = show_bytes(repo, commit, ticket_path(ticket))

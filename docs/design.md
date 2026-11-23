@@ -43,7 +43,7 @@ Steps 4 to 6 repeat for each ticket. Each ticket starts from the ready change of
 
 ### The fix round
 
-When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. If that review still finds a blocking or major problem, the task parks and nothing merges, whatever the advisor would say: the merges wait until the review passes. A ticket that does not end ready, parked or stopped, stops the tickets after it, since each builds on the one before.
+When the first review of the whole task finds a blocking or major problem, the task runs one fix round, with no checkpoint first. The builder writes a new version of the plan, with the findings as its hint: it keeps every ticket of the plan unchanged and adds tickets for the fix, each with a locked test. Before the builder writes it, the task's copy gets the change that the tickets built, from the last ready change, in its work tree; the plan's branch still holds only the plan and its tickets. In a new ticket, behavior that is already built is a `keeps behavior` item, whose test passes now; only what the fix adds is a plain must-have item, whose new test fails until the fix is built. The plan is reviewed, approved, and locked again; the store refuses a new version that changes or drops a ticket of the old one, and keeps the old lock in `plans/replaced/`. The new tickets are built, and the whole task is reviewed again. The task always builds its tickets from the plan as its last plan lock has it, never from a plan the builder is still writing in the task's copy. If that review still finds a blocking or major problem, the task parks and nothing merges, whatever the advisor would say: the merges wait until the review passes. A ticket that does not end ready, parked or stopped, stops the tickets after it, since each builds on the one before.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/task-lifecycle-dark.svg">
@@ -86,7 +86,7 @@ The driver parks the ticket when it cost 10 USD, or the task cost 60 USD. No adv
 
 ### Two special cases
 
-- **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor.
+- **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor. A `retry` or `stronger` from the advisor then sends the tests back to the test writer with the hint, for up to 2 more rejections.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item `keeps behavior`, and the store accepts that one test as passing.
 
 A locked test can be wrong. The builder cannot change it. The store allows one replacement lock for a ticket, but the driver has no step that asks for one.
@@ -131,6 +131,8 @@ The driver asks for each role through one caller. In session mode, the caller wo
 ### The replay
 
 Each `next` starts the driver again, and the driver repeats no finished step: it reads its log, as it does after any restart, and each role it asks again gets its saved answer at once. So a step costs one run of the driver up to the point where it stopped.
+
+A step that was not finished runs again from its start, and logs the same events again up to the role that just answered. The run before went at least that far, so it logged them already. So when a run pauses, it notes the key of the role it paused at in `run/replay`, and the next run's logs write nothing until the run reaches that role again: once it gets that role's answer, or pauses at any role with no saved answer, each event is written. The rule goes by where the run is, not by what an event holds, so a check whose output changes on each run does not break it. A task that ends without a pause clears the note. `started` is logged once for a ticket or a task. So the log holds each event once, and the stop rules, the counts, and the report read only what really happened. The test writer's rounds are numbered, so two rounds that wrote the same tests stay two events. Background mode repeats no role, and its log writes every event.
 
 Each try starts from the best try so far, so the driver resets the copy before the builder's step, which would wipe the builder's edits on a replay. So `answer`, for the builder or the test writer, saves the copy's work tree as a commit on `refs/tollgate/answers/<key>` in the copy. On a replay the caller puts that work back in the copy before it returns the saved answer.
 
@@ -208,10 +210,10 @@ Every reviewer is the same role with a different lens. The analyst, a separate r
 | --- | --- | --- | --- |
 | Simplicity | The whole plan and the analysis | Plan review | Is this needed? Does the code already have it? Is anything built for a need nobody has? Does it fit the architecture the analysis found? |
 | Fresh reader | The plan alone | Plan review | It writes in its own words what the plan proposes. A part it cannot restate is a blocking finding. |
-| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? Is each reason under Not covered true? |
+| Readiness | The plan, the analysis, and the code | Plan review | Does every file and name that the plan says exists really exist? Is any design decision left to the builder? Does the plan rest on an assumption it does not ask about? Does each risk have a checklist item? Does the plan keep each file that a check of the project requires, such as a README? Is each reason under Not covered true? |
 | Test fit | A ticket and its tests | Before the lock | The four points in step 2. |
 | Checklist | A ticket and the change | Step 6, every tier | Each item with no test. |
-| Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity. |
+| Review | The ticket, the change, the project's own standards | Step 6, from tier 2, and once for the whole task | A bug or a missing requirement. A security hole. A break from the architecture. A wrong assumption. A missing error case. A slower path. A test gap. Needless complexity, though a file that a check of the project requires is never unrequested. |
 | Security | The change | Step 6, tier 3 and 4 | Ways to misuse the change. |
 
 ### Plan review
@@ -464,7 +466,7 @@ A failed delivery is tried again up to 5 times, with a longer wait each time.
 A screen to retry by hand.
 ```
 
-A ticket describes behavior and seams. `tests` lists every file the locked tests need. A test names its item, such as `test_c1_succeeds_on_third_try`. The optional header key `fixes` names the bug that the ticket fixes, in one line.
+A ticket describes behavior and seams. `tests` lists every file the locked tests need, and a file the test map names is one of them too. A new test names its item, such as `test_c1_succeeds_on_third_try`. A `keeps behavior` item names the existing tests that already cover it, as `file::test`, and their files go under `tests`. The test writer points the item at them in its answer, and never renames or edits them. The driver writes that answer as the test map, `.tollgate/tickets/<ticket id>/tests.json`, a list of `{"item", "file", "name"}`, and the store's lock maps each test to its item by the map or by its name. Each mapped test must run, a `keeps behavior` test must pass before the build, and a new test must fail. A test that was in a test file at the ticket's start must stay as it was: the lock refuses one whose source changed, or that is gone or renamed, and a mapped test that was not there at the start must be named for its item. New tests may go next to the old ones. Only a new test maps to an item by its name: a test that was there at the start, such as an earlier ticket's `test_c1_`, counts only through the map. Each test file and the map are locked whole, and a file none of whose tests maps to an item is refused. The gate also holds a try to the locks of the earlier tickets it builds on: a file that only an earlier ticket locked must be as that lock froze it, and in a file that this ticket's own lock covers too, each test the earlier lock froze must still be there, unchanged. The lock records which test covers which item, and the score reads it. The optional header key `fixes` names the bug that the ticket fixes, in one line.
 
 A checklist has 3 to 10 items. Each item may carry one kind of test: `happy`, `edge`, `boundary`, `error`, `regression`, `integration`, `e2e`, `security`, `performance`, or `concurrency`. The gate works out from the marks which kinds the ticket covers:
 
@@ -485,6 +487,11 @@ A ticket that marks no kind fails, and the message says what to add.
     "files": {
       ".tollgate/tickets/T-042/ticket.md": "sha256:9b1e...",
       "tests/test_webhook_retries.py": "sha256:c07a..."
+    },
+    "items": {
+      "tests.test_webhook_retries::test_c1_succeeds_on_third_try": "C1",
+      "tests.test_webhook_retries::test_c2_fails_after_five": "C2",
+      "tests.test_webhook_retries::test_c3_sent_once": "C3"
     },
     "keeps_behavior": ["tests.test_webhook_retries::test_c3_sent_once"],
     "tests": [

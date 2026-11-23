@@ -1,4 +1,8 @@
-"""The log: one JSON line for each event, one writer for each file."""
+"""The log: one JSON line for each event, one writer for each file.
+
+A log in session mode is quiet while the run replays what an earlier run of
+`driver.step next` already logged: see driver/session.py.
+"""
 
 import fcntl
 import json
@@ -27,9 +31,16 @@ class Log:
         except BlockingIOError:
             self._file.close()
             raise LogBusy(f"another writer holds {path}") from None
+        self.quiet = None
+
+    def hold_while(self, quiet) -> None:
+        """Session mode: write no event while quiet() is true, the replay of a step."""
+        self.quiet = quiet
 
     def add(self, event: str, **fields) -> dict:
         line = {"at": now(), **self.fixed, "event": event, **fields}
+        if self.quiet is not None and self.quiet():
+            return line
         self._file.write(json.dumps(line, sort_keys=False) + "\n")
         self._file.flush()
         os.fsync(self._file.fileno())

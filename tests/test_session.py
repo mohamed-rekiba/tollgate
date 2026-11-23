@@ -21,7 +21,8 @@ from tests.driver_fakes import FAKE_ROLE, FakeStore, Sample, driver, sh
 
 def fake_answer(step: dict, mode: str = "pass2") -> str:
     """What the subagent says: the fake role run in the step's folder with its prompt."""
-    done = subprocess.run([sys.executable, FAKE_ROLE, mode, "cost=0.1"], input=step["prompt"],
+    done = subprocess.run([sys.executable, FAKE_ROLE, *mode.split(), "cost=0.1"],
+                          input=step["prompt"],
                           cwd=step["cwd"] if "cwd" in step else step["copy"],
                           capture_output=True, text=True, check=True)
     return json.loads(done.stdout)["result"]
@@ -362,6 +363,172 @@ class StepTest(Case):
         report = Path(state.path(str(s.project), "reports", "demo.md")).read_text()
         self.assertIn("Cost: unknown", report)
 
+    def run_task(self, s, store, role="pass2", decide=None, rounds=150):
+        """next and answer until the task is done or parked. decide answers a question."""
+        code, out = self.next(s, store)
+        for _ in range(rounds):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                options = out["question"]["options"]
+                pick = ("approve" if "approve" in options else "continue" if "continue" in options
+                        else decide(out["question"]))
+                store.answer(out["question"]["n"], f"tollgate decide {pick}")
+                code, out = self.next(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                return out
+            code, out = self.answer(s, store, out, fake_answer(out, role))
+        self.fail(f"the task did not end: {out}")
+
+    @staticmethod
+    def style_check():
+        """A writing check that fails, naming the new test file, while it holds the mark.
+        Its output also holds the time, so it differs on each run."""
+        py = sys.executable
+        bad = (f"{py} -c \"import sys,time,pathlib;p=pathlib.Path('tests/test_t1.py');"
+               "b=p.exists() and 'BADSTYLE' in p.read_text();"
+               "print(time.time());print('tests/test_t1.py:9: bad style'*b);sys.exit(b)\"")
+        return {"tests": {"run": f"{py} run_tests.py", "report": "report.xml"},
+                "writing": {"run": bad}}
+
+    def test_a_replay_logs_each_event_once(self):
+        s, store = self.task_sample(checks=self.style_check())
+        out = self.run_task(s, store, "pass2 tw_bad=1")
+        self.assertTrue(out.get("done"), out)
+
+        def counts(name):
+            from collections import Counter
+            return Counter(e["event"] for e in s.log(name))
+        ticket = counts("demo-1")
+        self.assertEqual([e["event"] for e in s.log("demo-1")], [
+            "started", "tests_written", "tests_rejected", "tests_written", "tests_reviewed",
+            "frozen", "try_started", "builder_said", "try_failed", "try_started",
+            "builder_said", "try_passed", "ready", "waiting_for_merge"])
+        self.assertEqual(ticket["started"], 1)
+        self.assertEqual(ticket["tests_written"], 2)
+        self.assertEqual(ticket["tests_rejected"], 1)
+        self.assertEqual(ticket["try_started"], 2)
+        self.assertEqual(ticket["try_failed"], 1)
+        self.assertEqual(ticket["stopped"], 0)
+        task = counts("task-demo")
+        self.assertEqual(task["started"], 1)
+        self.assertEqual(task["plan_reviewed"], 3)
+        self.assertEqual(task["analysis_written"], 1)
+        for name in ("demo-2", "task-demo"):
+            lines = [json.dumps({k: v for k, v in e.items() if k != "at"}, sort_keys=True)
+                     for e in s.log(name)]
+            self.assertEqual(len(lines), len(set(lines)), name)
+
+
+    def test_the_stop_rule_counts_only_the_real_rejections(self):
+        # Two real rejections are under the limit, however many times next replays them.
+        s, store = self.task_sample(checks=self.style_check())
+        count = Path(s.root, "written")
+        out = self.run_task(s, store, f"pass2 tw_bad=2 tw_count={count}")
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("demo-1")]
+        self.assertEqual(events.count("tests_rejected"), 2)
+        self.assertNotIn("stopped", events)
+
+    def assert_tests_written_again_with_the_hint(self, s, out, hint):
+        self.assertTrue(out.get("done"), out)
+        log = s.log("demo-1")
+        events = [e["event"] for e in log]
+        self.assertEqual(events.count("tests_rejected"), 3)
+        decided = [e for e in log if e["event"] == "advisor_decided"]
+        self.assertEqual([(e["decision"], e["hint"]) for e in decided], [("retry", hint)])
+        self.assertNotIn("parked", events)
+        self.assertLess(events.index("advisor_decided"), events.index("frozen"))
+
+    def test_a_person_s_retry_before_the_lock_writes_the_tests_again(self):
+        s, store = self.task_sample(checks=self.style_check())
+        asked = []
+
+        def decide(question):
+            asked.append(question)
+            return "retry fix the style"
+        out = self.run_task(s, store, "pass2 tw_bad=hint", decide=decide)
+        self.assertEqual(len(asked), 1)
+        self.assertIn("retry", asked[0]["options"])
+        self.assertIn("the tests were rejected 3 times", asked[0]["body"])
+        self.assert_tests_written_again_with_the_hint(s, out, "fix the style")
+
+    def test_the_ai_advisor_s_retry_before_the_lock_writes_the_tests_again(self):
+        s, store = self.task_sample(checks=self.style_check(),
+                                    advisor=(f"{sys.executable} {FAKE_ROLE} ok",))
+        out = self.run_task(s, store, "pass2 tw_bad=hint decision=retry")
+        self.assert_tests_written_again_with_the_hint(s, out, "try harder")
+
+    def test_a_parked_ticket_is_named_not_an_answered_question(self):
+        s, store = self.task_sample(checks=self.style_check())
+        out = self.run_task(s, store, "pass2 tw_bad=hint", decide=lambda q: "park")
+        self.assertIn("demo-1: a person chose park", out["parked"])
+        self.assertNotIn("question 1", out["parked"])
+
+    def test_a_run_that_no_longer_reaches_its_saved_answer_still_logs_what_is_new(self):
+        s, store = self.task_sample()
+        _, out = self.next(s, store)                       # the analyst
+        _, out = self.answer(s, store, out, fake_answer(out))
+        self.assertEqual(out["agent"], "tollgate:builder")  # the plan
+        # The request changes, so the plan's question has a new key: the step it paused
+        # at is never reached again.
+        Path(s.project, ".tollgate/requests/demo.md").write_text("Add shout and whisper, now.\n")
+        out = self.run_task(s, store)
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("analysis_written"), 1)
+        self.assertEqual(events.count("plan_written"), 1)
+        self.assertEqual(events.count("plan_reviewed"), 3)
+        self.assertIn("plan_locked", events)
+
+    def test_tests_the_freeze_refused_are_reviewed_again_once_rewritten(self):
+        s, store = self.task_sample()
+        reviewed = []
+        code, out = self.next(s, store)
+        for _ in range(150):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                store.answer(out["question"]["n"], "tollgate decide " + (
+                    "approve" if "approve" in out["question"]["options"] else "continue"))
+                code, out = self.next(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                break
+            if "# Lens: test fit" in out["prompt"]:
+                reviewed.append(out["key"])
+            code, out = self.answer(s, store, out, fake_answer(out, "pass2 tw_freeze=1"))
+        self.assertTrue(out.get("done"), out)
+        events = [e["event"] for e in s.log("demo-1")]
+        self.assertEqual(events[:8], [
+            "started", "tests_written", "tests_reviewed", "tests_rejected", "tests_written",
+            "tests_reviewed", "frozen", "try_started"])
+        self.assertEqual(len(reviewed), 2, "the new tests get their own review")
+        self.assertEqual(events.count("frozen"), 1)
+
+    def test_logging_goes_on_once_a_role_has_no_saved_answer(self):
+        s, store = self.task_sample()
+        session.replay_path(str(s.project)).write_text("a step no run reaches\n")
+        _, out = self.next(s, store)
+        self.assertEqual(session.replay_path(str(s.project)).read_text().strip(), out["key"])
+        self.answer(s, store, out, fake_answer(out))
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("analysis_written"), 1)
+
+    def test_the_fix_round_s_plan_is_reviewed_and_locked_before_its_ticket_is_built(self):
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 taskmajor=1")
+        self.assertTrue(out.get("done"), out)
+        events = [(e["event"], e.get("ticket")) for e in s.log("task-demo")]
+        names = [e for e, _ in events]
+        self.assertEqual(names.count("fix_plan_written"), 1)
+        fixed = names.index("fix_plan_written")
+        built = events.index(("ticket_done", "demo-3"))
+        self.assertLess(fixed, names.index("fix_round"))
+        self.assertLess(names.index("fix_round"), built)
+        self.assertEqual(names[fixed + 1:built].count("plan_reviewed"), 3)
+        self.assertNotIn("plan_reviewed", names[built:])
+        rounds = [e.get("round") for e in s.log("task-demo") if e["event"] == "task_reviewed"]
+        self.assertEqual(rounds, [0, 1])
 
 class ReadyTest(Case):
     def test_a_task_needs_signers_on_main(self):

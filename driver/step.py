@@ -115,9 +115,12 @@ def next_step(project: str, task: str, store=None) -> tuple:
     if question:
         return {"question": question}, 0
     if code == 3:
-        waiting = [e for e in read(str(state.path(project, "logs", f"task-{task}.jsonl")))
-                   if e["event"] == "task_waiting"]
-        return {"parked": waiting[-1]["reason"] if waiting else "the task waits"}, 0
+        waiting = report.still_waiting(read(str(state.path(project, "logs",
+                                                           f"task-{task}.jsonl"))))
+        parked = [f"{r['ticket']}: {r['reason']}" for r in report.rows(project, task)
+                  if r["state"] == "parked"]
+        return {"parked": waiting[-1]["reason"] if waiting else
+                "; ".join(parked) or "the task waits"}, 0
     return {"error": f"the driver ended with {code}"}, 1
 
 

@@ -6,6 +6,7 @@ capitals. The fake builder's mode decides how each try goes.
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -38,6 +39,53 @@ class BuildTest(LoopCase):
         self.assertEqual((branch, ticket), ("tg/T-1", "T-1"))
         self.assertEqual(store.passed(commit)["score"], 100)
         self.assertEqual(store.merged, [])
+
+    def greet_sample(self, tw_map):
+        from tests.driver_fakes import sh
+        from tests.fakes import TICKET
+        s = self.sample(builder=f"pass2 tw_map={tw_map}")
+        Path(s.project, "tests/test_greet.py").write_text(
+            "import unittest\n\nimport app\n\n\nclass G(unittest.TestCase):\n"
+            "    def test_greet(self):\n        self.assertEqual(app.greet('ann'), 'hello ann')\n")
+        ticket = TICKET.replace("tests: tests/test_t1.py",
+                                "tests: tests/test_t1.py, tests/test_greet.py")
+        if tw_map == "next":
+            ticket = ticket.replace("- [C3, error]", "- [C4, edge] shout has a docstring.\n"
+                                    "- [C3, error]").replace("- edge: the input is one fixed "
+                                                             "name.\n", "")
+        Path(s.project, ".tollgate/tickets/T-1/ticket.md").write_text(ticket)
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "an existing test")
+        return s
+
+    def test_a_weakened_existing_test_is_refused_at_the_freeze(self):
+        s = self.greet_sample("weaken")
+        d, _ = driver(s)
+        d.run()
+        rejected = [e for e in s.log() if e["event"] == "tests_rejected"]
+        self.assertIn("test_greet was there at the start, and it changed",
+                      rejected[0]["findings"][0]["text"])
+
+    def test_a_new_test_next_to_an_existing_one_is_locked(self):
+        s = self.greet_sample("next")
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        items = d.lock()["manifest"]["items"]
+        self.assertEqual(items["tests.test_greet::test_c4_greet_has_a_docstring"], "C4")
+        self.assertEqual(items["tests.test_greet::test_greet"], "C2")
+
+    def test_an_existing_test_keeps_a_behavior_under_its_own_name(self):
+        from tests.driver_fakes import sh
+        s = self.greet_sample(1)
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        lock = d.lock()["manifest"]
+        self.assertEqual(lock["keeps_behavior"], ["tests.test_greet::test_greet"])
+        self.assertEqual(lock["items"]["tests.test_greet::test_greet"], "C2")
+        passed = [e for e in s.log() if e["event"] == "try_passed"][-1]
+        self.assertEqual((passed["score"], passed["items"]["C2"]), (100, True))
+        self.assertEqual(sh(d.copy, "git", "diff", "main", "HEAD", "--", "tests/test_greet.py"),
+                         "")
 
     def test_a_check_that_fails_on_the_new_tests_sends_them_back(self):
         py = sys.executable
@@ -516,6 +564,34 @@ class FixRoundTest(LoopCase):
         self.assertEqual(store.merged, [self.ready(s, t) for t in ("demo-1", "demo-2", "demo-3")])
         plan = json.loads(state.path(str(s.project), "plans", "demo.json").read_text())
         self.assertIn(".tollgate/tickets/demo-3/ticket.md", plan["files"])
+
+    def test_the_fix_round_s_planner_sees_what_the_tickets_built(self):
+        seen = Path(tempfile.mkdtemp(), "seen.jsonl")
+        s, _, task = self.task(reviewer="ok taskmajor=1", builder=f"pass2 plan_sees={seen}")
+        self.assertEqual(task.run(), 0)
+        plans = [json.loads(line) for line in seen.read_text().splitlines()]
+        first = plans[0]
+        fix = next(p for p in plans if "review of the whole task" in p["hint"])
+        self.assertNotIn("def shout", first["app"])
+        self.assertIn("def shout", fix["app"])
+        self.assertIn("def whisper", fix["app"])
+        # The plan branch holds only the plan: the built change stays on the tickets' branches.
+        from tests.driver_fakes import sh
+        names = sh(s.project, "git", "diff", "--name-only", "main...tg-plan/demo").split()
+        self.assertTrue(all(n.startswith(".tollgate/") for n in names), names)
+
+    def test_the_fix_round_s_plan_lenses_see_the_findings_it_fixes(self):
+        # Without them, a lens reads the fix ticket against the first request alone and
+        # asks to drop it, or to change a locked ticket, which the fix round may not do.
+        seen = Path(tempfile.mkdtemp(), "lenses.jsonl")
+        _, _, task = self.task(reviewer=f"ok taskmajor=1 plan_review_to={seen}")
+        self.assertEqual(task.run(), 0)
+        calls = [json.loads(line) for line in seen.read_text().splitlines()]
+        first = [c for c in calls if "fix" not in c["inputs"]]
+        fix = [c for c in calls if "fix" in c["inputs"]]
+        self.assertEqual(sorted(c["lens"] for c in fix), ["readiness", "simplicity"])
+        self.assertIn("loud is missing", fix[0]["inputs"]["fix"])
+        self.assertTrue(first)
 
     def test_each_ticket_starts_from_the_ready_change_before_it(self):
         s, store, task = self.task(reviewer="ok taskmajor=1")

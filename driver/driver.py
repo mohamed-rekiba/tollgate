@@ -193,15 +193,21 @@ def draw_diagrams(copy: str) -> tuple:
     return names, ""
 
 
-def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
-    """Return (score, {item id: passed}).
+def item_of(test_id: str, items: dict | None = None) -> str | None:
+    """The item a locked test covers: by the lock's map, or else by its name."""
+    return (items or {}).get(test_id) or item_of_test(test_id)
+
+
+def score(ticket, test_status: dict, reviewed: list, workdir: str,
+          items: dict | None = None) -> tuple:
+    """Return (score, {item id: passed}). items is the lock's map of test to item.
 
     An item with tests passes when all its tests pass. Any other item passes when
     the reviewer named a file and a line that exists.
     """
     by_item = {}
     for test_id, status in test_status.items():
-        item = item_of_test(test_id)
+        item = item_of(test_id, items)
         if item:
             by_item.setdefault(item, []).append(status == "passed")
     claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
@@ -217,14 +223,15 @@ def score(ticket, test_status: dict, reviewed: list, workdir: str) -> tuple:
     return value, passed
 
 
-def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict) -> str:
+def item_reasons(ticket, test_status: dict, reviewed: list, passed: dict,
+                 items: dict | None = None) -> str:
     """Why each failed item failed, for the builder's next try."""
     claims = {r.get("item"): r for r in reviewed if isinstance(r, dict)}
     out = []
     for item in ticket.items:
         if passed.get(item.id, True):
             continue
-        tests = sorted(t for t in test_status if item_of_test(t) == item.id)
+        tests = sorted(t for t in test_status if item_of(t, items) == item.id)
         if tests:
             failing = [t for t in tests if test_status[t] != "passed"]
             out.append(f"{item.id}: its locked tests fail: {', '.join(failing)}")
@@ -337,11 +344,20 @@ class Driver:
     # Steps.
 
     def write_tests(self, st_: history.Ticket):
-        rejected = []
+        """Go on from the log: the findings of the last rejection, and its count."""
+        rejected = st_.rejected
+        if st_.rejections > MAX_REJECTIONS:
+            raise Stop(f"the tests were rejected {st_.rejections} times")
         while not st_.tests_done:
-            answer = self.role("test_writer", {"ticket": self.ticket_text, "ticket_id":
-                               self.ticket_id, "rejected": rejected})
-            self.log.add("tests_written", cost_usd=answer.cost_usd,
+            # The round tells two rounds apart, in the log and in session mode's saved answers.
+            n = st_.rejections + 1
+            inputs = {"ticket": self.ticket_text, "ticket_id": self.ticket_id,
+                      "rejected": rejected, "round": n}
+            if st_.hint:
+                inputs["hint"] = st_.hint
+            stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
+            answer = self.role("test_writer", inputs, command=stronger or None)
+            self.log.add("tests_written", round=n, cost_usd=answer.cost_usd,
                          tests=answer.data.get("tests"))
             review = self.role("reviewer", {"ticket": self.ticket_text,
                                "tests": answer.data.get("tests", [])}, lens="test_fit")
@@ -369,12 +385,27 @@ class Driver:
                     st_.tests_done = True
                     break
             st_.rejections += 1
-            self.log.add("tests_rejected", cost_usd=review.cost_usd, findings=findings)
+            self.log.add("tests_rejected", round=n, cost_usd=review.cost_usd, findings=findings)
+            rejected = st_.rejected = findings
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the tests were rejected {st_.rejections} times")
-            rejected = findings
+
+    def write_map(self) -> None:
+        """Write the test map from the test writer's last answer, when a test in it
+        keeps its own name: an existing test that covers an item."""
+        written = [e for e in read(self.log_path) if e["event"] == "tests_written"]
+        tests = [t for t in (written[-1].get("tests") or [] if written else [])
+                 if isinstance(t, dict) and all(isinstance(t.get(k), str) and t.get(k)
+                                                for k in ("item", "file", "name"))]
+        path = Path(self.copy, mf.map_path(self.ticket_id))
+        if any(item_of_test(t["name"]) != t["item"] for t in tests):
+            path.write_text(json.dumps([{k: t[k] for k in ("item", "file", "name")}
+                                        for t in tests], indent=1) + "\n")
+        else:
+            path.unlink(missing_ok=True)
 
     def freeze(self, st_: history.Ticket):
+        self.write_map()
         commit = self.commit(f"test({self.ticket_id}): the ticket and its locked tests")
         fetch_branch(self.project, self.copy, self.branch)
         try:
@@ -385,7 +416,8 @@ class Driver:
         except (StoreError, mf.FreezeError) as err:
             st_.rejections += 1
             st_.tests_done = False
-            self.log.add("tests_rejected", findings=[{"level": "blocking", "text": str(err)}])
+            st_.rejected = [{"level": "blocking", "text": str(err)}]
+            self.log.add("tests_rejected", round=st_.rejections, findings=st_.rejected)
             if st_.rejections > MAX_REJECTIONS:
                 raise Stop(f"the freeze refused the tests: {err}") from None
             return
@@ -435,6 +467,7 @@ class Driver:
         findings = self.gate.evaluate(facts)
         tier = self.gate.tier_of(facts)[0]
         lock = facts.lock or self.lock() or {"manifest": {"tests": []}}
+        mapped = lock["manifest"].get("items", {})
         locked = {t: r["status"] for t, r in results.tests.items()
                   if t in lock["manifest"]["tests"]}
         failed_tests = sorted(t for t in lock["manifest"]["tests"] if locked.get(t) != "passed")
@@ -451,18 +484,19 @@ class Driver:
                        + "; ".join(f["message"] for f in cannot_fix))
         if any(f["fixable"] for f in findings):
             # The score with no review: a lower bound, so the best try can still move.
-            value, passed = score(self.ticket, locked, [], self.copy)
+            value, passed = score(self.ticket, locked, [], self.copy, mapped)
             self.log.add("try_failed", findings=findings, score=value, items=passed, **fields)
             self._keep_if_best(st_, value, commit)
             return
         # Only a locked test vouches for an item: the builder's own tests do not, so the
         # reviewer judges every item that no locked test covers, as score() counts them.
-        tested = sorted({item_of_test(t) for t in locked if item_of_test(t)})
+        tested = sorted({item_of(t, mapped) for t in locked if item_of(t, mapped)})
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
         checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
                                          "diff": diff}, lens="checklist")
         cost = roles.add_cost(cost, checked.cost_usd)
-        value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy)
+        value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy,
+                              mapped)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
         if tier >= 2:
             spent = []
@@ -479,7 +513,8 @@ class Driver:
         fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
-            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed)
+            reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed,
+                                   mapped)
             why = blocking or [{"level": "major", "text": f["message"]} for f in findings] or [
                 {"level": "major", "text": (f"must-have items failed: {', '.join(must_failed)}"
                  if must_failed else f"score {value} is under {self.settings['pass_score']}")
@@ -558,9 +593,13 @@ class Driver:
         raise Parked(reason)
 
     def _decided(self, st_, decision: str, hint: str, who: str) -> bool:
-        if decision in ("retry", "stronger") and st_.frozen:
+        if decision in ("retry", "stronger"):
+            # Before the tests are locked, the test writer writes them again with the hint,
+            # and the rejections count anew; after, the builder gets one more try.
             st_.hint = hint
             st_.stronger = st_.stronger or decision == "stronger"
+            if not st_.frozen:
+                st_.rejections, st_.rejected = 0, []
             return True
         if decision == "split":
             # UNFINISHED: the driver does not split a ticket yet. New tickets would need a
@@ -578,10 +617,12 @@ class Driver:
         lock = run_lock(self.project, self.ticket_id)
         lock.acquire()
         try:
-            st_ = history.replay(read(self.log_path))
+            events = read(self.log_path)
+            st_ = history.replay(events)
             with Log(self.log_path, ticket=self.ticket_id, task=self.ticket.plan) as self.log:
                 self.copy = roles.make_copy(self.project, self.ticket_id)
-                if not st_.tests_done and not st_.frozen:
+                # The branch starts once: tests written again after a rejection build on it.
+                if not st_.frozen and not any(e["event"] == "tests_written" for e in events):
                     if self.start != self.base:
                         # The ready change this ticket builds on lives in the project.
                         git(self.copy, "fetch", "-q", self.project,
@@ -592,7 +633,12 @@ class Driver:
                     path.write_text(self.ticket_text)
                 self.settings = st.load_from_ref(self.copy, self.base)
                 self.caller = self.caller or session.caller(self.settings, self.runner)
-                self.log.add("started", attempts_done=st_.attempts)
+                in_session = isinstance(self.caller, session.Session)
+                if in_session:
+                    # Session mode replays the step it stopped in: log each event once.
+                    self.log.hold_while(lambda: session.replaying(self.project))
+                if not (in_session and st_.state != "not started"):
+                    self.log.add("started", attempts_done=st_.attempts)
                 question = advisor.pending(self.log_path)
                 if question:
                     # Read the answer before doing anything else.

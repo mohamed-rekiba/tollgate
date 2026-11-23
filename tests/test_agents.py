@@ -1,5 +1,6 @@
 """Tollgate's roles ship as Claude Code subagents, written from roles/*.md."""
 
+import json
 import re
 import subprocess
 import sys
@@ -90,7 +91,48 @@ class PromptsMatchTheGateTest(unittest.TestCase):
     def test_the_planner_s_example_ticket_passes_the_gate(self):
         examples = [b for b in fenced_blocks(self.read("roles/builder.md")) if "## Checklist" in b]
         self.assertEqual(len(examples), 1)
-        tickets.parse(examples[0])
+        ticket = tickets.parse(examples[0])
+        keeps = [i for i in ticket.items if i.keeps_behavior]
+        self.assertTrue(keeps, "the example ticket needs a keeps behavior item")
+        self.assertTrue(all(i.must for i in keeps))
+
+    def test_the_planner_says_a_keeps_behavior_item_is_a_must_have(self):
+        self.assertIn("`[C7, must, keeps behavior]`", self.read("roles/builder.md"))
+
+    def test_the_example_s_keeps_behavior_item_names_its_tests_in_a_locked_file(self):
+        examples = [b for b in fenced_blocks(self.read("roles/builder.md")) if "## Checklist" in b]
+        ticket = tickets.parse(examples[0])
+        for item in (i for i in ticket.items if i.keeps_behavior):
+            named = re.findall(r"(\S+\.py)::(test_\w+)", item.text)
+            self.assertTrue(named, item.id)
+            for path, _ in named:
+                self.assertIn(path, ticket.tests)
+
+    def test_the_fix_round_marks_built_behavior_as_keeps_behavior(self):
+        text = self.read("roles/builder.md")
+        fix = text.split("### A fix round", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("already built", fix)
+        lines = [m for m in (tickets.ITEM.match(line.strip()) for line in fix.splitlines()) if m]
+        marks = [{x.strip() for x in m.group(2).split(",") if x.strip()} for m in lines]
+        self.assertIn({"must", "keeps behavior"}, [m - set(tickets.KINDS) for m in marks])
+        self.assertIn({"must"}, [m - set(tickets.KINDS) for m in marks])
+
+    def test_a_file_the_project_s_checks_require_is_planned_and_never_out_of_scope(self):
+        self.assertIn("a file that the project's own checks require", self.read("roles/builder.md"))
+        for lens in ("review", "readiness"):
+            with self.subTest(lens=lens):
+                self.assertIn("a file that a check of the project requires",
+                              self.read(f"lenses/{lens}.md"))
+
+    def test_the_fix_round_s_planner_knows_its_copy_holds_the_built_change(self):
+        fix = self.read("roles/builder.md").split("### A fix round", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("your copy holds the change that the tickets built", fix)
+
+    def test_the_test_writer_maps_existing_tests_and_never_renames_them(self):
+        text = self.read("roles/test_writer.md")
+        self.assertIn("never rename", text)
+        answer = json.loads(fenced_blocks(text.split("## Answer")[1])[0])
+        self.assertTrue(any(not tickets.item_of_test(t["name"]) for t in answer["tests"]))
 
     def test_the_test_writer_defines_every_kind(self):
         text = self.read("roles/test_writer.md")

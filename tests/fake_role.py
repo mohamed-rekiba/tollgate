@@ -12,12 +12,20 @@ Reviewer options: badline (names a line that does not exist), badcite (the analy
 function that does not exist), block=<lens> (that lens finds a blocking problem),
 taskmajor=<n> (the first n reviews of the whole task find a major problem),
 c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the checklist
-reviewer adds its inputs to this file). Like a real reviewer, it judges only the items
+reviewer adds its inputs to this file), plan_review_to=<path> (each plan lens adds its lens
+and inputs to this file). Like a real reviewer, it judges only the items
 that are not in `tested`.
 A plan written with a hint from the review of the whole task adds a third ticket, loud.
+Test writer options: tw_bad=1 (the first tests it writes break the style check),
+tw_bad=<n> tw_count=<path> (the first n do, counted in that file), tw_bad=hint (each
+does, until the inputs hold a hint), tw_freeze=1 (the first tests it writes hold a C1
+test that passes before the build, so the freeze refuses them), tw_map=1 (C2 is kept by
+the existing tests/test_greet.py::test_greet, named in the answer's map; tw_map=weaken
+first weakens that test; tw_map=next adds a new test next to it).
 Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
+Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file).
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
 """
@@ -282,13 +290,39 @@ def main() -> int:
                               {"item": "C2", "file": "tests/test_t2.py",
                                "name": "test_c2_greet_kept"}]}, cost)
             return 0
-        bad = opts.get("tw_bad") and not data.get("rejected")
-        Path("tests/test_t1.py").write_text(TESTS + ("# BADSTYLE\n" if bad else ""))
+        bad = opts.get("tw_bad") == "1" and not data.get("rejected")
+        if opts.get("tw_bad", "").isdigit() and opts.get("tw_count"):
+            # Bad for the first tw_bad tests it writes, counted in the file tw_count.
+            bad = count_marker(opts["tw_count"]) <= int(opts["tw_bad"])
+        if opts.get("tw_bad") == "hint":
+            bad = not data.get("hint")
+        text = TESTS
+        if opts.get("tw_freeze") and not data.get("rejected"):
+            # A C1 test that already passes, so the freeze refuses it.
+            text = TESTS.replace('app.shout("ann"), "HELLO ANN"', 'app.greet("ann"), "hello ann"')
+        if opts.get("tw_map"):
+            # C2 is kept by tests/test_greet.py::test_greet, which was there before.
+            text = text.split("\n    def test_c2_greet_kept")[0] + "\n"
+        Path("tests/test_t1.py").write_text(text + ("# BADSTYLE\n" if bad else ""))
+        greet = Path("tests/test_greet.py")
+        if opts.get("tw_map") == "weaken" and not data.get("rejected"):
+            greet.write_text(greet.read_text().replace(
+                "self.assertEqual(app.greet('ann'), 'hello ann')", "self.assertTrue(app.greet)"))
+        if opts.get("tw_map") == "next" and "test_c4_" not in greet.read_text():
+            greet.write_text(greet.read_text() + "\n    def test_c4_greet_has_a_docstring(self):"
+                             "\n        self.assertTrue(app.shout.__doc__)\n")
+        kept = ({"item": "C2", "file": "tests/test_greet.py", "name": "test_greet"}
+                if opts.get("tw_map") else
+                {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"})
         answer({"tests": [{"item": "C1", "file": "tests/test_t1.py", "name": "test_c1_shout"},
-                          {"item": "C2", "file": "tests/test_t1.py", "name": "test_c2_greet_kept"}]},
-               cost)
+                          kept]}, cost)
     elif first == "# Role: builder" and data.get("mode") == "plan":
         task = data["task_id"]
+        if opts.get("plan_sees"):
+            # What the planner's copy holds: app.py, with each function built so far.
+            with open(opts["plan_sees"], "a") as f:
+                f.write(json.dumps({"hint": data.get("hint", ""),
+                                    "app": Path("app.py").read_text()}) + "\n")
         Path(".tollgate/plans").mkdir(parents=True, exist_ok=True)
         plan = PLAN.format(task=task, request=data["request"])
         if opts.get("ask") and not data.get("hint"):
@@ -372,6 +406,9 @@ def main() -> int:
         rounds = int(opts.get("planfind", 0))
         lens = prompt.split("# Lens: ", 1)[1].splitlines()[0]
         found = lens == "simplicity" and count_marker(".fake-planfind") <= rounds
+        if opts.get("plan_review_to"):
+            with open(opts["plan_review_to"], "a") as f:
+                f.write(json.dumps({"lens": lens, "inputs": data}) + "\n")
         answer({"verdict": "pass", "findings": [{"level": "major", "text": "drop T-2?"}]
                 if found else [], "items": []}, cost)
     elif first == "# Role: reviewer" and ("# Lens: review" in prompt or "# Lens: security" in prompt):

@@ -3,7 +3,7 @@ one place that says what. The driver resumes from it; the report, the retro,
 and the advisor read it. The log itself is written by driver/log.py.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,7 +27,8 @@ class Ticket:
     state: str = "not started"
     tests_done: bool = False
     frozen: str = ""           # the lock commit
-    rejections: int = 0
+    rejections: int = 0        # since the tests were last written again on a decision
+    rejected: list = field(default_factory=list)   # the findings of the last rejection
     attempts: int = 0          # tries that ended
     best_commit: str = ""
     best_score: int = -1
@@ -55,9 +56,12 @@ def replay(events: list) -> Ticket:
         if kind in REASONS:
             t.reason = e.get("reason", "")
         if kind == "tests_reviewed":
-            t.tests_done = True
+            t.tests_done, t.rejected = True, []
         elif kind == "tests_rejected":
+            # The freeze can refuse tests the reviewer passed: they are written again.
+            t.tests_done = False
             t.rejections += 1
+            t.rejected = e.get("findings", [])
         elif kind == "frozen":
             t.frozen = e.get("commit", "")
             t.best_commit = t.best_commit or e.get("commit", "")
@@ -75,6 +79,9 @@ def replay(events: list) -> Ticket:
             if e.get("decision") in ("retry", "stronger"):
                 t.hint = e.get("hint", "")
                 t.stronger = t.stronger or e.get("decision") == "stronger"
+                if not t.frozen:
+                    # The tests are written again with the hint: the rejections count anew.
+                    t.rejections, t.rejected = 0, []
     return t
 
 

@@ -73,10 +73,10 @@ def ticket_at(repo, commit: str, ticket_id: str):
     return ticket
 
 
-def check_guarded(ticket, settings: dict) -> None:
+def check_guarded(ticket, settings: dict, paths: list | None = None) -> None:
     """Refuse a ticket that would lock harness or a tier 3 or 4 path as its tests."""
     guarded = settings["harness"] + settings["tiers"]["3"] + settings["tiers"]["4"]
-    for path in ticket.tests:
+    for path in paths or ticket.tests:
         if matches(path, guarded):
             raise mf.FreezeError(f"{path} is harness or a tier 3 or 4 path, so it cannot be locked")
 
@@ -93,13 +93,13 @@ def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, 
     if number > MAX_FREEZES:
         raise mf.FreezeError(f"ticket {ticket_id} already has {MAX_FREEZES} freezes")
     ticket = ticket_at(repo, commit, ticket_id)
-    check_guarded(ticket, settings)
+    check_guarded(ticket, settings, mf.test_files(ticket, mf.read_map(repo, commit, ticket_id)))
     found = {i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in tests.items()}
-    built = mf.build(repo, commit, ticket, found)
+    built = mf.build(repo, commit, ticket, found, base_commit)
     return {
         "ticket": ticket_id,
         "base_commit": base_commit,
         "commit": commit,
-        "manifest": {k: built[k] for k in ("files", "tests", "keeps_behavior")},
+        "manifest": {k: built[k] for k in ("files", "tests", "keeps_behavior", "items")},
         "number": number,
     }

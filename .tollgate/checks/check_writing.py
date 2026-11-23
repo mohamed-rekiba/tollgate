@@ -29,6 +29,7 @@ It fails on:
 The word list is CONTEXT.md, in this form: a term in bold, then a line that
 starts with `_Avoid_:` and lists the words to avoid, with commas between them.
 Text in code (between backticks, or in a fenced block) and words in quotes are not checked.
+Files under .tollgate are not checked: Tollgate's roles write them, and no builder may edit them.
 
 It ends with 0 when it finds nothing, 1 when it finds something, and prints one
 line for each finding: the file and line, then what to change.
@@ -48,7 +49,10 @@ DOCS = (".md", ".markdown", ".txt", ".rst")
 # Files that are not prose to check: pip's requirements and constraints files hold
 # package pins, and a changelog is written by a tool, such as release-please, from
 # commit subjects. Nobody edits it by hand, so a finding there cannot be fixed.
-NOT_PROSE = re.compile(r"(^|/)((requirements|constraints)[\w.-]*\.txt|CHANGELOG\.md)$")
+# The same holds for the files under .tollgate: roles write the analysis, the plan,
+# and the tickets, lenses review them, and no builder may edit them.
+NOT_PROSE = re.compile(r"(^|/)((requirements|constraints)[\w.-]*\.txt|CHANGELOG\.md)$"
+                       r"|^\.tollgate/")
 SLASH_COMMENTS = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs")
 SOURCES = (".py",) + SLASH_COMMENTS
 WORD_LIST = "CONTEXT.md"
@@ -218,7 +222,7 @@ def added_comments(root: Path, base: str, staged: bool = False) -> dict:
     """{file: [(line number, comment text)]} for each comment the change adds to source."""
     files = {}
     for name, lines in diff_lines(root, base, staged).items():
-        if not name.endswith(SOURCES):
+        if not name.endswith(SOURCES) or NOT_PROSE.search(name):
             continue
         text = content(root, name, staged)
         found = python_comments(text) if name.endswith(".py") else slash_comments(text)

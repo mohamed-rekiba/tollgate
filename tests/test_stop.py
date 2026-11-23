@@ -31,6 +31,11 @@ class TriesTest(unittest.TestCase):
         events.append(failed(4, tests=["d"]))
         self.assertEqual(stop.check(events, SETTINGS), "stop: the ticket used 4 tries")
 
+    def test_a_retry_before_the_tests_are_locked_grants_no_try(self):
+        events = [retry(), {"event": "frozen", "commit": "c"}, failed(1, tests=["a"]),
+                  failed(2, tests=["b"]), failed(3, tests=["c"])]
+        self.assertEqual(stop.check(events, SETTINGS), "stop: the ticket used 3 tries")
+
 
 class SameFailureTest(unittest.TestCase):
     def test_different_checks_go_on(self):
