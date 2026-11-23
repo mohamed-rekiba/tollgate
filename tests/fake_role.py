@@ -24,6 +24,7 @@ first weakens that test; tw_map=next adds a new test next to it).
 Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
+Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file).
 Options: cost=<usd>, die_once=<path> (kill the driver once, on attempt 1),
 inputs_to=<path> (the builder adds the inputs of each try to this file, one JSON line each).
 """
@@ -316,6 +317,11 @@ def main() -> int:
                           kept]}, cost)
     elif first == "# Role: builder" and data.get("mode") == "plan":
         task = data["task_id"]
+        if opts.get("plan_sees"):
+            # What the planner's copy holds: app.py, with each function built so far.
+            with open(opts["plan_sees"], "a") as f:
+                f.write(json.dumps({"hint": data.get("hint", ""),
+                                    "app": Path("app.py").read_text()}) + "\n")
         Path(".tollgate/plans").mkdir(parents=True, exist_ok=True)
         plan = PLAN.format(task=task, request=data["request"])
         if opts.get("ask") and not data.get("hint"):

@@ -386,6 +386,19 @@ class Task:
             self.checkpoint("task", f"The review of the whole task:\n\n{text}", {"review": text})
         return True
 
+    def show_built(self) -> None:
+        """Put the change the tickets built in the copy's work tree, from the last ready
+        change of the chain, where the next ticket starts. Only the work tree changes,
+        and .tollgate/ stays as the plan has it, so the plan branch still holds only the
+        plan and its tickets."""
+        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        ready = [c for c in (self.ready_commit(t) for t in plan.tickets) if c]
+        if not ready:
+            return
+        git(self.copy, "fetch", "-q", self.project, "+refs/heads/tg/*:refs/tollgate/tickets/*")
+        git(self.copy, "restore", f"--source={ready[-1]}", "--worktree", "--", ".",
+            ":(exclude).tollgate")
+
     def amend_plan(self, findings: list) -> None:
         """The fix round: the builder changes the plan, with the findings of the review of
         the whole task as its hint; it keeps each locked ticket and adds tickets for the
@@ -400,6 +413,7 @@ class Task:
                             for f in findings))
         if "fix_plan_reviewed" not in kinds:
             if "fix_plan_written" not in kinds:
+                self.show_built()
                 self.write_plan(hint=hint)
                 self.log.add("fix_plan_written", findings=findings)
             open_findings = self.review_plan()

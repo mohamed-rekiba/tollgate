@@ -6,6 +6,7 @@ capitals. The fake builder's mode decides how each try goes.
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -563,6 +564,21 @@ class FixRoundTest(LoopCase):
         self.assertEqual(store.merged, [self.ready(s, t) for t in ("demo-1", "demo-2", "demo-3")])
         plan = json.loads(state.path(str(s.project), "plans", "demo.json").read_text())
         self.assertIn(".tollgate/tickets/demo-3/ticket.md", plan["files"])
+
+    def test_the_fix_round_s_planner_sees_what_the_tickets_built(self):
+        seen = Path(tempfile.mkdtemp(), "seen.jsonl")
+        s, _, task = self.task(reviewer="ok taskmajor=1", builder=f"pass2 plan_sees={seen}")
+        self.assertEqual(task.run(), 0)
+        plans = [json.loads(line) for line in seen.read_text().splitlines()]
+        first = plans[0]
+        fix = next(p for p in plans if "review of the whole task" in p["hint"])
+        self.assertNotIn("def shout", first["app"])
+        self.assertIn("def shout", fix["app"])
+        self.assertIn("def whisper", fix["app"])
+        # The plan branch holds only the plan: the built change stays on the tickets' branches.
+        from tests.driver_fakes import sh
+        names = sh(s.project, "git", "diff", "--name-only", "main...tg-plan/demo").split()
+        self.assertTrue(all(n.startswith(".tollgate/") for n in names), names)
 
     def test_each_ticket_starts_from_the_ready_change_before_it(self):
         s, store, task = self.task(reviewer="ok taskmajor=1")
