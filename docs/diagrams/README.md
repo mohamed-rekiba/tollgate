@@ -68,6 +68,27 @@ A deployment diagram: where each part runs, in session mode and in background mo
   <img alt="Where Tollgate runs: your session, Python, and Docker on your machine, and the model outside it" src="c4-deployment.svg">
 </picture>
 
+The same specs, drawn in three dimensions with `"style": "isometric"`, for the big picture. Each of these files is one line, `{"from": "c4-container.json", "style": "isometric"}`, so it follows every change to the flat one. The containers:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="c4-container-isometric-dark.svg">
+  <img alt="Inside Tollgate, drawn in three dimensions: the hooks, the driver, the gate, the store, and the state folder on Tollgate's ground" src="c4-container-isometric.svg">
+</picture>
+
+One ticket in background mode, with one dot that follows the eight steps in order:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="c4-dynamic-isometric-dark.svg">
+  <img alt="One ticket in background mode, drawn in three dimensions, in eight numbered steps" src="c4-dynamic-isometric.svg">
+</picture>
+
+Where each part runs: Claude Code, Python, and Docker stand on your machine, one level up:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="c4-deployment-isometric-dark.svg">
+  <img alt="Where Tollgate runs, drawn in three dimensions: Claude Code, Python, and Docker as platforms on your machine, and the model in the cloud beside it" src="c4-deployment-isometric.svg">
+</picture>
+
 ## Use case diagram
 
 A use case diagram shows who uses a system, and for what.

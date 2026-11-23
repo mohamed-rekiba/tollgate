@@ -188,17 +188,17 @@
 <text x="68.0" y="102.0" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">ALWAYS</text>
 <text x="133.6" y="102.0" font-size="12" fill="#59636e">code enforces every rule, in plain words</text>
 </g>
-<rect x="289.0" y="421.8" width="108.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
+<rect class="pill" x="289.0" y="421.8" width="108.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
 <text x="343.2" y="435.8" text-anchor="middle" font-size="11" fill="#cf222e">problems found</text>
-<rect x="778.6" y="238.9" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
+<rect class="pill" x="778.6" y="238.9" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
 <text x="852.6" y="252.9" text-anchor="middle" font-size="11" fill="#cf222e">below 70%: try again</text>
-<rect x="518.4" y="565.7" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<rect class="pill" x="518.4" y="565.7" width="148.0" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="592.4" y="579.7" text-anchor="middle" font-size="11" fill="#59636e">lessons become rules</text>
-<rect x="771.5" y="415.4" width="101.8" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<rect class="pill" x="771.5" y="415.4" width="101.8" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="822.4" y="429.4" text-anchor="middle" font-size="11" fill="#59636e">after 3 tries</text>
-<rect x="647.4" y="400.2" width="75.4" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<rect class="pill" x="647.4" y="400.2" width="75.4" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="685.1" y="414.2" text-anchor="middle" font-size="11" fill="#59636e">try again</text>
-<rect x="520.5" y="379.6" width="88.6" height="20" rx="3" fill="#ffffff" stroke="#1a7f37"/>
+<rect class="pill" x="520.5" y="379.6" width="88.6" height="20" rx="3" fill="#ffffff" stroke="#1a7f37"/>
 <text x="564.8" y="393.6" text-anchor="middle" font-size="11" fill="#1a7f37">no problems</text>
 <g class="pin" data-n="">
 <path d="M214.9,584.1 L214.9,651.1" fill="none" stroke="#0969da" stroke-width="1.3" stroke-opacity="0.85" stroke-dasharray="2 3" stroke-linecap="round"/>
