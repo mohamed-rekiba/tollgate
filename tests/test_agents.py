@@ -117,6 +117,17 @@ class PromptsMatchTheGateTest(unittest.TestCase):
         self.assertIn({"must", "keeps behavior"}, [m - set(tickets.KINDS) for m in marks])
         self.assertIn({"must"}, [m - set(tickets.KINDS) for m in marks])
 
+    def test_a_file_the_project_s_checks_require_is_planned_and_never_out_of_scope(self):
+        self.assertIn("a file that the project's own checks require", self.read("roles/builder.md"))
+        for lens in ("review", "readiness"):
+            with self.subTest(lens=lens):
+                self.assertIn("a file that a check of the project requires",
+                              self.read(f"lenses/{lens}.md"))
+
+    def test_the_fix_round_s_planner_knows_its_copy_holds_the_built_change(self):
+        fix = self.read("roles/builder.md").split("### A fix round", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("your copy holds the change that the tickets built", fix)
+
     def test_the_test_writer_maps_existing_tests_and_never_renames_them(self):
         text = self.read("roles/test_writer.md")
         self.assertIn("never rename", text)
