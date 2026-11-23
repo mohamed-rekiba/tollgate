@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/tollgate-ai/tollgate/compare/v0.3.0...v0.4.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tickets:** ask each ticket for the kinds of test it needs ([#121](https://github.com/tollgate-ai/tollgate/issues/121))
+
+### Features
+
+* **settings:** run background roles in Docker's Claude Code image by default ([#118](https://github.com/tollgate-ai/tollgate/issues/118)) ([86d96cf](https://github.com/tollgate-ai/tollgate/commit/86d96cfc3c0d48334bc05a1b0acb09d2c26b4a67))
+* **tickets:** ask each ticket for the kinds of test it needs ([#121](https://github.com/tollgate-ai/tollgate/issues/121)) ([bddd463](https://github.com/tollgate-ai/tollgate/commit/bddd463fdd17766cfac78dc58980c7bcc15cdce9))
+
+
+### Bug Fixes
+
+* **driver:** never let two drivers hold one run lock ([#120](https://github.com/tollgate-ai/tollgate/issues/120)) ([479642d](https://github.com/tollgate-ai/tollgate/commit/479642daa6f532c33f22de940f08b59cc6789799))
+
 ## [0.3.0](https://github.com/tollgate-ai/tollgate/compare/v0.2.0...v0.3.0) (2026-11-22)
 
 
