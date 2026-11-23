@@ -165,6 +165,19 @@ class TestMapTest(unittest.TestCase):
                              **{"tests.test_calc::test_c1_retries": "failed"})
         self.assertEqual(manifest["items"]["tests.test_calc::test_c1_retries"], "C1")
 
+    def test_a_test_an_earlier_ticket_named_for_c1_is_not_this_ticket_s_c1(self):
+        # The ticket before this one locked its own test_c1_ in the same file.
+        earlier = CALC + "\n    def test_c1_divide(self):\n        self.assertEqual(calc.div(6, 3), 2)\n"
+        self.repo.write("tests/test_calc.py", earlier)
+        self.start = self.repo.commit()
+        self.repo.write("tests/test_calc.py", earlier + "\n    def test_c1_retries(self):\n"
+                        "        self.assertEqual(calc.retry(), 3)\n")
+        manifest = self.lock([self.ADD, self.SUBTRACT],
+                             **{"tests.test_calc::test_c1_divide": "passed",
+                                "tests.test_calc::test_c1_retries": "failed"})
+        self.assertEqual(manifest["items"]["tests.test_calc::test_c1_retries"], "C1")
+        self.assertNotIn("tests.test_calc::test_c1_divide", manifest["items"])
+
 
 class PrepareTest(unittest.TestCase):
     def setUp(self):

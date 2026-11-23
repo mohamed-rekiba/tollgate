@@ -12,7 +12,9 @@ ticket's tests, but a test file none of whose tests maps to an item is refused.
 A test that was in a test file at the ticket's start stays as it was: the freeze
 refuses one whose source changed, or that is gone or renamed. New tests may go
 next to it. A mapped test that is not there at the start must carry its item
-in its name, as a new test does.
+in its name, as a new test does. Only a new test maps by its name: one that was
+there at the start, such as an earlier ticket's test_c1_, counts only through
+the map.
 """
 
 import ast
@@ -122,8 +124,14 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         items.update(dict.fromkeys(found, entry["item"]))
     if start:
         check_kept(repo, commit, start, ticket, mapped)
-    for test_id in mine:
-        if test_id not in items and ticket.item(item_of_test(test_id) or ""):
+    # A test that was there at the start, such as an earlier ticket's test_c1_, maps
+    # only through the map: only a new test maps by its name.
+    old = {path: python_tests(show_bytes(repo, start, path)) if start else {}
+           for path in ticket.tests}
+    for test_id, result in mine.items():
+        was_there = any(test_id.split("::")[-1] in names and junit.in_files(result, [path])
+                        for path, names in old.items())
+        if test_id not in items and not was_there and ticket.item(item_of_test(test_id) or ""):
             items[test_id] = item_of_test(test_id)
     for path in ticket.tests:
         in_file = [t for t, r in mine.items() if junit.in_files(r, [path])]
