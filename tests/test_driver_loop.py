@@ -99,10 +99,11 @@ class BuildTest(LoopCase):
     def test_the_diagram_guide_holds_every_format(self):
         from driver.driver import diagram_guide
         guide = diagram_guide("- [ ] I1 (must): a sequence diagram of the login")
-        for kind in ("a flow", "a sequence diagram", "a state machine", "a scene"):
+        for kind in ("a flow", "a sequence diagram", "a state machine", "a C4 diagram",
+                     "a use case diagram", "a class or ER diagram", "a scene"):
             self.assertIn(f"## The format of {kind}", guide)
 
-    def test_the_driver_draws_a_sequence_or_state_spec_the_builder_wrote(self):
+    def test_the_driver_draws_every_kind_of_spec_the_builder_wrote(self):
         import json
         import subprocess
         import tempfile
@@ -122,6 +123,27 @@ class BuildTest(LoopCase):
                                  {"id": "end", "final": True, "col": 2, "row": 0}],
                       "transitions": [{"from": "start", "to": "paid", "event": "pay"},
                                       {"from": "paid", "to": "end", "event": "ship"}]},
+            "shop": {"type": "c4", "level": "context", "title": "A shop", "desc": "You shop.",
+                     "elements": [{"id": "you", "type": "person", "name": "You",
+                                   "col": 0, "row": 0},
+                                  {"id": "shop", "type": "system", "name": "The shop",
+                                   "col": 1, "row": 0}],
+                     "relations": [{"from": "you", "to": "shop", "label": "Buys from"}]},
+            "borrow": {"type": "usecase", "title": "A library", "desc": "You borrow a book.",
+                       "system": "The library",
+                       "actors": [{"id": "you", "name": "You", "col": 0, "row": 0}],
+                       "cases": [{"id": "borrow", "name": "Borrow a book", "col": 1, "row": 0}],
+                       "links": [{"from": "you", "to": "borrow"}]},
+            "shapes": {"type": "class", "title": "Shapes", "desc": "A circle is a shape.",
+                       "classes": [{"id": "s", "name": "Shape", "col": 0, "row": 0, "kind": "ai"},
+                                   {"id": "c", "name": "Circle", "col": 0, "row": 1, "kind": "ai"}],
+                       "relations": [{"from": "c", "to": "s", "type": "inherits"}]},
+            "loans": {"type": "er", "title": "Loans", "desc": "A member has loans.",
+                      "tables": [{"id": "m", "name": "members", "col": 0, "row": 0,
+                                  "kind": "you", "columns": [{"name": "id", "key": "pk"}]},
+                                 {"id": "l", "name": "loans", "col": 1, "row": 0,
+                                  "kind": "server", "columns": [{"name": "member", "key": "fk"}]}],
+                      "relations": [{"from": "m", "to": "l", "ends": ["one", "many"]}]},
         }
         for name, spec in specs.items():
             with self.subTest(kind=spec["type"]), tempfile.TemporaryDirectory() as copy:

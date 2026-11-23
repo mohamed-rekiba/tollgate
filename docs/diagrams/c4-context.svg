@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -54 1039 456" width="1039" height="456" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">System Context diagram for Tollgate</title>
+<desc id="desc">You type a task in your Claude Code session. Tollgate, on your machine, runs each step of it: in session mode your session runs each role, and in background mode Tollgate starts each role on its own. Every role works with the model. You push main to GitHub, and Tollgate checks each push before it goes.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-54" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<rect x="-24" y="-54" width="1039" height="456" fill="#ffffff"/>
+<rect x="-24" y="-54" width="1039" height="456" fill="url(#grid)"/>
+<path class="main" d="M229.6,81.5 L377.2,81.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M606.8,81.5 L761.0,81.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M492.0,163.0 L492.0,241.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M606.8,309.5 L863.8,309.5 Q875.8,309.5 875.8,297.5 L875.8,163.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M377.2,309.5 L229.6,309.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<path class="main" d="M114.8,163.0 L114.8,241.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<g class="person">
+<rect x="0.0" y="26.0" width="229.6" height="137.0" rx="20" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/><circle cx="114.8" cy="15.0" r="15" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(14.0,38.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
+<text x="40.0" y="51.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">YOU</text>
+<text x="14.0" y="78.0" font-size="14" font-weight="700" fill="#1f2328">You</text>
+<text x="14.0" y="96.0" font-size="12" fill="#59636e">[Person]</text>
+<text x="14.0" y="113.0" font-size="12" fill="#59636e">An engineer who lets an</text>
+<text x="14.0" y="130.0" font-size="12" fill="#59636e">AI write most of each</text>
+<text x="14.0" y="147.0" font-size="12" fill="#59636e">change</text>
+</g>
+<g class="step">
+<rect x="377.2" y="0.0" width="229.6" height="163.0" rx="4" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M386.2,-4.0 H373.2 V9.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<path d="M597.8,167.0 H610.8 V154.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<g transform="translate(391.2,12.0) scale(0.7500)" fill="none" stroke="#59636e" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.5 5.5 3.5 8.5s-1.1 6-3.5 8.5c-2.4-2.5-3.5-5.5-3.5-8.5s1.1-6 3.5-8.5z"/></g>
+<text x="391.2" y="52.0" font-size="14" font-weight="700" fill="#1f2328">Your Claude Code session</text>
+<text x="391.2" y="70.0" font-size="12" fill="#59636e">[External System]</text>
+<text x="391.2" y="87.0" font-size="12" fill="#59636e">Runs Tollgate's skills,</text>
+<text x="391.2" y="104.0" font-size="12" fill="#59636e">and the roles in session</text>
+<text x="391.2" y="121.0" font-size="12" fill="#59636e">mode</text>
+</g>
+<g class="step">
+<rect x="761.0" y="0.0" width="229.6" height="163.0" rx="4" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M770.0,-4.0 H757.0 V9.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<path d="M981.6,167.0 H994.6 V154.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<g transform="translate(775.0,12.0) scale(0.7500)" fill="none" stroke="#59636e" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.5 5.5 3.5 8.5s-1.1 6-3.5 8.5c-2.4-2.5-3.5-5.5-3.5-8.5s1.1-6 3.5-8.5z"/></g>
+<text x="775.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">The model</text>
+<text x="775.0" y="70.0" font-size="12" fill="#59636e">[External System]</text>
+<text x="775.0" y="87.0" font-size="12" fill="#59636e">The AI that every role</text>
+<text x="775.0" y="104.0" font-size="12" fill="#59636e">runs on</text>
+</g>
+<g class="step">
+<rect x="0.0" y="241.0" width="229.6" height="137.0" rx="4" fill="#f6f8fa" stroke="#59636e" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M9.0,237.0 H-4.0 V250.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<path d="M220.6,382.0 H233.6 V369.0" fill="none" stroke="#59636e" stroke-width="1.2"/>
+<g transform="translate(14.0,253.0) scale(0.7500)" fill="none" stroke="#59636e" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.5 5.5 3.5 8.5s-1.1 6-3.5 8.5c-2.4-2.5-3.5-5.5-3.5-8.5s1.1-6 3.5-8.5z"/></g>
+<text x="14.0" y="293.0" font-size="14" font-weight="700" fill="#1f2328">GitHub</text>
+<text x="14.0" y="311.0" font-size="12" fill="#59636e">[External System]</text>
+<text x="14.0" y="328.0" font-size="12" fill="#59636e">Holds your project's</text>
+<text x="14.0" y="345.0" font-size="12" fill="#59636e">main branch</text>
+</g>
+<g class="step">
+<rect x="377.2" y="241.0" width="229.6" height="137.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M386.2,237.0 H373.2 V250.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<path d="M597.8,382.0 H610.8 V369.0" fill="none" stroke="#1a7f37" stroke-width="1.2"/>
+<g transform="translate(391.2,253.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M4.5 13h15a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/></g>
+<text x="417.2" y="266.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
+<text x="391.2" y="293.0" font-size="14" font-weight="700" fill="#1f2328">Tollgate</text>
+<text x="391.2" y="311.0" font-size="12" fill="#59636e">[Software System]</text>
+<text x="391.2" y="328.0" font-size="12" fill="#59636e">Merges a change only</text>
+<text x="391.2" y="345.0" font-size="12" fill="#59636e">when tests locked before</text>
+<text x="391.2" y="362.0" font-size="12" fill="#59636e">the build pass</text>
+</g>
+<rect class="label" x="243.6" y="64.5" width="119.6" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="303.4" y="78.3" text-anchor="middle" font-size="11" fill="#59636e">Types a task</text>
+<text x="303.4" y="92.3" text-anchor="middle" font-size="11" fill="#59636e">[/tollgate:task]</text>
+<rect class="label" x="620.8" y="64.5" width="126.2" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="683.9" y="78.3" text-anchor="middle" font-size="11" fill="#59636e">Sends each prompt</text>
+<text x="683.9" y="92.3" text-anchor="middle" font-size="11" fill="#59636e">[HTTPS]</text>
+<rect class="label" x="409.1" y="185.0" width="165.8" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="492.0" y="198.8" text-anchor="middle" font-size="11" fill="#59636e">Runs each step it names</text>
+<text x="492.0" y="212.8" text-anchor="middle" font-size="11" fill="#59636e">[session mode]</text>
+<rect class="label" x="645.2" y="292.5" width="192.2" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="741.3" y="306.3" text-anchor="middle" font-size="11" fill="#59636e">Starts each role on its own</text>
+<text x="741.3" y="320.3" text-anchor="middle" font-size="11" fill="#59636e">[background mode]</text>
+<rect class="label" x="243.6" y="292.5" width="119.6" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="303.4" y="306.3" text-anchor="middle" font-size="11" fill="#59636e">Checks each push</text>
+<text x="303.4" y="320.3" text-anchor="middle" font-size="11" fill="#59636e">[pre-commit]</text>
+<rect class="label" x="71.5" y="185.0" width="86.6" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="114.8" y="198.8" text-anchor="middle" font-size="11" fill="#59636e">Pushes main</text>
+<text x="114.8" y="212.8" text-anchor="middle" font-size="11" fill="#59636e">[git]</text>
+<text x="0.0" y="-16.0" font-size="16" font-weight="700" fill="#1f2328">System Context diagram for Tollgate</text>
+</svg>

@@ -12,6 +12,7 @@ Ground units: x runs down and to the right on the page, y runs down and to the
 left, z runs up.
 """
 
+import math
 import re
 from itertools import pairwise
 from xml.sax.saxutils import escape
@@ -19,6 +20,28 @@ from xml.sax.saxutils import escape
 from diagram import aws
 from diagram.flow import MONO, THEMES
 from diagram.icons import icon
+
+CIRCLE = [(math.cos(k * math.pi / 12), math.sin(k * math.pi / 12)) for k in range(24)]
+
+
+def convex_hull(points):
+    """The convex hull of page points, in order around it."""
+    pts = sorted(set(points))
+    if len(pts) < 3:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
 
 
 def mix(a: str, b: str, t: float) -> str:
@@ -54,7 +77,7 @@ class Scene:
         return accent, mix(tint, accent, 0.18), tint, mix(tint, "#000000", 0.35)
 
     # Shapes -------------------------------------------------------------------
-    def prism(self, x0, y0, x1, y1, z0, z1, kind, into=None, glass=False):
+    def prism(self, x0, y0, x1, y1, z0, z1, kind, into=None, glass=False, cls=None):
         stroke, top, left, right = self.faces(kind)
         a, b = self.iso(x0, y1, z1), self.iso(x1, y1, z1)
         c, d = self.iso(x1, y0, z1), self.iso(x0, y0, z1)
@@ -62,6 +85,8 @@ class Scene:
         fill = ' fill-opacity="0.3"' if glass else ""
         dash = ' stroke-dasharray="3 4"' if glass else ""
         common = f'stroke="{stroke}" stroke-width="1.3" stroke-linejoin="round"{fill}{dash}'
+        if cls:
+            common = f'class="{cls}" {common}'
         (self.out if into is None else into).extend([
             f'<polygon points="{self.pts([a, b, b0, a0])}" fill="{left}" {common}/>',
             f'<polygon points="{self.pts([b, c, c0, b0])}" fill="{right}" {common}/>',
@@ -71,15 +96,19 @@ class Scene:
     def platform(self, x0, y0, x1, y1, kind="neutral", h=8):
         self.prism(x0, y0, x1, y1, 0, h, kind, into=self.back)
 
-    def text(self, x, y, z, head, sub=None, anchor="middle", color=None):
+    def text(self, x, y, z, head, sub=None, anchor="middle", color=None, halo=False):
+        """A label: a head in bold capitals, and lines under it. With halo, each word
+        has a rim in the page's color, so it stays clear over a line behind it."""
         px, py = self.iso(x, y, z)
+        rim = (f' stroke="{self.c["page"]}" stroke-width="4" stroke-linejoin="round" '
+               f'paint-order="stroke"') if halo else ""
         self.front.append(f'<text x="{px:.1f}" y="{py:.1f}" text-anchor="{anchor}" font-size="12" '
                           f'font-weight="700" letter-spacing="1.4" '
-                          f'fill="{color or self.c["text"]}">{escape(head)}</text>')
+                          f'fill="{color or self.c["text"]}"{rim}>{escape(head)}</text>')
         for n, line in enumerate([sub] if isinstance(sub, str) else sub or []):
             self.front.append(f'<text x="{px:.1f}" y="{py + 16 * (n + 1):.1f}" '
                               f'text-anchor="{anchor}" font-size="12" '
-                              f'fill="{self.c["sub"]}">{escape(line)}</text>')
+                              f'fill="{self.c["sub"]}"{rim}>{escape(line)}</text>')
 
     def badge(self, x, y, z, name, kind):
         """An icon in a ring, floating over an object, tied to it by a thin line."""
@@ -92,26 +121,36 @@ class Scene:
                         f'stroke="{accent}" stroke-width="1.4"/>')
         self.out.append(icon(name, px - 10, py - 10, 20, accent, 1.7))
 
-    def pill(self, px, py, label, color=None):
+    def pill(self, px, py, label, color=None, lane=None):
+        """A label in a frame, centered on a page point. A line break starts a second line."""
         color = color or self.c["sub"]
-        w = len(label) * 6.6 + 16
-        self.front.append(f'<rect x="{px - w / 2:.1f}" y="{py - 10:.1f}" width="{w:.1f}" '
-                          f'height="20" rx="3" fill="{self.c["page"]}" stroke="{color}"/>')
-        self.front.append(f'<text x="{px:.1f}" y="{py + 4:.1f}" text-anchor="middle" '
-                          f'font-size="11" fill="{color}">{escape(label)}</text>')
+        lines = label.split("\n")
+        w = max(len(line) for line in lines) * 6.6 + 16
+        h = 20 + PILL_STEP * (len(lines) - 1)
+        tie = f' data-lane="{lane}"' if lane else ""
+        self.front.append(f'<rect class="pill"{tie} x="{px - w / 2:.1f}" y="{py - h / 2:.1f}" '
+                          f'width="{w:.1f}" height="{h}" rx="3" fill="{self.c["page"]}" '
+                          f'stroke="{color}"/>')
+        for k, line in enumerate(lines):
+            ty = py - h / 2 + 14 + PILL_STEP * k
+            self.front.append(f'<text x="{px:.1f}" y="{ty:.1f}" text-anchor="middle" '
+                              f'font-size="11" fill="{color}">{escape(line)}</text>')
 
     def lane(self, ground, label=None, at=0.5, tone=None, side=False, z=2):
-        """A path on the ground through (x, y) points, with dots that move along it."""
+        """A path through (x, y) points on the ground, or (x, y, z) points above it,
+        with dots that move along it."""
         color = self.c["tones"].get(tone, self.c["edge"] if side else self.c["kinds"]["ai"][0])
-        points = [self.iso(x, y, z) for x, y in ground]
+        points = [self.iso(*p) if len(p) == 3 else self.iso(*p, z) for p in ground]
         marker = f"arrow-{tone or ('side' if side else 'main')}"
+        self.lanes = getattr(self, "lanes", 0) + 1
         self.back.append(f'<polyline class="{"side" if side else "main"}" '
+                         f'data-lane="{self.lanes}" '
                          f'points="{self.pts(points)}" fill="none" stroke="{color}" '
                          f'stroke-linecap="round" stroke-linejoin="round" '
                          f'marker-end="url(#{marker})"/>')
         if label:
             px, py = self.along(points, at)
-            self.pill(px, py, label, self.c["tones"].get(tone, self.c["sub"]))
+            self.pill(px, py, label, self.c["tones"].get(tone, self.c["sub"]), self.lanes)
         return points
 
     @staticmethod
@@ -284,6 +323,128 @@ class Scene:
         self.out.append(aws.place(aws.service(name, prefix=f"s{self.ids}"), px - size / 2,
                                   py - size / 2, size))
 
+    def person(self, x, y, kind="you"):
+        """A person on a small round base: someone who uses the system."""
+        stroke, top, left, right = self.faces(kind)
+        cx, cy = self.iso(x, y, 0)
+        rx, ry = 30 * 1.2247 * self.s, 30 * 0.7071 * self.s
+        _, cy1 = self.iso(x, y, 6)
+        self.out.append(f'<path d="M{cx - rx:.1f},{cy1:.1f} V{cy:.1f} A{rx:.1f},{ry:.1f} 0 0 0 '
+                        f'{cx + rx:.1f},{cy:.1f} V{cy1:.1f} Z" fill="{left}" stroke="{stroke}" '
+                        f'stroke-width="1.3"/>')
+        self.out.append(f'<ellipse cx="{cx:.1f}" cy="{cy1:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
+                        f'fill="{top}" stroke="{stroke}" stroke-width="1.3"/>')
+        self.prism(x - 7, y - 13, x + 7, y - 2, 6, 40, kind)    # the legs
+        self.prism(x - 7, y + 2, x + 7, y + 13, 6, 40, kind)
+        self.prism(x - 9, y - 17, x + 9, y + 17, 40, 78, kind)  # the body
+        hx, hy = self.iso(x, y, 96)
+        r = 15 * self.s
+        self.out.append(f'<circle cx="{hx:.1f}" cy="{hy:.1f}" r="{r:.1f}" fill="{right}" '
+                        f'stroke="{stroke}" stroke-width="1.3"/>')
+        self.out.append(f'<circle cx="{hx - r * 0.3:.1f}" cy="{hy - r * 0.3:.1f}" '
+                        f'r="{r * 0.55:.1f}" fill="{top}"/>')
+
+    def external(self, x, y, size=90):
+        """A gray building with rows of windows: a system that is not ours. Always
+        gray, whatever the kind, the way C4 draws an external system."""
+        self.building(x, y, "neutral", size)
+
+    def building(self, x, y, kind="server", size=90):
+        """A building with rows of windows: a whole software system."""
+        stroke = self.faces(kind)[0]
+        h, tall = size / 2, size * 1.1
+        self.prism(x - h, y - h, x + h, y + h, 0, tall, kind)
+        self.prism(x - h - 4, y - h - 4, x + h + 4, y + h + 4, tall, tall + 6, kind)
+        rows = int((tall - 24) // 22)
+        for k in range(rows):
+            z0 = 14 + k * 22
+            for n in range(3):
+                d0 = -h + 10 + n * (size - 20) / 3
+                d1 = d0 + (size - 20) / 3 - 8
+                for face in ([(x + d0, y + h), (x + d1, y + h)],     # the left face
+                             [(x + h, y - d0), (x + h, y - d1)]):    # the right face
+                    (ax, ay), (bx, by) = face
+                    p = [self.iso(ax, ay, z0), self.iso(bx, by, z0),
+                         self.iso(bx, by, z0 + 12), self.iso(ax, ay, z0 + 12)]
+                    self.out.append(f'<polygon points="{self.pts(p)}" fill="{stroke}" '
+                                    f'fill-opacity="0.45"/>')
+
+    def queue(self, x, y, kind="server", r=20, length=96, z=24):
+        """A pipe on its side, along y, on two small feet: messages that wait in line."""
+        stroke, top, left, _ = self.faces(kind)
+        y0, y1 = y - length / 2, y + length / 2
+        for fy in (y0 + 16, y1 - 16):
+            self.prism(x - 8, fy - 5, x + 8, fy + 5, 0, z - r + 4, kind)
+
+        def ring(at):
+            return [self.iso(x + r * c, at, z + r * sn) for c, sn in CIRCLE]
+
+        hull = convex_hull(ring(y0) + ring(y1))
+        self.out.append(f'<polygon points="{self.pts(hull)}" fill="{left}" stroke="{stroke}" '
+                        f'stroke-width="1.3" stroke-linejoin="round"/>')
+        for k in (1, 2):   # bands around the pipe
+            band = ring(y0 + length * k / 3)
+            # The half that faces the reader, who looks along (-1, -1, -1).
+            half = [band[i % 24] for i in range(-3, 10)]
+            self.out.append(f'<polyline points="{self.pts(half)}" fill="none" stroke="{stroke}" '
+                            f'stroke-width="1" stroke-opacity="0.7"/>')
+        self.out.append(f'<polygon points="{self.pts(ring(y1))}" fill="{top}" stroke="{stroke}" '
+                        f'stroke-width="1.3" stroke-linejoin="round"/>')
+        cx, cy = self.iso(x, y1, z)
+        self.out.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r * 0.35 * self.s:.1f}" '
+                        f'fill="{stroke}" fill-opacity="0.5"/>')
+
+    def cloud(self, x, y, kind="server", z=74):
+        """A cloud over a ring on the ground, tied to it: a service in the cloud."""
+        stroke, top, left, _ = self.faces(kind)
+        gx, gy = self.iso(x, y, 0)
+        rx, ry = 28 * 1.2247 * self.s, 28 * 0.7071 * self.s
+        self.out.append(f'<ellipse cx="{gx:.1f}" cy="{gy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
+                        f'fill="{left}" stroke="{stroke}" stroke-width="1.3"/>')
+        cx, cy = self.iso(x, y, z)
+        self.out.append(f'<line x1="{gx:.1f}" y1="{gy:.1f}" x2="{cx:.1f}" y2="{cy + 14 * self.s:.1f}" '
+                        f'stroke="{stroke}" stroke-width="1.2" stroke-dasharray="2 3"/>')
+        u = self.s * 1.4
+        puffs = [(-26, 0, 18), (-4, -12, 25), (22, -2, 20)]
+        body = (cx - 44 * u, cy - 4 * u, 88 * u, 20 * u)   # x, y, width, height
+        shapes = [f'<circle cx="{cx + dx * u:.1f}" cy="{cy + dy * u:.1f}" r="{r * u:.1f}"'
+                  for dx, dy, r in puffs]
+        shapes.append(f'<rect x="{body[0]:.1f}" y="{body[1]:.1f}" width="{body[2]:.1f}" '
+                      f'height="{body[3]:.1f}" rx="{body[3] / 2:.1f}"')
+        # Every outline first, then every fill over them: one outline round the whole cloud.
+        self.out.extend(f'{p} fill="{stroke}" stroke="{stroke}" stroke-width="2.6"/>'
+                        for p in shapes)
+        self.out.extend(f'{p} fill="{top}"/>' for p in shapes)
+        self.out.append(f'<rect x="{body[0] + 6 * u:.1f}" y="{body[1] + body[3] * 0.55:.1f}" '
+                        f'width="{body[2] - 12 * u:.1f}" height="{body[3] * 0.3:.1f}" '
+                        f'rx="{body[3] * 0.15:.1f}" fill="{left}"/>')
+
+    def component(self, x, y, kind="server", size=56):
+        """A small block with the two tabs of a UML component: one part of a container."""
+        h, tall = size / 2, size * 0.7
+        self.prism(x - h, y - h, x + h, y + h, 0, tall, kind)
+        for z0 in (tall * 0.2, tall * 0.55):   # the tabs stick out of the left face
+            self.prism(x - h + 6, y + h, x - h + 22, y + h + 6, z0, z0 + tall * 0.18, kind)
+
+    def container(self, x, y, kind="server", size=80):
+        """A box with a lid and a door: a part that runs on its own, such as an app."""
+        stroke, top, _, _ = self.faces(kind)
+        h, tall = size / 2, size * 0.66
+        self.prism(x - h, y - h, x + h, y + h, 0, tall, kind)
+        self.prism(x - h - 5, y - h - 5, x + h + 5, y + h + 5, tall, tall + 9, kind)
+        door = [self.iso(x + 6, y + h, 0), self.iso(x - 14, y + h, 0),
+                self.iso(x - 14, y + h, tall * 0.62), self.iso(x + 6, y + h, tall * 0.62)]
+        self.out.append(f'<polygon points="{self.pts(door)}" fill="{top}" stroke="{stroke}" '
+                        f'stroke-width="1.2" stroke-linejoin="round"/>')
+        kx, ky = self.iso(x + 1, y + h, tall * 0.3)
+        self.out.append(f'<circle cx="{kx:.1f}" cy="{ky:.1f}" r="1.8" fill="{stroke}"/>')
+        for k in range(3):   # vents on the right face
+            a = self.iso(x + h, y - h + 12, tall * 0.35 + k * 9)
+            b = self.iso(x + h, y + h - 12, tall * 0.35 + k * 9)
+            self.out.append(f'<line x1="{a[0]:.1f}" y1="{a[1]:.1f}" x2="{b[0]:.1f}" '
+                            f'y2="{b[1]:.1f}" stroke="{stroke}" stroke-width="1.6" '
+                            f'stroke-linecap="round" stroke-opacity="0.7"/>')
+
     def wall(self, x0, y0, x1, y1, h=46, kind="neutral"):
         self.prism(x0, y0, x1, y1, 8, h, kind)
 
@@ -317,7 +478,10 @@ class Scene:
         now += rest
         marks.append((now, dist))
         dur, total = now, dist
-        path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
+        # The dot rests at its start when nothing moves, as in a preview or a PNG: the
+        # group stands there, and the motion runs from it.
+        sx, sy = points[0]
+        path = "M" + " L".join(f"{x - sx:.1f},{y - sy:.1f}" for x, y in points)
         key_times = ";".join(f"{t / dur:.4f}" for t, _ in marks)
         key_points = ";".join(f"{d / total:.4f}" for _, d in marks)
         shared = f'dur="{dur:.2f}s" repeatCount="indefinite"'
@@ -326,7 +490,7 @@ class Scene:
                 f'{shared}/>')
         base = colors[0][1]
         self.front.extend([
-            '<g class="ticket">',
+            f'<g class="ticket" transform="translate({sx:.1f} {sy:.1f})">',
             f'<circle r="12" fill="{base}" opacity="0.22">{fill}</circle>',
             f'<circle r="6" fill="{base}" stroke="{self.c["page"]}" stroke-width="2">{fill}</circle>',
             (f'<animateMotion path="{path}" keyPoints="{key_points}" keyTimes="{key_times}" '
@@ -539,7 +703,8 @@ class Scene:
 
 
 OBJECTS = ("room", "gate", "server", "vault", "papers", "laptop", "board", "house",
-           "database", "pedestal", "wall", "aws")
+           "database", "pedestal", "wall", "aws", "person", "external", "container", "queue", "cloud",
+           "building", "component")
 
 # Callouts ---------------------------------------------------------------------
 # A callout is a numbered label in a column beside the scene, with a dotted
@@ -552,6 +717,7 @@ INSET = 28         # from the inner edge of a column to the start of its text
 HEAD_CHAR = 8.6    # the width of one character of a head: 12 px mono, spaced 1.4
 LINE_CHAR = 7.2    # the width of one character of a line: 12 px mono
 STEP = 16          # from one line of text to the next
+PILL_STEP = 14     # from one line of a lane's label to the next
 PIN_GAP = 20       # from a pinned label's number to the start of its words
 GAP = 14           # the least space between two callouts in a column
 
@@ -689,6 +855,25 @@ def bottom_width(c):
     return 2 * BADGE + 12 + len(c["head"]) * HEAD_CHAR + 14 + len(c["line"]) * LINE_CHAR
 
 
+def check_object(o):
+    """Refuse an object that cannot be drawn, with a message that says how to fix it."""
+    kinds = set(THEMES["light"]["kinds"])
+    name = f"the {o.get('type', 'object')} object"
+    at = o.get("at")
+    if not isinstance(at, list) or len(at) < 2:
+        raise ValueError(f"{name} needs 'at': the [x, y] point it stands on")
+    if o.get("kind", "neutral") not in kinds:
+        raise ValueError(f"{name}: kind must be one of {', '.join(sorted(kinds))}")
+    size = o.get("size", 1)
+    if isinstance(size, bool) or not isinstance(size, int | float) or size <= 0:
+        raise ValueError(f"{name}: size must be a number above 0")
+
+
+def draw(spec: dict, theme: str) -> str:
+    """Draw a scene from a spec, as every kind's module does."""
+    return from_spec(spec, theme)
+
+
 def from_spec(spec: dict, theme: str) -> str:
     """Draw a scene from a spec. See the format in diagram/__init__.py."""
     for key in ("title", "desc"):
@@ -713,13 +898,21 @@ def from_spec(spec: dict, theme: str) -> str:
         s.note(40, 102, spec["note"])
     for zone in spec.get("zones", []):
         x0, y0, x1, y1 = zone["at"]
-        s.platform(x0, y0, x1, y1, zone.get("kind", "neutral"))
+        z0 = zone.get("z", 0)
+        s.prism(x0, y0, x1, y1, z0, z0 + zone.get("height", 8), zone.get("kind", "neutral"),
+                into=s.back, cls="zone")
     for lane in spec.get("lanes", []):
         s.lane([tuple(p) for p in lane["path"]], lane.get("label"), lane.get("at", 0.5),
                lane.get("tone"), lane.get("side", False))
+    for o in spec.get("objects", []):
+        check_object(o)
     # Objects from back to front, so nearer ones cover farther ones.
-    for o in sorted(spec.get("objects", []), key=lambda o: o["at"][0] + o["at"][1]):
+    for o in sorted(spec.get("objects", []),
+                    key=lambda o: (o["at"][0] + o["at"][1], o.get("z", 0))):
         x, y = o["at"][:2]
+        # An object on a platform stands "z" above the ground: lift the whole page.
+        s.oy = oy - o.get("z", 0) * s.s
+        first = len(s.out)
         kind = o.get("kind")
         what = o["type"]
         if what == "room":
@@ -744,11 +937,32 @@ def from_spec(spec: dict, theme: str) -> str:
             s.pedestal(x, y, kind or "neutral", o.get("icon"))
         elif what == "aws":
             s.pedestal(x, y, kind or "neutral", aws_name=o["aws"])
+        elif what == "person":
+            s.person(x, y, kind or "you")
+        elif what == "external":
+            s.external(x, y, o.get("size", 90))
+        elif what == "container":
+            s.container(x, y, kind or "server", o.get("size", 80))
+        elif what == "queue":
+            s.queue(x, y, kind or "server")
+        elif what == "cloud":
+            s.cloud(x, y, kind or "server")
+        elif what == "building":
+            s.building(x, y, kind or "server", o.get("size", 90))
+        elif what == "component":
+            s.component(x, y, kind or "server", o.get("size", 56))
         elif what == "wall":
             x1, y1 = o["to"]
             s.wall(x, y, x1, y1, o.get("height", 46), kind or "neutral")
         else:
             raise ValueError(f"unknown object '{what}'; use one of {', '.join(OBJECTS)}")
+        if o.get("name"):
+            # A page can find each named part, and so can a test.
+            s.out.insert(first, f'<g class="part" data-name="{escape(o["name"], {chr(34): "&quot;"})}">')
+            s.out.append("</g>")
+    s.oy = oy
+    for b in spec.get("badges", []):
+        s.badge(*b["at"], b["icon"], b.get("kind", "neutral"))
     for label in spec.get("labels", []):
         if "pin" in label:
             if "at" not in label and "drop" not in label:
@@ -756,13 +970,15 @@ def from_spec(spec: dict, theme: str) -> str:
             s.pinned(label)
             continue
         x, y, z = (label["at"] + [0])[:3]
-        s.text(x, y, z, label["head"].upper(), label.get("sub"), label.get("anchor", "middle"))
+        s.text(x, y, z, label["head"].upper(), label.get("sub"), label.get("anchor", "middle"),
+               halo=label.get("halo", False))
     ticket = spec.get("ticket")
     if ticket and (not ticket.get("legs") or not all(leg.get("path") for leg in ticket["legs"])):
         raise ValueError("the ticket needs legs, each with a path")
     if ticket:
         for leg in ticket["legs"]:
-            s.leg([s.iso(x, y, 2) for x, y in leg["path"]], leg.get("tone"), leg.get("wait", 0.4))
+            s.leg([s.iso(*p) if len(p) == 3 else s.iso(*p, 2) for p in leg["path"]],
+                  leg.get("tone"), leg.get("wait", 0.4))
         dur, times = s.ticket(speed=ticket.get("speed", 150))
         if "lift" in ticket:
             n = ticket["lift"]

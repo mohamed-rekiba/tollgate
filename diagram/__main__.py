@@ -1,4 +1,9 @@
-"""python3 -m diagram build <folder> [--check]: draw every spec in <folder>/src/."""
+"""python3 -m diagram build <folder> [--check]: draw every spec in <folder>/src/.
+
+A spec with "from" draws another spec of the same folder, with its own keys on
+top: {"from": "c4-container.json", "style": "isometric"} draws the container
+diagram again, as an isometric scene, and follows every change to it.
+"""
 
 import argparse
 import json
@@ -21,6 +26,13 @@ def build(folder: str, check: bool = False, extra: dict | None = None) -> list:
     makers = {}
     for src in specs:
         spec = json.loads(src.read_text())
+        if "from" in spec:
+            base_file = base / "src" / spec["from"]
+            if not base_file.is_file():
+                raise ValueError(f"{src.name} draws from {spec['from']}, which is not in "
+                                 f"{base / 'src'}")
+            spec = json.loads(base_file.read_text()) | {k: v for k, v in spec.items()
+                                                        if k != "from"}
         makers[src.stem] = lambda theme, spec=spec: draw(spec, theme)
     makers.update(extra or {})
     stale = []

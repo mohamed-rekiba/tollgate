@@ -6,6 +6,13 @@ Tollgate is a plugin for Claude Code. It lets an AI write your code, and merges 
 
 You give Tollgate a task. Tollgate gives you ready changes, and a report.
 
+**What it talks to.** You type a task in your Claude Code session. Tollgate, on your machine, runs each step of it: in session mode your session runs each role, and in background mode Tollgate starts each role on its own. Every role works with the model. You push main to GitHub, and Tollgate checks each push before it goes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/c4-context-isometric-dark.svg">
+  <img alt="Tollgate in its context, drawn in three dimensions: you, your Claude Code session, the model, and GitHub around Tollgate, with what flows between them" src="diagrams/c4-context-isometric.svg">
+</picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
   <img alt="The idea of Tollgate in four steps: write the tests, lock them in a signed record, the AI builds and can try again, and the tests and reviewers check each try" src="diagrams/the-lock.svg">

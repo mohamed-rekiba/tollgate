@@ -20,6 +20,39 @@ def words(svg):
     return " ".join(e.text or "" for e in ET.fromstring(svg).iter())
 
 
+class RegistryTest(unittest.TestCase):
+    """One line in diagram.KINDS adds a kind: draw, the driver, and the guide follow."""
+
+    def test_every_kind_draws_from_its_own_module(self):
+        import diagram
+        for kind in diagram.KINDS:
+            with self.subTest(kind=kind):
+                try:
+                    svg = draw({"type": kind, "title": "t", "desc": "d"}, "light")
+                except ValueError as err:
+                    self.assertNotIn("no diagram type", str(err))
+                else:
+                    self.assertTrue(svg.startswith("<svg"))
+
+    def test_an_unknown_type_names_every_kind(self):
+        import diagram
+        with self.assertRaises(ValueError) as err:
+            draw({"type": "pie"}, "light")
+        for kind in diagram.KINDS:
+            self.assertIn(kind, str(err.exception))
+
+    def test_the_driver_knows_every_kind_and_the_guide_has_its_format(self):
+        import diagram
+        from driver.driver import DIAGRAM_TYPES, diagram_guide
+        self.assertEqual(DIAGRAM_TYPES, tuple(diagram.KINDS))
+        guide = diagram_guide("a diagram")
+        for kind, (_, label) in diagram.KINDS.items():
+            with self.subTest(kind=kind):
+                head = f"## The format of {label}\n\n"
+                self.assertIn(head, guide)
+                self.assertTrue(guide.split(head, 1)[1].strip())
+
+
 class ShapesTest(unittest.TestCase):
     def test_every_shape_draws_with_its_text(self):
         nodes = [{"id": s, "text": f"{s} title\nline", "col": i % 4, "row": i // 4, "shape": s}
@@ -72,6 +105,84 @@ class SceneTest(unittest.TestCase):
         with self.assertRaises(ValueError) as err:
             draw(spec, "light")
         self.assertIn("room", str(err.exception))
+
+    def test_a_person_stands_in_the_color_of_its_kind(self):
+        for theme in ("light", "dark"):
+            for kind in ("you", "check"):
+                spec = {"type": "scene", "title": "t", "desc": "d",
+                        "objects": [{"type": "person", "at": [0, 0], "kind": kind}]}
+                with self.subTest(theme=theme, kind=kind):
+                    svg = draw(spec, theme)
+                    self.assertIn(flow.THEMES[theme]["kinds"][kind][0], svg)
+
+    def test_an_external_system_is_gray_whatever_its_kind(self):
+        for theme in ("light", "dark"):
+            kinds = flow.THEMES[theme]["kinds"]
+            spec = {"type": "scene", "title": "t", "desc": "d",
+                    "objects": [{"type": "external", "at": [0, 0], "kind": "you"}]}
+            with self.subTest(theme=theme):
+                svg = draw(spec, theme)
+                self.assertIn(kinds["neutral"][0], svg)
+                self.assertNotIn(kinds["you"][0], svg, "not ours: never in a kind's color")
+
+    def assert_in_kind_color(self, obj):
+        for theme in ("light", "dark"):
+            for kind in ("you", "check"):
+                spec = {"type": "scene", "title": "t", "desc": "d",
+                        "objects": [dict(obj, at=[0, 0], kind=kind)]}
+                with self.subTest(theme=theme, kind=kind):
+                    svg = draw(spec, theme)
+                    self.assertIn(flow.THEMES[theme]["kinds"][kind][0], svg)
+
+    def test_a_container_is_a_box_with_a_lid_in_the_color_of_its_kind(self):
+        self.assert_in_kind_color({"type": "container"})
+
+    def test_a_queue_is_a_pipe_in_the_color_of_its_kind(self):
+        self.assert_in_kind_color({"type": "queue"})
+
+    def test_a_cloud_service_is_a_cloud_in_the_color_of_its_kind(self):
+        self.assert_in_kind_color({"type": "cloud"})
+
+    def test_a_building_is_a_system_in_the_color_of_its_kind(self):
+        self.assert_in_kind_color({"type": "building"})
+
+    def test_a_component_is_a_small_block_in_the_color_of_its_kind(self):
+        self.assert_in_kind_color({"type": "component"})
+
+    def top_of(self, spec):
+        """The highest page point of any polygon: the top of what is drawn."""
+        ys = [float(v) for p in ET.fromstring(draw(spec, "light")).iter(f"{NS}polygon")
+              for v in p.get("points").replace(",", " ").split()[1::2]]
+        return min(ys)
+
+    def test_a_platform_stands_on_another_and_an_object_on_it(self):
+        base = {"type": "scene", "title": "t", "desc": "d", "size": [600, 400],
+                "origin": [300, 200], "scale": 0.5, "grid": 0}
+        flat = self.top_of(dict(base, zones=[{"at": [-100, -100, 100, 100]}]))
+        raised = self.top_of(dict(base, zones=[{"at": [-100, -100, 100, 100], "z": 40,
+                                                "height": 12}]))
+        self.assertAlmostEqual(flat - raised, (40 + 12 - 8) * 0.5, delta=0.2)
+        low = self.top_of(dict(base, objects=[{"type": "container", "at": [0, 0]}]))
+        high = self.top_of(dict(base, objects=[{"type": "container", "at": [0, 0], "z": 30}]))
+        self.assertAlmostEqual(low - high, 30 * 0.5, delta=0.2)
+
+    def test_a_lane_label_may_take_two_lines(self):
+        spec = {"type": "scene", "title": "t", "desc": "d",
+                "lanes": [{"path": [[0, 0], [200, 0]], "label": "Sends it\n[HTTPS]"}]}
+        found = [e.text for e in ET.fromstring(draw(spec, "light")).iter(f"{NS}text")]
+        self.assertIn("Sends it", found)
+        self.assertIn("[HTTPS]", found)
+
+    def test_a_bad_person_or_external_field_says_how_to_fix_it(self):
+        cases = [({"type": "person", "at": [0, 0], "kind": "boss"}, "kind must be one of"),
+                 ({"type": "person"}, "needs 'at'"),
+                 ({"type": "external", "at": [0]}, "needs 'at'"),
+                 ({"type": "external", "at": [0, 0], "size": "big"}, "size must be a number")]
+        for o, message in cases:
+            spec = {"type": "scene", "title": "t", "desc": "d", "objects": [o]}
+            with self.subTest(o=o), self.assertRaises(ValueError) as err:
+                draw(spec, "light")
+            self.assertIn(message, str(err.exception))
 
 
 def callout_spec(callouts, size=(600, 400)):
@@ -259,6 +370,33 @@ class BuildTest(unittest.TestCase):
             spec["nodes"][0]["text"] = "Another step"
             (src / "one.json").write_text(json.dumps(spec))
             self.assertEqual(len(build(d, check=True)), 2)
+
+    def test_a_spec_drawn_from_another_spec_follows_its_changes(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d, "src")
+            src.mkdir()
+            base = {"type": "c4", "level": "context", "title": "A shop", "desc": "d",
+                    "elements": [{"id": "a", "type": "person", "name": "Buyer", "col": 0,
+                                  "row": 0}]}
+            (src / "shop.json").write_text(json.dumps(base))
+            (src / "shop-isometric.json").write_text(json.dumps(
+                {"from": "shop.json", "style": "isometric"}))
+            build(d)
+            drawn = Path(d, "shop-isometric.svg").read_text()
+            self.assertIn("<polygon", drawn, "drawn as a scene")
+            self.assertIn("BUYER", drawn)
+            base["elements"][0]["name"] = "Seller"
+            (src / "shop.json").write_text(json.dumps(base))
+            self.assertIn("shop-isometric.svg", build(d, check=True))
+
+    def test_a_spec_from_a_missing_spec_says_so(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d, "src")
+            src.mkdir()
+            (src / "x.json").write_text(json.dumps({"from": "gone.json"}))
+            with self.assertRaises(ValueError) as err:
+                build(d)
+            self.assertIn("gone.json", str(err.exception))
 
 
 class AwsFetchTest(unittest.TestCase):

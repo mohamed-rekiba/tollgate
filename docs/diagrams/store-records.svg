@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 868 794" width="868" height="794" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">The signed records the store keeps, and the keys that link them</title>
+<desc id="desc">The store keeps signed records as files in the state folder, not in a database. A plan lock lists the tickets of a task; each ticket has a lock of its tests, and at most one older lock it replaced. A pass record names its ticket and the fingerprint of the lock, and the commit it started from, which has its own pass record unless it is main. A ready change and an owner's approval name the commit of a pass record.</desc>
+<defs><marker id="end-triangle" data-end="triangle" viewBox="0 0 16 14" refX="16" refY="7" markerWidth="16" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L15,7 L1,13 Z" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-arrow" data-end="arrow" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M2,2 L13,7 L2,12" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="end-diamond" data-end="diamond" viewBox="0 0 22 12" refX="22" refY="6" markerWidth="22" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,6 L11,1 L21,6 L11,11 Z" fill="#818b98" stroke="#818b98" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-open-diamond" data-end="open diamond" viewBox="0 0 22 12" refX="22" refY="6" markerWidth="22" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,6 L11,1 L21,6 L11,11 Z" fill="#ffffff" stroke="#818b98" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-exactly-one" data-end="exactly one" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M14,2 V16 M19,2 V16" fill="none" stroke="#818b98" stroke-width="1.5"/></marker><marker id="end-zero-or-one" data-end="zero or one" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><circle cx="9" cy="9" r="4" fill="#ffffff" stroke="#818b98" stroke-width="1.5"/><path d="M19,2 V16" fill="none" stroke="#818b98" stroke-width="1.5"/></marker><marker id="end-one-or-many" data-end="one or many" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M8,2 V16 M13,9 L26,2 M13,9 L26,16 M13,9 H26" fill="none" stroke="#818b98" stroke-width="1.5"/></marker><marker id="end-zero-or-many" data-end="zero or many" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><circle cx="6" cy="9" r="4" fill="#ffffff" stroke="#818b98" stroke-width="1.5"/><path d="M13,9 L26,2 M13,9 L26,16 M13,9 H26" fill="none" stroke="#818b98" stroke-width="1.5"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
+<rect x="-24" y="-24" width="868" height="794" fill="#ffffff"/>
+<rect x="-24" y="-24" width="868" height="794" fill="url(#grid)"/>
+<path class="relation" data-from="plans" data-to="oldplans" d="M206.8,89.0 L377.4,89.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-exactly-one)" marker-end="url(#end-zero-or-many)"/>
+<path class="relation" data-from="plans" data-to="locks" d="M103.4,178.0 L103.4,286.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-zero-or-one)" marker-end="url(#end-zero-or-many)"/>
+<path class="relation" data-from="locks" data-to="oldlocks" d="M103.4,484.0 L103.4,588.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-exactly-one)" marker-end="url(#end-zero-or-one)"/>
+<path class="relation" data-from="locks" data-to="passes" d="M206.8,385.0 L377.4,385.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-exactly-one)" marker-end="url(#end-zero-or-many)"/>
+<path class="relation" data-from="passes" data-to="passes" d="M449.1,266.0 L449.1,234.0 Q449.1,222.0 461.1,222.0 L497.1,222.0 Q509.1,222.0 509.1,234.0 L509.1,266.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-zero-or-one)" marker-end="url(#end-zero-or-many)"/>
+<path class="relation" data-from="passes" data-to="ready" d="M580.8,385.0 L652.8,385.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-exactly-one)" marker-end="url(#end-zero-or-one)"/>
+<path class="relation" data-from="passes" data-to="approvals" d="M479.1,504.0 L479.1,588.0" fill="none" stroke="#818b98" stroke-width="1.5" stroke-linejoin="round" marker-start="url(#end-zero-or-one)" marker-end="url(#end-zero-or-one)"/>
+<g class="er-box" data-box="plans">
+<rect x="0.0" y="0.0" width="206.8" height="178.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="14.0" y="52.0" font-size="14" font-weight="700" fill="#1f2328">plan locks</text>
+<line x1="0.0" y1="68.0" x2="206.8" y2="68.0" stroke="#1a7f37" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="14.0" y="77.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="18.6" y="87.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">PK</text>
+<text x="43.0" y="88.0" font-size="12" fill="#1f2328">task</text>
+<text x="164.0" y="88.0" font-size="12" fill="#59636e">text</text>
+<text x="43.0" y="108.0" font-size="12" fill="#1f2328">commit</text>
+<text x="149.6" y="108.0" font-size="12" fill="#59636e">commit</text>
+<text x="43.0" y="128.0" font-size="12" fill="#1f2328">files</text>
+<text x="149.6" y="128.0" font-size="12" fill="#59636e">object</text>
+<text x="43.0" y="148.0" font-size="12" fill="#1f2328">version</text>
+<text x="171.2" y="148.0" font-size="12" fill="#59636e">int</text>
+<text x="43.0" y="168.0" font-size="12" fill="#1f2328">at</text>
+<text x="164.0" y="168.0" font-size="12" fill="#59636e">time</text>
+</g>
+<g class="er-box" data-box="oldplans">
+<rect x="377.4" y="10.0" width="203.4" height="158.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(391.4,22.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="417.4" y="35.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="391.4" y="62.0" font-size="14" font-weight="700" fill="#1f2328">replaced plan locks</text>
+<line x1="377.4" y1="78.0" x2="580.8" y2="78.0" stroke="#1a7f37" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="391.4" y="87.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="396.0" y="97.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">PK</text>
+<rect class="tag" x="416.4" y="87.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="421.0" y="97.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">FK</text>
+<text x="445.4" y="98.0" font-size="12" fill="#1f2328">task</text>
+<text x="538.0" y="98.0" font-size="12" fill="#59636e">text</text>
+<rect class="tag" x="391.4" y="107.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="396.0" y="117.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">PK</text>
+<text x="445.4" y="118.0" font-size="12" fill="#1f2328">version</text>
+<text x="545.2" y="118.0" font-size="12" fill="#59636e">int</text>
+<text x="445.4" y="138.0" font-size="12" fill="#1f2328">commit</text>
+<text x="523.6" y="138.0" font-size="12" fill="#59636e">commit</text>
+<text x="445.4" y="158.0" font-size="12" fill="#1f2328">files</text>
+<text x="523.6" y="158.0" font-size="12" fill="#59636e">object</text>
+</g>
+<g class="er-box" data-box="locks">
+<rect x="0.0" y="286.0" width="206.8" height="198.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(14.0,298.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="40.0" y="311.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="14.0" y="338.0" font-size="14" font-weight="700" fill="#1f2328">locks</text>
+<line x1="0.0" y1="354.0" x2="206.8" y2="354.0" stroke="#1a7f37" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="14.0" y="363.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="18.6" y="373.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">PK</text>
+<text x="43.0" y="374.0" font-size="12" fill="#1f2328">ticket</text>
+<text x="164.0" y="374.0" font-size="12" fill="#59636e">text</text>
+<text x="43.0" y="394.0" font-size="12" fill="#1f2328">base_commit</text>
+<text x="149.6" y="394.0" font-size="12" fill="#59636e">commit</text>
+<text x="43.0" y="414.0" font-size="12" fill="#1f2328">commit</text>
+<text x="149.6" y="414.0" font-size="12" fill="#59636e">commit</text>
+<text x="43.0" y="434.0" font-size="12" fill="#1f2328">manifest</text>
+<text x="149.6" y="434.0" font-size="12" fill="#59636e">object</text>
+<text x="43.0" y="454.0" font-size="12" fill="#1f2328">number</text>
+<text x="149.6" y="454.0" font-size="12" fill="#59636e">1 or 2</text>
+<text x="43.0" y="474.0" font-size="12" fill="#1f2328">at</text>
+<text x="164.0" y="474.0" font-size="12" fill="#59636e">time</text>
+</g>
+<g class="er-box" data-box="passes">
+<rect x="377.4" y="266.0" width="203.4" height="238.0" rx="4" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(391.4,278.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
+<text x="417.4" y="291.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">GATE</text>
+<text x="391.4" y="318.0" font-size="14" font-weight="700" fill="#1f2328">pass records</text>
+<line x1="377.4" y1="334.0" x2="580.8" y2="334.0" stroke="#9a6700" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="391.4" y="343.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="396.0" y="353.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">PK</text>
+<text x="420.4" y="354.0" font-size="12" fill="#1f2328">commit</text>
+<text x="523.6" y="354.0" font-size="12" fill="#59636e">commit</text>
+<rect class="tag" x="391.4" y="363.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="396.0" y="373.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">FK</text>
+<text x="420.4" y="374.0" font-size="12" fill="#1f2328">ticket</text>
+<text x="538.0" y="374.0" font-size="12" fill="#59636e">text</text>
+<rect class="tag" x="391.4" y="383.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="396.0" y="393.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">FK</text>
+<text x="420.4" y="394.0" font-size="12" fill="#1f2328">lock_sha256</text>
+<text x="538.0" y="394.0" font-size="12" fill="#59636e">text</text>
+<rect class="tag" x="391.4" y="403.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="396.0" y="413.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">FK</text>
+<text x="420.4" y="414.0" font-size="12" fill="#1f2328">base_commit</text>
+<text x="523.6" y="414.0" font-size="12" fill="#59636e">commit</text>
+<text x="420.4" y="434.0" font-size="12" fill="#1f2328">tier</text>
+<text x="523.6" y="434.0" font-size="12" fill="#59636e">1 to 4</text>
+<text x="420.4" y="454.0" font-size="12" fill="#1f2328">checks</text>
+<text x="523.6" y="454.0" font-size="12" fill="#59636e">object</text>
+<text x="420.4" y="474.0" font-size="12" fill="#1f2328">score</text>
+<text x="545.2" y="474.0" font-size="12" fill="#59636e">int</text>
+<text x="420.4" y="494.0" font-size="12" fill="#1f2328">at</text>
+<text x="538.0" y="494.0" font-size="12" fill="#59636e">time</text>
+</g>
+<g class="er-box" data-box="ready">
+<rect x="652.8" y="306.0" width="167.4" height="158.0" rx="4" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(666.8,318.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="692.8" y="331.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">GATE</text>
+<text x="666.8" y="358.0" font-size="14" font-weight="700" fill="#1f2328">ready changes</text>
+<line x1="652.8" y1="374.0" x2="820.2" y2="374.0" stroke="#9a6700" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="666.8" y="383.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="671.4" y="393.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">PK</text>
+<text x="695.8" y="394.0" font-size="12" fill="#1f2328">ticket</text>
+<text x="777.4" y="394.0" font-size="12" fill="#59636e">text</text>
+<rect class="tag" x="666.8" y="403.0" width="21" height="14" rx="2" fill="none" stroke="#9a6700" stroke-width="1"/>
+<text x="671.4" y="413.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#9a6700">FK</text>
+<text x="695.8" y="414.0" font-size="12" fill="#1f2328">commit</text>
+<text x="763.0" y="414.0" font-size="12" fill="#59636e">commit</text>
+<text x="695.8" y="434.0" font-size="12" fill="#1f2328">branch</text>
+<text x="777.4" y="434.0" font-size="12" fill="#59636e">text</text>
+<text x="695.8" y="454.0" font-size="12" fill="#1f2328">at</text>
+<text x="777.4" y="454.0" font-size="12" fill="#59636e">time</text>
+</g>
+<g class="er-box" data-box="oldlocks">
+<rect x="0.0" y="588.0" width="206.8" height="158.0" rx="4" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(14.0,600.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
+<text x="40.0" y="613.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="14.0" y="640.0" font-size="14" font-weight="700" fill="#1f2328">replaced locks</text>
+<line x1="0.0" y1="656.0" x2="206.8" y2="656.0" stroke="#1a7f37" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="14.0" y="665.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="18.6" y="675.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">PK</text>
+<rect class="tag" x="39.0" y="665.0" width="21" height="14" rx="2" fill="none" stroke="#1a7f37" stroke-width="1"/>
+<text x="43.6" y="675.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#1a7f37">FK</text>
+<text x="68.0" y="676.0" font-size="12" fill="#1f2328">ticket</text>
+<text x="164.0" y="676.0" font-size="12" fill="#59636e">text</text>
+<text x="68.0" y="696.0" font-size="12" fill="#1f2328">commit</text>
+<text x="149.6" y="696.0" font-size="12" fill="#59636e">commit</text>
+<text x="68.0" y="716.0" font-size="12" fill="#1f2328">manifest</text>
+<text x="149.6" y="716.0" font-size="12" fill="#59636e">object</text>
+<text x="68.0" y="736.0" font-size="12" fill="#1f2328">number</text>
+<text x="185.6" y="736.0" font-size="12" fill="#59636e">1</text>
+</g>
+<g class="er-box" data-box="approvals">
+<rect x="377.4" y="588.0" width="203.4" height="158.0" rx="4" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3"/>
+<g transform="translate(391.4,600.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M11 12h9.5"/><path d="M17.5 12v3M20.5 12v2.5"/></g>
+<text x="417.4" y="613.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">OWNER</text>
+<text x="391.4" y="640.0" font-size="14" font-weight="700" fill="#1f2328">approvals</text>
+<line x1="377.4" y1="656.0" x2="580.8" y2="656.0" stroke="#0969da" stroke-width="1" stroke-opacity="0.6"/>
+<rect class="tag" x="391.4" y="665.0" width="21" height="14" rx="2" fill="none" stroke="#0969da" stroke-width="1"/>
+<text x="396.0" y="675.2" font-size="9" font-weight="700" letter-spacing="0.5" fill="#0969da">PK</text>
+<text x="420.4" y="676.0" font-size="12" fill="#1f2328">commit</text>
+<text x="523.6" y="676.0" font-size="12" fill="#59636e">commit</text>
+<text x="420.4" y="696.0" font-size="12" fill="#1f2328">ticket</text>
+<text x="538.0" y="696.0" font-size="12" fill="#59636e">text</text>
+<text x="420.4" y="716.0" font-size="12" fill="#1f2328">approver</text>
+<text x="538.0" y="716.0" font-size="12" fill="#59636e">text</text>
+<text x="420.4" y="736.0" font-size="12" fill="#1f2328">at</text>
+<text x="538.0" y="736.0" font-size="12" fill="#59636e">time</text>
+</g>
+<rect class="label" x="258.7" y="79.0" width="66.8" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="292.1" y="92.8" text-anchor="middle" font-size="11" fill="#59636e">replaced</text>
+<rect class="label" x="43.6" y="222.0" width="119.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="103.4" y="235.8" text-anchor="middle" font-size="11" fill="#59636e">lists the ticket</text>
+<rect class="label" x="70.0" y="526.0" width="66.8" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="103.4" y="539.8" text-anchor="middle" font-size="11" fill="#59636e">replaced</text>
+<rect class="label" x="248.8" y="375.0" width="86.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="292.1" y="388.8" text-anchor="middle" font-size="11" fill="#59636e">fingerprint</text>
+<rect class="label" x="432.5" y="198.0" width="93.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="479.1" y="211.8" text-anchor="middle" font-size="11" fill="#59636e">started from</text>
+<rect class="label" x="422.6" y="536.0" width="113.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="479.1" y="549.8" text-anchor="middle" font-size="11" fill="#59636e">the same commit</text>
+</svg>

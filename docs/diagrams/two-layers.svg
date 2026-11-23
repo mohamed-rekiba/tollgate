@@ -64,14 +64,14 @@
 <line x1="1142.0" y1="360.0" x2="560.0" y2="696.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
 <line x1="-22.0" y1="360.0" x2="560.0" y2="696.0" stroke="#818b98" stroke-opacity="0.28" stroke-width="1"/>
 </g>
-<polygon points="224.0,299.6 397.2,399.6 397.2,406.0 224.0,306.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="397.2,399.6 639.7,259.6 639.7,266.0 397.2,406.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="224.0,299.6 397.2,399.6 639.7,259.6 466.5,159.6" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="480.3,447.6 674.3,559.6 674.3,566.0 480.3,454.0" fill="#efe2c0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="674.3,559.6 916.8,419.6 916.8,426.0 674.3,566.0" fill="#e1cda0" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
-<polygon points="480.3,447.6 674.3,559.6 916.8,419.6 722.8,307.6" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
-<polyline class="main" points="467.2,292.0 719.3,437.6" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-main)"/>
-<polyline class="main" points="690.2,454.4 438.1,308.8" fill="none" stroke="#cf222e" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<polygon points="224.0,299.6 397.2,399.6 397.2,406.0 224.0,306.0" fill="#e6dbfa" class="zone" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="397.2,399.6 639.7,259.6 639.7,266.0 397.2,406.0" fill="#d5c4f5" class="zone" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="224.0,299.6 397.2,399.6 639.7,259.6 466.5,159.6" fill="#f9f6ff" class="zone" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="480.3,447.6 674.3,559.6 674.3,566.0 480.3,454.0" fill="#efe2c0" class="zone" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="674.3,559.6 916.8,419.6 916.8,426.0 674.3,566.0" fill="#e1cda0" class="zone" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polygon points="480.3,447.6 674.3,559.6 916.8,419.6 722.8,307.6" fill="#fff9e5" class="zone" stroke="#9a6700" stroke-width="1.3" stroke-linejoin="round"/>
+<polyline class="main" data-lane="1" points="467.2,292.0 719.3,437.6" fill="none" stroke="#8250df" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-main)"/>
+<polyline class="main" data-lane="2" points="690.2,454.4 438.1,308.8" fill="none" stroke="#cf222e" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
 <polygon points="352.2,280.0 428.4,324.0 428.4,328.0 352.2,284.0" fill="#e6dbfa" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="428.4,324.0 504.6,280.0 504.6,284.0 428.4,328.0" fill="#d5c4f5" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
 <polygon points="352.2,280.0 428.4,324.0 504.6,280.0 428.4,236.0" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
@@ -126,9 +126,9 @@
 <line x1="709.6" y1="432.0" x2="727.7" y2="442.4" stroke="#1a7f37" stroke-width="2" stroke-linecap="round"/>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#1f2328">TWO LAYERS ENFORCE THE RULES</text>
 <text x="40" y="68" font-size="12" fill="#59636e">Claude Code hooks, then pre-commit in git</text>
-<rect x="609.3" y="383.9" width="68.8" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
+<rect class="pill" data-lane="1" x="609.3" y="383.9" width="68.8" height="20" rx="3" fill="#ffffff" stroke="#59636e"/>
 <text x="643.7" y="397.9" text-anchor="middle" font-size="11" fill="#59636e">a commit</text>
-<rect x="452.4" y="325.0" width="62.2" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
+<rect class="pill" data-lane="2" x="452.4" y="325.0" width="62.2" height="20" rx="3" fill="#ffffff" stroke="#cf222e"/>
 <text x="483.5" y="339.0" text-anchor="middle" font-size="11" fill="#cf222e">refused</text>
 <text x="310.6" y="152.0" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="#1f2328">LAYER 1: CLAUDE CODE</text>
 <text x="310.6" y="168.0" text-anchor="middle" font-size="12" fill="#59636e">hooks and permission rules</text>
