@@ -108,6 +108,15 @@ class PromptsMatchTheGateTest(unittest.TestCase):
             for path, _ in named:
                 self.assertIn(path, ticket.tests)
 
+    def test_the_fix_round_marks_built_behavior_as_keeps_behavior(self):
+        text = self.read("roles/builder.md")
+        fix = text.split("### A fix round", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("already built", fix)
+        lines = [m for m in (tickets.ITEM.match(line.strip()) for line in fix.splitlines()) if m]
+        marks = [{x.strip() for x in m.group(2).split(",") if x.strip()} for m in lines]
+        self.assertIn({"must", "keeps behavior"}, [m - set(tickets.KINDS) for m in marks])
+        self.assertIn({"must"}, [m - set(tickets.KINDS) for m in marks])
+
     def test_the_test_writer_maps_existing_tests_and_never_renames_them(self):
         text = self.read("roles/test_writer.md")
         self.assertIn("never rename", text)

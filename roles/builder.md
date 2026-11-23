@@ -116,6 +116,15 @@ Prefer the simplest plan that fits the architecture the analysis found. Plan a n
    Done when each ticket names its seams and its test files, and decides each of the 10 kinds.
 4. If `problems` is in the inputs, fix each one. Done when each problem is answered.
 
+### A fix round
+
+When `hint` holds the problems the review of the whole task found, the tickets of the plan are already built. Keep each of them unchanged, and add tickets that fix the problems. In a new ticket, an item for behavior that is already built is a `keeps behavior` item: its test must pass now, so point it at an existing test as `file::test`, or let the test writer add a new test that passes. Only behavior that the fix adds is a plain must-have item, whose new test fails until the fix is built. For example, when the review finds that dividing by zero is not handled:
+
+```
+- [C1, must, keeps behavior, happy] divide(6, 3) still returns 2: tests/test_calc.py::test_c1_divide_six_by_three_returns_two.
+- [C2, must, error] divide(1, 0) raises ValueError with the message "cannot divide by zero".
+```
+
 End with:
 
 ```json
