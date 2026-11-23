@@ -1,6 +1,7 @@
 """Session mode, one step at a time: your own Claude Code session runs each role.
 
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --task <task id>
+    PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --brainstorm <id>
     PYTHONPATH=<tollgate> python3 -P -m driver.step answer --project . --key <key> --nonce <nonce> < answer.md
 
 `next` runs the task's driver in session mode, from its log and the saved
@@ -22,6 +23,11 @@ answers, up to the next role. It prints one JSON object:
 says what they are; and an answer with no final json block. A role cannot run
 this command: the hook refuses any Tollgate command from a role. It saves the answer, then runs `next` and prints what
 `next` prints. The request of the task is .tollgate/requests/<task id>.md.
+
+With --brainstorm, `next` runs a brainstorm instead (see driver/brainstorm.py): its
+idea is .tollgate/ideas/<id>.md, and its end is {"done": true, "brief": <path>,
+"size": "task" or "roadmap", "open_questions": <count>}. `answer` goes on with the
+brainstorm or the task that the waiting step belongs to.
 """
 
 import argparse
@@ -31,9 +37,11 @@ import sys
 from pathlib import Path
 
 from driver import advisor, history, report, roles, session
+from driver.brainstorm import Brainstorm
 from driver.driver import Busy, run_lock
 from driver.log import read
 from driver.task import Task
+from gate import brief as bf
 from gate import plan as pl
 from gate import settings as st
 from gate import state
@@ -75,6 +83,60 @@ def _merged(project: str, task: str) -> list:
     return out
 
 
+def _paused(project: str, lock_name: str) -> tuple:
+    """The step that waits, with a new nonce. Return (what to print, exit code)."""
+    # The nonce goes in under the run lock, so a second next cannot interleave.
+    lock = run_lock(project, lock_name)
+    try:
+        lock.acquire()
+    except Busy as err:
+        return {"error": str(err)}, 1
+    try:
+        step = session.read_step(project)
+        if step is None:
+            return {"error": "the driver paused, but no step file is there; run next "
+                             "again"}, 1
+        nonce = session.new_nonce(project)
+    finally:
+        lock.release()
+    return {"agent": step.get("agent", ""), "prompt": step["prompt"],
+            "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}, 0
+
+
+def next_brainstorm(project: str, brainstorm: str, store=None) -> tuple:
+    """Run the brainstorm to its next step. Return (what to print, exit code)."""
+    project = str(Path(project).resolve())
+    problem = session.cannot_pass(project)
+    if problem:
+        return {"error": problem}, 1
+    store = store or Store(project)
+    path = Path(project, bf.idea_path(brainstorm))
+    if not bf.ID.match(brainstorm) or not path.exists():
+        return {"error": f"the idea is missing: write it to {bf.idea_path(brainstorm)}"}, 1
+    try:
+        code = Brainstorm(project, brainstorm, path.read_text(), store, runner="session").run()
+    except Busy as err:
+        return {"error": str(err)}, 1
+    except (roles.RoleError, bf.BriefError, st.SettingsError, StoreError, OSError,
+            subprocess.CalledProcessError) as err:
+        return {"error": str(err)}, 1
+    if code == 5:
+        return _paused(project, f"brainstorm-{brainstorm}")
+    events = read(str(state.path(project, "logs", f"brainstorm-{brainstorm}.jsonl")))
+    if code == 0:
+        written = [e for e in events if e["event"] == "brief_written"][-1]
+        return {"done": True, "brief": str(Path(project, bf.brief_path(brainstorm))),
+                "size": written["size"], "open_questions": written["open_questions"]}, 0
+    found = history.open_question(events)
+    if found:
+        q = advisor.question(store, found["question"]) or {}
+        return {"question": {"n": found["question"], "title": q.get("title", ""),
+                             "body": q.get("body", found["reason"]),
+                             "options": q.get("options", [])}}, 0
+    waiting = [e for e in events if e["event"] == "brainstorm_waiting"]
+    return {"parked": waiting[-1]["reason"] if waiting else "the brainstorm waits"}, 0
+
+
 def next_step(project: str, task: str, store=None) -> tuple:
     """Run the task to its next step. Return (what to print, exit code)."""
     project = str(Path(project).resolve())
@@ -91,22 +153,7 @@ def next_step(project: str, task: str, store=None) -> tuple:
             subprocess.CalledProcessError) as err:
         return {"error": str(err)}, 1
     if code == 5:
-        # The nonce goes in under the task's run lock, so a second next cannot interleave.
-        lock = run_lock(project, f"task-{task}")
-        try:
-            lock.acquire()
-        except Busy as err:
-            return {"error": str(err)}, 1
-        try:
-            step = session.read_step(project)
-            if step is None:
-                return {"error": "the driver paused, but no step file is there; run next "
-                                 "again"}, 1
-            nonce = session.new_nonce(project)
-        finally:
-            lock.release()
-        return {"agent": step.get("agent", ""), "prompt": step["prompt"],
-                "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}, 0
+        return _paused(project, f"task-{task}")
     if code == 0:
         return {"done": True, "result": report.brief(project, task),
                 "merged": _merged(project, task),
@@ -143,6 +190,8 @@ def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> t
                          "with a ```json block."}, 1
     except (OSError, subprocess.CalledProcessError) as err:
         return {"error": f"the answer was not saved: {err}"}, 1
+    if step["log"] == f"brainstorm-{step['task']}":
+        return next_brainstorm(project, step["task"], store)
     return next_step(project, step["task"], store)
 
 
@@ -152,13 +201,17 @@ def main(argv=None, store=None, stdin=None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     found = sub.add_parser("next", help="run the task to its next step")
     found.add_argument("--project", default=".")
-    found.add_argument("--task", required=True)
+    which = found.add_mutually_exclusive_group(required=True)
+    which.add_argument("--task")
+    which.add_argument("--brainstorm")
     given = sub.add_parser("answer", help="save the answer to the waiting step (on stdin)")
     given.add_argument("--project", default=".")
     given.add_argument("--key", required=True)
     given.add_argument("--nonce", required=True)
     args = parser.parse_args(argv)
-    if args.command == "next":
+    if args.command == "next" and args.brainstorm:
+        out, code = next_brainstorm(args.project, args.brainstorm, store)
+    elif args.command == "next":
         out, code = next_step(args.project, args.task, store)
     else:
         out, code = answer(args.project, args.key, args.nonce, (stdin or sys.stdin).read(),

@@ -247,6 +247,7 @@ class KeyAndStateReadTest(Env):
         for command in ("python3 -m driver.step answer --project . --key k --nonce n",
                         'PYTHONPATH="/x" python3 -P -m setup.inbox --project . answer 1 approve',
                         "python3 -m gate.store", "python3 -m setup.merge",
+                        "python3 -m driver.brainstorm --project . --brainstorm demo",
                         f"python3 {root}/driver/step.py next --task demo"):
             with self.subTest(command=command):
                 self.assertRefuses("tollgate command", "Bash", {"command": command})

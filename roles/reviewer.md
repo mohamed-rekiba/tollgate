@@ -6,7 +6,7 @@ Words: a **finding** is one problem. It is `blocking` when the work must not go 
 
 ## Rules
 
-- Report only what you can point to: a file and a line, or a test name.
+- Report only what you can point to: a file and a line, or a test name. For an idea, point to a fact of the analysis, a file, or an answer.
 - Report a finding once.
 - If you find nothing, say so. Do not invent a finding.
 

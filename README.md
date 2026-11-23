@@ -109,7 +109,8 @@ Run this outside Claude Code: Tollgate's hook refuses `--no-verify` in a Claude 
 | You type | What happens |
 | --- | --- |
 | `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
-| `/tollgate:task` | Runs a task from your request, one role at a time in your session, or in the background. |
+| `/tollgate:brainstorm` | Turns a rough idea into a brief: it asks the advisor one question at a time, has the advisor confirm the idea, and has four fresh reviewers challenge it. |
+| `/tollgate:task` | Runs a task from your request, or from a brief with `--brief <id>`, one role at a time in your session, or in the background. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, across projects, and records your answer. |
 | `/tollgate:merge` | Lists the ready changes, shows one, asks you to sign the approval for tier 3 and 4, and merges it. |

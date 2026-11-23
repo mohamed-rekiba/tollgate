@@ -38,7 +38,7 @@ def usd(cost) -> str:
 def rows(project: str, task: str | None = None) -> list:
     out = []
     for path in history.logs(logs_dir(project)):
-        if path.name.startswith("task-"):
+        if path.name.startswith(("task-", "brainstorm-")):
             continue
         events = read(str(path))
         if events and (task is None or events[0].get("task") == task):
