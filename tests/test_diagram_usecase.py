@@ -139,7 +139,7 @@ class UseCaseTest(unittest.TestCase):
 
     def test_the_example_draws_tollgate(self):
         found = words(draw(json.loads(EXAMPLE.read_text()), "light"))
-        for text in ("Tollgate", "Owner", "Approve a change"):
+        for text in ("Tollgate", "You", "Approve a change"):
             self.assertIn(text, found)
 
 
