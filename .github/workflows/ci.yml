@@ -20,14 +20,13 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
-      - name: Install the check tools
-        run: pip install --require-hashes -r requirements-dev.txt
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
       - name: Style
-        run: ruff check .
+        run: uv run --no-project --with-requirements requirements-dev.txt ruff check .
       - name: Writing
         # The check compares the branch with main, so a pull request needs a main branch.
         run: |
           git rev-parse --verify --quiet refs/heads/main >/dev/null || git branch main origin/main
-          python3 setup/check_writing.py
+          uv run --no-project python setup/check_writing.py
       - name: Tests
-        run: python -m unittest discover -s tests -t . -v
+        run: uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto tests

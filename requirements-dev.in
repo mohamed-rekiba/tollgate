@@ -1,8 +1,9 @@
 # The tools that check Tollgate in CI. Tollgate itself needs only the Python
 # standard library. requirements-dev.txt pins these and their dependencies with
 # hashes; regenerate it with:
-#   pip-compile --generate-hashes --allow-unsafe requirements-dev.in
+#   uv pip compile --generate-hashes requirements-dev.in -o requirements-dev.txt
 # Dependabot updates both files.
 ruff==0.17.6
 pyyaml==6.0.4
 pytest==9.2.0
+pytest-xdist==3.8.0

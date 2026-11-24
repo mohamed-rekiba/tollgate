@@ -124,7 +124,10 @@ def content(root: Path, name: str, staged: bool) -> str:
 def diff_lines(root: Path, base: str, staged: bool) -> dict:
     """{file: [(line number, text)]} for each line the change adds."""
     span = ["--cached"] if staged else [f"{base}...HEAD"]
-    code, out = git("diff", "--unified=0", "--no-color", *span, "--", cwd=root)
+    # The prefixes are explicit: a user setting such as diff.mnemonicPrefix changes
+    # them, and the parser below reads "+++ b/".
+    code, out = git("diff", "--unified=0", "--no-color", "--src-prefix=a/", "--dst-prefix=b/",
+                    *span, "--", cwd=root)
     if code != 0:
         return {}
     files, path, number = {}, None, 0

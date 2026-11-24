@@ -251,7 +251,8 @@ class StepTest(Case):
         self.assertEqual(sorted(out), ["agent", "cwd", "key", "nonce", "prompt"])
         self.assertEqual(out["agent"], "tollgate:analyst")
         self.assertTrue(out["prompt"].startswith("# Role: analyst"))
-        self.assertEqual(Path(out["cwd"]), state.path(str(s.project), "builders", "task-demo"))
+        self.assertEqual(Path(out["cwd"]).resolve(),
+                         state.path(str(s.project), "builders", "task-demo").resolve())
         # Asked again, next names the same step.
         self.assertEqual(self.next(s, store)[1]["key"], out["key"])
 

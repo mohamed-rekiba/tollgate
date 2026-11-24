@@ -24,7 +24,7 @@ Done when the file holds the checks and the tiers. Show the user the file.
 
 1. Confirm the current branch is `main`: `git branch --show-current`. If not, ask the user to switch to it.
 2. Run `python3 -m setup.init`. It checks that `claude` and `pre-commit` are installed, and that Docker runs when `isolation` is `"container"`. It creates the state folder, copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
-3. If it stops because Docker is missing or not running, tell the user to start Docker, or to set `isolation` to `"sandbox"`. If it stops because a tool is missing, tell the user the install command: `pipx install pre-commit`, or `npm install -g @anthropic-ai/claude-code` for `claude`. Run it again after the install.
+3. If it stops because Docker is missing or not running, tell the user to start Docker, or to set `isolation` to `"sandbox"`. If it stops because a tool is missing, tell the user the install command: `uv tool install pre-commit`, or `npm install -g @anthropic-ai/claude-code` for `claude`. Run it again after the install.
 4. If the project already has a `.pre-commit-config.yaml` that Tollgate did not write, init stops. Move each of its hooks into `checks` in the settings, with the user's consent, then run init with `--replace`.
 
 Done when init ends with 0 and its last line says pre-commit is installed.

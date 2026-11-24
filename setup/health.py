@@ -33,7 +33,7 @@ def warnings(project: str = ".", which=shutil.which, plugin: Path = PLUGIN) -> l
     found = []
     if not which("pre-commit"):
         found.append("pre-commit is not installed, so no check runs before a commit. "
-                     "Install it: pipx install pre-commit")
+                     "Install it: uv tool install pre-commit")
     if not (root / precommit.CONFIG).exists():
         found.append(f"{precommit.CONFIG} is missing. {FIX}")
     folder = hooks_dir(root)

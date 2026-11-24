@@ -1,18 +1,16 @@
 {
-  "setup": [
-    "python3 -m pip install --quiet --user -r requirements-dev.txt || python3 -m pip install --quiet --break-system-packages -r requirements-dev.txt"
-  ],
+  "setup": [],
   "checks": {
     "tests": {
-      "run": "python3 -m pytest -q -p no:cacheprovider --junitxml=report.xml tests",
+      "run": "uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto --junitxml=report.xml tests",
       "report": "report.xml",
       "minutes": 15
     },
     "style": {
-      "run": "ruff check ."
+      "run": "uv run --no-project --with-requirements requirements-dev.txt ruff check ."
     },
     "writing": {
-      "run": "python3 setup/check_writing.py"
+      "run": "uv run --no-project python setup/check_writing.py"
     }
   },
   "harness": [

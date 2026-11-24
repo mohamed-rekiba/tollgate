@@ -163,7 +163,8 @@ class StateCopyTest(Env):
     def test_a_worktree_of_the_project_reads_the_same_state(self):
         root = self.repo()
         sh(root, "git", "worktree", "add", "-q", str(self.tmp / "builder"))
-        self.assertEqual(check_merge.project_root(self.tmp / "builder"), str(root))
+        self.assertEqual(os.path.realpath(check_merge.project_root(self.tmp / "builder")),
+                         os.path.realpath(root))
 
 
 class CommitMsgTest(unittest.TestCase):
