@@ -27,6 +27,7 @@ Done when the person has named the documents.
 - **A document:** one topic for each section, and the answer first in each.
 - **A diagram:** see "When a document needs a diagram". The writing check fails a Mermaid block that a change adds.
 - **A decision:** see "A decision".
+- **A record of a feature:** when the project has spec docs, write what a task adds into them. Update the doc that covers the area, or add one in the same folder. Say what the feature is, how it works, and why it exists, so that a reader who has not seen the task can use it. Change the old text that the feature makes false, and do not add to it. Leave out the story of the work: tries, tickets, and who did what. A choice that is costly to undo goes in a decision record. See "A decision".
 - **A design:** describe the target as it will be. The rule to say plainly what is unfinished, untested, or unverified is for a change, a report, or a review, not for a doc of the design.
 - **A code comment:** say why the code is this way. Leave out what the code already says.
 - **A commit message:** a subject in the form `type(scope): subject`, then a body that says why. The author is the owner of the repository. No line credits an AI.

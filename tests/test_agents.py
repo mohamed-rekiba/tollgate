@@ -200,3 +200,42 @@ class DecisionRecordTest(unittest.TestCase):
         self.assertIn("**decision record**:", text)
         self.assertIn("List the folder of decision records in `spec`.", text)
         self.assertIn("List the folder of decision records in `spec`", self.read("docs/design.md"))
+
+
+class AfterTaskRecordTest(unittest.TestCase):
+    """A plan that adds behavior writes it into the spec docs, so the next analysis finds it."""
+
+    WHAT = "what the feature is, how it works, and why it exists"
+
+    def read(self, path):
+        return (ROOT / path).read_text()
+
+    def test_the_builder_lists_a_spec_doc_in_the_ticket_that_adds_the_behavior(self):
+        text = self.read("roles/builder.md")
+        for words in ("adds behavior that no specified fact describes",
+                      "in the ticket that adds the behavior", "`modify <path>`", "`create <path>`",
+                      self.WHAT):
+            with self.subTest(words=words):
+                self.assertIn(words, text)
+
+    def test_the_agent_carries_the_same_rule(self):
+        self.assertIn(self.WHAT, self.read("agents/builder.md"))
+
+    def test_the_docs_skill_and_the_builder_say_the_same_three_things(self):
+        self.assertIn(self.WHAT, self.read("skills/docs/SKILL.md"))
+        self.assertIn("**A record of a feature:**", self.read("skills/docs/SKILL.md"))
+
+    def test_the_readiness_lens_holds_the_rule_in_item_10_and_adds_no_item(self):
+        lens = self.read("lenses/readiness.md")
+        item = re.search(r"^10\. .*$", lens, re.MULTILINE).group(0)
+        self.assertIn("adds behavior that no specified fact describes", item)
+        self.assertIn("no ticket lists a spec doc under Files", item)
+        self.assertNotRegex(lens, r"^11\. ")
+
+    def test_the_review_lens_counts_a_feature_that_no_spec_doc_describes(self):
+        item = re.search(r"^9\. .*$", self.read("lenses/review.md"), re.MULTILINE).group(0)
+        self.assertIn("adds behavior that none of them describes", item)
+
+    def test_the_design_and_the_word_list_state_it(self):
+        self.assertIn("must list a spec doc under Files", self.read("docs/design.md"))
+        self.assertIn("a plan that adds behavior writes it into them", self.read("CONTEXT.md"))
