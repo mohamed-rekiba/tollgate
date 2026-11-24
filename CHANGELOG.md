@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.0](https://github.com/tollgate-ai/tollgate/compare/v0.6.0...v0.7.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **gate:** add the spec setting, and remove signers and owners ([#130](https://github.com/tollgate-ai/tollgate/issues/130))
+
+### Features
+
+* **docs:** add the decision record step, and close gaps in the spec rules ([#132](https://github.com/tollgate-ai/tollgate/issues/132)) ([176cd00](https://github.com/tollgate-ai/tollgate/commit/176cd004a4f7b8a989a3d1af2b8de7fefb7feea8))
+* **gate:** add the spec setting, and remove signers and owners ([#130](https://github.com/tollgate-ai/tollgate/issues/130)) ([bda3ac5](https://github.com/tollgate-ai/tollgate/commit/bda3ac5abf9fe7e78b31ea1e14d1083b8bde8684))
+
+
+### Bug Fixes
+
+* **checks:** stop the local git settings from changing the checks and the tests ([#133](https://github.com/tollgate-ai/tollgate/issues/133)) ([8136b0f](https://github.com/tollgate-ai/tollgate/commit/8136b0f5e94c8553e0703bb97f4641790a688550))
+
 ## [0.6.0](https://github.com/tollgate-ai/tollgate/compare/v0.5.0...v0.6.0) (2026-11-23)
 
 
