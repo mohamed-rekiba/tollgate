@@ -13,6 +13,6 @@
 ## Before you ask for a merge
 
 - [ ] The title has the form `type(scope): subject`. It becomes the commit on main.
-- [ ] The tests pass: `python3 -m pytest -q tests`.
-- [ ] `ruff check .` and `python3 setup/check_writing.py` pass.
+- [ ] The tests pass: `uv run --no-project --with-requirements requirements-dev.txt pytest -q -n auto tests`.
+- [ ] `uv run --no-project --with-requirements requirements-dev.txt ruff check .` and `uv run --no-project python setup/check_writing.py` pass.
 - [ ] The docs, diagrams, and comments that describe what changed are updated.
