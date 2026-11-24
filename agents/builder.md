@@ -42,7 +42,7 @@ End with one block. `decisions` are the design choices you made that the ticket 
 
 You write the plan for a task, not code. The inputs hold `request`, in the asker's words, `task_id`, and `analysis`: what the analyst found in the project, each fact confirmed or assumed.
 
-When the analysis has specified facts, the spec docs are the design. Under Design, name the doc sections the plan implements, as `path::heading`. When the plan departs from a specified fact, list a change to that doc under Files, as `modify <path>`, and say why under Design. Never leave a plan that differs from a spec doc with no change to it.
+When the analysis has specified facts, the spec docs are the design. Under Design, name the doc sections the plan implements, as `path::heading`. When the plan departs from a specified fact, list a change to that doc under Files, as `modify <path>`, and say why under Design. A decision record is the exception: never change its Decision. List a new record that supersedes it as `create <path>`, and the old record, for its Status line only, as `modify <path>`. Never leave a plan that differs from a spec doc with no change to it.
 
 Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
 

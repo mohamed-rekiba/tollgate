@@ -2,7 +2,7 @@
  "type": "c4",
  "level": "container",
  "title": "Tollgate",
- "desc": "Inside Tollgate: your Claude Code session asks the driver for each step and runs the hooks before each tool call. The driver runs the gate after each try and reaches the state folder only through the store. The store locks tests, signs records, and merges a ready change into your project.",
+ "desc": "Inside Tollgate: your Claude Code session asks the driver for each step and runs the hooks before each tool call. The driver runs the gate after each try and reaches the state folder only through the store. The store locks tests, writes records, and merges a ready change into your project.",
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "tollgate", "name": "Tollgate", "type": "Software System"}],
  "elements": [
@@ -12,7 +12,7 @@
   {"id": "driver", "type": "container", "name": "The driver", "tech": "Python", "description": "Runs the steps of a task and of each ticket", "col": 1, "row": 1, "parent": "tollgate", "icon": "workflow"},
   {"id": "gate", "type": "container", "kind": "check", "name": "The gate", "tech": "Python", "description": "Decides whether a try passes, with no AI", "col": 2, "row": 1, "parent": "tollgate", "icon": "gate"},
   {"id": "state", "type": "database", "name": "The state folder", "tech": "files", "description": "Locks, pass records, questions, logs", "col": 0, "row": 2, "parent": "tollgate"},
-  {"id": "store", "type": "container", "name": "The store", "tech": "Python", "description": "Locks tests, signs records, merges", "col": 1, "row": 2, "parent": "tollgate", "icon": "lock"},
+  {"id": "store", "type": "container", "name": "The store", "tech": "Python", "description": "Locks tests, writes records, merges", "col": 1, "row": 2, "parent": "tollgate", "icon": "lock"},
   {"id": "project", "type": "database", "external": true, "name": "Your project", "tech": "git", "description": "Its main branch, and a branch for each ticket", "col": 1, "row": 3}
  ],
  "relations": [
@@ -20,9 +20,9 @@
   {"from": "session", "to": "hooks", "label": "Runs before each tool call", "tech": "Claude Code hook", "route": "hv"},
   {"from": "session", "to": "driver", "label": "Asks for the next step", "tech": "a command"},
   {"from": "driver", "to": "gate", "label": "Runs after each try"},
-  {"from": "driver", "to": "store", "label": "Locks, signs, and merges with"},
-  {"from": "gate", "to": "store", "label": "Verifies the lock with", "route": "vh"},
-  {"from": "store", "to": "state", "label": "Keeps every record in", "tech": "SSH signatures"},
+  {"from": "driver", "to": "store", "label": "Locks, records, and merges with"},
+  {"from": "gate", "to": "store", "label": "Reads the lock with", "route": "vh"},
+  {"from": "store", "to": "state", "label": "Keeps every record in", "tech": "Plain files"},
   {"from": "hooks", "to": "state", "label": "Reads the step file"},
   {"from": "store", "to": "project", "label": "Merges a ready change", "tech": "git"}
  ]

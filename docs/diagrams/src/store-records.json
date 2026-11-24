@@ -1,8 +1,8 @@
 {
  "type": "er",
- "title": "The signed records the store keeps, and the keys that link them",
+ "title": "The records the store keeps, and the keys that link them",
  "desc": "The store keeps signed records as files in the state folder, not in a database. A plan lock lists the tickets of a task; each ticket has a lock of its tests, and at most one older lock it replaced. A pass record names its ticket and the fingerprint of the lock, and the commit it started from, which has its own pass record unless it is main. A ready change and an owner's approval name the commit of a pass record.",
- "names": {"server": "Store", "check": "Gate", "you": "Owner"},
+ "names": {"server": "Store", "check": "Gate", "you": "You"},
  "tables": [
   {"id": "plans", "name": "plan locks", "col": 0, "row": 0, "kind": "server", "icon": "plan",
    "columns": [{"name": "task", "type": "text", "key": "pk"},
@@ -43,7 +43,7 @@
                {"name": "commit", "type": "commit"},
                {"name": "manifest", "type": "object"},
                {"name": "number", "type": "1"}]},
-  {"id": "approvals", "name": "approvals", "col": 1, "row": 2, "kind": "you", "icon": "key",
+  {"id": "approvals", "name": "approvals", "col": 1, "row": 2, "kind": "you", "icon": "terminal",
    "columns": [{"name": "commit", "type": "commit", "key": "pk"},
                {"name": "ticket", "type": "text"},
                {"name": "approver", "type": "text"},

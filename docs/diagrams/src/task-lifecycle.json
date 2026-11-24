@@ -87,7 +87,7 @@
   },
   {
    "id": "ready",
-   "text": "A ready change\nA signed pass record;\nheld for the task",
+   "text": "A ready change\nA pass record;\nheld for the task",
    "col": 4,
    "row": 0,
    "kind": "server",

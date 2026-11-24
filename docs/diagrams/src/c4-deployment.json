@@ -59,7 +59,7 @@
    "type": "container",
    "name": "The store",
    "tech": "Python",
-   "description": "Locks, signs, merges",
+   "description": "Locks, records, merges",
    "col": 0,
    "row": 2,
    "parent": "python",
@@ -112,7 +112,7 @@
   {
    "from": "driver",
    "to": "store",
-   "label": "Locks, signs, merges with"
+   "label": "Locks, records, merges with"
   },
   {
    "from": "store",

@@ -2,7 +2,7 @@
  "type": "c4",
  "level": "dynamic",
  "title": "One ticket in background mode",
- "desc": "One ticket in background mode, in order: you type the task, your session starts the driver, the driver has the store lock the tests and starts the builder in its copy, the builder works with the model, the driver runs the gate, the gate verifies the lock with the store, and the store merges the ready change into your project.",
+ "desc": "One ticket in background mode, in order: you type the task, your session starts the driver, the driver has the store lock the tests and starts the builder in its copy, the builder works with the model, the driver runs the gate, the gate reads the lock from the store, and the store merges the ready change into your project.",
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "tollgate", "name": "Tollgate", "type": "Software System"}],
  "elements": [
@@ -22,7 +22,7 @@
   {"from": "driver", "to": "builder", "label": "Starts a try"},
   {"from": "builder", "to": "model", "label": "Writes the code with"},
   {"from": "driver", "to": "gate", "label": "Runs the gate", "route": "hv"},
-  {"from": "gate", "to": "store", "label": "Verifies the lock"},
+  {"from": "gate", "to": "store", "label": "Reads the lock"},
   {"from": "store", "to": "project", "label": "Merges the change", "tech": "git"}
  ]
 }

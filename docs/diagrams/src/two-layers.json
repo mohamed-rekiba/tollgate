@@ -1,7 +1,7 @@
 {
  "type": "scene",
  "title": "Two layers enforce the rules",
- "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's session in Claude Code: hooks and permission rules refuse an edit of a locked file, a push, and a merge. In the gap in the wall, pre-commit checks each commit, merge, and push. A commit that passes goes on to the right; a commit that fails comes back refused. On the right, the main branch and the signed records: a merge into main needs a signed pass record, and a risky change also needs your signed approval.",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's session in Claude Code: hooks and permission rules refuse an edit of a locked file, a push, and a merge. In the gap in the wall, pre-commit checks each commit, merge, and push. A commit that passes goes on to the right; a commit that fails comes back refused. On the right, the main branch and the records: a merge into main needs a signed pass record, and a risky change also needs your signed approval.",
  "size": [
   1120,
   620
@@ -142,7 +142,7 @@
     170,
     -110
    ],
-   "means": "the signed records"
+   "means": "the records"
   }
  ],
  "labels": [
@@ -166,7 +166,7 @@
     -150,
     120
    ],
-   "head": "Signed records",
+   "head": "Records",
    "sub": [
     "pass records",
     "and approvals"

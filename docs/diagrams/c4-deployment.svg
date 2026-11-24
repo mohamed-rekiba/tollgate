@@ -80,7 +80,7 @@
 <text x="40.0" y="523.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">YOUR MACHINE</text>
 <text x="14.0" y="550.0" font-size="14" font-weight="700" fill="#1f2328">The store</text>
 <text x="14.0" y="568.0" font-size="12" fill="#59636e">[Container: Python]</text>
-<text x="14.0" y="585.0" font-size="12" fill="#59636e">Locks, signs, merges</text>
+<text x="14.0" y="585.0" font-size="12" fill="#59636e">Locks, records, merges</text>
 </g>
 <g class="step">
 <rect x="443.6" y="282.0" width="237.6" height="120.0" rx="4" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
@@ -113,8 +113,8 @@
 <rect class="label" x="277.5" y="325.0" width="126.2" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
 <text x="340.6" y="338.8" text-anchor="middle" font-size="11" fill="#59636e">Starts each role</text>
 <text x="340.6" y="352.8" text-anchor="middle" font-size="11" fill="#59636e">[background mode]</text>
-<rect class="label" x="29.3" y="440.0" width="179.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
-<text x="118.8" y="453.8" text-anchor="middle" font-size="11" fill="#59636e">Locks, signs, merges with</text>
+<rect class="label" x="22.7" y="440.0" width="192.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="118.8" y="453.8" text-anchor="middle" font-size="11" fill="#59636e">Locks, records, merges with</text>
 <rect class="label" x="267.6" y="547.5" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
 <text x="340.6" y="561.3" text-anchor="middle" font-size="11" fill="#59636e">Keeps its records in</text>
 <rect class="label" x="564.8" y="43.0" width="126.2" height="34" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>

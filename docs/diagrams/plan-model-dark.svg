@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 895 881" width="895" height="881" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
 <title id="title">The plan and its tickets, and the records that lock them</title>
-<desc id="desc">A plan lists one or more tickets, and each ticket owns 3 to 10 checklist items. The store signs a plan lock that fingerprints the plan, and up to two locks for each ticket's tests. A pass record from the gate names the fingerprint of the ticket's lock, and an owner's approval of the same commit lets a tier 3 or 4 change merge.</desc>
+<desc id="desc">A plan lists one or more tickets, and each ticket owns 3 to 10 checklist items. The store writes a plan lock that fingerprints the plan, and up to two locks for each ticket's tests. A pass record from the gate names the fingerprint of the ticket's lock, and your approval of the same commit lets a tier 3 or 4 change merge.</desc>
 <defs><marker id="end-triangle" data-end="triangle" viewBox="0 0 16 14" refX="16" refY="7" markerWidth="16" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L15,7 L1,13 Z" fill="#0d1117" stroke="#656c76" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-arrow" data-end="arrow" viewBox="0 0 14 14" refX="14" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M2,2 L13,7 L2,12" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="end-diamond" data-end="diamond" viewBox="0 0 22 12" refX="22" refY="6" markerWidth="22" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,6 L11,1 L21,6 L11,11 Z" fill="#656c76" stroke="#656c76" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-open-diamond" data-end="open diamond" viewBox="0 0 22 12" refX="22" refY="6" markerWidth="22" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,6 L11,1 L21,6 L11,11 Z" fill="#0d1117" stroke="#656c76" stroke-width="1.4" stroke-linejoin="round"/></marker><marker id="end-exactly-one" data-end="exactly one" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M14,2 V16 M19,2 V16" fill="none" stroke="#656c76" stroke-width="1.5"/></marker><marker id="end-zero-or-one" data-end="zero or one" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><circle cx="9" cy="9" r="4" fill="#0d1117" stroke="#656c76" stroke-width="1.5"/><path d="M19,2 V16" fill="none" stroke="#656c76" stroke-width="1.5"/></marker><marker id="end-one-or-many" data-end="one or many" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M8,2 V16 M13,9 L26,2 M13,9 L26,16 M13,9 H26" fill="none" stroke="#656c76" stroke-width="1.5"/></marker><marker id="end-zero-or-many" data-end="zero or many" viewBox="0 0 26 18" refX="26" refY="9" markerWidth="26" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><circle cx="6" cy="9" r="4" fill="#0d1117" stroke="#656c76" stroke-width="1.5"/><path d="M13,9 L26,2 M13,9 L26,16 M13,9 H26" fill="none" stroke="#656c76" stroke-width="1.5"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
 <rect x="-24" y="-24" width="895" height="881" fill="#0d1117"/>
 <rect x="-24" y="-24" width="895" height="881" fill="url(#grid)"/>
@@ -14,7 +14,7 @@
 <rect x="0.0" y="0.0" width="193.6" height="184.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3"/>
 <g transform="translate(14.0,12.0) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
 <text x="40.0" y="25.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">STORE</text>
-<text x="14.0" y="50.0" font-size="12" fill="#3fb950">«signed record»</text>
+<text x="14.0" y="50.0" font-size="12" fill="#3fb950">«record»</text>
 <text x="14.0" y="69.0" font-size="14" font-weight="700" fill="#f0f6fc">Plan lock</text>
 <line x1="0.0" y1="85.0" x2="193.6" y2="85.0" stroke="#3fb950" stroke-width="1" stroke-opacity="0.6"/>
 <text x="14.0" y="104.0" font-size="12" fill="#f0f6fc">task: str</text>
@@ -40,7 +40,7 @@
 <rect x="0.0" y="280.5" width="193.6" height="201.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3"/>
 <g transform="translate(14.0,292.5) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2.5"/></g>
 <text x="40.0" y="305.5" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">STORE</text>
-<text x="14.0" y="330.5" font-size="12" fill="#3fb950">«signed record»</text>
+<text x="14.0" y="330.5" font-size="12" fill="#3fb950">«record»</text>
 <text x="14.0" y="349.5" font-size="14" font-weight="700" fill="#f0f6fc">Lock</text>
 <line x1="0.0" y1="365.5" x2="193.6" y2="365.5" stroke="#3fb950" stroke-width="1" stroke-opacity="0.6"/>
 <text x="14.0" y="384.5" font-size="12" fill="#f0f6fc">ticket: str</text>
@@ -85,7 +85,7 @@
 <rect x="0.0" y="598.0" width="193.6" height="235.0" rx="4" fill="#221a08" stroke="#d29922" stroke-width="1.3"/>
 <g transform="translate(14.0,610.0) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
 <text x="40.0" y="623.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">GATE</text>
-<text x="14.0" y="648.0" font-size="12" fill="#d29922">«signed record»</text>
+<text x="14.0" y="648.0" font-size="12" fill="#d29922">«record»</text>
 <text x="14.0" y="667.0" font-size="14" font-weight="700" fill="#f0f6fc">Pass record</text>
 <line x1="0.0" y1="683.0" x2="193.6" y2="683.0" stroke="#d29922" stroke-width="1" stroke-opacity="0.6"/>
 <text x="14.0" y="702.0" font-size="12" fill="#f0f6fc">commit: str</text>
@@ -99,9 +99,9 @@
 </g>
 <g class="class-box" data-box="approval">
 <rect x="402.8" y="632.0" width="157.6" height="167.0" rx="4" fill="#0d1d35" stroke="#4493f8" stroke-width="1.3"/>
-<g transform="translate(416.8,644.0) scale(0.7500)" fill="none" stroke="#4493f8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M11 12h9.5"/><path d="M17.5 12v3M20.5 12v2.5"/></g>
-<text x="442.8" y="657.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#4493f8">OWNER</text>
-<text x="416.8" y="682.0" font-size="12" fill="#4493f8">«signed record»</text>
+<g transform="translate(416.8,644.0) scale(0.7500)" fill="none" stroke="#4493f8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h17v15h-17z"/><path d="M7 9l3 3l-3 3"/><path d="M12.5 15H17"/></g>
+<text x="442.8" y="657.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#4493f8">YOU</text>
+<text x="416.8" y="682.0" font-size="12" fill="#4493f8">«record»</text>
 <text x="416.8" y="701.0" font-size="14" font-weight="700" fill="#f0f6fc">Approval</text>
 <line x1="402.8" y1="717.0" x2="560.4" y2="717.0" stroke="#4493f8" stroke-width="1" stroke-opacity="0.6"/>
 <text x="416.8" y="736.0" font-size="12" fill="#f0f6fc">commit: str</text>

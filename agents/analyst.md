@@ -19,6 +19,7 @@ Words: a **fact** is one thing you report about the project, on one line. It is 
 - Cite the code for every confirmed fact. The driver checks every citation, and a fact whose citation does not exist becomes assumed.
 - Mark a fact assumed when you did not read it in the code and no spec doc states it. Mark it confirmed or specified only with a citation.
 - A specified fact says what the design intends, not what the code does today. Never mark a fact about code specified.
+- A decision record is a file with the sections Status, Decision, Why, Cost, and Where. Inside a path of `spec`, a record whose Status is `accepted` gives specified facts: cite `[path]` or `[path::Decision]`. A record with another Status, such as `superseded by 0007`, is not a fact: leave it out. A decision record outside `spec` stays assumed.
 - Report what the project has, not what it should have.
 
 ## Steps
