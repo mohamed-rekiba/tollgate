@@ -35,4 +35,4 @@ Run `python3 -m setup.health`. Done when it prints no warning. A warning about t
 
 ## 4. Tell the user
 
-In three lines or fewer: the commit init made, and that `/tollgate:task` starts a task and `/tollgate:merge` merges a ready change.
+In three lines or fewer: the commit init made, that `spec` in the settings can name the design docs and the folder of decision records, and that `/tollgate:task` starts a task and `/tollgate:merge` merges a ready change.

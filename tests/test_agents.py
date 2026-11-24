@@ -145,3 +145,58 @@ class PromptsMatchTheGateTest(unittest.TestCase):
         readiness = self.read("lenses/readiness.md")
         for words in ("Not covered", "fixes:", "kind"):
             self.assertIn(words, readiness)
+
+
+class DecisionRecordTest(unittest.TestCase):
+    """The prompts, the lenses, and the docs agree on how a decision record works."""
+
+    SECTIONS = ("Status", "Decision", "Why", "Cost", "Where")
+
+    def read(self, path):
+        return (ROOT / path).read_text()
+
+    def test_the_docs_skill_gives_the_format_and_the_rule_for_a_change(self):
+        text = self.read("skills/docs/SKILL.md")
+        self.assertIn("## A decision", text)
+        self.assertIn("NNNN-short-title.md", text)
+        self.assertIn("`docs/adr`", text)
+        self.assertIn("superseded by NNNN", text)
+        self.assertIn("Never edit its Decision", text)
+        for name in self.SECTIONS:
+            with self.subTest(section=name):
+                self.assertIn(f"`## {name}`", text)
+
+    def test_the_sections_come_in_the_same_order_in_the_skill_and_the_word_list(self):
+        text = self.read("skills/docs/SKILL.md")
+        found = re.findall(r"^- `## (\w+)`", text, re.MULTILINE)
+        self.assertEqual(found, list(self.SECTIONS))
+        self.assertIn("Status, Decision, Why, Cost, and Where", self.read("CONTEXT.md"))
+
+    def test_the_analyst_counts_only_an_accepted_record_inside_spec(self):
+        role = self.read("roles/analyst.md")
+        for words in ("decision record", "inside a path of `spec`", "`accepted`",
+                      "outside `spec` stays assumed"):
+            with self.subTest(words=words):
+                self.assertIn(words, role)
+
+    def test_the_readiness_lens_holds_the_record_rule_in_item_10(self):
+        lens = self.read("lenses/readiness.md")
+        item = re.search(r"^10\. .*$", lens, re.MULTILINE).group(0)
+        self.assertIn("decision record", item)
+        self.assertIn("`create <path>`", item)
+        self.assertNotRegex(lens, r"^11\. ", "the rule belongs in item 10, not in a new item")
+
+    def test_the_builder_and_the_review_lens_keep_an_old_decision_unedited(self):
+        self.assertIn("never change its Decision", self.read("roles/builder.md"))
+        self.assertIn("only its Status line may change", self.read("lenses/review.md"))
+
+    def test_the_analyze_skill_gives_the_spec_paths_to_the_analyst_and_the_check(self):
+        text = self.read("skills/analyze/SKILL.md")
+        self.assertIn("gate.settings", text)
+        self.assertIn("--spec <path>", text)
+
+    def test_the_word_list_defines_a_decision_record_and_the_spec_setting_names_its_folder(self):
+        text = self.read("CONTEXT.md")
+        self.assertIn("**decision record**:", text)
+        self.assertIn("List the folder of decision records in `spec`.", text)
+        self.assertIn("List the folder of decision records in `spec`", self.read("docs/design.md"))

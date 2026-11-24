@@ -1,7 +1,7 @@
 {
  "type": "sequence",
  "title": "One ticket, in order",
- "desc": "The test writer writes the tests, and the store locks them before any code exists. Then each try goes from the builder to the gate and a reviewer, until one passes or a stop rule fires: the store signs its pass record and marks it a ready change, and with auto merge on, the driver has the store merge tier 1 and 2.",
+ "desc": "The test writer writes the tests, and the store locks them before any code exists. Then each try goes from the builder to the gate and a reviewer, until one passes or a stop rule fires: the store writes its pass record and marks it a ready change, and with auto merge on, the driver has the store merge tier 1 and 2.",
  "names": {"server": "Your machine"},
  "participants": [
   {"id": "driver", "text": "The driver", "kind": "server", "icon": "workflow"},
@@ -27,7 +27,7 @@
   {"from": "reviewer", "to": "driver", "text": "items and findings", "reply": true},
   {"from": "driver", "to": "gate", "text": "judge again", "note": "tier 2 and up"},
   {"from": "driver", "to": "gate", "text": "make the pass record", "tone": "pass"},
-  {"from": "driver", "to": "store", "text": "sign the pass record", "tone": "pass"},
+  {"from": "driver", "to": "store", "text": "write the pass record", "tone": "pass"},
   {"from": "driver", "to": "driver", "text": "keep the best try", "tone": "fail"},
   {"from": "driver", "to": "store", "text": "mark a ready change"},
   {"from": "driver", "to": "store", "text": "merge the ready change", "tone": "pass",

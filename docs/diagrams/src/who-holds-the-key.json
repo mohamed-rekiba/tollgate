@@ -14,7 +14,7 @@
  "grid": 420,
  "caption": [
   "Who can change what",
-  "the AI works in its own copy; the store keeps the signed records"
+  "the AI works in its own copy; the store keeps the records"
  ],
  "zones": [
   {
@@ -86,7 +86,7 @@
     170,
     -110
    ],
-   "means": "the signed records"
+   "means": "the records"
   },
   {
    "type": "server",
@@ -150,7 +150,7 @@
     -150,
     120
    ],
-   "head": "Signed records",
+   "head": "Records",
    "sub": [
     "locks and passes,",
     "in the state folder"

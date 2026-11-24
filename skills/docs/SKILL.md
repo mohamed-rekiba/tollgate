@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Write or update a README, a document, a reference or operations doc, a doc set with diagrams, code comments, or a commit message in plain words, by the project's writing rules, and install the writing check. Use whenever you write words for people in a project, or when the user asks for docs, a README, or plain writing.
+description: Write or update a README, a document, a reference or operations doc, a doc set with diagrams, a decision record, code comments, or a commit message in plain words, by the project's writing rules, and install the writing check. Use whenever you write words for people in a project, or when the user asks for docs, a README, or plain writing.
 ---
 
 # Write for people
@@ -26,6 +26,7 @@ Done when the person has named the documents.
 - **README:** answer the four questions in the first screen. Put the rest under them. A README that only names the project is a stub: replace it, with the four answers first.
 - **A document:** one topic for each section, and the answer first in each.
 - **A diagram:** see "When a document needs a diagram". The writing check fails a Mermaid block that a change adds.
+- **A decision:** see "A decision".
 - **A design:** describe the target as it will be. The rule to say plainly what is unfinished, untested, or unverified is for a change, a report, or a review, not for a doc of the design.
 - **A code comment:** say why the code is this way. Leave out what the code already says.
 - **A commit message:** a subject in the form `type(scope): subject`, then a body that says why. The author is the owner of the repository. No line credits an AI.
@@ -34,6 +35,24 @@ Done when the person has named the documents.
 Done when each changed line follows the rules and uses the word list.
 
 Last, report what you wrote, what you did not write, and what you did not check.
+
+## A decision
+
+A choice that is costly to undo, or that a builder could settle the other way, needs a decision record. Examples: a data store, a login model, a rule of who owns what. A choice of style or naming needs none.
+
+**Where it goes.** Use the folder the project already uses for decision records. Look first inside the paths of `spec` in `.tollgate/settings.json`, then for `docs/adr` or `docs/agdr`. When two folders hold records, ask the person which one to use. When there is none, use `docs/adr`. Tell the person to list that folder in `spec`, so the analyst reads the records as specified facts. The settings file is theirs to change.
+
+**The format.** One file for each decision, named `NNNN-short-title.md`. NNNN is the next free number in the folder, four digits, taken when you write the file. When two branches take the same number, the later one takes the next free number before it merges. The file has a title, then these sections, in this order:
+
+- `## Status`: `accepted`, or `superseded by NNNN`.
+- `## Decision`: the choice, in one or two sentences.
+- `## Why`: the reason, and what you weighed.
+- `## Cost`: what the choice gives up, or makes harder.
+- `## Where`: the docs and the code that it affects.
+
+**A change of decision.** A decision that changes an accepted one gets a new record that supersedes it. In the old record, change only the Status line to `superseded by NNNN`. Never edit its Decision, Why, Cost, or Where: they say what was true when the team chose.
+
+Done when each decision has one file with the five sections, and each superseded record names its successor.
 
 ## When a document needs a diagram
 

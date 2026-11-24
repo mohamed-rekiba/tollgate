@@ -1,7 +1,7 @@
 {
  "type": "sequence",
  "title": "One ticket in session mode",
- "desc": "Your Claude Code session asks the driver for the next step. The driver replays its log and the saved answers, then names one role and its prompt. Your session runs that role as a subagent in the copy and hands its answer back. The driver saves it, and runs on to the next step, until the gate passes a try and the store signs its pass record.",
+ "desc": "Your Claude Code session asks the driver for the next step. The driver replays its log and the saved answers, then names one role and its prompt. Your session runs that role as a subagent in the copy and hands its answer back. The driver saves it, and runs on to the next step, until the gate passes a try and the store writes its pass record.",
  "names": {"server": "Your machine", "you": "Claude Code"},
  "participants": [
   {"id": "session", "text": "Your session", "kind": "you"},
@@ -22,7 +22,7 @@
   {"from": "driver", "to": "store", "text": "lock the tests", "note": "once they pass review"},
   {"from": "driver", "to": "gate", "text": "judge the try", "note": "after the checks run"},
   {"from": "gate", "to": "driver", "text": "findings and tier", "reply": true},
-  {"from": "driver", "to": "store", "text": "sign the pass record", "tone": "pass"},
+  {"from": "driver", "to": "store", "text": "write the pass record", "tone": "pass"},
   {"from": "driver", "to": "session", "text": "done", "reply": true, "tone": "pass"}
  ],
  "activations": [
