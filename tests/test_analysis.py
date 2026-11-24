@@ -224,6 +224,7 @@ class AnalystInputTest(unittest.TestCase):
 
     def run_analyze(self, spec):
         from types import SimpleNamespace
+
         from driver.task import analyze
         from tests.driver_fakes import sh
         root = spec_project()

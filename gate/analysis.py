@@ -118,7 +118,7 @@ def parse(text: str) -> Analysis:
 def in_spec(path: str, spec) -> bool:
     """True when path is one of the spec paths, or below one that is a folder."""
     path = posixpath.normpath(path)
-    if path.startswith("/") or path == ".." or path.startswith("../"):
+    if path.startswith(("/", "../")) or path == "..":
         return False
     for entry in spec:
         entry = posixpath.normpath(entry)
