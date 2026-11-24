@@ -29,8 +29,8 @@ class MakeProjectTest(unittest.TestCase):
         from gate import state
         paths = make_project.make(self.root, which=installed, install=False)
         project = str(paths["project"])
-        self.assertEqual(os.environ["TOLLGATE_STATE"], str(self.root / "state"))
-        self.assertTrue(state.state_dir(project).is_relative_to(self.root / "state"))
+        self.assertEqual(os.environ["TOLLGATE_STATE"], str(self.root.resolve() / "state"))
+        self.assertTrue(state.state_dir(project).is_relative_to(self.root.resolve() / "state"))
         settings = json.loads(subprocess.run(
             ["git", "show", "main:.tollgate/settings.json"], cwd=project, check=True,
             capture_output=True, text=True).stdout)
@@ -40,10 +40,10 @@ class MakeProjectTest(unittest.TestCase):
         out, code = step.next_step(project, make_project.TASK)
         self.assertEqual(code, 0, out)
         self.assertEqual(out["agent"], "tollgate:analyst")
-        self.assertTrue(Path(out["cwd"]).is_relative_to(self.root / "state"))
+        self.assertTrue(Path(out["cwd"]).is_relative_to(self.root.resolve() / "state"))
         printed = make_project.commands(paths)
         self.assertIn(f"driver.step next --project . --task {make_project.TASK}", printed)
-        self.assertIn(f"TOLLGATE_KEYS={self.root / 'keys'}", printed)
+        self.assertIn(f"TOLLGATE_KEYS={self.root.resolve() / 'keys'}", printed)
 
     def test_a_folder_that_is_not_empty_is_refused(self):
         self.root.mkdir()
