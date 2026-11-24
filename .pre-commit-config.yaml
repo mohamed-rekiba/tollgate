@@ -43,7 +43,7 @@ repos:
     name: "Tollgate check: style"
     entry: "sh -c"
     language: system
-    args: ["ruff check ."]
+    args: ["uv run --no-project --with-requirements requirements-dev.txt ruff check ."]
     stages: ["pre-push"]
     pass_filenames: false
     always_run: true
@@ -51,7 +51,7 @@ repos:
     name: "Tollgate check: tests"
     entry: "sh -c"
     language: system
-    args: ["python3 -m pytest -q -p no:cacheprovider --junitxml=report.xml tests"]
+    args: ["uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto --junitxml=report.xml tests"]
     stages: ["pre-push"]
     pass_filenames: false
     always_run: true
