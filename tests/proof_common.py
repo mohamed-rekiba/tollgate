@@ -5,14 +5,13 @@ Each driver, task, and roadmap runs as its own process, as the task skill starts
 it. Only the AI roles are fake: see fake_role.py. Nothing calls the network.
 """
 
-import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 from driver.log import read
-from gate import sign, state
+from gate import state
 from gate.store import Store
 from tests.driver_fakes import FAKE_ROLE, Sample
 
@@ -21,19 +20,11 @@ ROLE = f"{sys.executable} {FAKE_ROLE}"
 
 
 class Project(Sample):
-    """A sample project whose settings list an owner key, so a person can approve."""
+    """A sample project, with the helpers the proofs share."""
 
     def __init__(self, ticket=True, **settings_args):
         self.settings_args = settings_args
         super().__init__(ticket=ticket, **settings_args)
-
-    def write_settings(self, **settings_args):
-        self.owner = self.root / "owner"
-        if not self.owner.exists():
-            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "owner",
-                            "-f", str(self.owner)], check=True)
-        settings_args.setdefault("owners", [Path(f"{self.owner}.pub").read_text().strip()])
-        super().write_settings(**settings_args)
 
     @property
     def store(self) -> Store:
@@ -64,12 +55,8 @@ class Project(Sample):
                               capture_output=True, text=True, check=True).stdout
 
     def lock(self, ticket="T-1") -> dict:
-        """The ticket's lock, verified with the signers on main."""
-        signers = json.loads(subprocess.run(
-            ["git", "show", "main:.tollgate/settings.json"], cwd=self.project,
-            capture_output=True, text=True, check=True).stdout)["signers"]
-        return sign.read(state.path(str(self.project), "locks", f"{ticket}.json"),
-                         "tollgate-lock", signers)
+        """The ticket's lock."""
+        return state.read_record(state.path(str(self.project), "locks", f"{ticket}.json"))
 
 
 def events(log: list) -> list:

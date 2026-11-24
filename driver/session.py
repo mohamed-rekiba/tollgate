@@ -14,9 +14,8 @@ place where the role runs differs.
   saves the answer, and the next run of the driver replays its log and the
   saved answers up to the next step.
 
-Each saved answer carries a code made with a secret drawn from the machine key,
-and a saved answer whose code does not verify is ignored. A role cannot read the
-key folder, so a line a role writes into the answers file counts for nothing.
+Each saved answer carries a code made with the machine secret, and a saved answer
+whose code does not verify is ignored. A role cannot read the key folder, so a line a role writes into the answers file counts for nothing.
 
 A role that writes, the builder or the test writer, leaves its work in the
 copy. Its answer saves that work as a commit on refs/tollgate/answers/<key> in
@@ -43,7 +42,7 @@ from pathlib import Path
 
 from driver import roles
 from gate import settings as st
-from gate import sign, state
+from gate import state
 from gate.gitio import SAFE, safe_env
 
 WRITERS = ("builder", "test_writer")
@@ -60,7 +59,7 @@ class Pause(Exception):
 
 
 class NotReady(st.SettingsError):
-    """A task cannot pass the gate here: no signers on main, or no machine key."""
+    """A task cannot pass the gate here: the settings on main cannot be read."""
 
 
 @dataclass
@@ -161,10 +160,10 @@ def clear_step(project: str) -> None:
 
 
 def _mac(line: dict) -> str:
-    """A code over a saved answer, made with a secret drawn from the machine key. A role
+    """A code over a saved answer, made with the machine secret. A role
     cannot read the key folder, so it cannot make a saved answer that verifies."""
     import hmac
-    secret = hashlib.sha256(b"tollgate-answers\0" + sign.machine_key().read_bytes()).digest()
+    secret = hashlib.sha256(b"tollgate-answers\0" + state.machine_secret()).digest()
     data = json.dumps([line.get(k) for k in ("key", "role", "lens", "seconds", "work", "text")],
                       separators=(",", ":"))
     return hmac.new(secret, data.encode(), hashlib.sha256).hexdigest()
@@ -284,14 +283,10 @@ def caller(settings: dict, runner: str | None = None):
 
 
 def cannot_pass(project: str) -> str:
-    """Why a task cannot pass the gate here, or "": the settings on main must name
-    signers, and this machine must have its machine key."""
+    """Why a task cannot pass the gate here, or "": the settings on main must be there
+    and readable."""
     try:
-        found = st.load_from_ref(project, "main")
+        st.load_from_ref(project, "main")
     except st.SettingsError as err:
         return f"the settings on main cannot be read: {err}. {INIT}"
-    if not found["signers"]:
-        return f"signers in the settings on main is empty, so no lock or pass record can verify. {INIT}"
-    if not sign.machine_key().exists():
-        return f"this machine has no machine key at {sign.machine_key()}. {INIT}"
     return ""

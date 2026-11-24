@@ -18,7 +18,10 @@
   "harness": [
     "tests/helpers.py",
     "tests/fakes.py",
-    "tests/fake_role.py"
+    "tests/fake_role.py",
+    "checks/check_writing.py",
+    "checks/**",
+    ".pre-commit-config.yaml"
   ],
   "tiers": {
     "3": [
@@ -47,7 +50,5 @@
     "ticket_usd": 5.0,
     "task_usd": 60.0
   },
-  "signers": [],
-  "owners": [],
   "isolation": "container"
 }

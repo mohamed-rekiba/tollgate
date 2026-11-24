@@ -1,6 +1,6 @@
 """Build and check a manifest: the record of a freeze.
 
-The store puts the manifest in the signed lock, locks/<ticket>.json in the state folder.
+The store puts the manifest in the lock, locks/<ticket>.json in the state folder.
 
 A test belongs to a checklist item by its name, such as test_c2_ for C2, or by
 the test map: .tollgate/tickets/<ticket>/tests.json, a JSON list of

@@ -64,8 +64,7 @@ def main(argv=None) -> int:
     freeze_commit = manifest = None
     if args.ticket:
         from gate import freeze
-        signers = st.load_from_ref(args.repo, args.base)["signers"]
-        lock = freeze.read_lock(args.project or args.repo, args.ticket, signers)
+        lock = freeze.read_lock(args.project or args.repo, args.ticket)
         if lock:
             freeze_commit, manifest = lock["commit"], lock["manifest"]
     for path in restore(args.repo, args.base, freeze_commit, manifest, args.keep_harness):

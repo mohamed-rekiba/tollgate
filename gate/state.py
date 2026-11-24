@@ -2,14 +2,14 @@
 
     state_dir(project)   ~/.local/state/tollgate/<name>-<hash>/  (Linux)
                          ~/Library/Application Support/tollgate/<name>-<hash>/  (macOS)
-    key_dir()            ~/.config/tollgate/
+    key_dir()            ~/.config/tollgate/   (this machine's secret)
 
 The state folder holds:
 
-    locks/<ticket>.json and .sig       a signed lock of a ticket's tests
-    plans/<task>.json and .sig         a signed lock of an approved plan
-    passes/<commit>.json and .sig      a signed record that a commit passed the gate
-    approvals/<commit>.json and .sig   your signed approval of a tier 3 or 4 change
+    locks/<ticket>.json                a lock of a ticket's tests
+    plans/<task>.json                  a lock of an approved plan
+    passes/<commit>.json               a record that a commit passed the gate
+    approvals/<commit>.json            your approval of a tier 3 or 4 change
     questions/<n>.json                 a question for you, and your answer
     builders/<ticket>/                 the builder's copy of the project
     logs/  reports/  lessons/  run/    the driver's logs, reports, lessons, run locks
@@ -37,7 +37,7 @@ def _root() -> Path:
 
 
 def key_dir() -> Path:
-    """The folder of this machine's Tollgate key."""
+    """The folder of this machine's secret. No role may read it."""
     if os.environ.get("TOLLGATE_KEYS"):
         return Path(os.environ["TOLLGATE_KEYS"])
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
@@ -61,5 +61,40 @@ def path(project: str, kind: str, *parts: str) -> Path:
 
 
 def dumps(record: dict) -> bytes:
-    """The exact bytes that are signed: JSON with sorted keys and a final newline."""
+    """The exact bytes of a record: JSON with sorted keys and a final newline."""
     return (json.dumps(record, sort_keys=True, indent=1) + "\n").encode()
+
+
+class RecordError(RuntimeError):
+    """A record is missing or cannot be read. The message says why."""
+
+
+def write_record(path: Path, record: dict) -> None:
+    """Write record to path."""
+    path.write_bytes(dumps(record))
+
+
+def read_record(path: Path) -> dict:
+    """Return the record at path. Raise RecordError when it is missing or not a record."""
+    try:
+        record = json.loads(path.read_bytes())
+    except OSError:
+        raise RecordError(f"{path.name} is missing") from None
+    except ValueError:
+        raise RecordError(f"{path.name} is not a record") from None
+    if not isinstance(record, dict):
+        raise RecordError(f"{path.name} is not a record")
+    return record
+
+
+def machine_secret() -> bytes:
+    """This machine's secret: random bytes in key_dir(), made on first use. The driver
+    uses it to check that a saved answer is its own."""
+    path = key_dir() / "secret"
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(path.parent, 0o700)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(os.urandom(32))
+    return path.read_bytes()

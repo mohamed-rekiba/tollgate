@@ -26,19 +26,17 @@ class MakeProjectTest(unittest.TestCase):
 
     def test_the_project_is_set_up_and_next_names_the_analyst_first(self):
         from driver import step
-        from gate import sign, state
+        from gate import state
         paths = make_project.make(self.root, which=installed, install=False)
         project = str(paths["project"])
         self.assertEqual(os.environ["TOLLGATE_STATE"], str(self.root / "state"))
-        self.assertTrue(sign.machine_key().is_relative_to(self.root / "keys"))
         self.assertTrue(state.state_dir(project).is_relative_to(self.root / "state"))
         settings = json.loads(subprocess.run(
             ["git", "show", "main:.tollgate/settings.json"], cwd=project, check=True,
             capture_output=True, text=True).stdout)
         self.assertIn("pytest", settings["checks"]["tests"]["run"])
-        owner = paths["owner_key"].read_text().split()[:2]
-        self.assertEqual([k.split()[:2] for k in settings["owners"]], [owner])
-        self.assertEqual(len(settings["signers"]), 1)
+        self.assertNotIn("signers", settings)
+        self.assertNotIn("owners", settings)
         out, code = step.next_step(project, make_project.TASK)
         self.assertEqual(code, 0, out)
         self.assertEqual(out["agent"], "tollgate:analyst")

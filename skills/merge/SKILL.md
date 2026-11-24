@@ -1,13 +1,13 @@
 ---
 name: merge
-description: Merge a ready Tollgate change into main. It lists the changes that passed the gate, shows one, asks you to sign the approval with your SSH key for tier 3 and 4, and merges it. Use when the user runs /tollgate:merge or asks to merge, approve, or review what is ready.
+description: Merge a ready Tollgate change into main. It lists the changes that passed the gate, shows one, asks you to approve tier 3 and 4, and merges it. Use when the user runs /tollgate:merge or asks to merge, approve, or review what is ready.
 ---
 
 # Merge a ready change
 
 `TG` is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -P -m setup.merge`, from the project folder.
 
-Words: a **ready change** is a commit that passed the gate and is not on main yet. Its **pass record** is the gate's signed result. A change of tier 3 or 4 also needs your **approval**: a record you sign with your own SSH key. A **change made by hand**, such as the branch `tollgate-sync` that a home writes, has no pass record: it needs your approval at any tier. `<commit>` below may be a branch name.
+Words: a **ready change** is a commit that passed the gate and is not on main yet. Its **pass record** is the gate's result. A change of tier 3 or 4 also needs your **approval**: a record you write by typing `yes` in your own terminal. A **change made by hand**, such as the branch `tollgate-sync` that a home writes, has no pass record: it needs your approval at any tier. `<commit>` below may be a branch name.
 
 ## 1. List the ready changes
 
@@ -21,7 +21,7 @@ Run `python3 -m setup.merge show <commit>`. Show the checks, the commits, and th
 
 ## 3. Approve it, for tier 3 and 4 and a change made by hand
 
-You never sign the approval. Only the user does, with a passphrase only they know.
+You never approve. Only the user does, by typing `yes` in their own terminal. The command refuses to run when its input is not a terminal.
 
 Ask the user to run this in their terminal, with the `!` prefix in this session or in a terminal of their own:
 
@@ -29,9 +29,9 @@ Ask the user to run this in their terminal, with the `!` prefix in this session 
 ! PYTHONPATH="$TG" python3 -P -m setup.merge approve <commit>
 ```
 
-Write out `$TG` as the full path in the line you give them. It signs with `ssh-keygen -Y sign -n tollgate-approval -f ~/.ssh/<key>`, and ssh-keygen asks for the passphrase. With a key other than the first in `~/.ssh/`, add `--key ~/.ssh/<key>`. The key must be in `owners` in the settings on main.
+Write out `$TG` as the full path in the line you give them. It shows the change and asks the user to type `yes`.
 
-Done when the command prints `approved:`. If it says the key is not in `owners`, tell the user to run `/tollgate:init --owner-key <the .pub file>` first.
+Done when the command prints `approved:`.
 
 ## 4. Merge it
 

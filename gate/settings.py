@@ -4,11 +4,10 @@ The gate always reads the settings from the main branch, so a change cannot
 loosen the rules that judge it.
 """
 
-import base64
-import binascii
 import json
 import subprocess
 from copy import deepcopy
+from pathlib import PureWindowsPath
 
 PATH = ".tollgate/settings.json"
 
@@ -61,11 +60,6 @@ DEFAULTS = {
     "container_image": DEFAULT_IMAGE,
     "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10.0, "task_usd": 60.0},
     "pass_score": 70,
-    # The public keys that may sign locks, pass records, and approvals.
-    "signers": [],
-    # The public SSH keys of the people who may approve a tier 3 or 4 merge. Only these
-    # keys verify an approval, so the machine key that signs locks can never approve.
-    "owners": [],
     # Who runs each role: "session" (your own Claude Code session starts each role as a
     # subagent, through driver.step) or "background" (the driver starts each role as its
     # own process, in its isolation).
@@ -73,6 +67,9 @@ DEFAULTS = {
     # How the background driver keeps a role apart: "container" (Docker) or "sandbox"
     # (Claude Code's). Session mode does not use it.
     "isolation": "container",
+    # The files and folders, relative to the project root, that state the intended design.
+    # The analyst reads them first, and a fact from them is "specified".
+    "spec": [],
     "require_plan": True,
     "auto_merge": False,
     # Where the driver asks the advisor before it goes on. The names are "plan",
@@ -89,29 +86,10 @@ CHECK_KEYS = {"run", "report", "minutes"}
 CHECKPOINTS = ("plan", "ticket", "task")
 ISOLATIONS = ("container", "sandbox")
 RUNNERS = ("session", "background")
-KEY_TYPES = ("ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384",
-             "ecdsa-sha2-nistp521", "sk-ssh-ed25519@openssh.com",
-             "sk-ecdsa-sha2-nistp256@openssh.com")
 
 
 class SettingsError(ValueError):
     """The settings file cannot be used. The message names the problem."""
-
-
-def is_public_key(line) -> bool:
-    """True when line looks like an SSH public key line: type, key, and an optional comment."""
-    if not isinstance(line, str) or "\n" in line.strip():
-        return False
-    parts = line.split()
-    if len(parts) < 2 or parts[0] not in KEY_TYPES:
-        return False
-    try:
-        blob = base64.b64decode(parts[1], validate=True)
-    except (binascii.Error, ValueError):
-        return False
-    # The key starts with its own type: a 4-byte length, then the name.
-    size = int.from_bytes(blob[:4], "big")
-    return blob[4:4 + size] == parts[0].encode()
 
 
 def _merge(base, extra, where):
@@ -150,17 +128,15 @@ def parse(text: str) -> dict:
         raise SettingsError('isolation must be "container" or "sandbox"')
     if settings["runner"] not in RUNNERS:
         raise SettingsError('runner must be "session" or "background"')
-    if not isinstance(settings["signers"], list):
-        raise SettingsError("signers must be a list of public key lines")
-    for n, line in enumerate(settings["signers"], 1):
-        if not is_public_key(line):
-            raise SettingsError(f"signers item {n} is not an SSH public key line")
-    for key in ("owners",):
-        if not isinstance(settings[key], list):
-            raise SettingsError(f"{key} must be a list of public key lines")
-        for n, line in enumerate(settings[key], 1):
-            if not is_public_key(line):
-                raise SettingsError(f"{key} item {n} is not an SSH public key line")
+    if not isinstance(settings["spec"], list):
+        raise SettingsError("spec must be a list of paths")
+    for n, path in enumerate(settings["spec"], 1):
+        if not isinstance(path, str) or not path.strip():
+            raise SettingsError(f"spec item {n} must be a path")
+        if path.startswith(("/", "\\")) or PureWindowsPath(path).is_absolute():
+            raise SettingsError(f"spec item {n} must be relative to the project root")
+        if ".." in PureWindowsPath(path).parts:
+            raise SettingsError(f"spec item {n} must not contain ..")
     for tier in settings["tiers"]:
         if tier not in ("3", "4"):
             raise SettingsError(f"unknown key: tiers.{tier}")

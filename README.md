@@ -50,7 +50,7 @@ In the picture above, three loops send each problem back to the step that can fi
 2. **The build loop.** The gate checks each try. Below 70%, the builder gets the reasons and tries again from its best try. After 3 tries, the advisor decides.
 3. **The learning loop.** After a task, `/tollgate:retro` turns up to 3 lessons into tickets: a new test, a new check, a new question for the reviewers, or a stricter rule.
 
-**The store and the state folder.** The store keeps every record in a state folder outside the project, such as `~/.local/state/tollgate/<project>/`. No role can write there. The store signs each lock and each pass record with your machine key. It checks each signature against `signers` in the settings on main, never in the change. It merges a ready change into main with a merge commit, and only when the change has a pass record. A tier 3 or 4 change also needs your approval, signed with your own SSH key.
+**The store and the state folder.** The store keeps every record in a state folder outside the project, such as `~/.local/state/tollgate/<project>/`. No role can write there. The store writes each lock and each pass record there as a plain file. It merges a ready change into main with a merge commit, and only when the change has a pass record. A tier 3 or 4 change also needs your approval, which you give by typing `yes` in your own terminal.
 
 **Two layers enforce the rules.**
 
@@ -62,7 +62,7 @@ In the picture above, three loops send each problem back to the step that can fi
 1. **Claude Code hooks and policies.** Each role runs with a policy: permission rules that deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. A hook checks each tool call again, and refuses a merge into main and `--no-verify`. A role never pushes. The plugin's hook guards your own session too: you may push a branch for review, but never main. A Tollgate subagent gets its role's rules from its subagent type.
 2. **pre-commit.** In git, pre-commit runs Tollgate's checks before each commit, merge, and push. A commit may not change a locked file. A merge into main needs a pass record, and an approval for tier 3 and 4. A push to main needs the same for each merge on it.
 
-The gate and the signed records are the real checks. They hold even when a role gets past its hook.
+The gate and the records in the state folder are the real checks. They hold even when a role gets past its hook.
 
 **The limit.** A person who skips the checks with `git commit --no-verify` or `git push --no-verify` can still change main. Tollgate does not stop you from changing your own project by hand.
 
@@ -72,7 +72,7 @@ You need:
 
 - Claude Code,
 - Python 3.11 or later,
-- git, with `ssh-keygen`,
+- git,
 - pre-commit,
 - Docker, only for background mode with the container isolation. A role then runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned to one build. You build nothing. Name another image under `container_image` in the settings when your tests need tools that image lacks. Each role logs in to the model with `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` from your environment; these are the only variables that go into the container.
 
@@ -91,7 +91,7 @@ Then, inside your project, on the branch `main`:
 /tollgate:init
 ```
 
-`init` writes `.tollgate/settings.json`, makes your machine key, and adds it to `signers`. It adds your SSH public key to `owners`. It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
+`init` writes `.tollgate/settings.json`. It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
 
 ### Change the settings later
 
@@ -113,7 +113,7 @@ Run this outside Claude Code: Tollgate's hook refuses `--no-verify` in a Claude 
 | `/tollgate:task` | Runs a task from your request, or from a brief with `--brief <id>`, one role at a time in your session, or in the background. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, across projects, and records your answer. |
-| `/tollgate:merge` | Lists the ready changes, shows one, asks you to sign the approval for tier 3 and 4, and merges it. |
+| `/tollgate:merge` | Lists the ready changes, shows one, asks you to approve tier 3 and 4, and merges it. |
 | `/tollgate:retro` | Shows a finished task's numbers and lessons. |
 | `/tollgate:home` | Keeps many projects in one git repository, with the rules they share. |
 | `/tollgate:docs` | Writes a README, docs, comments, and commit messages in plain words. It adds a check for the writing rules. |
@@ -132,7 +132,7 @@ In both modes a stopped task picks up where it stopped, and a question waits in 
 
 ### Threat model
 
-Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your signing key. For that, use background mode, which runs roles in a container with no key. Use background mode for tier 3 and 4 work from a source you do not trust. [docs/design.md](docs/design.md#threat-model) says what each mode protects.
+Session mode stops a role's mistakes and shortcuts, such as editing locked tests, skipping checks, pushing, or touching Tollgate's state, but not a role that deliberately attacks your machine, because roles and the code they write run as you and can reach your state folder, which holds the records the gate trusts. For that, use background mode, which runs roles in a container with no state folder. Use background mode for tier 3 and 4 work from a source you do not trust. [docs/design.md](docs/design.md#threat-model) says what each mode protects.
 
 ## Cost, and when to use it
 
@@ -142,7 +142,7 @@ Use Tollgate when an AI writes most of each change, and the change must be right
 
 ## Status
 
-Unit tests with fake roles cover the store, the signed records, the gate, the driver loop for a task and a ticket, a whole task in session mode with fake answers, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home.
+Unit tests with fake roles cover the store, the records, the gate, the driver loop for a task and a ticket, a whole task in session mode with fake answers, the stop rules, the advisor, the hook, the policies that Tollgate writes, init, the pre-commit checks, merge, inbox, and home.
 
 Untested:
 

@@ -41,6 +41,29 @@ def name_exists(root: str, file: str, name: str) -> bool:
     return text is not None and bool(re.search(DEFINES.format(last), text, re.MULTILINE))
 
 
+def heading_exists(root: str, file: str, heading: str) -> bool:
+    """True when root/file has a markdown heading, of any level, with this text. A line
+    inside a fenced code block is not a heading."""
+    text = read_inside(root, file)
+    want = heading.strip()
+    if text is None or not want:
+        return False
+    fence = None    # the open fence: its character and its length
+    for line in text.splitlines():
+        m = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence:
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1] \
+                    and not m.group(2).strip():
+                fence = None
+        elif m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence = (m.group(1)[0], len(m.group(1)))
+        else:
+            h = re.match(r"#{1,6}[ \t]+(.*?)[ \t]*$", line)
+            if h and h.group(1) == want:
+                return True
+    return False
+
+
 @lru_cache(maxsize=512)
 def _compile(pattern: str) -> re.Pattern:
     if pattern.endswith("/"):

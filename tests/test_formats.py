@@ -61,21 +61,28 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "runner must be"):
             settings.parse('{"runner": "docker"}')
 
-    def test_each_signer_is_a_public_key_line(self):
-        import base64
-        blob = base64.b64encode(b"\x00\x00\x00\x0bssh-ed25519" + b"\x00" * 36).decode()
-        good = f"ssh-ed25519 {blob} me@laptop"
-        self.assertEqual(settings.parse(json.dumps({"signers": [good]}))["signers"], [good])
-        wrong_type = f"ssh-rsa {blob}"
-        for bad in ("ssh-ed25519", "not a key", wrong_type, f"ssh-ed25519 {blob}!", 7):
-            with self.assertRaisesRegex(settings.SettingsError, "not an SSH public key"):
-                settings.parse(json.dumps({"signers": [bad]}))
+    def test_signers_and_owners_are_not_settings(self):
+        for key in ("signers", "owners"):
+            with self.subTest(key=key), self.assertRaisesRegex(settings.SettingsError,
+                                                               f"unknown key: {key}"):
+                settings.parse(json.dumps({key: []}))
 
     def test_checkpoints_default_to_the_plan_and_the_task(self):
         self.assertEqual(settings.parse("{}")["checkpoints"], ["plan", "task"])
         self.assertEqual(settings.parse('{"checkpoints": ["plan", "ticket", "task"]}')["checkpoints"],
                          ["plan", "ticket", "task"])
         self.assertEqual(settings.parse('{"checkpoints": []}')["checkpoints"], [])
+
+    def test_spec_is_a_list_of_relative_paths_and_defaults_to_none(self):
+        self.assertEqual(settings.parse("{}")["spec"], [])
+        self.assertEqual(settings.parse('{"spec": ["docs/design.md", "docs/architecture/"]}')["spec"],
+                         ["docs/design.md", "docs/architecture/"])
+
+    def test_a_bad_spec_is_refused(self):
+        for bad in ('"docs"', '{"a": 1}', '[1]', '[""]', '["/etc/design.md"]', '["../design.md"]',
+                    '["docs/../../x"]', '["docs", null]', '["C:\\\\docs"]'):
+            with self.subTest(bad=bad), self.assertRaisesRegex(settings.SettingsError, "spec"):
+                settings.parse(f'{{"spec": {bad}}}')
 
     def test_an_unknown_checkpoint_is_refused(self):
         for bad in ('["plan", "tikcet"]', '"plan"', '[1]'):

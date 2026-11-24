@@ -1,14 +1,13 @@
 """Make a throwaway project for an end-to-end run of Tollgate with real subagents.
 
-    python3 tests/e2e/make_project.py <empty folder> [--owner-key <SSH public key>]
+    python3 tests/e2e/make_project.py <empty folder>
 
 It makes, under the folder:
 
     project/   a git repository on main: calc.py, its tests, and Tollgate set up
                by setup.init, with a tests check that runs pytest
     state/     the state folder root, for TOLLGATE_STATE
-    keys/      the key folder, with the machine key, for TOLLGATE_KEYS
-    owner/     an owner SSH key made for this run, unless you give --owner-key
+    keys/      the key folder, with the machine secret, for TOLLGATE_KEYS
     gitconfig  a git identity for the run, for GIT_CONFIG_GLOBAL
 
 and writes the request of the task, .tollgate/requests/e2e-divide.md. Then it
@@ -59,7 +58,7 @@ def _git(cwd, *args):
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
 
 
-def make(root, owner_key=None, which=shutil.which, install=True) -> dict:
+def make(root, which=shutil.which, install=True) -> dict:
     """Make the project under root, an empty or missing folder. Set TOLLGATE_STATE,
     TOLLGATE_KEYS, and GIT_CONFIG_GLOBAL in os.environ for it. Return its paths."""
     root = Path(root).resolve()
@@ -75,14 +74,6 @@ def make(root, owner_key=None, which=shutil.which, install=True) -> dict:
     os.environ.update(env)
     paths["env"] = env
 
-    if owner_key is None:
-        owner = root / "owner"
-        owner.mkdir()
-        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "tollgate e2e owner",
-                        "-f", str(owner / "id_ed25519")], check=True, capture_output=True)
-        owner_key = str(owner / "id_ed25519.pub")
-    paths["owner_key"] = Path(owner_key)
-
     p = paths["project"]
     _git(p, "init", "-q", "-b", "main")
     (p / "calc.py").write_text(CALC)
@@ -93,7 +84,7 @@ def make(root, owner_key=None, which=shutil.which, install=True) -> dict:
     _git(p, "commit", "-q", "-m", "feat(calc): add and subtract")
 
     from setup import init
-    paths["init"] = init.init(str(p), owner_key, which=which, install=install)
+    paths["init"] = init.init(str(p), which=which, install=install)
     request = p / ".tollgate" / "requests" / f"{TASK}.md"
     request.parent.mkdir(parents=True)
     request.write_text(REQUEST)
@@ -150,11 +141,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="make_project", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("folder", help="a new or empty folder for the run")
-    parser.add_argument("--owner-key", help="your SSH public key; the default is a new one")
     args = parser.parse_args(argv)
     from setup import init
     try:
-        paths = make(args.folder, args.owner_key)
+        paths = make(args.folder)
     except init.InitError as err:
         print(f"make_project: {err}", file=sys.stderr)
         return 1

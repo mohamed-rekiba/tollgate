@@ -4,10 +4,10 @@ Tollgate lets an AI write your code, and merges only what works. It keeps 18 rul
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
-  <img alt="The idea of Tollgate in four steps: write the tests, lock them in a signed record, the AI builds and can try again, and the tests and reviewers check each try" src="diagrams/the-lock.svg">
+  <img alt="The idea of Tollgate in four steps: write the tests, lock them, the AI builds and can try again, and the tests and reviewers check each try" src="diagrams/the-lock.svg">
 </picture>
 
-Three words first. A **try** is one builder session, then one run of the gate. The **gate** is a program with no AI in it. The driver runs it on your machine after each try. The **store** keeps every signed record in a state folder outside the project, where no AI role can write.
+Three words first. A **try** is one builder session, then one run of the gate. The **gate** is a program with no AI in it. The driver runs it on your machine after each try. The **store** keeps every record in a state folder outside the project, where no AI role can write.
 
 ## 1. Plan first
 
@@ -98,7 +98,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 - A reviewer checks the tests through the test fit lens: each fits its item, can fail, does not take its expected result from the code it tests, and is the kind of test its item is marked with. The driver sends rejected tests back to the test writer, at most 2 times.
 - `Store.freeze` runs the tests once in a clean clone, with main's harness. None may pass yet, except an item marked `keeps behavior`. A test must name its item, such as `test_c1_...`.
-- The store writes the lock, `locks/<ticket>.json`, with each locked file and its fingerprint and each locked test, and signs it with the machine key.
+- The store writes the lock, `locks/<ticket>.json`, with each locked file and its fingerprint and each locked test.
 - The gate fails any try that changes a locked file, or in which a locked test did not run, was skipped, or failed.
 - The policy and the hook refuse an edit of a locked file. pre-commit refuses a commit that changes one.
 
@@ -130,7 +130,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 
 **How Tollgate does it.**
 
-- `gate/gate.py` runs six checks: the lock verifies and matches, a plan lock lists the ticket, every locked file is unchanged, the tier, every check and locked test passes, and a change of tier 2 or more has a passed review.
+- `gate/gate.py` runs six checks: the lock is there and matches, a plan lock lists the ticket, every locked file is unchanged, the tier, every check and locked test passes, and a change of tier 2 or more has a passed review.
 - It reads the settings from main, never from the try.
 - Each reviewer is a separate AI session with no history. A reviewer and the advisor can only read: no edit, no command.
 
@@ -173,10 +173,10 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 **How Tollgate does it.**
 
 - `gate.pass_record` refuses a try with any finding, or a score under `pass_score`.
-- The store signs the pass record, `passes/<commit>.json`. It refuses to mark a branch as a ready change, or to merge it, without a verified pass record.
+- The store writes the pass record, `passes/<commit>.json`. It refuses to mark a branch as a ready change, or to merge it, without a pass record.
 - pre-commit checks the pass record again before a merge into main, and before a push.
 
-**Where it stops.** The pass record is as trustworthy as your machine and your machine key.
+**Where it stops.** The pass record is as trustworthy as your machine and its state folder.
 
 ## 5. Stop when stuck
 
@@ -221,10 +221,10 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 | --- | --- | --- | --- |
 | 1 | At most 3 files and 50 lines (`tier1`), and no path rule matches | Locked tests and the checklist review | The store, when `auto_merge` is on |
 | 2 | Every other change | An approved plan, and a review through the review lens | The store, when `auto_merge` is on |
-| 3 | Paths under `tiers.3`, such as login, payments, or user data | The security lens too | You, with your signed approval |
-| 4 | Harness, and paths under `tiers.4` | The same review | You, with your signed approval |
+| 3 | Paths under `tiers.3`, such as login, payments, or user data | The security lens too | You, with your approval |
+| 4 | Harness, and paths under `tiers.4` | The same review | You, with your approval |
 
-`auto_merge` is off by default. Then you merge every change with `/tollgate:merge`. An approval is signed with your own SSH key and verified against `owners` on main. The machine key is never in `owners`, so it can never approve.
+`auto_merge` is off by default. Then you merge every change with `/tollgate:merge`. You give an approval by typing `yes` in your own terminal: the command refuses to run when its input is not a terminal.
 
 **Where it stops.** A path rule only knows the paths you give it. A risky change in a path with no rule is tier 1 or 2.
 
@@ -249,7 +249,7 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 **How Tollgate does it.**
 
 - The gate and the store read the settings from main, so a change cannot loosen the rules that check it.
-- The settings, the lenses, and the checks are harness. A change to them is tier 4, so it needs your signed approval.
+- The settings, the lenses, and the checks are harness. A change to them is tier 4, so it needs your approval.
 - The home's shared rules reach each project as a branch that you approve and merge (`setup/sync_rules.py`).
 
 **Where it stops.** Nothing checks that a rule change is stricter. Your approval is the check.
@@ -262,7 +262,7 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 
 **Why.** An AI can ignore an instruction. It cannot ignore a program that refuses its work.
 
-**How Tollgate does it.** Two layers, and the signed records behind them.
+**How Tollgate does it.** Two layers, and the records behind them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/two-layers-dark.svg">
@@ -270,9 +270,9 @@ The setting `checkpoints` adds the places where the advisor decides whether the 
 </picture>
 
 - **Claude Code hooks and policies.** `hooks/policy.py` writes a policy for each role: permission rules that deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. `hooks/guard.py` checks each tool call again. It refuses any push by a role, a merge into main, `--no-verify`, and a change to `core.hooksPath`. The plugin runs the same hook in your own session, where a push of a branch runs and a push of main is refused. A call from a Tollgate subagent gets its role's rules from its subagent type.
-- **pre-commit.** `setup/precommit.py` writes the config. `check_locked.py` refuses a commit that changes a locked file. `check_merge.py` refuses a merge into main with no verified pass record, or a tier 3 or 4 merge with no approval, and checks each merge again before a push.
+- **pre-commit.** `setup/precommit.py` writes the config. `check_locked.py` refuses a commit that changes a locked file. `check_merge.py` refuses a merge into main with no pass record, or a tier 3 or 4 merge with no approval, and checks each merge again before a push.
 - **Isolation.** The setting `isolation` is `container` by default: the role runs in Docker, with only its own copy mounted, and with no git credentials and no key folder. `sandbox` runs Claude Code with its own sandbox instead.
-- **The signed records.** The gate and the store verify every lock and pass record against `signers` on main. They hold even when a role gets past its hook.
+- **The records.** The gate and the store read every lock and pass record from the state folder, which no role may write. A role that gets past its hook can write there, so use background mode for work you do not trust.
 
 **Where it stops.**
 

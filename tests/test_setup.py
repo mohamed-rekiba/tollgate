@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from gate import sign, state
+from gate import state
 from setup import (
     check_commit_msg,
     check_locked,
@@ -38,7 +38,9 @@ def sh(cwd, *args, check=True, env=None):
 
 
 # Every tool counts as installed, so the tests do not depend on the machine they run on.
-FOUND = lambda tool: "/usr/bin/" + tool
+def FOUND(tool):
+    return "/usr/bin/" + tool
+
 
 class Env(unittest.TestCase):
     """A temporary state folder, key folder, and owner key."""
@@ -59,9 +61,6 @@ class Env(unittest.TestCase):
         docker.start()
         self.addCleanup(docker.stop)
         self.addCleanup(self._tmp.cleanup)
-        self.owner = self.tmp / "owner_key"
-        sh(self.tmp, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "owner", "-f",
-           str(self.owner))
 
     def repo(self, name="project") -> Path:
         root = self.tmp / name
@@ -77,7 +76,7 @@ class Env(unittest.TestCase):
 
     def setup_project(self, name="project", install=False) -> Path:
         root = self.repo(name)
-        setup_init.init(str(root), f"{self.owner}.pub", install=install, which=FOUND)
+        setup_init.init(str(root), install=install, which=FOUND)
         return root
 
     def branch(self, root, name, files, message=None, verify=False) -> str:
@@ -93,23 +92,22 @@ class Env(unittest.TestCase):
         return head
 
     def record_pass(self, root, commit, tier=2, ticket="t1", base=None):
-        """A signed lock of the ticket, from base (main by default), and a pass record."""
+        """A lock of the ticket, from base (main by default), and a pass record."""
         import hashlib
         base = base or sh(root, "git", "rev-parse", "main").stdout.strip()
         lock = state.path(str(root), "locks", f"{ticket}.json")
-        sign.write(lock, {"ticket": ticket, "base_commit": base, "commit": commit, "number": 1,
+        state.write_record(lock, {"ticket": ticket, "base_commit": base, "commit": commit, "number": 1,
                           "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
-                          "at": "now"}, "tollgate-lock")
+                          "at": "now"})
         path = state.path(str(root), "passes", f"{commit}.json")
-        sign.write(path, {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
+        state.write_record(path, {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
                           "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
-                          "checks": {"tests": True}, "score": 100, "at": "now"}, "tollgate-pass")
+                          "checks": {"tests": True}, "score": 100, "at": "now"})
         return lock
 
-    def record_approval(self, root, commit, key=None):
+    def record_approval(self, root, commit):
         path = state.path(str(root), "approvals", f"{commit}.json")
-        sign.write(path, {"commit": commit, "ticket": "t1", "approver": "owner", "at": "now"},
-                   "tollgate-approval", key=str(key or self.owner))
+        state.write_record(path, {"commit": commit, "ticket": "t1", "approver": "owner", "at": "now"})
 
 
 class FakeStore:
@@ -124,16 +122,14 @@ class FakeStore:
 
     def passed(self, commit):
         try:
-            return sign.read(state.path(self.project, "passes", f"{commit}.json"),
-                             "tollgate-pass", self._settings()["signers"])
-        except sign.SignError:
+            return state.read_record(state.path(self.project, "passes", f"{commit}.json"))
+        except state.RecordError:
             return None
 
     def approvals(self, commit):
         try:
-            return [sign.read(state.path(self.project, "approvals", f"{commit}.json"),
-                              "tollgate-approval", self._settings()["owners"])]
-        except sign.SignError:
+            return [state.read_record(state.path(self.project, "approvals", f"{commit}.json"))]
+        except state.RecordError:
             return []
 
     def merge(self, commit):
@@ -149,20 +145,20 @@ class StateCopyTest(Env):
     def test_the_copy_of_the_state_path_agrees_with_gate_state(self):
         for project in ("/a/shop", str(self.tmp), "/a/b/../shop"):
             self.assertEqual(check_merge.state_dir(project), state.state_dir(project))
-        self.assertEqual(check_merge.key_dir(), state.key_dir())
         with mock.patch.dict(os.environ, {"XDG_STATE_HOME": "/x", "XDG_CONFIG_HOME": "/y"}):
             os.environ.pop("TOLLGATE_STATE")
-            os.environ.pop("TOLLGATE_KEYS")
             self.assertEqual(check_merge.state_dir("/a/shop"), state.state_dir("/a/shop"))
-            self.assertEqual(check_merge.key_dir(), state.key_dir())
 
-    def test_the_copy_of_verify_agrees_with_gate_sign(self):
-        pub = sign.ensure_key()
-        data = b"record\n"
-        sig = sign.sign(data, "tollgate-pass")
-        self.assertTrue(check_merge.verify(data, sig, "tollgate-pass", [pub]))
-        self.assertFalse(check_merge.verify(data, sig, "tollgate-approval", [pub]))
-        self.assertFalse(check_merge.verify(b"other\n", sig, "tollgate-pass", [pub]))
+    def test_the_copy_of_read_agrees_with_gate_state(self):
+        path = self.tmp / "record.json"
+        state.write_record(path, {"commit": "abc"})
+        self.assertEqual(check_merge.read(path), state.read_record(path))
+        for bad in (b"not json", b"[1]"):
+            path.write_bytes(bad)
+            self.assertIsNone(check_merge.read(path))
+            with self.assertRaises(state.RecordError):
+                state.read_record(path)
+        self.assertIsNone(check_merge.read(self.tmp / "missing.json"))
 
     def test_a_worktree_of_the_project_reads_the_same_state(self):
         root = self.repo()
@@ -234,16 +230,14 @@ class MergeCheckTest(Env):
 
     def test_a_commit_with_a_pass_passes_and_one_without_fails(self):
         commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
-        self.assertIn("no verified pass record", check_merge.check_commit(str(self.root), commit)[0])
+        self.assertIn("no pass record", check_merge.check_commit(str(self.root), commit)[0])
         self.record_pass(self.root, commit)
         self.assertEqual(check_merge.check_commit(str(self.root), commit), [])
 
-    def test_tier_3_needs_an_approval_by_an_owner(self):
+    def test_tier_3_needs_an_approval(self):
         commit = self.branch(self.root, "t1", {"src/a.py": "x = 1\n"})
         self.record_pass(self.root, commit, tier=3)
-        self.assertIn("no verified approval", check_merge.check_commit(str(self.root), commit)[0])
-        self.record_approval(self.root, commit, key=sign.machine_key())
-        self.assertIn("no verified approval", check_merge.check_commit(str(self.root), commit)[0])
+        self.assertIn("has no approval", check_merge.check_commit(str(self.root), commit)[0])
         self.record_approval(self.root, commit)
         self.assertEqual(check_merge.check_commit(str(self.root), commit), [])
 
@@ -266,14 +260,14 @@ class MergeCheckTest(Env):
         self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
         # Locked again, from main: the record's base no longer matches any lock.
         main = sh(self.root, "git", "rev-parse", "main").stdout.strip()
-        sign.write(lock, {"ticket": "t2", "base_commit": main, "commit": second, "number": 2,
+        state.write_record(lock, {"ticket": "t2", "base_commit": main, "commit": second, "number": 2,
                           "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
-                          "at": "now"}, "tollgate-lock")
+                          "at": "now"})
         self.assertIn("lock", check_merge.check_commit(str(self.root), second)[0])
         # A record with no base, for a lock that has one.
         data = json.loads(record.read_text())
         data.pop("base_commit")
-        sign.write(record, data, "tollgate-pass")
+        state.write_record(record, data)
         self.assertTrue(check_merge.check_commit(str(self.root), second))
         # The push of a merge of t2 is refused too.
         sh(self.root, "git", "merge", "-q", "--no-ff", "--no-verify", "-m", "chore(t2): merge",
@@ -297,7 +291,7 @@ class MergeCheckTest(Env):
         path = state.path(str(self.root), "passes", f"{commit}.json")
         data = json.loads(path.read_text())
         data.pop("base_commit")
-        sign.write(path, data, "tollgate-pass")
+        state.write_record(path, data)
         found = check_merge.check_commit(str(self.root), commit)
         self.assertIn("older Tollgate", found[0])
         self.assertIn("pass the gate again", found[0])
@@ -401,7 +395,7 @@ class HooksTest(Env):
         done = sh(self.root, "git", "merge", "--no-ff", "-m", "chore(merge): t1", commit,
                   check=False)
         self.assertNotEqual(done.returncode, 0)
-        self.assertIn("no verified pass record", done.stdout + done.stderr)
+        self.assertIn("no pass record", done.stdout + done.stderr)
         sh(self.root, "git", "merge", "--abort", check=False)
         self.record_pass(self.root, commit)
         done = sh(self.root, "git", "merge", "--no-ff", "-m", "chore(merge): t1", commit,
@@ -412,10 +406,10 @@ class HooksTest(Env):
 class InitTest(Env):
     def test_init_sets_up_the_project(self):
         root = self.repo()
-        lines = setup_init.init(str(root), f"{self.owner}.pub", install=HAS_PRECOMMIT, which=FOUND)
+        lines = setup_init.init(str(root), install=HAS_PRECOMMIT, which=FOUND)
         settings = json.loads(sh(root, "git", "show", "main:.tollgate/settings.json").stdout)
-        self.assertEqual(settings["signers"], [sign.ensure_key()])
-        self.assertEqual(settings["owners"], [Path(f"{self.owner}.pub").read_text().strip()])
+        self.assertNotIn("signers", settings)
+        self.assertNotIn("owners", settings)
         self.assertIn("writing", settings["checks"])
         self.assertTrue(state.state_dir(str(root)).joinpath("passes").is_dir())
         for name in precommit.SCRIPTS:
@@ -428,24 +422,20 @@ class InitTest(Env):
             self.assertEqual(len(found), 1)
             self.assertIn("the plugin has no Claude Code hooks", found[0])
         self.assertIn("files: already in place",
-                      setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND))
+                      setup_init.init(str(root), install=False, which=FOUND))
         self.assertTrue(lines)
 
     def test_init_stops_when_a_tool_is_missing(self):
         root = self.repo()
         with self.assertRaisesRegex(setup_init.InitError, "not installed: claude"):
-            setup_init.init(str(root), f"{self.owner}.pub",
+            setup_init.init(str(root),
                             which=lambda t: None if t == "claude" else "/bin/" + t)
 
-    def test_init_stops_off_main_or_with_the_machine_key(self):
+    def test_init_stops_off_main(self):
         root = self.repo()
         sh(root, "git", "checkout", "-q", "-b", "other")
         with self.assertRaisesRegex(setup_init.InitError, "not main"):
-            setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
-        sh(root, "git", "checkout", "-q", "main")
-        sign.ensure_key()
-        with self.assertRaisesRegex(setup_init.InitError, "machine key"):
-            setup_init.init(str(root), f"{sign.machine_key()}.pub", install=False, which=FOUND)
+            setup_init.init(str(root), install=False, which=FOUND)
 
     def test_init_writes_the_test_check_for_a_python_test_suite(self):
         root = self.repo()
@@ -453,7 +443,7 @@ class InitTest(Env):
         Path(root, "tests/test_shop.py").write_text("def test_ok():\n    assert True\n")
         sh(root, "git", "add", "-A")
         sh(root, "git", "commit", "-q", "-m", "test(shop): start")
-        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        lines = setup_init.init(str(root), install=False, which=FOUND)
         tests = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]["tests"]
         self.assertEqual(tests["report"], "report.xml")
         self.assertIn("pytest", tests["run"])
@@ -462,7 +452,7 @@ class InitTest(Env):
 
     def test_init_says_when_it_finds_no_tests(self):
         root = self.repo()
-        lines = setup_init.init(str(root), f"{self.owner}.pub", install=False, which=FOUND)
+        lines = setup_init.init(str(root), install=False, which=FOUND)
         checks = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]
         self.assertNotIn("tests", checks)
         said = next(line for line in lines if line.startswith("tests: "))
@@ -520,9 +510,12 @@ class MergeTest(Env):
         self.store = FakeStore(str(self.root))
         self.commit = self.branch(self.root, "t1", {"a.py": "x = 1\n"})
 
-    def run_main(self, *argv):
+    def run_main(self, *argv, tty=True, answer="yes"):
+        """Run the command. For approve, stdin is a terminal and you type answer."""
         out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
+                mock.patch("sys.stdin.isatty", return_value=tty), \
+                mock.patch("builtins.input", return_value=answer):
             code = merge.main(["--project", str(self.root), *argv], store=self.store)
         return code, out.getvalue() + err.getvalue()
 
@@ -535,10 +528,10 @@ class MergeTest(Env):
         self.assertIn("needs your approval", out)
         self.assertIn("pass  tests", self.run_main("show", self.commit)[1])
 
-    def test_approve_signs_with_the_owners_key_then_merge_merges(self):
+    def test_approve_then_merge_merges(self):
         self.record_pass(self.root, self.commit, tier=3)
         self.assertIn("approve it first", self.run_main("merge", self.commit)[1])
-        code, out = self.run_main("approve", self.commit, "--key", str(self.owner))
+        code, out = self.run_main("approve", self.commit)
         self.assertEqual(code, 0, out)
         self.assertEqual(len(self.store.approvals(self.commit)), 1)
         code, out = self.run_main("merge", self.commit)
@@ -550,22 +543,27 @@ class MergeTest(Env):
         code, out = self.run_main("merge", self.commit)
         self.assertEqual(code, 1)
         self.assertIn("needs your approval first", out)
-        code, out = self.run_main("approve", self.commit, "--key", str(self.owner))
+        code, out = self.run_main("approve", self.commit)
         self.assertEqual(code, 0, out)
         code, out = self.run_main("merge", self.commit)
         self.assertEqual(code, 0, out)
         sh(self.root, "git", "merge-base", "--is-ancestor", self.commit, "main")
 
-    def test_approve_refuses_a_ticket_with_no_pass_and_a_key_not_in_owners(self):
+    def test_approve_refuses_a_ticket_with_no_pass(self):
         sh(self.root, "git", "branch", "tg/T-1", self.commit)
         self.assertIn("Only the gate passes a ticket",
-                      self.run_main("approve", self.commit, "--key", str(self.owner))[1])
-        self.record_pass(self.root, self.commit, tier=4)
-        other = self.tmp / "other"
-        sh(self.tmp, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other))
-        code, out = self.run_main("approve", self.commit, "--key", str(other))
+                      self.run_main("approve", self.commit)[1])
+        self.assertEqual(self.store.approvals(self.commit), [])
+
+    def test_approve_needs_a_terminal_and_a_yes(self):
+        self.record_pass(self.root, self.commit, tier=3)
+        code, out = self.run_main("approve", self.commit, tty=False)
         self.assertEqual(code, 1)
-        self.assertIn("not in owners", out)
+        self.assertIn("needs a terminal", out)
+        for answer in ("", "no", "y"):
+            code, out = self.run_main("approve", self.commit, answer=answer)
+            self.assertEqual(code, 1, answer)
+            self.assertIn("not approved", out)
         self.assertEqual(self.store.approvals(self.commit), [])
 
 

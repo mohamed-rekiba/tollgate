@@ -13,16 +13,19 @@ _Avoid_: user story, epic
 _Avoid_: ideation, discovery session
 
 **brief**: What a brainstorm writes: an overview, what the lenses found, the goals, the non-goals, the alternatives weighed, and the questions it could not settle, each of which becomes an assumption of the plan. `/tollgate:task --brief` takes it as the request.
-_Avoid_: spec, PRD, one-pager
+_Avoid_: PRD, one-pager
 
 **roadmap**: An ordered list of tasks, for a request too large for one plan: the base, the skeleton, then the features. It has its own checklist.
 _Avoid_: backlog, milestone plan
 
-**analysis**: What the analyst found in the project before the plan, in six sections. Each fact is confirmed, with a citation to the code, or assumed.
+**analysis**: What the analyst found in the project before the plan, in six sections. Each fact is confirmed, with a citation to the code, specified, with a citation to a spec doc, or assumed.
 _Avoid_: survey, discovery, research
 
-**citation**: The code that proves a fact: `[path:line]` or `[path::name]`. The driver checks that it exists.
+**citation**: The code or the spec doc that proves a fact: `[path:line]` or `[path::name]` for code, `[path]` or `[path::heading]` for a spec doc. The driver checks that it exists.
 _Avoid_: source link
+
+**spec**: The docs that state the intended design of a project, named in the setting `spec`. A fact from them is specified. A plan follows them, or changes them.
+_Avoid_: requirements, PRD
 
 **plan**: The design for a task. It names every file that changes, every seam, the code it reuses, the risks, the assumptions, and every ticket.
 _Avoid_: design doc, PRD
@@ -80,9 +83,6 @@ _Avoid_: human in the loop, escalation
 **checkpoint**: A place where the advisor decides whether the task goes on: after the plan, after each ticket, or after the whole task. The setting `checkpoints` lists them.
 _Avoid_: approval step
 
-**owner**: A person whose SSH public key is in `owners` in the settings on main. Only an owner signs an approval.
-_Avoid_: admin, maintainer
-
 ### Proof
 
 **checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets. They are the project's own tools.
@@ -91,10 +91,10 @@ _Avoid_: linters, validators
 **harness**: The files that decide how tests run: test settings, shared test helpers, dependency lists, the pre-commit config, Tollgate's settings and checks.
 _Avoid_: test config, test infrastructure
 
-**lock**: The signed record of a ticket's tests, made before any code: each locked file with its fingerprint, and the name of each locked test. A ticket has at most 2 locks: the first, and one replacement.
+**lock**: The record of a ticket's tests, made before any code: each locked file with its fingerprint, and the name of each locked test. A ticket has at most 2 locks: the first, and one replacement.
 _Avoid_: freeze, snapshot
 
-**plan lock**: The signed record of an approved plan: the fingerprint of the plan and of each of its tickets.
+**plan lock**: The record of an approved plan: the fingerprint of the plan and of each of its tickets.
 _Avoid_: plan tag, plan freeze
 
 **gate**: The program that decides whether a try passes. It uses no AI, and the driver runs it on your machine after each try.
@@ -103,20 +103,17 @@ _Avoid_: verifier, quality gate
 **tier**: A number from 1 to 4 that says how much a change puts at risk. The gate works it out from the files that changed.
 _Avoid_: risk level, severity
 
-**pass record**: The signed record that a commit passed the gate: its ticket, tier, score, the checks, and the fingerprint of its lock.
+**pass record**: The record that a commit passed the gate: its ticket, tier, score, the checks, and the fingerprint of its lock.
 _Avoid_: pass token, green build
 
-**approval**: The record an owner signs with their own SSH key to let a tier 3 or 4 change, or a change made by hand, merge.
+**approval**: The record you write, by typing `yes` in your own terminal, to let a tier 3 or 4 change, or a change made by hand, merge.
 _Avoid_: sign-off, LGTM
 
 **ready change**: A branch whose last commit has a pass record and is not on main yet. It waits for a merge.
 _Avoid_: pull request, candidate
 
-**signers**: The public keys in the settings on main that may sign locks, plan locks, and pass records. Each is the machine key of a machine that runs Tollgate.
-_Avoid_: trusted keys, keyring
-
-**machine key**: The SSH key that Tollgate makes on your machine, in the key folder. It signs locks, plan locks, and pass records. It never signs an approval.
-_Avoid_: bot key, service key
+**machine secret**: Random bytes that Tollgate makes on your machine, in the key folder. The driver uses them to check that a saved answer is its own.
+_Avoid_: bot key, service key, signing key
 
 ### Parts
 

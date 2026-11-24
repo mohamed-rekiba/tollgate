@@ -54,7 +54,7 @@ class FormatTest(unittest.TestCase):
             an.parse(TEXT.replace("commit: 3d549d7\n", ""))
 
     def test_each_finding_is_confirmed_or_assumed(self):
-        with self.assertRaisesRegex(an.AnalysisError, "confirmed or assumed: the sender"):
+        with self.assertRaisesRegex(an.AnalysisError, "confirmed, specified, or assumed: the sender"):
             an.parse(TEXT.replace("- confirmed: the sender", "- the sender"))
 
     def test_a_confirmed_finding_cites_the_code(self):
@@ -65,6 +65,132 @@ class FormatTest(unittest.TestCase):
         broken = "- confirmed: tests use unittest [" + "!/" * 40 + "\n"
         with within(2), self.assertRaisesRegex(an.AnalysisError, "cites no code"):
             an.parse(TEXT.replace("- confirmed: tests use unittest [tests/test_send.py:1]\n", broken))
+
+
+SPEC_TEXT = TEXT.replace(
+    "- assumed: the project runs on Python 3.11",
+    "- specified: a failed send is retried 3 times [docs/design.md::Retries]\n"
+    "- specified: the design has one module [docs/design.md]\n"
+    "- assumed: the project runs on Python 3.11")
+
+
+def spec_project():
+    d = project()
+    Path(d, "docs").mkdir()
+    Path(d, "docs/design.md").write_text("# Design\n\nText.\n\n## Retries \n\nThree.\n")
+    Path(d, "notes.md").write_text("# Retries\n")
+    return d
+
+
+class SpecifiedTest(unittest.TestCase):
+    def test_reads_a_specified_fact_with_a_doc_or_a_heading(self):
+        facts = an.parse(SPEC_TEXT).sections["Frameworks"]
+        self.assertEqual([f.status for f in facts], ["specified", "specified", "assumed"])
+        self.assertEqual(facts[0].cites, [("docs/design.md", None, "Retries")])
+        self.assertEqual(facts[1].cites, [("docs/design.md", None, None)])
+
+    def test_a_heading_may_hold_spaces(self):
+        a = an.parse(SPEC_TEXT.replace("::Retries]", "::How a send is retried]"))
+        self.assertEqual(a.sections["Frameworks"][0].cites,
+                         [("docs/design.md", None, "How a send is retried")])
+
+    def test_a_specified_fact_cites_a_spec_doc(self):
+        for bad in ("- specified: a send is retried", "- specified: a send is retried [src/send.py:1]"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(an.AnalysisError, "cites no spec doc"):
+                an.parse(SPEC_TEXT.replace(
+                    "- specified: a failed send is retried 3 times [docs/design.md::Retries]", bad))
+
+    def test_every_citation_that_exists_stays_specified(self):
+        a = an.parse(SPEC_TEXT)
+        self.assertEqual(an.verify(a, spec_project(), ["docs/"]), [])
+        self.assertEqual([f.status for f in a.sections["Frameworks"]],
+                         ["specified", "specified", "assumed"])
+
+    def test_a_spec_path_may_name_the_file_itself(self):
+        a = an.parse(SPEC_TEXT)
+        self.assertEqual(an.verify(a, spec_project(), ["docs/design.md"]), [])
+
+    def test_a_heading_of_any_level_matches_after_trimming(self):
+        root = spec_project()
+        for heading in ("Design", "Retries"):
+            a = an.parse(SPEC_TEXT.replace("::Retries]", f"::{heading}]"))
+            self.assertEqual(an.verify(a, root, ["docs"]), [], heading)
+
+    def test_a_missing_heading_makes_the_fact_assumed(self):
+        a = an.parse(SPEC_TEXT.replace("::Retries]", "::Timeouts]"))
+        self.assertEqual(an.verify(a, spec_project(), ["docs"]), ["docs/design.md::Timeouts"])
+        fact = a.sections["Frameworks"][0]
+        self.assertEqual(fact.status, "assumed")
+        self.assertIn("(not found: docs/design.md::Timeouts)", fact.text)
+
+    def test_a_heading_text_in_the_body_is_not_a_heading(self):
+        a = an.parse(SPEC_TEXT.replace("::Retries]", "::Text.]"))
+        self.assertEqual(an.verify(a, spec_project(), ["docs"]), ["docs/design.md::Text."])
+
+    def test_a_heading_inside_a_fenced_block_is_not_a_heading(self):
+        from gate import paths
+        root = tempfile.mkdtemp()
+        text = ("# Real\n\n```sh\n# Comment\n```\n\n~~~\n# Tilde\n~~~\n\n"
+                "````md\n# Outer\n```\n# Still outer\n```\n````\n\n"
+                "```\n# Not closed by a tilde\n~~~\n# Still in\n```\n\n## After\n")
+        Path(root, "d.md").write_text(text)
+        for heading, found in (("Real", True), ("After", True), ("Comment", False),
+                               ("Tilde", False), ("Outer", False), ("Still outer", False),
+                               ("Not closed by a tilde", False), ("Still in", False)):
+            self.assertIs(paths.heading_exists(root, "d.md", heading), found, heading)
+
+    def test_a_fence_that_never_closes_hides_the_rest_of_the_file(self):
+        from gate import paths
+        root = tempfile.mkdtemp()
+        Path(root, "d.md").write_text("# Top\n\n```\n# Lost\n")
+        self.assertTrue(paths.heading_exists(root, "d.md", "Top"))
+        self.assertFalse(paths.heading_exists(root, "d.md", "Lost"))
+
+    def test_a_missing_doc_makes_the_fact_assumed(self):
+        a = an.parse(SPEC_TEXT.replace("[docs/design.md]", "[docs/gone.md]"))
+        self.assertEqual(an.verify(a, spec_project(), ["docs"]), ["docs/gone.md"])
+        self.assertEqual(a.sections["Frameworks"][1].status, "assumed")
+
+    def test_a_doc_outside_the_spec_paths_does_not_count(self):
+        a = an.parse(SPEC_TEXT.replace("[docs/design.md::Retries]", "[notes.md::Retries]"))
+        self.assertEqual(an.verify(a, spec_project(), ["docs"]), ["notes.md::Retries"])
+        self.assertEqual(a.sections["Frameworks"][0].status, "assumed")
+
+    def test_a_folder_name_that_only_starts_the_same_does_not_count(self):
+        a = an.parse(SPEC_TEXT)
+        self.assertEqual(an.verify(a, spec_project(), ["doc"]),
+                         ["docs/design.md::Retries", "docs/design.md"])
+
+    def test_with_no_spec_paths_a_specified_fact_becomes_assumed(self):
+        a = an.parse(SPEC_TEXT)
+        self.assertEqual(len(an.verify(a, spec_project())), 2)
+        self.assertEqual([f.status for f in a.sections["Frameworks"]], ["assumed"] * 3)
+
+    def test_a_citation_cannot_leave_the_project(self):
+        a = an.parse(SPEC_TEXT.replace("[docs/design.md]", "[../design.md]"))
+        self.assertEqual(an.verify(a, spec_project(), ["docs", ".."]), ["../design.md"])
+
+    def test_confirmed_and_assumed_facts_are_not_checked_against_the_spec(self):
+        a = an.parse(TEXT)
+        self.assertEqual(an.verify(a, project(), ["docs"]), [])
+        self.assertTrue(all(f.status == "confirmed" for f in a.sections["Structure"]))
+
+    def test_render_reads_back_the_same(self):
+        a = an.parse(SPEC_TEXT)
+        self.assertEqual(an.render(an.parse(an.render(a))), an.render(a))
+        self.assertIn("- specified: the design has one module [docs/design.md]", an.render(a))
+
+    def test_the_command_takes_the_spec_paths(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        root = spec_project()
+        for spec, expect in ((["--spec", "docs"], "Every citation was found."),
+                             ([], "Not found, so made assumptions")):
+            out = io.StringIO()
+            with mock.patch("sys.stdin", io.StringIO(SPEC_TEXT)), redirect_stdout(out):
+                self.assertEqual(an.main(["--root", root, *spec]), 0)
+            self.assertIn(expect, out.getvalue())
 
 
 class VerifyTest(unittest.TestCase):
@@ -91,6 +217,49 @@ class VerifyTest(unittest.TestCase):
         a = an.parse(TEXT)
         self.assertEqual(an.render(an.parse(an.render(a))), an.render(a))
 
+
+
+class AnalystInputTest(unittest.TestCase):
+    """The driver gives the analyst the spec paths and checks its citations against them."""
+
+    def run_analyze(self, spec):
+        from types import SimpleNamespace
+
+        from driver.task import analyze
+        from tests.driver_fakes import sh
+        root = spec_project()
+        who = ("-c", "user.email=a@b.c", "-c", "user.name=t", "-c", "commit.gpgsign=false")
+        sh(root, "git", "init", "-q")
+        sh(root, "git", "add", "-A")
+        sh(root, "git", *who, "commit", "-q", "-m", "x")
+        commit = sh(root, "git", "rev-parse", "HEAD")
+        seen, events = [], []
+        text = SPEC_TEXT.replace("task: retries", "task: demo").replace("3d549d7", commit)
+
+        def role(name, inputs):
+            seen.append((name, inputs))
+            return SimpleNamespace(data={"analysis": text}, cost_usd=0)
+
+        log = SimpleNamespace(add=lambda event, **kw: events.append((event, kw)))
+        analyze(role, log, root, "Add retries.", "demo", spec)
+        return seen, events
+
+    def test_the_analyst_gets_the_spec_paths(self):
+        seen, _ = self.run_analyze(["docs/"])
+        self.assertEqual(seen[0][0], "analyst")
+        self.assertEqual(seen[0][1]["spec"], ["docs/"])
+
+    def test_the_analyst_inputs_have_no_spec_when_none_is_set(self):
+        # So the key of a role call, and a session paused before spec existed, is unchanged.
+        seen, _ = self.run_analyze(())
+        self.assertNotIn("spec", seen[0][1])
+        self.assertEqual(sorted(seen[0][1]), ["commit", "problems", "request", "task_id"])
+
+    def test_the_driver_checks_each_specified_citation_against_the_spec_paths(self):
+        _, events = self.run_analyze(["docs/"])
+        self.assertEqual(events[-1][1]["not_found"], [])
+        _, events = self.run_analyze(["other/"])
+        self.assertEqual(events[-1][1]["not_found"], ["docs/design.md::Retries", "docs/design.md"])
 
 
 class SameRuleTest(unittest.TestCase):

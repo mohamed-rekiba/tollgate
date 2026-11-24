@@ -19,9 +19,8 @@ on: "plan" (the approval of the plan), "ticket" (after each ready ticket), and
 review with open findings, and a task review that blocks go to the advisor even
 when their checkpoint is off.
 
-A task starts only when it can pass: the settings on main name signers, and this
-machine has its machine key. Otherwise it stops at once and says to run
-/tollgate:init.
+A task starts only when it can pass: the settings on main are there and readable.
+Otherwise it stops at once and says to run /tollgate:init.
 
 In a task the tickets build one on another: each starts from the ready change of
 the ticket before it, and none merges until the review of the whole task passes.
@@ -64,16 +63,21 @@ TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the r
 FIX_ROUNDS = 1  # the fix rounds a task may run after a failed review of the whole task
 
 
-def analyze(role, log, copy: str, request: str, task_id: str) -> None:
+def analyze(role, log, copy: str, request: str, task_id: str, spec=()) -> None:
     """The analyst reads the copy and answers with the analysis. The driver checks it,
     makes each citation that does not exist an assumption, and keeps the text in the
     log, so no later role can change it. role(name, inputs) asks a role; a brainstorm
-    uses this step too."""
+    uses this step too. spec lists the spec paths of the settings: the analyst gets
+    them, and a specified fact may cite only inside them. With no spec paths the inputs
+    have no spec key, so the key of a paused session stays what it was."""
     commit = git(copy, "rev-parse", "HEAD")
     problems = []
     for _ in range(3):
-        answer = role("analyst", {"request": request, "task_id": task_id,
-                                  "commit": commit, "problems": problems})
+        inputs = {"request": request, "task_id": task_id, "commit": commit,
+                  "problems": problems}
+        if spec:
+            inputs["spec"] = list(spec)
+        answer = role("analyst", inputs)
         try:
             found = an.parse(answer.data.get("analysis") or "")
             if (found.task, found.commit) != (task_id, commit):
@@ -83,7 +87,7 @@ def analyze(role, log, copy: str, request: str, task_id: str) -> None:
             problems = [str(err)]
             log.add("analysis_invalid", problems=problems, cost_usd=answer.cost_usd)
             continue
-        missing = an.verify(found, copy)
+        missing = an.verify(found, copy, spec)
         log.add("analysis_written", text=an.render(found), not_found=missing,
                 cost_usd=answer.cost_usd)
         return
@@ -196,7 +200,7 @@ class Task:
 
     def analyze(self):
         """The analyst reads the copy at main and answers with the analysis."""
-        analyze(self.role, self.log, self.copy, self.request, self.id)
+        analyze(self.role, self.log, self.copy, self.request, self.id, self.settings["spec"])
 
     def write_plan(self, problems=None, hint=""):
         answer = self.role("builder", self.plan_inputs(

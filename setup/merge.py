@@ -2,15 +2,12 @@
 
     python3 -m setup.merge list               the ready changes
     python3 -m setup.merge show <commit>      one change: its pass record, commits, and files
-    python3 -m setup.merge approve <commit>   sign your approval, for tier 3 and 4
+    python3 -m setup.merge approve <commit>   approve it, for tier 3 and 4
     python3 -m setup.merge merge <commit>     merge it into main
 
-A ready change is a commit with a verified pass record that is not on main yet.
-`approve` asks ssh-keygen to sign the approval with your SSH key:
-
-    ssh-keygen -Y sign -n tollgate-approval -f ~/.ssh/<key> approvals/<commit>.json
-
-ssh-keygen asks for the key's passphrase in your terminal. The approval goes to
+A ready change is a commit with a pass record that is not on main yet.
+`approve` asks you to type `yes` in your terminal. It refuses to run when its input
+is not a terminal, so a script or an AI cannot approve. The approval goes to
 approvals/<commit>.json in the state folder. `merge` hands the commit to the
 store, which merges with a merge commit and refuses a change with no pass
 record, or a tier 3 or 4 change with no approval.
@@ -18,17 +15,12 @@ record, or a tier 3 or 4 change with no approval.
 
 import argparse
 import datetime
-import json
 import subprocess
 import sys
 from pathlib import Path
 
-from gate import settings as st
-from gate import sign, state
+from gate import state
 from gate.store import Store, StoreError
-
-NAMESPACE = "tollgate-approval"
-KEYS = ("id_ed25519", "id_ecdsa", "id_ed25519_sk", "id_rsa")
 
 
 class MergeError(RuntimeError):
@@ -48,7 +40,7 @@ def full(root, commit: str) -> str:
 
 
 def ready(project: str, store) -> list:
-    """[(commit, pass record)] for each commit with a verified pass, not on main."""
+    """[(commit, pass record)] for each commit with a pass record, not on main."""
     out = []
     for path in sorted(state.path(project, "passes").glob("*.json")):
         commit = path.stem
@@ -90,28 +82,8 @@ def show(project: str, commit: str, store) -> list:
     return lines
 
 
-def private_key(path: str | None) -> Path:
-    if path:
-        key = Path(path).expanduser()
-        if key.exists():
-            return key
-        raise MergeError(f"no key at {key}")
-    for name in KEYS:
-        key = Path.home() / ".ssh" / name
-        if key.exists():
-            return key
-    raise MergeError("no SSH key in ~/.ssh/. Name one with --key.")
-
-
-def owners(project: str) -> list:
-    """The keys in `owners` in the settings on main: the people who approve."""
-    code, text = git(project, "show", f"main:{st.PATH}")
-    if code:
-        raise MergeError(f"main has no {st.PATH}. Run /tollgate:init.")
-    return list(json.loads(text).get("owners", []))
-
-
-def approve(project: str, commit: str, store, key: str | None = None, approver: str = "") -> Path:
+def approve(project: str, commit: str, store, approver: str = "") -> Path:
+    """Write your approval of a commit. The caller has asked you to confirm it first."""
     commit = full(project, commit)
     record = store.passed(commit)
     if not record:
@@ -123,29 +95,22 @@ def approve(project: str, commit: str, store, key: str | None = None, approver: 
         record = {"ticket": "", "tier": 4}
     elif not needs_approval(record):
         raise MergeError(f"{commit[:12]} is tier {record.get('tier')}: it needs no approval")
-    key_path = private_key(key)
-    if key_path.resolve() == sign.machine_key().resolve():
-        raise MergeError("that is the machine key. Sign with your own SSH key.")
-    approver = approver or git(project, "config", "user.email")[1] or key_path.name
+    approver = approver or git(project, "config", "user.email")[1] or "you"
     at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     path = state.path(project, "approvals", f"{commit}.json")
-    data = state.dumps({"commit": commit, "ticket": record.get("ticket", ""),
-                        "approver": approver, "at": at})
-    path.write_bytes(data)
-    Path(f"{path}.sig").unlink(missing_ok=True)
-    # Not captured, so ssh-keygen asks for the passphrase in your terminal.
-    done = subprocess.run(["ssh-keygen", "-Y", "sign", "-q", "-n", NAMESPACE, "-f",
-                           str(key_path), str(path)], check=False)
-    sig = Path(f"{path}.sig")
-    if done.returncode or not sig.exists():
-        path.unlink(missing_ok=True)
-        raise MergeError("ssh-keygen did not sign the approval")
-    if not sign.verify(data, sig.read_bytes(), NAMESPACE, owners(project)):
-        path.unlink()
-        sig.unlink()
-        raise MergeError(f"{key_path} is not in owners on main. Add its public key with "
-                         "/tollgate:init --owner-key.")
+    state.write_record(path, {"commit": commit, "ticket": record.get("ticket", ""),
+                              "approver": approver, "at": at})
     return path
+
+
+def confirm(project: str, commit: str, store, ask=None) -> None:
+    """Show the change and ask you to type yes. Raise MergeError on anything else, and
+    when stdin is not a terminal."""
+    if not sys.stdin.isatty():
+        raise MergeError("approve needs a terminal: run it yourself, in your own shell")
+    print("\n".join(show(project, commit, store)))
+    if (ask or input)("Type yes to approve this change: ").strip().lower() != "yes":
+        raise MergeError("not approved")
 
 
 def merge(project: str, commit: str, store) -> str:
@@ -154,7 +119,7 @@ def merge(project: str, commit: str, store) -> str:
     if not record:
         # A change made by hand, such as the rules a home syncs, merges on your approval.
         if not any(not a["ticket"] for a in store.approvals(commit)):
-            raise MergeError(f"{commit[:12]} has no verified pass record and no approval. "
+            raise MergeError(f"{commit[:12]} has no pass record and no approval. "
                              "A change made by hand needs your approval first.")
     elif needs_approval(record) and not store.approvals(commit):
         raise MergeError(f"{commit[:12]} is tier {record.get('tier')}: approve it first")
@@ -170,8 +135,6 @@ def main(argv=None, store=None) -> int:
     for name in ("show", "approve", "merge"):
         p = sub.add_parser(name)
         p.add_argument("commit")
-        if name == "approve":
-            p.add_argument("--key", help="your private SSH key; the default is in ~/.ssh/")
     args = parser.parse_args(argv)
     project = str(Path(args.project).resolve())
     store = store or Store(project)
@@ -185,10 +148,11 @@ def main(argv=None, store=None) -> int:
         elif args.command == "show":
             print("\n".join(show(project, args.commit, store)))
         elif args.command == "approve":
-            print(f"approved: {approve(project, args.commit, store, args.key)}")
+            confirm(project, args.commit, store)
+            print(f"approved: {approve(project, args.commit, store)}")
         else:
             print(f"merged: {merge(project, args.commit, store)}")
-    except (MergeError, StoreError, sign.SignError, OSError, ValueError) as err:
+    except (MergeError, StoreError, state.RecordError, OSError, ValueError) as err:
         print(f"merge: {err}", file=sys.stderr)
         return 1
     return 0

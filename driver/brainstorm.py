@@ -14,8 +14,8 @@ The idea is .tollgate/ideas/<id>.md, in the person's own words. The brief goes t
 2. Readiness. The builder states the idea in 2 or 3 sentences. The advisor confirms
    the statement, or adds what it misses, and the builder states it again. After
    MAX_STATEMENTS additions with no confirmation, the brainstorm parks.
-3. The analysis. When the project has code, the analyst reads it first, as for a
-   task, so the lenses read facts, not guesses.
+3. The analysis. When the project has code, or a path of the `spec` setting exists,
+   the analyst reads it first, as for a task, so the lenses read facts, not guesses.
 4. The lenses. Four reviewers, each with a fresh context, challenge the idea:
    need, user, risk, and shape. Each reads the same inputs and none of the others'
    findings. In background mode they run side by side.
@@ -72,6 +72,13 @@ def has_code(copy: str) -> bool:
             continue
         return True
     return False
+
+
+def has_spec(copy: str, spec) -> bool:
+    """True when a path of the spec setting exists inside the copy."""
+    root = os.path.realpath(copy)
+    return any(os.path.commonpath([root, real]) == root and os.path.exists(real)
+               for real in (os.path.realpath(os.path.join(root, p)) for p in spec))
 
 
 class Brainstorm:
@@ -205,10 +212,10 @@ class Brainstorm:
             return self.of("analysis_written")[-1]["text"]
         if self.of("analysis_skipped"):
             return ""
-        if not has_code(self.copy):
-            self.add("analysis_skipped", reason="the project has no code yet")
+        if not has_code(self.copy) and not has_spec(self.copy, self.settings["spec"]):
+            self.add("analysis_skipped", reason="the project has no code and no spec yet")
             return ""
-        analyze(self.role, self, self.copy, statement, self.id)
+        analyze(self.role, self, self.copy, statement, self.id, self.settings["spec"])
         return self.of("analysis_written")[-1]["text"]
 
     # Step 4: the lenses.

@@ -12,7 +12,7 @@ The run starts real subagents, so it needs Claude Code, a signed-in account, and
 
 ## How to start
 
-From this clone of Tollgate, with git, ssh-keygen, pre-commit, pytest, and claude installed:
+From this clone of Tollgate, with git, pre-commit, pytest, and claude installed:
 
 ```
 python3 tests/e2e/make_project.py /tmp/tollgate-e2e
@@ -21,8 +21,7 @@ python3 tests/e2e/make_project.py /tmp/tollgate-e2e
 Give a folder that does not exist yet, or an empty one. It makes:
 
 - `project/`: a git repository on main with `calc.py`, its tests, and Tollgate set up by `setup.init`, with a tests check that runs pytest. The request of the task is in `project/.tollgate/requests/e2e-divide.md`.
-- `state/` and `keys/`: the state folder root and the key folder, for `TOLLGATE_STATE` and `TOLLGATE_KEYS`. The machine key is in `keys/`.
-- `owner/`: an SSH key made for this run, named in `owners`. Give `--owner-key` to use your own public key instead.
+- `state/` and `keys/`: the state folder root and the key folder, for `TOLLGATE_STATE` and `TOLLGATE_KEYS`. The machine secret is made in `keys/` on first use.
 - `gitconfig`: a git identity for the run, for `GIT_CONFIG_GLOBAL`.
 
 Then it prints the exact commands for the run. In short:

@@ -1,6 +1,6 @@
 ---
 name: init
-description: Set up Tollgate in a project on this machine. It writes the settings, makes this machine's key, adds your SSH key as an owner, and installs the checks that run before each commit, merge, and push. Use when the user runs /tollgate:init or asks to add Tollgate to a repository.
+description: Set up Tollgate in a project on this machine. It writes the settings, and installs the checks that run before each commit, merge, and push. Use when the user runs /tollgate:init or asks to add Tollgate to a repository.
 ---
 
 # Set up Tollgate in this project
@@ -9,7 +9,7 @@ You set up Tollgate in the git repository of the current folder. Each step ends 
 
 `TG` below is the plugin root: two folders above this skill's base directory. Run every script as `PYTHONPATH="$TG" python3 -P -m <module>`, from the project folder.
 
-Words: the **state folder** holds Tollgate's records outside the project, where no AI role can write. The **machine key** signs locks and pass records. An **owner** is a person whose SSH key may approve a tier 3 or 4 change. The **harness** is every file that decides how tests run.
+Words: the **state folder** holds Tollgate's records outside the project, where no AI role can write. The **harness** is every file that decides how tests run.
 
 ## 1. Write the settings
 
@@ -23,7 +23,7 @@ Done when the file holds the checks and the tiers. Show the user the file.
 ## 2. Run init
 
 1. Confirm the current branch is `main`: `git branch --show-current`. If not, ask the user to switch to it.
-2. Run `python3 -m setup.init`, with `--owner-key <path to the .pub file>` if the user named a key. It checks that `claude` and `pre-commit` are installed, and that Docker runs when `isolation` is `"container"`. It creates the state folder and the machine key, adds the machine key to `signers` and the user's key to `owners`, copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
+2. Run `python3 -m setup.init`. It checks that `claude` and `pre-commit` are installed, and that Docker runs when `isolation` is `"container"`. It creates the state folder, copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
 3. If it stops because Docker is missing or not running, tell the user to start Docker, or to set `isolation` to `"sandbox"`. If it stops because a tool is missing, tell the user the install command: `pipx install pre-commit`, or `npm install -g @anthropic-ai/claude-code` for `claude`. Run it again after the install.
 4. If the project already has a `.pre-commit-config.yaml` that Tollgate did not write, init stops. Move each of its hooks into `checks` in the settings, with the user's consent, then run init with `--replace`.
 
@@ -35,4 +35,4 @@ Run `python3 -m setup.health`. Done when it prints no warning. A warning about t
 
 ## 4. Tell the user
 
-In three lines or fewer: the commit init made, the owner key, and that `/tollgate:task` starts a task and `/tollgate:merge` merges a ready change.
+In three lines or fewer: the commit init made, and that `/tollgate:task` starts a task and `/tollgate:merge` merges a ready change.

@@ -255,6 +255,41 @@ class StepTest(Case):
         # Asked again, next names the same step.
         self.assertEqual(self.next(s, store)[1]["key"], out["key"])
 
+    def test_the_analyst_gets_the_spec_and_its_specified_facts_are_checked(self):
+        from tests.fake_role import inputs
+        s, store = self.task_sample(spec=["docs/"])
+        Path(s.project, "docs").mkdir()
+        Path(s.project, "docs/design.md").write_text("# Design\n\n## Retries\n\nThree.\n")
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "spec")
+        _, out = self.next(s, store)
+        self.assertEqual(out["agent"], "tollgate:analyst")
+        asked = inputs(out["prompt"])
+        self.assertEqual(asked["spec"], ["docs/"])
+        text = (f"---\ntask: demo\ncommit: {asked['commit']}\n---\n"
+                "## Structure\n- confirmed: greet builds the greeting [app.py::greet]\n"
+                "## Entry points\n- confirmed: greet is the entry point [app.py::greet]\n"
+                "## Frameworks\n"
+                "- specified: a failed send is retried 3 times [docs/design.md::Retries]\n"
+                "- specified: a send times out after 5 seconds [docs/design.md::Timeouts]\n"
+                "## Similar features\n- assumed: none\n"
+                "## Tests\n- confirmed: tests run with run_tests.py [run_tests.py:1]\n"
+                "## Standards\n- assumed: none written\n")
+        self.answer(s, store, out, "Done.\n\n```json\n" + json.dumps({"analysis": text}) + "\n```")
+        written = next(e for e in s.log("task-demo") if e["event"] == "analysis_written")
+        self.assertEqual(written["not_found"], ["docs/design.md::Timeouts"])
+        self.assertIn("- specified: a failed send is retried 3 times [docs/design.md::Retries]",
+                      written["text"])
+        self.assertIn("- assumed: a send times out after 5 seconds", written["text"])
+
+    def test_the_analyst_key_is_the_same_with_no_spec_as_before_spec_existed(self):
+        from tests.fake_role import inputs
+        s, store = self.task_sample()
+        _, out = self.next(s, store)
+        asked = inputs(out["prompt"])
+        self.assertNotIn("spec", asked)
+        self.assertEqual(out["key"], session.key("analyst", None, asked))
+
     def test_answer_refuses_a_key_that_is_not_the_waiting_step_s(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
@@ -326,8 +361,8 @@ class StepTest(Case):
 
     def test_next_refuses_to_start_a_task_that_cannot_pass(self):
         s, store = self.task_sample()
-        from gate import sign
-        sign.machine_key().unlink()
+        Path(s.project, ".tollgate/settings.json").write_text('{"nonsense": 1}')
+        sh(s.project, "git", "commit", "-q", "-am", "bad settings")
         code, out = self.next(s, store)
         self.assertEqual(code, 1)
         self.assertIn("/tollgate:init", out["error"])
@@ -549,23 +584,15 @@ class StepTest(Case):
         self.assertEqual(rounds, [0, 1])
 
 class ReadyTest(Case):
-    def test_a_task_needs_signers_on_main(self):
-        s = self.sample()
-        settings = json.loads(Path(s.project, ".tollgate/settings.json").read_text())
-        settings["signers"] = []
-        Path(s.project, ".tollgate/settings.json").write_text(json.dumps(settings))
-        sh(s.project, "git", "commit", "-q", "-am", "no signers")
-        self.assertIn("/tollgate:init", session.cannot_pass(str(s.project)))
-        from driver.task import Task
-        with self.assertRaisesRegex(session.NotReady, "signers"):
-            Task(str(s.project), "demo", "Add shout.", FakeStore(s.project)).run()
-
-    def test_a_task_needs_the_machine_key(self):
+    def test_a_task_needs_settings_on_main_that_can_be_read(self):
         s = self.sample()
         self.assertEqual(session.cannot_pass(str(s.project)), "")
-        from gate import sign
-        sign.machine_key().unlink()
-        self.assertIn("machine key", session.cannot_pass(str(s.project)))
+        Path(s.project, ".tollgate/settings.json").write_text('{"nonsense": 1}')
+        sh(s.project, "git", "commit", "-q", "-am", "bad settings")
+        self.assertIn("/tollgate:init", session.cannot_pass(str(s.project)))
+        from driver.task import Task
+        with self.assertRaisesRegex(session.NotReady, "cannot be read"):
+            Task(str(s.project), "demo", "Add shout.", FakeStore(s.project)).run()
 
 
 if __name__ == "__main__":
