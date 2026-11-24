@@ -30,4 +30,4 @@ jobs:
           git rev-parse --verify --quiet refs/heads/main >/dev/null || git branch main origin/main
           python3 setup/check_writing.py
       - name: Tests
-        run: python -m unittest discover -s tests -t . -v
+        run: python -m pytest -q -p no:cacheprovider -n auto tests
