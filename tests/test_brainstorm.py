@@ -136,6 +136,31 @@ class BackgroundTest(Case):
         self.assertIn("analysis_skipped", events)
         self.assertNotIn("analysis_written", events)
 
+    def no_code_sample(self, **settings_args):
+        s, store = self.sample(**settings_args)
+        sh(s.project, "git", "rm", "-q", "app.py", "run_tests.py", "tests/__init__.py")
+        Path(s.project, "docs").mkdir()
+        Path(s.project, "docs/design.md").write_text("# Design\n\nShout is loud.\n")
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "no code")
+        return s, store
+
+    def test_a_project_with_no_code_and_a_spec_path_that_exists_runs_the_analyst(self):
+        s, store = self.no_code_sample(spec=["docs/", "gone/"])
+        self.assertEqual(self.run_it(s, store), 0)
+        events = self.events(s)
+        self.assertIn("analysis_written", events)
+        self.assertNotIn("analysis_skipped", events)
+
+    def test_a_project_with_no_code_and_no_spec_path_that_exists_skips_the_analyst(self):
+        for spec in ([], ["gone/", "nothing.md"]):
+            with self.subTest(spec=spec):
+                s, store = self.no_code_sample(spec=spec)
+                self.assertEqual(self.run_it(s, store), 0)
+                events = self.events(s)
+                self.assertIn("analysis_skipped", events)
+                self.assertNotIn("analysis_written", events)
+
     def test_a_brief_in_a_bad_format_is_written_again_with_the_problem(self):
         s, store = self.sample(builder="pass2 brief=bad")
         self.assertEqual(self.run_it(s, store), 0)

@@ -14,7 +14,7 @@ Check the change for each of these nine:
 6. **A slower path.** Work in a loop that the old code did once, or a read of everything where one item is enough. `major` on a path that runs often, `minor` if not.
 7. **A test gap.** A branch or a rule that no test reaches. `major`. A checklist item that is not `must` needs no test: the checklist reviewer checks it by reading the change, so its missing test is not a test gap. If such an item is risky enough to need a test, say so as `minor`. List every test gap you find in one review, not one per round.
 8. **Needless complexity.** Behavior nobody asked for, or code that a simpler form already in the project does. `major`. Never report a file that a check of the project requires, such as a README that its writing check asks for, as unrequested. A change that deletes one is `major`.
-9. **Docs out of step.** The change alters something whose README, doc, diagram, comment, or settings example still describes the old version. `major`.
+9. **Docs out of step.** The change alters something whose README, doc, diagram, comment, or settings example still describes the old version. `major`. A change that departs from a spec doc and does not change the doc counts too.
 
 Also report a test, a lint rule, or a check that the change loosens, skips, or removes, as `blocking`.
 
@@ -37,7 +37,7 @@ Write like a plain-spoken senior engineer talking to someone who knows the proje
 - Everyday words. Explain a technical term in a few words the first time.
 - No noun chains over three words. Break them with "of", "for", "in".
 - Active voice with a named actor in instructions. Use a colon or a period where a long dash would go.
-- State plainly when code is unfinished, untested, or unverified.
+- State plainly when a change, a report, or a review is unfinished, untested, or unverified. A spec doc that describes a target design is not one of these: it says what the design is.
 - Skip filler like "leverage", "utilize", "delve", "it's worth noting". Say the plain word, or cut the sentence.
 
 The project adds four rules of its own:

@@ -13,14 +13,13 @@ import hashlib
 import re
 from pathlib import Path
 
-from gate import junit, sign, state, tickets
+from gate import junit, state, tickets
 from gate import manifest as mf
 from gate.gitio import show_bytes
 from gate.paths import matches
 
 TICKET_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_FREEZES = 2
-NAMESPACE = "tollgate-lock"
 
 
 def check_id(ticket_id: str) -> None:
@@ -47,13 +46,13 @@ def next_number(project, ticket_id: str) -> int:
     return 1 + lock_path(project, ticket_id).exists() + replaced_path(project, ticket_id).exists()
 
 
-def read_lock(project, ticket_id: str, signers: list) -> dict | None:
-    """The verified current lock of a ticket, or None when it has none.
-    Raise SignError when the lock is there but does not verify."""
+def read_lock(project, ticket_id: str) -> dict | None:
+    """The current lock of a ticket, or None when it has none.
+    Raise RecordError when the lock is there but cannot be read."""
     path = lock_path(project, ticket_id)
     if not path.exists():
         return None
-    return sign.read(path, NAMESPACE, signers)
+    return state.read_record(path)
 
 
 def lock_sha256(project, ticket_id: str) -> str | None:

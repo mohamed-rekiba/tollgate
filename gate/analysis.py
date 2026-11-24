@@ -1,7 +1,7 @@
 """Read and check an analysis: .tollgate/analysis/<task id>.md.
 
 The analyst writes it before the plan, from the code alone. It has a header and
-six sections, and each fact is one line that is confirmed or assumed:
+six sections, and each fact is one line that is confirmed, specified, or assumed:
 
     ---
     task: retries
@@ -16,22 +16,27 @@ six sections, and each fact is one line that is confirmed or assumed:
 
     - confirmed: the sender lives in one module [src/send.py:1]
     - confirmed: the handler calls it [src/web.py::deliver]
+    - specified: a failed send is retried 3 times [docs/design.md::Retries]
     - assumed: the project runs on Python 3.11
 
-A confirmed fact cites the code: [path:line] or [path::name]. verify() checks
-each citation against the commit the analysis read, and makes a fact whose
-citation does not exist an assumption.
+A confirmed fact cites the code: [path:line] or [path::name]. A specified fact is
+one that the spec docs of the project state as the intended design. It cites a spec
+doc: [path] or [path::heading]. verify() checks each citation against the commit the
+analysis read, and makes a fact whose citation does not exist an assumption. A
+citation of a specified fact counts only inside one of the spec paths.
 """
 
+import posixpath
 import re
 from dataclasses import dataclass, field
 
-from gate.paths import line_exists, name_exists
+from gate.paths import heading_exists, line_exists, name_exists, read_inside
 
 ANALYSES = ".tollgate/analysis"
 SECTIONS = ("Structure", "Entry points", "Frameworks", "Similar features", "Tests", "Standards")
-STATUSES = ("confirmed", "assumed")
+STATUSES = ("confirmed", "specified", "assumed")
 CITE = re.compile(r"\[([^\]\s:]+)(?::(\d+)|::([\w.]+))\]")
+SPEC_CITE = re.compile(r"\[([^\]\s:]+)(?:::([^\]]+))?\]")
 
 
 class AnalysisError(ValueError):
@@ -42,7 +47,8 @@ class AnalysisError(ValueError):
 class Fact:
     status: str
     text: str
-    cites: list = field(default_factory=list)   # (path, line or None, name or None)
+    # (path, line or None, name or None). For a specified fact: (path, None, heading or None).
+    cites: list = field(default_factory=list)
 
 
 @dataclass
@@ -58,7 +64,9 @@ def analysis_path(task_id: str) -> str:
 
 def _cite(c) -> str:
     path, line, name = c
-    return f"{path}:{line}" if line is not None else f"{path}::{name}"
+    if line is not None:
+        return f"{path}:{line}"
+    return f"{path}::{name}" if name else path
 
 
 def parse(text: str) -> Analysis:
@@ -88,11 +96,18 @@ def parse(text: str) -> Analysis:
             continue
         status, sep, claim = item.partition(":")
         if not sep or status.strip() not in STATUSES:
-            raise AnalysisError(f"each fact starts with confirmed or assumed: {item}")
+            raise AnalysisError(f"each fact starts with confirmed, specified, or assumed: {item}")
         status, claim = status.strip(), claim.strip()
-        cites = [(m[1], int(m[2]) if m[2] else None, m[3] or None) for m in CITE.finditer(claim)]
-        if status == "confirmed" and not cites:
-            raise AnalysisError(f"a confirmed fact cites no code: {claim}")
+        if status == "specified":
+            cites = [(m[1], None, m[2].strip() if m[2] else None)
+                     for m in SPEC_CITE.finditer(claim)]
+            if not cites:
+                raise AnalysisError(f"a specified fact cites no spec doc: {claim}")
+        else:
+            cites = [(m[1], int(m[2]) if m[2] else None, m[3] or None)
+                     for m in CITE.finditer(claim)]
+            if status == "confirmed" and not cites:
+                raise AnalysisError(f"a confirmed fact cites no code: {claim}")
         sections[current].append(Fact(status, claim, cites))
     missing = [s for s in SECTIONS if not sections.get(s)]
     if missing:
@@ -100,17 +115,43 @@ def parse(text: str) -> Analysis:
     return Analysis(header["task"], header["commit"], {s: sections[s] for s in SECTIONS})
 
 
-def verify(analysis: Analysis, root: str) -> list:
-    """Check every citation of a confirmed fact against the files under root.
-    A fact with a citation that does not exist becomes assumed. Return those citations."""
+def in_spec(path: str, spec) -> bool:
+    """True when path is one of the spec paths, or below one that is a folder."""
+    path = posixpath.normpath(path)
+    if path.startswith("/") or path == ".." or path.startswith("../"):
+        return False
+    for entry in spec:
+        entry = posixpath.normpath(entry)
+        if entry == "." or path == entry or path.startswith(entry + "/"):
+            return True
+    return False
+
+
+def _spec_cite_exists(root: str, c, spec) -> bool:
+    path, _, heading = c
+    if not in_spec(path, spec):
+        return False
+    if heading is None:
+        return read_inside(root, path) is not None
+    return heading_exists(root, path, heading)
+
+
+def verify(analysis: Analysis, root: str, spec=()) -> list:
+    """Check every citation of a confirmed or specified fact against the files under root.
+    A fact with a citation that does not exist becomes assumed. Return those citations.
+    spec lists the paths of the spec docs, relative to root; a specified fact may cite
+    only inside them."""
     missing = []
     for facts in analysis.sections.values():
         for f in facts:
-            if f.status != "confirmed":
+            if f.status == "confirmed":
+                gone = [c for c in f.cites
+                        if not (line_exists(root, c[0], c[1]) if c[1] is not None
+                                else name_exists(root, c[0], c[2]))]
+            elif f.status == "specified":
+                gone = [c for c in f.cites if not _spec_cite_exists(root, c, spec)]
+            else:
                 continue
-            gone = [c for c in f.cites
-                    if not (line_exists(root, c[0], c[1]) if c[1] is not None
-                            else name_exists(root, c[0], c[2]))]
             if gone:
                 f.status = "assumed"
                 f.text += " (not found: " + ", ".join(_cite(c) for c in gone) + ")"
@@ -132,13 +173,15 @@ def main(argv=None) -> int:
     import sys
     parser = argparse.ArgumentParser(prog="python3 -m gate.analysis", description=main.__doc__)
     parser.add_argument("--root", default=".", help="the project folder")
+    parser.add_argument("--spec", action="append", default=[],
+                        help="a spec path, relative to the project folder; repeat for more")
     args = parser.parse_args(argv)
     try:
         found = parse(sys.stdin.read())
     except AnalysisError as err:
         print(f"The analysis cannot be read: {err}")
         return 1
-    missing = verify(found, args.root)
+    missing = verify(found, args.root, args.spec)
     print(render(found))
     print("Every citation was found." if not missing
           else f"Not found, so made assumptions: {', '.join(missing)}")

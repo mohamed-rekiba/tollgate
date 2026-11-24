@@ -31,7 +31,7 @@ key folder, the state folder, or a `.git` folder; an edit under the copy's
 
 The threat model: this hook stops a role's mistakes and shortcuts, not a role
 that deliberately attacks your machine. A role and the code it writes run as you
-and can reach your machine key, for example from a command that hides a path.
+and can reach your machine secret, for example from a command that hides a path.
 Background mode with a container is the mode for that. A command can still hide a path, for
 example by building it from parts, so this rule is one layer, not a wall.
 
@@ -42,9 +42,9 @@ In session mode no driver names the copy, so the hook reads it from the step
 file, run/step.json in the state folder, and only when the step is for that
 same role. The hook keeps a role's plain edits, reads, and commands out of the
 state folder. As defense in depth, the step file holds only a hash of the nonce
-that `answer` needs, and saved answers carry a code made with the machine key.
+that `answer` needs, and saved answers carry a code made with the machine secret.
 
-This hook is one layer. The gate and the signed records hold even when a role
+This hook is one layer. The gate and the records hold even when a role
 gets past it, for example by writing a file from a Bash command.
 """
 

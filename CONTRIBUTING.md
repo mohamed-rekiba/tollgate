@@ -5,7 +5,7 @@ Tollgate holds its own changes to the rules it holds for a project. This page sa
 ## Set up
 
 1. Install the check tools: `python3 -m pip install -r requirements-dev.txt`. Tollgate itself needs only the Python standard library.
-2. Install the hooks: run `/tollgate:init` in Claude Code, in your copy of this repository. It installs pre-commit with Tollgate's checks, and adds your SSH key as an owner.
+2. Install the hooks: run `/tollgate:init` in Claude Code, in your copy of this repository. It installs pre-commit with Tollgate's checks.
 
 ## Check a change
 
@@ -28,6 +28,6 @@ The rules for docs, comments, and commit messages are in the Writing section of 
 
 1. Open the change on GitHub from a branch. Its title has the form `type(scope): subject`: the change is squashed into one commit on main, and the title becomes its subject. release-please reads it to set the next version.
 2. Fill in the template: what changes and why, how you checked it, and what is not tested.
-3. The owner reviews it. A change to `.tollgate/` or to the copied checks needs the owner's signed approval.
+3. The owner reviews it. A change to `.tollgate/` or to the copied checks needs the owner's approval.
 
 Report a security hole privately, as [SECURITY.md](SECURITY.md) says.

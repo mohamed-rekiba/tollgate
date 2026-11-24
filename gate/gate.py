@@ -2,12 +2,12 @@
 
 The driver runs it on your machine after each try. `collect` gathers the facts
 from git and the state folder. `evaluate` checks them and has no side effects.
-`pass_record` builds the record the store signs when a try passes.
+`pass_record` builds the record the store writes when a try passes.
 
 The six checks:
 
-    lock          the ticket's lock verifies, matches its commit, and adds only tests and the ticket
-    plan          a verified plan lock lists the ticket (tier 1 needs none)
+    lock          the ticket's lock is there, matches its commit, and adds only tests and the ticket
+    plan          a plan lock lists the ticket (tier 1 needs none)
     locked_files  every locked file has its fingerprint at the try
     tier          the tier, from the files the try changes
     tests         every check passes and every locked test ran and passed
@@ -24,7 +24,7 @@ import time
 from dataclasses import dataclass, field
 
 from gate import settings as st
-from gate import sign, state, tiers
+from gate import state, tiers
 from gate.checks import Results
 from gate.gitio import GitError, changed_files, fingerprint, git, show_bytes
 from gate.manifest import python_tests, ticket_path
@@ -48,15 +48,15 @@ class Facts:
     head_sha: str
     changes: dict              # path -> lines changed, from main to the try
     results: Results
-    lock: dict | None = None   # the verified lock record
-    lock_error: str = ""       # why there is no verified lock
+    lock: dict | None = None   # the lock record
+    lock_error: str = ""       # why there is no lock
     lock_sha256: str = ""      # of the lock record's exact bytes
     lock_files_differ: list = field(default_factory=list)  # locked files that differ at the lock commit
     lock_commit_files: list = field(default_factory=list)  # files the lock commit changed
     lock_in_history: bool = True   # the lock commit is an ancestor of the try
     locked_now_changed: list = field(default_factory=list)  # locked files that differ at the try
     plan_task: str = ""
-    plan: dict | None = None   # the verified plan lock
+    plan: dict | None = None   # the plan lock
     plan_error: str = ""
     review_passed: bool | None = None  # the review verdict the driver hands in
 
@@ -164,7 +164,7 @@ def checks_of(findings: list) -> dict:
 
 
 def pass_record(facts: Facts, score: int, at: str | None = None) -> dict:
-    """Build the pass record of a try. The store signs and writes it.
+    """Build the pass record of a try. The store writes it.
 
     Refuse a try with any finding or a score below pass_score: a failed try
     never gets a pass record.
@@ -186,12 +186,12 @@ def pass_record(facts: Facts, score: int, at: str | None = None) -> dict:
     }
 
 
-def _read(project: str, kind: str, name: str, namespace: str, signers: list) -> tuple:
+def _read(project: str, kind: str, name: str) -> tuple:
     """Return (record, sha256 of its bytes, error)."""
     path = state.path(project, kind, f"{name}.json")
     try:
-        record = sign.read(path, namespace, signers)
-    except (sign.SignError, ValueError) as err:
+        record = state.read_record(path)
+    except (state.RecordError, ValueError) as err:
         return None, "", str(err)
     return record, hashlib.sha256(path.read_bytes()).hexdigest(), ""
 
@@ -225,7 +225,7 @@ def _tests_kept(repo, lock: dict, path: str, head_sha: str) -> bool:
 
 
 def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
-                   signers: list, own: dict | None = None) -> list:
+                   own: dict | None = None) -> list:
     """The locked files of the other tickets this try builds on, and that are not on main
     yet, which differ at the try. In a task each ticket starts from the ready change
     before it, so its try holds the earlier tickets' locked tests too."""
@@ -241,7 +241,7 @@ def _chain_changed(project: str, repo, base: str, head_sha: str, ticket: str,
         if not commit or not _is_ancestor(repo, commit, head_sha) or _is_ancestor(repo, commit,
                                                                                     base):
             continue
-        other, _, _ = _read(project, "locks", path.stem, "tollgate-lock", signers)
+        other, _, _ = _read(project, "locks", path.stem)
         if not other:
             continue
         for path, print_ in sorted(other["manifest"]["files"].items()):
@@ -259,18 +259,17 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
     """Gather the facts.
 
     project names the state folder. repo is the copy that holds the try.
-    base names the main branch: the settings, and so the signers, come from there.
+    base names the main branch: the settings come from there.
     start is the commit the ticket started from, when not base: the tier counts only
     the files changed since then. It must be the base the store recorded in the lock.
     """
     settings = st.load_from_ref(repo, base)
-    signers = settings["signers"]
     head_sha = git(repo, "rev-parse", head).strip()
     facts = Facts(settings, ticket, head_sha, changed_files(repo, start or base, head), results,
                   review_passed=review_passed)
-    lock, digest, error = _read(project, "locks", ticket, "tollgate-lock", signers)
+    lock, digest, error = _read(project, "locks", ticket)
     if lock is None:
-        facts.lock_error = f"the lock of ticket {ticket} does not verify: {error}"
+        facts.lock_error = f"the lock of ticket {ticket} cannot be read: {error}"
         return facts
     facts.lock, facts.lock_sha256 = lock, digest
     if start and git(repo, "rev-parse", start).strip() != lock.get("base_commit"):
@@ -289,7 +288,7 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
         facts.lock_error = f"the lock commit cannot be compared to its base: {err}"
     facts.locked_now_changed = _differ(repo, head_sha, files)
     facts.locked_now_changed += [p for p in _chain_changed(project, repo, base, head_sha, ticket,
-                                                           signers, files)
+                                                           files)
                                  if p not in facts.locked_now_changed]
 
     data = show_bytes(repo, commit, ticket_path(ticket))
@@ -300,10 +299,10 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
         except ValueError as err:
             facts.plan_error = f"the ticket cannot be read: {err}"
     if facts.plan_task:
-        plan, _, error = _read(project, "plans", facts.plan_task, "tollgate-plan", signers)
+        plan, _, error = _read(project, "plans", facts.plan_task)
         facts.plan = plan
         if plan is None:
-            facts.plan_error = f"the plan lock of {facts.plan_task} does not verify: {error}"
+            facts.plan_error = f"the plan lock of {facts.plan_task} cannot be read: {error}"
     elif not facts.plan_error:
         facts.plan_error = "the ticket names no plan"
     return facts

@@ -1,19 +1,17 @@
 """Set up Tollgate in a project, on this machine. It calls no outside service.
 
-    python3 -m setup.init [--project .] [--owner-key ~/.ssh/id_ed25519.pub] [--replace]
+    python3 -m setup.init [--project .] [--replace]
 
 The steps, in order:
 
-1. Check that git, ssh-keygen, pre-commit, and claude are installed. With the
+1. Check that git, pre-commit, and claude are installed. With the
    isolation "container", the default, check that Docker is installed and running.
 2. Check that the project is a git repository on the branch main.
-3. Create the state folder, and this machine's key.
-4. Add the machine's public key to `signers`, which sign locks and pass
-   records, and your SSH public key to `owners`, who approve tier 3 and 4.
-5. Write .tollgate/settings.json, with the writing check.
-6. Copy the checks into .tollgate/checks/ and write .pre-commit-config.yaml.
-7. Commit these files on main, so the checks read the signers from main.
-8. Run `pre-commit install`.
+3. Create the state folder.
+4. Write .tollgate/settings.json, with the writing check.
+5. Copy the checks into .tollgate/checks/ and write .pre-commit-config.yaml.
+6. Commit these files on main, so the checks read the settings from main.
+7. Run `pre-commit install`.
 
 Running it again changes only what is missing. It prints one line for each step.
 """
@@ -26,11 +24,10 @@ import sys
 from pathlib import Path
 
 from gate import settings as st
-from gate import sign, state
+from gate import state
 from setup import install_writing_check, precommit
 
-TOOLS = ("git", "ssh-keygen", "pre-commit", "claude")
-OWNER_KEYS = ("id_ed25519.pub", "id_ecdsa.pub", "id_ed25519_sk.pub", "id_rsa.pub")
+TOOLS = ("git", "pre-commit", "claude")
 HARNESS = [".tollgate/checks/**", precommit.CONFIG]
 SUBJECT = "chore(tollgate): set up Tollgate"
 
@@ -83,33 +80,11 @@ def check_isolation(root: Path, which=shutil.which) -> str:
     return "isolation: container, Docker is running"
 
 
-def owner_key(path: str | None = None) -> str:
-    """Your SSH public key line. The default is the first key found in ~/.ssh/."""
-    if path:
-        candidates = [Path(path).expanduser()]
-    else:
-        candidates = [Path.home() / ".ssh" / name for name in OWNER_KEYS]
-    for candidate in candidates:
-        if candidate.exists():
-            line = candidate.read_text().strip()
-            if not line.startswith(("ssh-", "ecdsa-", "sk-")):
-                raise InitError(f"{candidate} is not an SSH public key")
-            return line
-    raise InitError("no SSH public key found. Make one with: ssh-keygen -t ed25519")
-
-
-def add_key(keys: list, line: str) -> None:
-    if key_id(line) not in {key_id(k) for k in keys}:
-        keys.append(line)
-
-
-def write_settings(root: Path, machine: str, owner: str) -> bool:
-    """Add the keys and the harness to the settings. Return True when the file changed."""
+def write_settings(root: Path) -> bool:
+    """Add the harness to the settings. Return True when the file changed."""
     path = root / st.PATH
     settings = json.loads(path.read_text()) if path.exists() else {}
     before = json.dumps(settings, sort_keys=True)
-    add_key(settings.setdefault("signers", []), machine)
-    add_key(settings.setdefault("owners", []), owner)
     settings.setdefault("isolation", "container")
     harness = settings.setdefault("harness", [])
     harness += [h for h in HARNESS if h not in harness]
@@ -148,11 +123,7 @@ def add_test_check(root: Path) -> str:
     return f"tests: {found['run']}"
 
 
-def key_id(line: str) -> str:
-    return " ".join(line.split()[:2])
-
-
-def init(project=".", key_path=None, replace=False, which=shutil.which, install=True) -> list:
+def init(project=".", replace=False, which=shutil.which, install=True) -> list:
     """Run every step. Return one line for each step."""
     root = Path(project).resolve()
     out = []
@@ -167,12 +138,8 @@ def init(project=".", key_path=None, replace=False, which=shutil.which, install=
     for kind in state.KINDS:
         state.path(str(root), kind)
     out.append(f"state folder: {state.state_dir(str(root))}")
-    machine, owner = sign.ensure_key(), owner_key(key_path)
-    if key_id(machine) == key_id(owner):
-        raise InitError("your SSH key is the machine key. Name your own key with --owner-key.")
-    out.append(f"machine key: {sign.machine_key()}")
     changed = install_writing_check.install(str(root))
-    if write_settings(root, machine, owner):
+    if write_settings(root):
         changed.append(st.PATH)
     before = (root / st.PATH).read_text()
     tests_line = add_test_check(root)
@@ -202,15 +169,13 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="init", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
-    parser.add_argument("--owner-key", help="your SSH public key; the default is in ~/.ssh/")
     parser.add_argument("--replace", action="store_true",
                         help="replace a pre-commit config that Tollgate did not write")
     args = parser.parse_args(argv)
     try:
-        for line in init(args.project, args.owner_key, args.replace):
+        for line in init(args.project, args.replace):
             print(line)
-    except (InitError, precommit.PrecommitError, st.SettingsError, sign.SignError,
-            OSError) as err:
+    except (InitError, precommit.PrecommitError, st.SettingsError, OSError) as err:
         print(f"init: {err}", file=sys.stderr)
         return 1
     return 0

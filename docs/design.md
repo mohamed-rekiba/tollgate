@@ -15,7 +15,7 @@ You give Tollgate a task. Tollgate gives you ready changes, and a report.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/the-lock-dark.svg">
-  <img alt="The idea of Tollgate in four steps: write the tests, lock them in a signed record, the AI builds and can try again, and the tests and reviewers check each try" src="diagrams/the-lock.svg">
+  <img alt="The idea of Tollgate in four steps: write the tests, lock them, the AI builds and can try again, and the tests and reviewers check each try" src="diagrams/the-lock.svg">
 </picture>
 
 Think of an exam. The questions are set and sealed before the student starts. The student can take the exam more than once, but the student cannot rewrite the questions or mark the paper.
@@ -37,7 +37,7 @@ Think of an exam. The questions are set and sealed before the student starts. Th
   <img alt="A task from start to finish" src="diagrams/a-task.svg">
 </picture>
 
-Before the plan, the analyst reads the project and reports how it is built: each fact confirmed, with a citation to the code, or marked assumed. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. The plan writer and the plan reviewers read the analysis. A plan that lists an assumption goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
+Before the plan, the analyst reads the project and reports how it is built: each fact confirmed, with a citation to the code, specified, with a citation to a spec doc, or marked assumed. The setting `spec` names the spec docs: files or folders that state the intended design. The analyst reads them first, and a specified citation counts only inside them: `[path]` or `[path::heading]`, where the heading is a markdown heading of the doc. The driver checks every citation, and a finding whose citation does not exist becomes an assumption. A specified fact is not an assumption of the plan, but a plan that differs from one must change that doc. The plan writer and the plan reviewers read the analysis. A plan that lists an assumption goes to the advisor before it is locked. After the last ticket, the review lens reads every ticket's change together, against the plan.
 
 Steps 4 to 6 repeat for each ticket. Each ticket starts from the ready change of the ticket before it, and the store checks that this start passed the gate before it locks the tests. No ticket merges until the review of the whole task passes. Then the tickets merge in plan order: with `auto_merge` on, the store merges each tier 1 or 2 change, and stops at the first that it may not merge, since each later ticket holds the ones before it. You merge tiers 3 and 4, and every change when `auto_merge` is off.
 
@@ -47,7 +47,7 @@ An idea that is not clear yet starts with `/tollgate:brainstorm`, not with a tas
 
 1. **Questions first.** The builder asks one question at a time: the problem, who uses it, the hard limits, how it is done today, what done means, and what is out of scope. The advisor answers each one, or skips it; a skipped question goes under `Open questions` in the brief. The builder may ask at most 5 questions. Then it must state the idea.
 2. **Readiness.** The builder states the idea in 2 or 3 sentences. The advisor confirms the statement, or adds what it misses. After 3 additions with no confirmation, the brainstorm parks.
-3. **The analysis.** When the project has code, the analyst reads it, as for a task, so the lenses read facts, not guesses.
+3. **The analysis.** When the project has code, or a path of the setting `spec` exists, the analyst reads it, as for a task, so the lenses read facts, not guesses.
 4. **Four lenses.** Four reviewers challenge the idea, each with a fresh context and the same inputs: need, user, risk, and shape. None reads the others' findings. In background mode they run side by side.
 5. **The brief.** The builder merges what the lenses found and writes `.tollgate/briefs/<id>.md`: Overview, Analysis, Goals, Non-goals, Alternatives weighed, and Open questions. `gate/brief.py` checks the format, and the builder writes it again with the problem, up to 3 times.
 
@@ -109,7 +109,7 @@ A locked test can be wrong. The builder cannot change it. The store allows one r
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/who-holds-the-key-dark.svg">
-  <img alt="Who can change what: the AI works in its own copy, and the store keeps the signed records in the state folder" src="diagrams/who-holds-the-key.svg">
+  <img alt="Who can change what: the AI works in its own copy, and the store keeps the records in the state folder" src="diagrams/who-holds-the-key.svg">
 </picture>
 
 ### Who can do what
@@ -118,8 +118,8 @@ A locked test can be wrong. The builder cannot change it. The store allows one r
 | --- | --- | --- |
 | Builder and test writer | Edit files in their own copy. Run commands there. | Edit a locked file or the settings. Reach the state folder or the key folder. Push or merge. |
 | Reviewer and advisor | Read their own copy. | Edit anything. Run a command. |
-| Driver | Run the roles, the checks, and the gate. Fetch work from a copy into your project. | Sign a record without the store. Merge without the store. |
-| Store | Lock tests. Sign plan locks and pass records with the machine key. Write questions. Merge a ready change. | Sign an approval. Merge a change with no pass record, or a tier 3 or 4 change with no approval. |
+| Driver | Run the roles, the checks, and the gate. Fetch work from a copy into your project. | Write a record without the store. Merge without the store. |
+| Store | Lock tests. Lock plans and write pass records. Write questions. Merge a ready change. | Write an approval. Merge a change with no pass record, or a tier 3 or 4 change with no approval. |
 | You | Answer a question. Approve and merge with `/tollgate:merge`. Change the settings. | Nothing in Tollgate stops a commit you make with `--no-verify`. |
 
 Each role works in a copy of the project in the state folder, `builders/<ticket>/`. The copy has no remote, so nothing in it can push. In background mode with `"isolation": "container"`, a role runs in Docker with only its copy mounted, read-only for a reviewer and the advisor. Only the model access variables go in. The key folder and the rest of the state folder never go in. In session mode, the hook keeps a role in its copy: see [Two ways to run the roles](#two-ways-to-run-the-roles).
@@ -165,21 +165,21 @@ Session mode stops a role's mistakes and shortcuts, such as editing locked tests
 What holds in session mode:
 
 - **Mistakes and shortcuts.** The hook refuses a role's edit of a locked file, of `.tollgate/`, of the copy's `.git` folder, and of the state folder; its read of the key folder and of the state folder outside its copy; a command that names those folders; a push, a merge into main, and `--no-verify`; and a plain run of a Tollgate command that changes its state, such as `driver.step answer`. These rules read the text of a call, so they catch what a role does by mistake or as a shortcut, not what it hides on purpose.
-- **Defense in depth.** `answer` needs a nonce that only `next` prints; the step file keeps only its hash. Each saved answer carries a code made with a secret drawn from the machine key, and a replay ignores an answer whose code does not verify. The driver runs git in a copy with no hooks, no file system monitor, and no replace refs, and puts the builder's work back from the commit the signed answer names.
+- **Defense in depth.** `answer` needs a nonce that only `next` prints; the step file keeps only its hash. Each saved answer carries a code made with the machine secret, and a replay ignores an answer whose code does not verify. The driver runs git in a copy with no hooks, no file system monitor, and no replace refs, and puts the builder's work back from the commit the saved answer names.
 - **The gate and the store.** The gate scores each try with no AI. A ticket's pass record names the commit it started from, and the store and the merge check refuse it until that commit is on main, so each ticket merges with its own tier and approval.
 
-What does not hold: a role, or a test or script it writes, runs as you, so it can reach the machine key, sign a record, and get past every rule above. Use background mode, with `"isolation": "container"`, for tier 3 and 4 work from a source you do not trust: the key folder is never mounted in the container.
+What does not hold: a role, or a test or script it writes, runs as you, so it can reach the state folder, write a record, and get past every rule above. Records are plain files, not signed. Use background mode, with `"isolation": "container"`, for tier 3 and 4 work from a source you do not trust: the state folder and the key folder are never mounted in the container.
 
 ### Before a task starts
 
-A task that cannot pass stops at once. `driver.task` and `driver.step next` refuse to start when `signers` in the settings on main is empty, or this machine has no machine key, and say to run `/tollgate:init`.
+A task that cannot pass stops at once. `driver.task` and `driver.step next` refuse to start when the settings on main cannot be read, and say to run `/tollgate:init`.
 
 ### The gate
 
 The gate uses no AI, so it gives the same answer every time. The driver runs it on your machine after each try. It reads the settings from main, never from the try. A try passes only when all six checks hold:
 
-1. **Lock.** The ticket's lock verifies against `signers` on main, and names this ticket. The try is built on the lock's commit. The lock's commit added only tests and the ticket file.
-2. **Plan.** A verified plan lock lists this ticket, with the same ticket text. Tier 1 needs none. The setting `require_plan` turns this check off.
+1. **Lock.** The ticket's lock is in the state folder, and names this ticket. The try is built on the lock's commit. The lock's commit added only tests and the ticket file.
+2. **Plan.** A plan lock lists this ticket, with the same ticket text. Tier 1 needs none. The setting `require_plan` turns this check off.
 3. **Locked files.** Every locked file has its fingerprint at the try.
 4. **Tier.** The gate works out the tier from the files the try changes.
 5. **Tests.** Every check passes. Every locked test ran and passed. No locked test was skipped.
@@ -189,7 +189,7 @@ Then the score decides: a try needs 70 or more. The builder can fix a failure of
 
 ### What the gate proves
 
-The gate proves that the locked tests ran unchanged and passed, and that the try scored 70 or more, on your machine. Its proof is as trustworthy as your machine and your machine key.
+The gate proves that the locked tests ran unchanged and passed, and that the try scored 70 or more, on your machine. Its proof is as trustworthy as your machine and its state folder.
 
 ## Two layers of enforcement
 
@@ -207,12 +207,12 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 | Commit | `check_locked.py` | A change to a locked file, or to `.tollgate/` or the pre-commit config |
 | Commit | `check_writing.py` | Words to avoid, filler, and long dashes in the staged change. A doc that points at a file or a name the change removes. |
 | Commit message | `check_commit_msg.py` | A subject that is not `type(scope): subject`, or a line that credits an AI |
-| Merge | `check_merge.py merge` | A merge into main with no verified pass record, or a tier 3 or 4 merge with no approval |
+| Merge | `check_merge.py merge` | A merge into main with no pass record, or a tier 3 or 4 merge with no approval |
 | Push | `check_merge.py push` | A push to main with a merge that has no pass record, or a commit made on main itself |
 
 A merge may change locked files when the commit it merges passed the gate. Commits from before `init` are not checked.
 
-**Behind both layers: the signed records.** The store and `check_merge.py` verify every record with `ssh-keygen`. A role that gets past its hook still cannot make a pass record.
+**Behind both layers: the records.** The store and `check_merge.py` read every record from the state folder, which no role may write. A role that gets past its hook can write there, so use background mode for work you do not trust.
 
 **The limit.** `git commit --no-verify` and `git push --no-verify` skip pre-commit. A person can still change main by hand.
 
@@ -345,13 +345,13 @@ You install the plugin in Claude Code once. There is no separate program to inst
 /plugin install tollgate@tollgate-ai
 ```
 
-The machine needs Python 3.11, git, `ssh-keygen`, and pre-commit. Background mode with the container isolation also needs Docker.
+The machine needs Python 3.11, git, and pre-commit. Background mode with the container isolation also needs Docker.
 
 | You type in Claude Code | What happens |
 | --- | --- |
 | `/tollgate:analyze` | Reads the project and reports how it is built, with a citation for each fact. It changes no file. |
 | `/tollgate:brainstorm` | Turns a rough idea into a brief: questions to the advisor, a statement the advisor confirms, the analysis, and four lenses that challenge the idea. |
-| `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, makes the machine key, adds your SSH key to `owners`, and installs pre-commit. |
+| `/tollgate:init` | Sets up one project. It reads the project, asks what it cannot find, writes the settings, and installs pre-commit. |
 | `/tollgate:task Add retries to webhook delivery` | Runs a task. With `--brief <id>`, the brief is the request. In session mode your session runs each role, one step at a time. In background mode the driver runs on its own, so you can close Claude Code. |
 | `/tollgate:status` | Shows Done and Still to do, and warns when a layer of checks is missing. |
 | `/tollgate:inbox` | Lists the questions that wait for you, and records your answer. |
@@ -376,9 +376,8 @@ When a task ends, you read the report. It has:
 
 | Part | Files | What it does |
 | --- | --- | --- |
-| State | `gate/state.py` | The paths of the state folder and the key folder. |
-| Signatures | `gate/sign.py` | Sign and verify a record with `ssh-keygen -Y`, in one namespace for each kind. |
-| Store | `gate/store.py`, `gate/freeze.py`, `gate/plantag.py`, `gate/prepare.py` | Lock tests, lock plans, write questions, sign pass records, mark ready changes, merge. |
+| State | `gate/state.py` | The paths of the state folder and the key folder, the records, and the machine secret. |
+| Store | `gate/store.py`, `gate/freeze.py`, `gate/plantag.py`, `gate/prepare.py` | Lock tests, lock plans, write questions, write pass records, mark ready changes, merge. |
 | Gate | `gate/gate.py`, `gate/tiers.py`, `gate/review.py`, `gate/checks.py` | The six checks, the tier, the review from tier 2, and running the checks. |
 | Formats | `gate/settings.py`, `gate/analysis.py`, `gate/brief.py`, `gate/tickets.py`, `gate/plan.py`, `gate/roadmap.py`, `gate/manifest.py`, `gate/junit.py` | Read and check each file format. |
 | Driver | `driver/driver.py`, `driver/task.py`, `driver/roadmap.py`, `driver/brainstorm.py` | Run one ticket, one task, one roadmap, one brainstorm. |
@@ -411,16 +410,16 @@ Each setup script does one step, can run twice without harm, and prints one line
 
 ```
 ~/.local/state/tollgate/<name>-<hash>/      Linux; macOS: ~/Library/Application Support/tollgate/
-  locks/<ticket>.json and .sig              a signed lock
+  locks/<ticket>.json and .sig              a lock
   locks/replaced/<ticket>.json and .sig     the lock a replacement took the place of
-  plans/<task>.json and .sig                a signed plan lock
-  passes/<commit>.json and .sig             a signed pass record
+  plans/<task>.json and .sig                a plan lock
+  passes/<commit>.json and .sig             a pass record
   passes/ready/<ticket>.json and .sig       a ready change
-  approvals/<commit>.json and .sig          an owner's signed approval
+  approvals/<commit>.json and .sig          your approval
   questions/<n>.json                        a question; <n>.closed.json once answered
   builders/<ticket>/                        the builder's copy of the project
   logs/  reports/  lessons/  run/           logs, reports, lessons, run locks
-~/.config/tollgate/id_ed25519               the machine key
+~/.config/tollgate/secret                    the machine secret
 ```
 
 `<hash>` is the first 10 characters of the SHA-256 of the project's real path. `TOLLGATE_STATE` and `TOLLGATE_KEYS` set the two roots, for tests.
@@ -444,15 +443,15 @@ Each setup script does one step, can run twice without harm, and prints one line
 
 ### Records
 
-Each record is JSON with sorted keys and a final newline. The signature, in `<file>.sig`, covers the exact bytes.
+Each record is JSON with sorted keys and a final newline.
 
-| Record | Fields | Signed by, namespace |
-| --- | --- | --- |
-| Lock | `ticket`, `base_commit`, `commit`, `manifest` (`files`, `tests`, `keeps_behavior`), `number`, `at` | Machine key, `tollgate-lock` |
-| Plan lock | `task`, `commit`, `files`, `at` | Machine key, `tollgate-plan` |
-| Pass record | `commit`, `ticket`, `tier`, `lock_sha256`, `checks`, `score`, `at` | Machine key, `tollgate-pass` |
-| Approval | `commit`, `ticket`, `approver`, `at` | Owner's SSH key, `tollgate-approval` |
-| Question | `n`, `title`, `body`, `options`, `answer` (`decision`, `hint`, `at`) | Not signed |
+| Record | Fields |
+| --- | --- |
+| Lock | `ticket`, `base_commit`, `commit`, `manifest` (`files`, `tests`, `keeps_behavior`), `number`, `at` |
+| Plan lock | `task`, `commit`, `files`, `at` |
+| Pass record | `commit`, `ticket`, `tier`, `lock_sha256`, `checks`, `score`, `at` |
+| Approval | `commit`, `ticket`, `approver`, `at` |
+| Question | `n`, `title`, `body`, `options`, `answer` (`decision`, `hint`, `at`) |
 
 ### A ticket
 
@@ -553,16 +552,15 @@ A ticket that marks no kind fails, and the message says what to add.
   "stop": {"attempts": 3, "attempt_minutes": 30, "ticket_usd": 10, "task_usd": 60},
   "pass_score": 70,
   "require_plan": true,
+  "spec": ["docs/design.md", "docs/architecture/"],
   "checkpoints": ["plan", "task"],
-  "auto_merge": false,
-  "signers": ["ssh-ed25519 AAAA... tollgate"],
-  "owners": ["ssh-ed25519 AAAA... you@laptop"]
+  "auto_merge": false
 }
 ```
 
 `.tollgate/settings.json` is a locked file: the locked-file check refuses a commit that changes it, so a role's commit cannot loosen the rules. You change it on main and commit it yourself, from your own terminal, with `git commit --no-verify`, as `init` does. Tollgate's hook refuses `--no-verify` inside Claude Code.
 
-The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. Without `container_image`, a role runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned by digest in `gate/settings.py`. It has git, Python, Node, and Go. Name your own image when the project's tests need more. CI runs `tests/proof_container.py` on the pinned image, and a weekly workflow proposes a newer build once that proof passes on it. `init` fills `signers` and `owners`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
+The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. Without `container_image`, a role runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned by digest in `gate/settings.py`. It has git, Python, Node, and Go. Name your own image when the project's tests need more. CI runs `tests/proof_container.py` on the pinned image, and a weekly workflow proposes a newer build once that proof passes on it. `"spec"` is optional: a list of files and folders, relative to the project root, with no `..`. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
 
 ### What the gate returns
 
@@ -683,7 +681,7 @@ Product management documents, deployment to production, a hosted service, an AI 
 - A person who skips pre-commit with `--no-verify` can change main.
 - A run with no person cannot merge tier 3 or 4: both need your approval.
 - The gate trusts the test report the checks write. Code in a change that forges its own results is not caught.
-- Every proof is as trustworthy as your machine and your machine key.
+- Every proof is as trustworthy as your machine and its state folder.
 - A project can sit in one home only.
 
 ### Not verified

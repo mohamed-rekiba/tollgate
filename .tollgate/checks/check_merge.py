@@ -6,17 +6,12 @@ pre-commit runs it in two stages:
     python3 .tollgate/checks/check_merge.py merge   (pre-merge-commit)
     python3 .tollgate/checks/check_merge.py push    (pre-push)
 
-A merge into main needs a verified pass record for the commit it merges, and a
-change of tier 3 or 4 also needs a verified approval. A push to main needs the
-same for each merge on main's first-parent line, and refuses a commit made on
-main itself. Commits from before Tollgate was set up are not checked.
+A merge into main needs a pass record for the commit it merges, and a change of
+tier 3 or 4 also needs an approval. A push to main needs the same for each merge
+on main's first-parent line, and refuses a commit made on main itself. Commits
+from before Tollgate was set up are not checked.
 
-It verifies each signature with `ssh-keygen -Y verify`, against the settings on
-main, never the settings of the change: a pass record against `signers`, the
-machine keys; an approval against `owners`, the keys of the people who approve.
-So the machine key can never approve.
-
-It reads the records from the state folder. The rule for its path is a copy of
+It reads the records from the state folder, which no role may write. The rule for its path is a copy of
 gate/state.py, so this file runs with no Tollgate code. A test checks that the
 copy agrees with gate/state.py.
 
@@ -29,12 +24,10 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 MAIN = "main"
 SETTINGS = ".tollgate/settings.json"
-IDENTITY = "tollgate"
 ZERO = "0" * 40
 
 
@@ -54,13 +47,6 @@ def state_root() -> Path:
     return Path(base) / "tollgate"
 
 
-def key_dir() -> Path:
-    if os.environ.get("TOLLGATE_KEYS"):
-        return Path(os.environ["TOLLGATE_KEYS"])
-    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(base) / "tollgate"
-
-
 def state_dir(project: str) -> Path:
     real = os.path.realpath(project)
     tag = hashlib.sha256(real.encode()).hexdigest()[:10]
@@ -76,49 +62,16 @@ def project_root(cwd=".") -> str:
     return git(cwd, "rev-parse", "--show-toplevel")[1] or os.path.abspath(cwd)
 
 
-# Signatures: a copy of the verify step of gate/sign.py.
-
-def verify(data: bytes, signature: bytes, namespace: str, signers: list) -> bool:
-    if not signers or not signature:
-        return False
-    with tempfile.TemporaryDirectory() as tmp:
-        allowed = Path(tmp, "allowed")
-        allowed.write_text("".join(f'{IDENTITY} namespaces="{namespace}" {k.strip()}\n'
-                                   for k in signers))
-        sig = Path(tmp, "sig")
-        sig.write_bytes(signature)
-        proc = subprocess.run(["ssh-keygen", "-Y", "verify", "-f", str(allowed), "-I", IDENTITY,
-                               "-n", namespace, "-s", str(sig)],
-                              input=data, capture_output=True, check=False)
-        return proc.returncode == 0
-
-
-def read(path: Path, namespace: str, signers: list):
-    """The record at path when its signature verifies, else None."""
-    sig = Path(f"{path}.sig")
-    if not path.exists() or not sig.exists():
-        return None
-    data = path.read_bytes()
-    if not verify(data, sig.read_bytes(), namespace, signers):
-        return None
+def read(path: Path):
+    """The record at path, or None when it is missing or not a record."""
     try:
-        return json.loads(data)
-    except ValueError:
+        record = json.loads(path.read_bytes())
+    except (OSError, ValueError):
         return None
+    return record if isinstance(record, dict) else None
 
 
-def keys_on_main(root, name: str) -> list:
-    """A key list of the settings on main: signers or owners."""
-    code, text = git(root, "show", f"refs/heads/{MAIN}:{SETTINGS}")
-    if code != 0:
-        return []
-    try:
-        return list(json.loads(text).get(name, []))
-    except (ValueError, AttributeError):
-        return []
-
-
-def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> list:
+def check_start(root, folder: Path, record: dict, onto: str) -> list:
     """A ticket's pass record and its lock both name the commit the ticket started
     from. In a task that is the ready change before it, and the ticket's tier counts
     only its own files. So the lock must be there, be the lock that passed, name the
@@ -128,9 +81,9 @@ def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> l
     if not ticket:
         return []
     path = folder / "locks" / f"{ticket}.json"
-    lock = read(path, "tollgate-lock", signers) if path.exists() else None
+    lock = read(path)
     if lock is None:
-        return [f"ticket {ticket} has no lock that verifies, so its start cannot be checked"]
+        return [f"ticket {ticket} has no lock that can be read, so its start cannot be checked"]
     if hashlib.sha256(path.read_bytes()).hexdigest() != record.get("lock_sha256"):
         return [f"ticket {ticket} was locked again after its pass record; it must pass again"]
     if "base_commit" not in record:
@@ -148,27 +101,22 @@ def check_start(root, folder: Path, record: dict, signers: list, onto: str) -> l
 def check_commit(root, commit: str, onto: str = f"refs/heads/{MAIN}") -> list:
     """The problems that stop commit from reaching main, merged onto the commit onto.
     None means it may."""
-    signers = keys_on_main(root, "signers")
-    if not signers:
-        return [f"{MAIN} has no signers in {SETTINGS}. Run /tollgate:init."]
     folder = state_dir(project_root(root))
-    record = read(folder / "passes" / f"{commit}.json", "tollgate-pass", signers)
+    record = read(folder / "passes" / f"{commit}.json")
     if not record or record.get("commit") != commit:
-        # A change made by hand has no ticket: an owner's approval vouches for it.
-        owners = keys_on_main(root, "owners")
-        approval = read(folder / "approvals" / f"{commit}.json", "tollgate-approval", owners)
+        # A change made by hand has no ticket: your approval vouches for it.
+        approval = read(folder / "approvals" / f"{commit}.json")
         if approval and approval.get("commit") == commit and not approval.get("ticket"):
             return []
-        return [(f"commit {commit[:12]} has no verified pass record, and no approval of a "
+        return [(f"commit {commit[:12]} has no pass record, and no approval of a "
                  "change made by hand. Approve it with /tollgate:merge.")]
     tier = record.get("tier", 4)
     if not isinstance(tier, int) or tier >= 3:
-        owners = keys_on_main(root, "owners")
-        approval = read(folder / "approvals" / f"{commit}.json", "tollgate-approval", owners)
+        approval = read(folder / "approvals" / f"{commit}.json")
         if not approval or approval.get("commit") != commit:
-            return [(f"commit {commit[:12]} is tier {tier} and has no verified approval. "
+            return [(f"commit {commit[:12]} is tier {tier} and has no approval. "
                      "Approve it with /tollgate:merge.")]
-    return check_start(root, folder, record, signers, onto)
+    return check_start(root, folder, record, onto)
 
 
 def merge_heads(root) -> list:

@@ -2,13 +2,12 @@
 
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from gate import freeze, sign, state
+from gate import freeze, state
 from gate import manifest as mf
 from gate import plan as pl
 from gate.store import Store, StoreError
@@ -30,7 +29,7 @@ class T(unittest.TestCase):
 
 
 class StoreCase(unittest.TestCase):
-    """A project on main with signers, a state folder, and a key, all temporary."""
+    """A project on main with a state folder, all temporary."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -40,11 +39,6 @@ class StoreCase(unittest.TestCase):
             os.environ[name] = str(Path(self.tmp.name, folder))
             self.addCleanup(lambda n=name, o=old: os.environ.pop(n) if o is None
                             else os.environ.__setitem__(n, o))
-        self.pub = sign.ensure_key()
-        self.owner = Path(self.tmp.name, "owner")
-        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(self.owner)],
-                       check=True)
-        self.owner_pub = Path(f"{self.owner}.pub").read_text().strip()
         self.repo = Repo()
         self.addCleanup(self.repo.close)
         r = self.repo
@@ -52,15 +46,14 @@ class StoreCase(unittest.TestCase):
         r.write("run_tests.py", RUN_TESTS)
         r.write("tests/__init__.py", "")
         r.write(".gitignore", "report.xml\n__pycache__/\n")
-        self.write_settings([self.pub])
+        self.write_settings()
         self.main = r.commit("main")
         self.store = Store(str(r.path))
 
-    def write_settings(self, signers, **extra):
+    def write_settings(self, **extra):
         self.repo.write(".tollgate/settings.json", json.dumps({
             "checks": {"tests": {"run": f"{sys.executable} run_tests.py", "report": "report.xml"}},
-            "harness": ["run_tests.py"], "require_plan": False, "signers": signers,
-            "owners": extra.pop("owners", [self.owner_pub]), **extra}))
+            "harness": ["run_tests.py"], "require_plan": False, **extra}))
 
     def ticket_branch(self, tests=TESTS, ticket=TICKET):
         r = self.repo
@@ -81,32 +74,30 @@ class StoreCase(unittest.TestCase):
         return commit
 
     def pass_record(self, commit, tier=2, ticket="T-1"):
-        """A pass record, and a signed lock of the ticket from main when it has none."""
+        """A pass record, and a lock of the ticket from main when it has none."""
         base = None
         if ticket:
             path = freeze.lock_path(str(self.repo.path), ticket)
             if not path.exists():
-                sign.write(path, {"ticket": ticket, "base_commit": self.main, "commit": commit,
+                state.write_record(path, {"ticket": ticket, "base_commit": self.main, "commit": commit,
                                   "number": 1, "at": "2026-11-22T00:00:00Z",
-                                  "manifest": {"files": {}, "tests": [], "keeps_behavior": []}},
-                           "tollgate-lock")
+                                  "manifest": {"files": {}, "tests": [], "keeps_behavior": []}})
             base = json.loads(path.read_text())["base_commit"]
         return {"commit": commit, "ticket": ticket, "tier": tier, "base_commit": base,
                 "lock_sha256": freeze.lock_sha256(str(self.repo.path), ticket) if ticket else None,
                 "checks": {"tests": True}, "score": 100}
 
-    def approve(self, commit, key=None):
+    def approve(self, commit):
         path = state.path(str(self.repo.path), "approvals", f"{commit}.json")
-        sign.write(path, {"commit": commit, "ticket": "T-1", "approver": "owner",
-                          "at": "2026-11-22T00:00:00Z"}, "tollgate-approval",
-                   key=str(key or self.owner))
+        state.write_record(path, {"commit": commit, "ticket": "T-1", "approver": "owner",
+                          "at": "2026-11-22T00:00:00Z"})
 
 
 class FreezeTest(StoreCase):
-    def test_writes_a_signed_lock(self):
+    def test_writes_a_lock(self):
         commit = self.ticket_branch()
         path = Path(self.store.freeze("T-1"))
-        lock = sign.read(path, "tollgate-lock", [self.pub])
+        lock = state.read_record(path)
         self.assertEqual((lock["commit"], lock["base_commit"], lock["number"]),
                          (commit, self.main, 1))
         self.assertEqual(lock["manifest"]["tests"],
@@ -125,7 +116,7 @@ class FreezeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "no pass record"):
             self.store.freeze("T-1", start=start)
         self.store.record_pass(start, self.pass_record(start, ticket=""))
-        lock = sign.read(Path(self.store.freeze("T-1", start=start)), "tollgate-lock", [self.pub])
+        lock = state.read_record(Path(self.store.freeze("T-1", start=start)))
         self.assertEqual(lock["base_commit"], start)
 
     def test_refuses_a_test_that_passes_before_the_build(self):
@@ -146,7 +137,7 @@ class FreezeTest(StoreCase):
     def test_a_second_lock_replaces_the_first_and_a_third_is_refused(self):
         self.ticket_branch()
         first = Path(self.store.freeze("T-1")).read_bytes()
-        second = sign.read(Path(self.store.freeze("T-1")), "tollgate-lock", [self.pub])
+        second = state.read_record(Path(self.store.freeze("T-1")))
         self.assertEqual(second["number"], 2)
         self.assertEqual(freeze.replaced_path(str(self.repo.path), "T-1").read_bytes(), first)
         with self.assertRaisesRegex(StoreError, "already has 2 freezes"):
@@ -165,14 +156,6 @@ class FreezeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "differs from the approved ticket"):
             self.store.freeze("T-1")
 
-    def test_refuses_when_this_key_is_not_a_signer(self):
-        self.write_settings([self.owner_pub])
-        self.repo.commit("signers")
-        self.ticket_branch()
-        with self.assertRaisesRegex(StoreError, "not in signers"):
-            self.store.freeze("T-1")
-
-
 class LockPlanTest(StoreCase):
     def plan_branch(self, with_ticket=True):
         r = self.repo
@@ -186,7 +169,7 @@ class LockPlanTest(StoreCase):
 
     def test_signs_the_plan_and_its_tickets(self):
         commit = self.plan_branch()
-        found = sign.read(Path(self.store.lock_plan("retries")), "tollgate-plan", [self.pub])
+        found = state.read_record(Path(self.store.lock_plan("retries")))
         self.assertEqual(found["commit"], commit)
         self.assertEqual(sorted(found["files"]), sorted([mf.ticket_path("T-1"), pl.plan_path("retries")]))
         self.assertEqual(self.repo.git("tag", "--list"), "")
@@ -221,7 +204,7 @@ class LockPlanTest(StoreCase):
         self.plan_branch()
         first = Path(self.store.lock_plan("retries")).read_bytes()
         commit = self.amend()
-        found = sign.read(Path(self.store.lock_plan("retries")), "tollgate-plan", [self.pub])
+        found = state.read_record(Path(self.store.lock_plan("retries")))
         self.assertEqual((found["commit"], found["version"]), (commit, 2))
         self.assertIn(mf.ticket_path("T-2"), found["files"])
         kept = state.path(str(self.repo.path), "plans", "replaced", "retries.1.json")
@@ -265,21 +248,15 @@ class PassTest(StoreCase):
         self.store.record_pass(commit, self.pass_record(commit))
         self.assertEqual(self.store.passed(commit)["score"], 100)
 
-    def test_a_changed_or_missing_pass_is_none(self):
+    def test_a_missing_pass_is_none(self):
         commit = self.change()
         self.assertIsNone(self.store.passed(commit))
+
+    def test_a_pass_record_with_other_keys_is_none(self):
+        commit = self.change()
         self.store.record_pass(commit, self.pass_record(commit))
         path = state.path(str(self.repo.path), "passes", f"{commit}.json")
-        path.write_bytes(path.read_bytes().replace(b'"tier": 2', b'"tier": 1'))
-        self.assertIsNone(self.store.passed(commit))
-
-    def test_a_signer_only_in_the_change_does_not_count(self):
-        # The change lists its own key in signers; verification reads main.
-        commit = self.change(".tollgate/settings.json", json.dumps({"signers": [self.pub]}))
-        self.write_settings([self.owner_pub])
-        self.repo.commit("signers")
-        sign.write(state.path(str(self.repo.path), "passes", f"{commit}.json"),
-                   dict(self.pass_record(commit), at="x"), "tollgate-pass")
+        state.write_record(path, {"commit": commit, "tier": 1})
         self.assertIsNone(self.store.passed(commit))
 
     def test_record_pass_refuses_a_bad_record(self):
@@ -291,26 +268,10 @@ class PassTest(StoreCase):
 
 
 class ApprovalTest(StoreCase):
-    def test_an_owner_approval_verifies(self):
+    def test_an_approval_reads_back(self):
         commit = self.change()
         self.approve(commit)
         self.assertEqual([a["approver"] for a in self.store.approvals(commit)], ["owner"])
-
-    def test_an_approval_from_another_key_does_not(self):
-        commit = self.change()
-        other = Path(self.tmp.name, "other")
-        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)],
-                       check=True)
-        self.approve(commit, key=other)
-        self.assertEqual(self.store.approvals(commit), [])
-
-
-    def test_the_machine_key_cannot_approve(self):
-        # The driver can use the machine key, so an approval must come from an owner key.
-        commit = self.change()
-        self.approve(commit, key=sign.machine_key())
-        self.assertEqual(self.store.approvals(commit), [])
-
 
 class ReadyTest(StoreCase):
     def test_marks_a_passed_branch(self):
@@ -318,7 +279,7 @@ class ReadyTest(StoreCase):
         self.store.record_pass(commit, self.pass_record(commit))
         self.store.ready("tg/T-1-build", "T-1")
         path = state.path(str(self.repo.path), "passes", "ready", "T-1.json")
-        self.assertEqual(sign.read(path, "tollgate-pass", [self.pub])["commit"], commit)
+        self.assertEqual(state.read_record(path)["commit"], commit)
 
     def test_refuses_a_branch_with_no_pass(self):
         self.change()
@@ -354,10 +315,9 @@ class MergeTest(StoreCase):
         r.write("b.py", "y = 2\n")
         second = r.commit("feat(T-2): b")
         r.git("checkout", "-q", "main")
-        sign.write(freeze.lock_path(str(r.path), "T-2"),
-                   {"ticket": "T-2", "base_commit": first, "commit": second, "number": 1,
+        state.write_record(freeze.lock_path(str(r.path), "T-2"), {"ticket": "T-2", "base_commit": first, "commit": second, "number": 1,
                     "manifest": {"files": {}, "tests": [], "keeps_behavior": []},
-                    "at": "2026-11-22T00:00:00Z"}, "tollgate-lock")
+                    "at": "2026-11-22T00:00:00Z"})
         self.store.record_pass(second, self.pass_record(second, tier=1, ticket="T-2"))
         self.store.record_pass(first, self.pass_record(first, tier=3))
         with self.assertRaisesRegex(StoreError, "is not on main"):
@@ -382,20 +342,19 @@ class MergeTest(StoreCase):
         record = self.pass_record(commit)
         record.pop("base_commit")
         record["at"] = "2026-11-01T00:00:00Z"
-        sign.write(state.path(str(self.repo.path), "passes", f"{commit}.json"), record,
-                   "tollgate-pass")
+        state.write_record(state.path(str(self.repo.path), "passes", f"{commit}.json"), record)
         with self.assertRaisesRegex(StoreError, "older Tollgate.*pass the gate again"):
             self.store.merge(commit)
 
     def test_refuses_with_no_pass(self):
         commit = self.change()
-        with self.assertRaisesRegex(StoreError, "no verified pass record"):
+        with self.assertRaisesRegex(StoreError, "no pass record"):
             self.store.merge(commit)
 
     def test_tier_3_needs_an_approval(self):
         commit = self.change()
         self.store.record_pass(commit, self.pass_record(commit, tier=3))
-        with self.assertRaisesRegex(StoreError, "needs your signed approval"):
+        with self.assertRaisesRegex(StoreError, "needs your approval"):
             self.store.merge(commit)
         self.approve(commit)
         self.assertTrue(self.store.merge(commit))
@@ -404,9 +363,8 @@ class MergeTest(StoreCase):
         commit = self.change()
         with self.assertRaisesRegex(StoreError, "no approval of a change made by hand"):
             self.store.merge(commit)
-        sign.write(state.path(str(self.repo.path), "approvals", f"{commit}.json"),
-                   {"commit": commit, "ticket": "", "approver": "owner",
-                    "at": "2026-11-22T00:00:00Z"}, "tollgate-approval", key=str(self.owner))
+        state.write_record(state.path(str(self.repo.path), "approvals", f"{commit}.json"), {"commit": commit, "ticket": "", "approver": "owner",
+                    "at": "2026-11-22T00:00:00Z"})
         self.assertTrue(self.store.merge(commit))
 
     def test_refuses_a_pass_for_an_old_lock(self):

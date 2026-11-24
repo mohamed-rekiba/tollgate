@@ -5,8 +5,8 @@ class. Every method names one step. The project is a git repository on your
 machine: the store reads its `main` branch and the branches `tg/<ticket>` and
 `tg-plan/<task>`.
 
-Every record that the store trusts is signed. It verifies a record with the
-`signers` from the settings on main, never from the change.
+The records of the store (locks, plans, passes, approvals) are plain files in the
+state folder, which no role may write.
 
 UNFINISHED: `freeze` runs the tests on this machine, in a temporary clone. Running
 them in the builder's isolation is the driver stream's work.
@@ -19,7 +19,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from gate import checks, plantag, prepare, sign, state, tickets
+from gate import checks, plantag, prepare, state, tickets
 from gate import freeze as fz
 from gate import manifest as mf
 from gate import plan as pl
@@ -59,27 +59,12 @@ class Store:
         except st.SettingsError as err:
             raise StoreError(f"the settings on {MAIN} cannot be read: {err}") from None
 
-    def _signers(self) -> list:
-        return self._settings()["signers"]
-
-    def _check_key(self) -> None:
-        """Refuse when main does not list this machine's key, since nothing could verify
-        a record it signs."""
-        key = sign.ensure_key()
-        if key.split()[:2] not in [s.split()[:2] for s in self._signers()]:
-            raise StoreError(f"this machine's key is not in signers on {MAIN}: {key}")
-
-    def _sign(self, path: Path, record: dict, namespace: str) -> None:
-        self._check_key()
-        sign.write(path, record, namespace)
-
-    def _read(self, path: Path, namespace: str, keys: set, commit: str,
-              signers: list | None = None) -> dict | None:
-        """The verified record at path, or None when it is missing, does not verify,
-        has other keys, or names another commit."""
+    def _read(self, path: Path, keys: set, commit: str) -> dict | None:
+        """The record at path, or None when it is missing, has other keys, or names
+        another commit."""
         try:
-            found = sign.read(path, namespace, self._signers() if signers is None else signers)
-        except sign.SignError:
+            found = state.read_record(path)
+        except state.RecordError:
             return None
         if set(found) != keys or found.get("commit") != commit:
             return None
@@ -95,13 +80,12 @@ class Store:
 
     def freeze(self, ticket: str, start: str | None = None) -> str:
         """Run the ticket's tests in a clean copy with main's harness; none may pass.
-        Write and sign locks/<ticket>.json. Return the lock's path.
+        Write locks/<ticket>.json. Return the lock's path.
 
         start is the commit the ticket started from, when not main: in a task that
         holds its merges, a ticket starts from the ready change before it. It must
-        have a verified pass record and be in the ticket's history; the lock records
+        have a pass record and be in the ticket's history; the lock records
         it as the base, so the gate counts only this ticket's own change."""
-        self._check_key()
         try:
             fz.check_id(ticket)
             number = fz.next_number(self.project, ticket)
@@ -126,17 +110,15 @@ class Store:
                 # UNFINISHED: the tests run here, not in the builder's isolation.
                 results = checks.run(settings, d, ["tests"])
                 lock = fz.record(d, ticket, commit, started, settings, results.tests, number)
-        except (mf.FreezeError, pl.PlanError, st.SettingsError, sign.SignError, GitError,
+        except (mf.FreezeError, pl.PlanError, st.SettingsError, GitError,
                 ValueError) as err:
             raise StoreError(f"the ticket cannot be frozen: {err}") from None
         lock["at"] = _now()
-        self._check_key()
         path = fz.lock_path(self.project, ticket)
         if number > 1:
             old = fz.replaced_path(self.project, ticket)
             path.replace(old)
-            Path(f"{path}.sig").replace(f"{old}.sig")
-        self._sign(path, lock, fz.NAMESPACE)
+        state.write_record(path, lock)
         return str(path)
 
     def _start(self, start: str, commit: str) -> str:
@@ -153,9 +135,9 @@ class Store:
         return full
 
     def _older_record(self, full: str) -> bool:
-        """True when the commit has a verified pass record of an older Tollgate: one
+        """True when the commit has a pass record of an older Tollgate: one
         with every key but the start."""
-        found = self._read(state.path(self.project, "passes", f"{full}.json"), "tollgate-pass",
+        found = self._read(state.path(self.project, "passes", f"{full}.json"),
                            PASS_KEYS - {"base_commit"}, full)
         return bool(found and found.get("ticket"))
 
@@ -169,9 +151,9 @@ class Store:
         if not path.exists():
             raise StoreError(f"ticket {ticket} has no lock, so its start cannot be checked")
         try:
-            lock = sign.read(path, fz.NAMESPACE, self._signers())
-        except sign.SignError as err:
-            raise StoreError(f"the lock of {ticket} does not verify: {err}") from None
+            lock = state.read_record(path)
+        except state.RecordError as err:
+            raise StoreError(f"the lock of {ticket} cannot be read: {err}") from None
         start = found.get("base_commit")
         if not start or lock.get("base_commit") != start:
             raise StoreError(f"the pass record of {ticket} names no start, or not its lock's "
@@ -193,8 +175,7 @@ class Store:
         source, approved = None, None
         if plan_id and pl.ID.match(plan_id) and state.path(self.project, "plans",
                                                           f"{plan_id}.json").exists():
-            locked = sign.read(state.path(self.project, "plans", f"{plan_id}.json"),
-                               "tollgate-plan", self._signers())
+            locked = state.read_record(state.path(self.project, "plans", f"{plan_id}.json"))
             if path in locked["files"]:
                 source, approved = locked["commit"], locked["files"][path]
         if approved is None:
@@ -206,7 +187,7 @@ class Store:
         return (source, {"files": {path: approved}}) if source else (None, None)
 
     def lock_plan(self, task: str) -> str:
-        """Sign the approved plan of a task into plans/<task>.json. Return its path.
+        """Lock the approved plan of a task into plans/<task>.json. Return its path.
 
         A plan already locked may get a new version, from a new commit: the plan of
         the fix round after the review of the whole task. The new version must keep every
@@ -221,9 +202,9 @@ class Store:
         old = None
         if path.exists():
             try:
-                old = sign.read(path, "tollgate-plan", self._signers())
-            except sign.SignError as err:
-                raise StoreError(f"the plan lock of task {task} does not verify: {err}") from None
+                old = state.read_record(path)
+            except state.RecordError as err:
+                raise StoreError(f"the plan lock of task {task} cannot be read: {err}") from None
             if old["commit"] == commit:
                 raise StoreError(f"the plan of task {task} is already locked at this commit")
         try:
@@ -242,9 +223,8 @@ class Store:
             kept = state.path(self.project, "plans", "replaced", f"{task}.{old.get('version', 1)}.json")
             kept.parent.mkdir(parents=True, exist_ok=True)
             path.replace(kept)
-            Path(f"{path}.sig").replace(f"{kept}.sig")
         found["at"] = _now()
-        self._sign(path, found, "tollgate-plan")
+        state.write_record(path, found)
         return str(path)
 
     # Questions for you.
@@ -326,7 +306,7 @@ class Store:
 
     def ready(self, branch: str, ticket: str) -> None:
         """Mark a branch as a ready change: it passed the gate and waits to merge.
-        Refuse when the branch's last commit has no verified pass record for the ticket."""
+        Refuse when the branch's last commit has no pass record for the ticket."""
         try:
             path = self._ready_path(ticket)
         except mf.FreezeError as err:
@@ -337,11 +317,11 @@ class Store:
         found = self.passed(commit)
         if not found or found["ticket"] != ticket:
             raise StoreError(f"{branch} at {commit[:12]} has no pass record for {ticket}")
-        self._sign(path, {"branch": branch, "ticket": ticket, "commit": commit, "at": _now()},
-                   "tollgate-pass")
+        state.write_record(path, {"branch": branch, "ticket": ticket, "commit": commit,
+                                  "at": _now()})
 
     def record_pass(self, commit: str, record: dict) -> None:
-        """Write and sign passes/<commit>.json."""
+        """Write passes/<commit>.json."""
         self._commit_name(commit)
         record = dict(record)
         record.setdefault("at", _now())
@@ -351,20 +331,19 @@ class Store:
             raise StoreError(f"the record names {record['commit']}, not {commit}")
         if record["tier"] not in (1, 2, 3, 4):
             raise StoreError(f"not a tier: {record['tier']!r}")
-        self._sign(state.path(self.project, "passes", f"{commit}.json"), record, "tollgate-pass")
+        state.write_record(state.path(self.project, "passes", f"{commit}.json"), record)
 
     def passed(self, commit: str) -> dict | None:
-        """The verified pass record of a commit, or None."""
+        """The pass record of a commit, or None."""
         self._commit_name(commit)
         return self._read(state.path(self.project, "passes", f"{commit}.json"),
-                          "tollgate-pass", PASS_KEYS, commit)
+                          PASS_KEYS, commit)
 
     def approvals(self, commit: str) -> list:
-        """The verified approvals of a commit."""
+        """The approvals of a commit."""
         self._commit_name(commit)
         found = self._read(state.path(self.project, "approvals", f"{commit}.json"),
-                           "tollgate-approval", APPROVAL_KEYS, commit,
-                           self._settings()["owners"])
+                           APPROVAL_KEYS, commit)
         return [found] if found else []
 
     @staticmethod
@@ -388,7 +367,7 @@ class Store:
 
     def merge(self, commit: str) -> str:
         """Merge a ready change into main with a merge commit (--no-ff). Refuse without
-        a valid pass record, and for tier 3 and 4 without an approval. Return the merge commit."""
+        a pass record, and for tier 3 and 4 without an approval. Return the merge commit."""
         full = commit_of(self.project, commit or "")
         if not full:
             raise StoreError(f"the project has no commit {commit!r}")
@@ -397,16 +376,16 @@ class Store:
             raise StoreError(f"the pass record of {full[:12]} was made by an older Tollgate, "
                              "with no start; the change must pass the gate again")
         if not found:
-            # A change made by hand has no ticket, so the gate cannot pass it. An owner
-            # vouches for it with a signed approval instead. An AI ticket always needs a pass.
+            # A change made by hand has no ticket, so the gate cannot pass it. You
+            # vouch for it with an approval instead. An AI ticket always needs a pass.
             mine = [a for a in self.approvals(full) if not a["ticket"]]
             if not mine:
-                raise StoreError(f"{full[:12]} has no verified pass record, and no approval "
+                raise StoreError(f"{full[:12]} has no pass record, and no approval "
                                  "of a change made by hand")
             found = {"ticket": "", "tier": 4, "lock_sha256": ""}
         tier = found["tier"]
         if tier in (3, 4) and not any(a["ticket"] == found["ticket"] for a in self.approvals(full)):
-            raise StoreError(f"{full[:12]} is tier {tier}, so it needs your signed approval")
+            raise StoreError(f"{full[:12]} is tier {tier}, so it needs your approval")
         if found["ticket"] and found["lock_sha256"] != fz.lock_sha256(self.project, found["ticket"]):
             raise StoreError(f"the pass record of {full[:12]} is not for the current lock of "
                              f"{found['ticket']}")
@@ -432,5 +411,4 @@ class Store:
         for path in state.path(self.project, "passes", "ready").glob("*.json"):
             if json.loads(path.read_text()).get("commit") == full:
                 path.unlink()
-                Path(f"{path}.sig").unlink(missing_ok=True)
         return git(folder, "rev-parse", "HEAD").strip()

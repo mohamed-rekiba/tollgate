@@ -9,7 +9,7 @@ calls no outside service. The steps:
    and the store freezes them: it writes and signs the lock.
 3. Each try starts from the best try so far. The builder builds, the checks run,
    and the gate judges. A reviewer scores the checklist items that have no test.
-4. A try that passes gets a signed pass record. The driver fetches it into the
+4. A try that passes gets a pass record. The driver fetches it into the
    project and marks it as a ready change. With auto_merge on, the store merges
    tier 1 and 2. You merge tier 3 and 4.
 5. Before each try, driver/stop.py says go on or stop. A stop goes to the advisor.
@@ -284,7 +284,7 @@ class Driver:
         self.store = store or Store(self.project)
         self.gate = gate_api or gatelib
         self.review = review_api or reviewlib
-        self.base = BASE         # main: the settings, the harness, and the signers come from here
+        self.base = BASE         # main: the settings and the harness come from here
         self.start = base or BASE
         self.hold = hold
         self.branch = f"tg/{ticket_id}"
@@ -305,8 +305,8 @@ class Driver:
                                         self.ticket.plan))
 
     def lock(self) -> dict | None:
-        """The ticket's lock as the store wrote it. The gate verifies its signature;
-        the driver reads it only to put back the locked files and to score."""
+        """The ticket's lock as the store wrote it. The driver reads it only to put back
+        the locked files and to score."""
         import json
         path = state.path(self.project, "locks", f"{self.ticket_id}.json")
         return json.loads(path.read_text()) if path.exists() else None

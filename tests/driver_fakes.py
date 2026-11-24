@@ -1,8 +1,7 @@
 """Fakes for the driver's tests: a sample project on this machine, and a fake store.
 
-The fake store keeps the CONTRACT formats in the state folder and signs its
-records with the machine key, so the real gate verifies them. It runs no
-isolation of its own.
+The fake store keeps the CONTRACT formats in the state folder, so the real gate
+reads them. It runs no isolation of its own.
 """
 
 import json
@@ -14,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from gate import checks, junit, prepare, sign, state, tickets
+from gate import checks, junit, prepare, state, tickets
 from gate import gate as real_gate
 from gate import manifest as mf
 from gate import review as real_review
@@ -31,7 +30,7 @@ def sh(cwd, *args) -> str:
                           text=True).stdout.strip()
 
 
-def settings(builder="pass2", reviewer="ok", advisor=("person",), signer="", **extra):
+def settings(builder="pass2", reviewer="ok", advisor=("person",), **extra):
     py = sys.executable
     role = f"{py} {FAKE_ROLE}"
     stop = {"attempts": 3, "attempt_minutes": 1, "ticket_usd": 10, "task_usd": 60,
@@ -42,7 +41,6 @@ def settings(builder="pass2", reviewer="ok", advisor=("person",), signer="", **e
         "require_plan": False,
         "runner": "background",
         "isolation": "sandbox",
-        "signers": [signer] if signer else [],
         "ai": {"builder": f"{role} {builder}", "reviewer": f"{role} {reviewer}",
                "advisor": list(advisor)},
         "stop": stop,
@@ -83,9 +81,8 @@ class Sample:
             (p / ".tollgate/tickets/T-1/ticket.md").write_text(TICKET)
 
     def write_settings(self, **settings_args):
-        key = sign.ensure_key()
         (self.project / ".tollgate/settings.json").write_text(
-            json.dumps(settings(signer=key, **settings_args)))
+            json.dumps(settings(**settings_args)))
 
     def commit_settings(self, **settings_args):
         self.write_settings(**settings_args)
@@ -122,9 +119,8 @@ class FakeStore:
     def _settings(self):
         return st.load_from_ref(self.project, "main")
 
-    def _sign(self, path, record, namespace):
-        sign.ensure_key()
-        sign.write(path, record, namespace)
+    def _write(self, path, record):
+        state.write_record(path, record)
 
     # Locks.
 
@@ -151,10 +147,10 @@ class FakeStore:
         files, tests, keeps = built["files"], built["tests"], built["keeps_behavior"]
         path = state.path(self.project, "locks", f"{ticket}.json")
         number = json.loads(path.read_text())["number"] + 1 if path.exists() else 1
-        self._sign(path, {"ticket": ticket, "base_commit": base, "commit": commit,
+        self._write(path, {"ticket": ticket, "base_commit": base, "commit": commit,
                           "manifest": {"files": files, "tests": tests, "keeps_behavior": keeps,
                                        "items": built["items"]},
-                          "number": number, "at": "2026-11-22T00:00:00Z"}, "tollgate-lock")
+                          "number": number, "at": "2026-11-22T00:00:00Z"})
         self.freezes += 1
         return str(path)
 
@@ -163,8 +159,8 @@ class FakeStore:
         names = sh(self.project, "git", "diff", "--name-only", f"main...{commit}").split()
         files = {n: fingerprint(show_bytes(self.project, commit, n)) for n in names}
         path = state.path(self.project, "plans", f"{task}.json")
-        self._sign(path, {"task": task, "commit": commit, "files": files,
-                          "at": "2026-11-22T00:00:00Z"}, "tollgate-plan")
+        self._write(path, {"task": task, "commit": commit, "files": files,
+                           "at": "2026-11-22T00:00:00Z"})
         return str(path)
 
     # Questions.
@@ -213,13 +209,12 @@ class FakeStore:
         self.ready_marks.append((branch, ticket, commit))
 
     def record_pass(self, commit, record):
-        self._sign(state.path(self.project, "passes", f"{commit}.json"), record, "tollgate-pass")
+        self._write(state.path(self.project, "passes", f"{commit}.json"), record)
 
     def passed(self, commit):
         try:
-            return sign.read(state.path(self.project, "passes", f"{commit}.json"),
-                             "tollgate-pass", self._settings()["signers"])
-        except sign.SignError:
+            return state.read_record(state.path(self.project, "passes", f"{commit}.json"))
+        except state.RecordError:
             return None
 
     def approvals(self, commit):

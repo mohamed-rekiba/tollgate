@@ -1,18 +1,16 @@
 """Tests for the gate: each of the six checks has a case that passes and a case that fails.
 
-The lock and the plan lock are signed with gate.sign, in a state folder and a
-key folder in temporary folders.
+The lock and the plan lock are written with gate.state, in a state folder in a
+temporary folder.
 """
 
 import json
 import os
-import subprocess
 import tempfile
 import unittest
-from pathlib import Path
 from unittest import mock
 
-from gate import gate, sign, state
+from gate import gate, state
 from gate.checks import CheckResult, Results
 from gate.gitio import fingerprint, show_bytes
 from gate.manifest import ticket_path
@@ -27,7 +25,7 @@ def passing_results():
 
 
 class GateCase(unittest.TestCase):
-    """A project with settings on main, a signed lock of T-1, a signed plan, and one try."""
+    """A project with settings on main, a lock of T-1, a plan lock, and one try."""
 
     plan_required = True
 
@@ -38,12 +36,11 @@ class GateCase(unittest.TestCase):
                                            "TOLLGATE_KEYS": f"{tmp.name}/keys"})
         env.start()
         self.addCleanup(env.stop)
-        self.key = sign.ensure_key()
         self.repo = Repo()
         self.addCleanup(self.repo.close)
         self.project = str(self.repo.path)
         r = self.repo
-        r.write(".tollgate/settings.json", self.settings(signers=[self.key]))
+        r.write(".tollgate/settings.json", self.settings())
         self.base = r.commit("settings")
         r.git("checkout", "-q", "-b", "tg/T-1")
         r.write(TICKET_FILE, TICKET)
@@ -69,11 +66,11 @@ class GateCase(unittest.TestCase):
     def prints(self, commit, *paths):
         return {p: fingerprint(show_bytes(self.project, commit, p)) for p in paths}
 
-    def write_lock(self, record, key=None):
-        sign.write(state.path(self.project, "locks", "T-1.json"), record, "tollgate-lock", key)
+    def write_lock(self, record):
+        state.write_record(state.path(self.project, "locks", "T-1.json"), record)
 
-    def write_plan(self, record, namespace="tollgate-plan"):
-        sign.write(state.path(self.project, "plans", "retries.json"), record, namespace)
+    def write_plan(self, record):
+        state.write_record(state.path(self.project, "plans", "retries.json"), record)
 
     def build(self, text, path="src/retry.py"):
         self.repo.write(path, text)
@@ -88,21 +85,13 @@ class GateCase(unittest.TestCase):
 
 
 class LockTest(GateCase):
-    def test_a_signed_lock_that_matches_passes(self):
+    def test_a_lock_that_matches_passes(self):
         self.assertEqual(gate.evaluate(self.facts()), [])
 
-    def test_a_lock_signed_by_a_key_main_does_not_list_fails(self):
-        with tempfile.TemporaryDirectory() as d:
-            other = Path(d, "other")
-            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)],
-                           check=True)
-            self.write_lock(self.lock, key=str(other))
-            # The try adds the other key to its own settings: the gate reads main's.
-            self.repo.write(".tollgate/settings.json", self.settings(
-                signers=[self.key, Path(f"{other}.pub").read_text().strip()]))
-            self.repo.commit("trust my key")
-            lock = [f for f in gate.evaluate(self.facts()) if f["check"] == "lock"]
-            self.assertIn("not signed by a key in signers", lock[0]["message"])
+    def test_a_lock_that_cannot_be_read_says_so(self):
+        state.path(self.project, "locks", "T-1.json").unlink()
+        lock = [f for f in gate.evaluate(self.facts()) if f["check"] == "lock"]
+        self.assertIn("cannot be read", lock[0]["message"])
 
     def test_a_lock_whose_manifest_differs_from_its_commit_fails(self):
         self.lock["manifest"]["files"]["tests/test_t1.py"] = "sha256:" + "0" * 64
@@ -136,15 +125,15 @@ class PlanTest(GateCase):
         # A tier 2 try also needs a passed review; these tests check the plan alone.
         return super().failed(facts or self.facts(review=True))
 
-    def test_a_signed_plan_that_lists_the_ticket_passes(self):
+    def test_a_plan_that_lists_the_ticket_passes(self):
         self.assertEqual(self.failed(), [])
 
     def test_a_plan_without_the_ticket_fails(self):
         self.write_plan(dict(self.plan, files={}))
         self.assertEqual(self.failed(), ["plan"])
 
-    def test_a_plan_signed_in_another_namespace_fails(self):
-        self.write_plan(self.plan, namespace="tollgate-lock")
+    def test_a_missing_plan_lock_fails(self):
+        state.path(self.project, "plans", "retries.json").unlink()
         self.assertEqual(self.failed(), ["plan"])
 
     def test_a_ticket_changed_after_the_plan_fails(self):
@@ -181,12 +170,11 @@ class ChainTest(GateCase):
         r.write(".tollgate/tickets/T-2/ticket.md", TICKET.replace("id: T-1", "id: T-2"))
         r.write("tests/test_t2.py", "# locked tests of T-2\n")
         commit = r.commit("lock T-2")
-        sign.write(state.path(self.project, "locks", "T-2.json"),
-                   {"ticket": "T-2", "base_commit": start, "commit": commit,
+        state.write_record(state.path(self.project, "locks", "T-2.json"), {"ticket": "T-2", "base_commit": start, "commit": commit,
                     "manifest": {"files": self.prints(commit, ".tollgate/tickets/T-2/ticket.md",
                                                       "tests/test_t2.py"),
                                  "tests": [], "keeps_behavior": []},
-                    "number": 1, "at": "2026-11-22T10:00:00Z"}, "tollgate-lock")
+                    "number": 1, "at": "2026-11-22T10:00:00Z"})
         self.build("# weakened\n", "tests/test_t1.py")
         facts = gate.collect(self.project, self.project, "main", "HEAD", "T-2",
                              passing_results(), None, start=start)
@@ -210,12 +198,11 @@ class ChainTest(GateCase):
         r.write(".tollgate/tickets/T-2/ticket.md", TICKET.replace("id: T-1", "id: T-2"))
         r.write("tests/test_t1.py", t2_file)
         commit = r.commit("lock T-2")
-        sign.write(state.path(self.project, "locks", "T-2.json"),
-                   {"ticket": "T-2", "base_commit": start, "commit": commit,
+        state.write_record(state.path(self.project, "locks", "T-2.json"), {"ticket": "T-2", "base_commit": start, "commit": commit,
                     "manifest": {"files": self.prints(commit, ".tollgate/tickets/T-2/ticket.md",
                                                       "tests/test_t1.py"),
                                  "tests": [], "keeps_behavior": []},
-                    "number": 1, "at": "2026-11-22T10:00:00Z"}, "tollgate-lock")
+                    "number": 1, "at": "2026-11-22T10:00:00Z"})
         self.build("def retry():\n    return 2\n")
         facts = gate.collect(self.project, self.project, "main", "HEAD", "T-2",
                              passing_results(), None, start=start)
@@ -272,7 +259,7 @@ class ReviewTest(GateCase):
         super().setUp()
         self.repo.git("checkout", "-q", "main")
         self.repo.write(".tollgate/settings.json",
-                        self.settings(signers=[self.key], tiers={"3": ["src/auth/**"]}))
+                        self.settings(tiers={"3": ["src/auth/**"]}))
         self.repo.commit("tier 3 rule")
         self.repo.git("checkout", "-q", "tg/T-1")
         self.build("x = 1\n", "src/auth/login.py")
@@ -294,7 +281,7 @@ class Tier2ReviewTest(GateCase):
         super().setUp()
         self.repo.git("checkout", "-q", "main")
         self.repo.write(".tollgate/settings.json",
-                        self.settings(signers=[self.key], tier1={"max_files": 0, "max_lines": 0}))
+                        self.settings(tier1={"max_files": 0, "max_lines": 0}))
         self.repo.commit("every change is tier 2")
         self.repo.git("checkout", "-q", "tg/T-1")
         self.build("x = 1\n", "src/app.py")
