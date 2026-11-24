@@ -13,7 +13,7 @@ _Avoid_: user story, epic
 _Avoid_: ideation, discovery session
 
 **brief**: What a brainstorm writes: an overview, what the lenses found, the goals, the non-goals, the alternatives weighed, and the questions it could not settle, each of which becomes an assumption of the plan. `/tollgate:task --brief` takes it as the request.
-_Avoid_: spec, PRD, one-pager
+_Avoid_: PRD, one-pager
 
 **roadmap**: An ordered list of tasks, for a request too large for one plan: the base, the skeleton, then the features. It has its own checklist.
 _Avoid_: backlog, milestone plan
