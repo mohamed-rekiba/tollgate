@@ -1,4 +1,4 @@
-"""Run Tollgate's own checks of one git hook stage, side by side.
+"""Run the checks of one git hook stage, side by side: Tollgate's, and at a push, the project's.
 
     uv run --no-project python .tollgate/checks/tollgate_checks.py <stage> [file ...]
 
@@ -10,16 +10,16 @@ pre-merge-commit look the same. The checks of each stage are:
 - pre-commit: check_locked.py, and check_writing.py --staged;
 - commit-msg: check_commit_msg.py, with the message file that pre-commit passes;
 - pre-merge-commit: check_locked.py, and check_merge.py merge;
-- pre-push: check_merge.py push.
+- pre-push: check_merge.py push, and each check under `checks` in
+  .tollgate/settings.json, except the writing check, which runs at a commit.
 
 Each check runs in its own process with the Python that runs this script, and the
 checks of a stage run side by side. The setting `parallel` in
 .tollgate/settings.json says how many run at once: true, the default, for all of
 them, a whole number for that many, false for one at a time. When a check ends,
 the script prints its output, then one line: PASS or FAIL and its name. It ends
-with 1 when a check failed. The project's own checks are not here: each one is a
-pre-commit entry of its own, so the project keeps them without Tollgate. It uses
-only the standard library.
+with 1 when a check failed. A project check runs with its own command, through `sh -c`,
+from the project folder. It uses only the standard library.
 """
 
 import json
@@ -45,14 +45,31 @@ STAGES = {
 TAKES_FILES = ("commit-msg",)
 
 
-def commands(stage: str, files=()) -> list:
-    """(name, argv) for each check of the stage."""
+def project_checks(root: str) -> list:
+    """(name, argv) for each check of the project under `checks` in the settings, with its
+    own command. The writing check is one of Tollgate's own, so it is left out."""
+    try:
+        checks = json.loads(Path(root, SETTINGS).read_text()).get("checks", {})
+    except (OSError, ValueError, AttributeError):
+        return []
+    found = []
+    for name, check in sorted(checks.items()):
+        run = check.get("run", "") if isinstance(check, dict) else ""
+        if run and name != "writing" and "check_writing.py" not in run:
+            found.append((f"check: {name}", ["sh", "-c", run]))
+    return found
+
+
+def commands(stage: str, files=(), root: str = ".") -> list:
+    """(name, argv) for each check of the stage. A push also runs the project's checks."""
     found = []
     for name, (script, *args) in STAGES[stage]:
         argv = [sys.executable, str(HERE / script), *args]
         if stage in TAKES_FILES:
             argv += list(files)
         found.append((name, argv))
+    if stage == "pre-push":
+        found += project_checks(root)
     return found
 
 
@@ -91,7 +108,7 @@ def main(argv=None, root: str = ".") -> int:
     if not argv or argv[0] not in STAGES:
         print(f"tollgate_checks: name a stage: {', '.join(STAGES)}", file=sys.stderr)
         return 2
-    found = commands(argv[0], argv[1:])
+    found = commands(argv[0], argv[1:], root)
     # One check may read the input pre-commit gives the hook. Two would race for it.
     stdin = None if len(found) == 1 else subprocess.DEVNULL
     lock = threading.Lock()

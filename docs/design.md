@@ -200,7 +200,7 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 
 **Layer 1: Claude Code hooks and policies.** Each role gets a policy: a Claude Code settings file with permission rules. The rules deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. They deny `git push`, `git merge`, and the commands that skip the checks. A deny rule matches a command by its start only, so the hook checks every tool call again. The plugin runs the same hook in your own session in the project.
 
-**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and writes `.pre-commit-config.yaml`. One script, `tollgate_checks.py`, runs Tollgate's checks of a git step side by side. The config has one entry for each git step that runs it with that step, because pre-commit does not tell a hook which step runs it. Each entry runs the script with `uv run --no-project python`, so it does not depend on which `python3` comes first on the PATH. The writing check under `checks` in the settings runs the same way.
+**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and writes `.pre-commit-config.yaml`. One script, `tollgate_checks.py`, runs the checks of a git step side by side: Tollgate's, and at a push, the project's. The config has one entry for each git step that runs it with that step, because pre-commit does not tell a hook which step runs it. Each entry runs the script with `uv run --no-project python`, so it does not depend on which `python3` comes first on the PATH. The writing check under `checks` in the settings runs the same way.
 
 | Git step | Check | What it refuses |
 | --- | --- | --- |
@@ -209,11 +209,11 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 | Commit message | `check_commit_msg.py` | A subject that is not `type(scope): subject`, or a line that credits an AI |
 | Merge | `check_merge.py merge` | A merge into main with no pass record, or a tier 3 or 4 merge with no approval |
 | Push | `check_merge.py push` | A push to main with a merge that has no pass record, or a commit made on main itself |
-| Push | each check under `checks` | A push when a check of the project fails |
+| Push | each check under `checks`, except the writing check | A push when a check of the project fails. It runs with its own command, side by side with the push check. |
 
 The checks of one git step run side by side, and the script prints each check's output and a PASS or FAIL line when the check ends. The setting `parallel` sets how many run at once: `true`, the default, for all of them, a whole number for that many, or `false` for one at a time.
 
-Each check under `checks` in the settings, except the writing check, gets a pre-push entry of its own with its own command. The entry names no file of Tollgate's, so the project keeps its checks without Tollgate. pre-commit runs these entries one after another. A project that wants its checks side by side can run them from its own tool, such as `make -j`, and name that one command as its check.
+The pre-push entry of the script also runs each check under `checks` in the settings, except the writing check, with the check's own command through `sh -c`. The config has no entry of its own for them, so a push shows one Tollgate hook, and the style check and the tests run at the same time as the push check.
 
 A merge may change locked files when the commit it merges passed the gate. Commits from before `init` are not checked.
 

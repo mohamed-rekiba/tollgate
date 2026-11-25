@@ -1,4 +1,4 @@
-"""Tests of setup/tollgate_checks.py: Tollgate's own checks of one stage, side by side."""
+"""Tests of setup/tollgate_checks.py: the checks of one stage, side by side."""
 
 import io
 import json
@@ -89,6 +89,56 @@ class TollgateChecksTest(unittest.TestCase):
                                    ["commit-msg", str(message)])
         self.assertEqual(code, 0, out)
         self.assertIn("got fix(x): a subject", out)
+
+    def settings(self, **checks):
+        Path(self.root, ".tollgate/settings.json").write_text(json.dumps({"checks": checks}))
+
+    def test_a_push_also_runs_each_check_of_the_project_but_not_the_writing_check(self):
+        self.settings(tests={"run": "pytest -q"}, style={"run": "ruff check ."},
+                      writing={"run": "uv run python .tollgate/checks/check_writing.py"})
+        names = [name for name, _ in tc.commands("pre-push", root=str(self.root))]
+        self.assertEqual(names, ["push", "check: style", "check: tests"])
+        argvs = dict(tc.commands("pre-push", root=str(self.root)))
+        self.assertEqual(argvs["check: tests"], ["sh", "-c", "pytest -q"])
+
+    def test_no_other_stage_runs_the_checks_of_the_project(self):
+        self.settings(tests={"run": "pytest -q"})
+        for stage in ("pre-commit", "commit-msg", "pre-merge-commit"):
+            with self.subTest(stage=stage):
+                names = [n for n, _ in tc.commands(stage, root=str(self.root))]
+                self.assertFalse(any(n.startswith("check: ") for n in names), names)
+
+    def test_a_missing_or_bad_settings_file_adds_no_project_check(self):
+        self.assertEqual(tc.project_checks(str(self.root)), [])
+        Path(self.root, ".tollgate/settings.json").write_text("not json")
+        self.assertEqual(tc.project_checks(str(self.root)), [])
+        self.settings(odd="text", empty={"run": ""})
+        self.assertEqual(tc.project_checks(str(self.root)), [])
+
+    def test_the_project_checks_run_side_by_side_with_the_push_check(self):
+        self.settings(a={"run": "sleep 1"}, b={"run": "sleep 1"})
+        self.script("push.py", "time.sleep(1)")
+        start = time.monotonic()
+        with mock.patch.object(tc, "HERE", self.scripts), \
+                mock.patch.object(tc, "STAGES", {"pre-push": [("push", ["push.py"])]}), \
+                redirect_stdout(io.StringIO()) as out:
+            code = tc.main(["pre-push"], root=str(self.root))
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertLess(time.monotonic() - start, 2.0)
+        for name in ("push", "check: a", "check: b"):
+            self.assertIn(f"PASS {name}", out.getvalue())
+
+    def test_a_failing_project_check_fails_the_push_and_shows_its_output(self):
+        self.settings(tests={"run": "echo 3 tests failed; exit 1"})
+        self.script("push.py", "print('merge ok')")
+        with mock.patch.object(tc, "HERE", self.scripts), \
+                mock.patch.object(tc, "STAGES", {"pre-push": [("push", ["push.py"])]}), \
+                redirect_stdout(io.StringIO()) as out:
+            code = tc.main(["pre-push"], root=str(self.root))
+        self.assertEqual(code, 1)
+        self.assertIn("3 tests failed", out.getvalue())
+        self.assertIn("FAIL check: tests", out.getvalue())
+        self.assertIn("PASS push", out.getvalue())
 
     def test_only_the_commit_message_stage_passes_files_on(self):
         self.assertNotIn("x.py", dict(tc.commands("pre-commit", ["x.py"]))["locked"])

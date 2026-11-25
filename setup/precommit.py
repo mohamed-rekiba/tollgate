@@ -10,9 +10,9 @@ The config holds three kinds of hooks:
   that runs it with that stage, because pre-commit does not tell a hook its stage. Each
   entry runs it with uv (`uv run --no-project python`), so it does not depend on which
   python3 is first on the PATH. It needs no network and no project file.
-- The project's checks from .tollgate/settings.json, before each push: one entry for
-  each check, with the check's own command, so the project keeps its checks without
-  Tollgate.
+- The project's checks from .tollgate/settings.json, before each push: the pre-push entry
+  of the same script runs each one with its own command, side by side with the push
+  check. The config has no entry of its own for them.
 - The standard tool of each language the project uses, only when the project
   already uses that tool: a tool counts as used when its config file is there.
   Go's formatter has no config file, so every Go project gets it.
@@ -50,7 +50,7 @@ TOLLGATE_STAGES = [
     ("tollgate-commit-msg", "Tollgate: commit message", "commit-msg", True),
     ("tollgate-pre-merge-commit", "Tollgate: locked files and the gate of a merge",
      "pre-merge-commit", False),
-    ("tollgate-pre-push", "Tollgate: each commit on main passed the gate", "pre-push", False),
+    ("tollgate-pre-push", "Tollgate: the gate and the project's checks", "pre-push", False),
 ]
 
 LANGUAGES = {
@@ -143,20 +143,6 @@ def tool_hooks(root: Path) -> list:
     return hooks
 
 
-def settings_hooks(settings: dict) -> list:
-    """The project's checks in the settings, before each push: one entry for each check,
-    with its own command, so the project keeps them without Tollgate. The writing check
-    is one of Tollgate's own checks, so it is left out here."""
-    hooks = []
-    for name, check in sorted(settings.get("checks", {}).items()):
-        if name == "writing" or "check_writing.py" in check.get("run", ""):
-            continue
-        hooks.append({"id": f"check-{name}", "name": f"check: {name}",
-                      "entry": "sh -c", "args": [check["run"]], "pass_filenames": False,
-                      "always_run": True, "stages": ["pre-push"]})
-    return hooks
-
-
 def _q(value) -> str:
     # A JSON string is a YAML string in double quotes.
     return json.dumps(value)
@@ -183,7 +169,7 @@ def render(settings: dict, root: Path) -> str:
     lines = [MARK, "# Change the checks in .tollgate/settings.json, then run /tollgate:init.",
              f"default_install_hook_types: [{', '.join(HOOK_TYPES)}]",
              "default_stages: [pre-commit]", "repos:", "- repo: local", "  hooks:"]
-    for hook in ours + settings_hooks(settings) + tool_hooks(root):
+    for hook in ours + tool_hooks(root):
         lines += _hook(hook)
     return "\n".join(lines) + "\n"
 

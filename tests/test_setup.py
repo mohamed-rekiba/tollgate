@@ -343,8 +343,8 @@ class PrecommitTest(Env):
         text = Path(root, precommit.CONFIG).read_text()
         self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
                       "pre-push]", text)
-        self.assertIn("id: check-tests", text)
-        self.assertNotIn("check-writing", text)
+        self.assertNotIn("id: check-", text)
+        self.assertEqual(text.count("tollgate_checks.py pre-push"), 1)
         self.assertEqual(precommit.write(str(root)), [])
 
     def project_with_checks(self, **extra):
@@ -357,18 +357,15 @@ class PrecommitTest(Env):
              **extra}))
         return root
 
-    def test_each_project_check_is_a_plain_entry_with_its_own_command(self):
+    def test_the_project_checks_have_no_entry_of_their_own(self):
+        # The pre-push entry of tollgate_checks.py runs them, side by side with the push check.
         root = self.project_with_checks()
         precommit.write(str(root))
         text = Path(root, precommit.CONFIG).read_text()
-        for name, run in (("tests", "go test ./..."), ("lint", "golangci-lint run")):
-            block = text[text.index(f"  - id: check-{name}\n"):]
-            block = block[:block.index("always_run")]
-            self.assertIn('entry: "sh -c"', block)
-            self.assertIn(f'args: [{json.dumps(run)}]', block)
-            self.assertIn('stages: ["pre-push"]', block)
-            self.assertNotIn(".tollgate", block)
-        self.assertNotIn("check-writing", text)
+        self.assertNotIn("id: check-", text)
+        self.assertNotIn("go test", text)
+        self.assertNotIn("golangci-lint", text)
+        self.assertEqual(text.count('stages: ["pre-push"]'), 1)
         self.assertNotIn("run_checks.py", text)
 
     def test_tollgates_checks_are_one_script_with_one_entry_for_each_stage(self):
