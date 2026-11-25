@@ -61,6 +61,15 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "runner must be"):
             settings.parse('{"runner": "docker"}')
 
+    def test_parallel_is_true_by_default_and_takes_a_bool_or_a_whole_number(self):
+        self.assertIs(settings.parse("{}")["parallel"], True)
+        self.assertIs(settings.parse('{"parallel": false}')["parallel"], False)
+        self.assertEqual(settings.parse('{"parallel": 2}')["parallel"], 2)
+        for bad in ('0', '-1', '1.5', '"all"', 'null'):
+            with self.subTest(value=bad), self.assertRaisesRegex(settings.SettingsError,
+                                                                 "parallel must be"):
+                settings.parse(f'{{"parallel": {bad}}}')
+
     def test_signers_and_owners_are_not_settings(self):
         for key in ("signers", "owners"):
             with self.subTest(key=key), self.assertRaisesRegex(settings.SettingsError,

@@ -8,7 +8,8 @@ The config holds three kinds of hooks:
   on each update, so the project carries its own copy. Each is a stdlib script,
   and each hook runs it with uv (`uv run --no-project python`), so the hook does not
   depend on which python3 is first on the PATH. It needs no network and no project file.
-- The project's checks from .tollgate/settings.json, before each push.
+- The project's checks from .tollgate/settings.json, before each push. Two or more
+  checks run side by side in one hook, run_checks.py, unless `parallel` is false.
 - The standard tool of each language the project uses, only when the project
   already uses that tool: a tool counts as used when its config file is there.
   Go's formatter has no config file, so every Go project gets it.
@@ -30,7 +31,8 @@ CONFIG = ".pre-commit-config.yaml"
 CHECKS_DIR = ".tollgate/checks"
 SETTINGS = ".tollgate/settings.json"
 MARK = "# Written by Tollgate: python3 -m setup.precommit."
-SCRIPTS = ("check_locked.py", "check_writing.py", "check_commit_msg.py", "check_merge.py")
+SCRIPTS = ("check_locked.py", "check_writing.py", "check_commit_msg.py", "check_merge.py",
+           "run_checks.py")
 HOOK_TYPES = ("pre-commit", "commit-msg", "pre-merge-commit", "pre-push")
 
 RUN = "uv run --no-project python"
@@ -140,12 +142,18 @@ def tool_hooks(root: Path) -> list:
 
 
 def settings_hooks(settings: dict) -> list:
-    """One hook for each check in the settings, before each push. The writing check
-    is already a hook of its own."""
+    """The checks in the settings, before each push. The writing check is already a
+    hook of its own. pre-commit runs hooks one after another, so two or more checks
+    get one hook that runs them side by side with run_checks.py, unless the setting
+    `parallel` is false: then each check gets a hook of its own, as before."""
+    found = [(name, check) for name, check in sorted(settings.get("checks", {}).items())
+             if name != "writing" and "check_writing.py" not in check.get("run", "")]
+    if len(found) > 1 and settings.get("parallel", True) is not False:
+        return [{"id": "tollgate-checks", "name": "Tollgate checks, side by side",
+                 "entry": f"{RUN} .tollgate/checks/run_checks.py", "pass_filenames": False,
+                 "always_run": True, "stages": ["pre-push"]}]
     hooks = []
-    for name, check in sorted(settings.get("checks", {}).items()):
-        if name == "writing" or "check_writing.py" in check.get("run", ""):
-            continue
+    for name, check in found:
         hooks.append({"id": f"tollgate-check-{name}", "name": f"Tollgate check: {name}",
                       "entry": "sh -c", "args": [check["run"]], "pass_filenames": False,
                       "always_run": True, "stages": ["pre-push"]})

@@ -77,6 +77,9 @@ DEFAULTS = {
     "checkpoints": ["plan", "task"],
     # The time limit of a check that sets no "minutes" of its own.
     "check_minutes": 20,
+    # How many checks of the pre-push hook run at once: true for all of them, a whole
+    # number for that many, false for one at a time. Heavy checks may want fewer.
+    "parallel": True,
     # The base suite: one command for each of the five things a base must prove.
     "base": {"checks_run": "", "parallel_tests": "", "env_up_down": "",
              "bad_setting_stops": "", "one_log_line": ""},
@@ -128,6 +131,9 @@ def parse(text: str) -> dict:
         raise SettingsError('isolation must be "container" or "sandbox"')
     if settings["runner"] not in RUNNERS:
         raise SettingsError('runner must be "session" or "background"')
+    parallel = settings["parallel"]
+    if not (isinstance(parallel, bool) or (isinstance(parallel, int) and parallel >= 1)):
+        raise SettingsError("parallel must be true, false, or a whole number of 1 or more")
     if not isinstance(settings["spec"], list):
         raise SettingsError("spec must be a list of paths")
     for n, path in enumerate(settings["spec"], 1):
