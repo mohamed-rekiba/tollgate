@@ -1,7 +1,7 @@
 {
  "type": "scene",
  "title": "The AI's copy and the state folder",
- "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot reach the state folder. On the right, the state folder keeps the signed locks and pass records, and the store merges into the main branch. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. Tollgate merges small changes, and you merge the risky ones.",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's copy of the project: the AI writes code and runs tests there, and it cannot reach the state folder. On the right, the state folder keeps the locks and pass records, and the store merges into the main branch. A change goes in on one lane; the gate runs the locked tests, and pass or fail comes back on the other. Tollgate merges small changes, and you merge the risky ones.",
  "size": [
   1120,
   620
@@ -36,6 +36,7 @@
    "kind": "server"
   }
  ],
+ "packets": true,
  "lanes": [
   {
    "path": [
@@ -49,7 +50,8 @@
     ]
    ],
    "label": "the change",
-   "at": 0.7
+   "at": 0.7,
+   "kind": "ai"
   },
   {
    "path": [
@@ -64,7 +66,8 @@
    ],
    "label": "pass or fail",
    "at": 0.82,
-   "side": true
+   "side": true,
+   "kind": "check"
   }
  ],
  "objects": [

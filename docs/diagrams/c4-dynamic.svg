@@ -2,20 +2,28 @@
 <title id="title">Dynamic diagram for One ticket in background mode</title>
 <desc id="desc">One ticket in background mode, in order: you type the task, your session starts the driver, the driver has the store lock the tests and starts the builder in its copy, the builder works with the model, the driver runs the gate, the gate reads the lock from the store, and the store merges the ready change into your project.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-40" y="-54" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
-<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
 <rect x="-40" y="-54" width="1080" height="803" fill="#ffffff"/>
 <rect x="-40" y="-54" width="1080" height="803" fill="url(#grid)"/>
 <g class="boundary">
 <rect x="-16.0" y="222.0" width="645.4" height="307.0" rx="6" fill="none" stroke="#59636e" stroke-width="1.4" stroke-dasharray="7 5"/>
 </g>
 <path class="main" d="M229.6,56.0 L383.8,56.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M229.6,56.0 L383.8,56.0" dur="1.40s" begin="-0.37s" repeatCount="indefinite"/></circle>
 <path class="main" d="M498.6,112.0 L498.6,260.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M498.6,112.0 L498.6,260.0" dur="1.35s" begin="-1.11s" repeatCount="indefinite"/></circle>
 <path class="main" d="M498.6,363.0 L498.6,427.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M498.6,363.0 L498.6,427.0" dur="1.20s" begin="-0.65s" repeatCount="indefinite"/></circle>
 <path class="main" d="M613.4,311.5 L786.4,311.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M613.4,311.5 L786.4,311.5" dur="1.57s" begin="-1.02s" repeatCount="indefinite"/></circle>
 <path class="main" d="M901.2,260.0 L901.2,112.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M901.2,260.0 L901.2,112.0" dur="1.35s" begin="-0.64s" repeatCount="indefinite"/></circle>
 <path class="main" d="M383.8,311.5 L126.8,311.5 Q114.8,311.5 114.8,323.5 L114.8,427.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M383.8,311.5 L126.8,311.5 Q114.8,311.5 114.8,323.5 L114.8,427.0" dur="3.50s" begin="-0.57s" repeatCount="indefinite"/></circle>
 <path class="main" d="M229.6,470.0 L383.8,470.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M229.6,470.0 L383.8,470.0" dur="1.40s" begin="-0.60s" repeatCount="indefinite"/></circle>
 <path class="main" d="M498.6,513.0 L498.6,623.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M498.6,513.0 L498.6,623.0" dur="1.20s" begin="-0.75s" repeatCount="indefinite"/></circle>
 <g class="boundary-label">
 <rect x="-10.0" y="226.0" width="188.6" height="19" fill="#ffffff"/>
 <text x="-4.0" y="240.0" font-size="13" font-weight="700" fill="#1f2328">Tollgate</text>

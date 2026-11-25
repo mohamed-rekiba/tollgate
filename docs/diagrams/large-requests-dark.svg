@@ -2,11 +2,13 @@
 <title id="title">A large request in three parts</title>
 <desc id="desc">First the base: the project can be built, tested, and run. Then the skeleton: the shared rules, and one thin path that works from end to end. Then the features, one at a time, each proven from end to end.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-24" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
-<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
 <rect x="-24" y="-24" width="684" height="151" fill="#0d1117"/>
 <rect x="-24" y="-24" width="684" height="151" fill="url(#grid)"/>
 <path class="main" d="M180.0,51.5 L228.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M180.0,51.5 L228.0,51.5" dur="1.20s" begin="-0.37s" repeatCount="indefinite"/></circle>
 <path class="main" d="M408.0,51.5 L456.0,51.5" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M408.0,51.5 L456.0,51.5" dur="1.20s" begin="-1.11s" repeatCount="indefinite"/></circle>
 <g class="step">
 <rect x="0.0" y="0.0" width="180.0" height="103.0" rx="4" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
 <path d="M9.0,-4.0 H-4.0 V9.0" fill="none" stroke="#3fb950" stroke-width="1.2"/>

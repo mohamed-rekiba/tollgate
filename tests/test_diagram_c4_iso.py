@@ -113,10 +113,14 @@ class IsometricC4Test(unittest.TestCase):
         for spec in (DYNAMIC, json.loads((SRC / "c4-dynamic.json").read_text())):
             svg = draw(iso(spec), "light")
             root = ET.fromstring(svg)
-            motions = root.findall(f".//{NS}animateMotion")
+            # The small dots of "packets" are not the ticket: the ticket is the one dot
+            # that tells the order of the steps.
+            groups = [g for g in root.iter(f"{NS}g") if g.get("class") == "ticket"]
+            self.assertEqual(len(groups), 1, "one ticket")
+            group = groups[0]
+            motions = group.findall(f".//{NS}animateMotion")
             self.assertEqual(len(motions), 1, "one dot")
             nums = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", motions[0].get("path"))]
-            group = next(g for g in root.iter(f"{NS}g") if g.get("class") == "ticket")
             dx, dy = numbers(group.get("transform") or "0 0")
             path = [(x + dx, y + dy) for x, y in zip(nums[::2], nums[1::2], strict=True)]
             # Each numbered label sits on its step's lane: the dot passes it, in order.

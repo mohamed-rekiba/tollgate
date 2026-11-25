@@ -3,6 +3,7 @@
  "level": "dynamic",
  "title": "One ticket in background mode",
  "desc": "One ticket in background mode, in order: you type the task, your session starts the driver, the driver has the store lock the tests and starts the builder in its copy, the builder works with the model, the driver runs the gate, the gate reads the lock from the store, and the store merges the ready change into your project.",
+ "packets": true,
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "tollgate", "name": "Tollgate", "type": "Software System"}],
  "elements": [

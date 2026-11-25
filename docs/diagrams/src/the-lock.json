@@ -1,6 +1,7 @@
 {
  "title": "The idea of Tollgate in four steps",
  "desc": "First the tests are written; they say what done means. Then they are locked: your machine writes a record of them in the state folder, where the AI cannot write. The AI builds, and can try again, but the tests stay the same. The tests and fresh reviewers check each try, never the AI: 70% or more passes.",
+ "packets": true,
  "nodes": [
   {
    "id": "a",

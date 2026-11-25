@@ -77,12 +77,13 @@ from diagram.flow import (
     MARGIN,
     MIN_W,
     MONO,
-    MOTION,
     PAD_X,
     PAD_Y,
     SUB,
     THEMES,
     TITLE,
+    motion,
+    packet,
     rounded,
     text_width,
 )
@@ -584,6 +585,8 @@ def draw(spec, theme):
                      f'stroke="{color}" stroke-width="1.6" '
                      f'stroke-linecap="round" stroke-linejoin="round" '
                      f'marker-end="url(#arrow-{tone or "plain"})"/>')
+        if spec.get("packets"):
+            edges.append(packet(rounded(pts), pts, color, t["page"], i))
         text = label_of(tr)
         if text:
             w, h = label_size(text)
@@ -625,7 +628,7 @@ def draw(spec, theme):
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
         f'<defs>{"".join(markers)}{grid_}</defs>',
-        f"<style>{MOTION}</style>",
+        f"<style>{motion(spec.get('packets'))}</style>",
         # A full square: no corner is see-through, whatever the page behind it.
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="url(#grid)"/>',

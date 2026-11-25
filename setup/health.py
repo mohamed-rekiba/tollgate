@@ -51,7 +51,7 @@ def warnings(project: str = ".", which=shutil.which, plugin: Path = PLUGIN) -> l
         hook = folder / kind
         if not hook.exists() or "pre-commit" not in hook.read_text(errors="replace"):
             found.append(f"the git hook {kind} is not installed. {FIX}")
-    for name in precommit.SCRIPTS:
+    for name in () if precommit.is_tollgate(root) else precommit.SCRIPTS:
         copy = root / precommit.CHECKS_DIR / name
         if not copy.exists():
             found.append(f"{precommit.CHECKS_DIR}/{name} is missing. {FIX}")

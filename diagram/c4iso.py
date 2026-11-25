@@ -535,7 +535,10 @@ def to_scene(spec):
             best = (layout.misses, out)
         if not layout.misses:
             break
-    return best[1]
+    out = best[1]
+    if spec.get("packets"):
+        out["packets"] = True
+    return out
 
 
 def draw(spec, theme):

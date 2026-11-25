@@ -3,6 +3,7 @@
  "level": "component",
  "title": "The driver",
  "desc": "Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the stop rules hand the stop to the part that asks the advisor, who decides.",
+ "packets": true,
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "driver", "name": "The driver", "type": "Container: Python"}],
  "elements": [

@@ -1,6 +1,7 @@
 {
  "title": "A large request in three parts",
  "desc": "First the base: the project can be built, tested, and run. Then the skeleton: the shared rules, and one thin path that works from end to end. Then the features, one at a time, each proven from end to end.",
+ "packets": true,
  "nodes": [
   {
    "id": "a",

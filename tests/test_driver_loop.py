@@ -476,6 +476,30 @@ class TaskTest(LoopCase):
         plan = sh(s.project, "git", "show", "tg-plan/demo:.tollgate/plans/demo.md")
         self.assertIn("create README.md", plan)
 
+    def test_a_project_that_runs_its_writing_check_from_setup_needs_the_readme_too(self):
+        # Tollgate's own project holds the check as source in setup/, and has no copy.
+        s, task = self.task()
+        from tests.driver_fakes import sh
+        Path(s.project, "setup").mkdir(exist_ok=True)
+        for name in ("check_writing.py", "tollgate_checks.py"):
+            Path(s.project, "setup", name).write_text("")
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "chore(tollgate): the checks run from setup")
+        self.assertEqual(task.run(), 0)
+        invalid = [e for e in s.log("task-demo") if e["event"] == "plan_invalid"]
+        self.assertEqual(len(invalid), 1)
+        self.assertIn("README.md", invalid[0]["problems"][0])
+
+    def test_a_setup_folder_with_a_writing_check_alone_is_not_tollgates_own_project(self):
+        s, task = self.task()
+        from tests.driver_fakes import sh
+        Path(s.project, "setup").mkdir(exist_ok=True)
+        Path(s.project, "setup", "check_writing.py").write_text("")
+        sh(s.project, "git", "add", "-A")
+        sh(s.project, "git", "commit", "-q", "-m", "chore(setup): a script")
+        self.assertEqual(task.run(), 0)
+        self.assertNotIn("plan_invalid", s.events("task-demo"))
+
     def test_no_writing_check_means_no_readme_is_required(self):
         s, task = self.task()
         self.assertEqual(task.run(), 0)

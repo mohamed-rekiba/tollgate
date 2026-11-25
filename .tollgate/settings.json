@@ -19,7 +19,9 @@
     "tests/fake_role.py",
     "checks/check_writing.py",
     "checks/**",
-    ".pre-commit-config.yaml"
+    ".pre-commit-config.yaml",
+    ".tollgate/checks/check_writing.py",
+    ".tollgate/checks/**"
   ],
   "tiers": {
     "3": [

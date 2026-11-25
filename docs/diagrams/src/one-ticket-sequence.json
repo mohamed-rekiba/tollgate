@@ -2,6 +2,7 @@
  "type": "sequence",
  "title": "One ticket, in order",
  "desc": "The test writer writes the tests, and the store locks them before any code exists. Then each try goes from the builder to the gate and a reviewer, until one passes or a stop rule fires: the store writes its pass record and marks it a ready change, and with auto merge on, the driver has the store merge tier 1 and 2.",
+ "packets": true,
  "names": {"server": "Your machine"},
  "participants": [
   {"id": "driver", "text": "The driver", "kind": "server", "icon": "workflow"},
