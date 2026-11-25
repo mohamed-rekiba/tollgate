@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/tollgate-ai/tollgate/compare/v0.7.0...v0.8.0) (2026-11-25)
+
+
+### Features
+
+* **docs:** make a task write what it adds into the spec docs ([#135](https://github.com/tollgate-ai/tollgate/issues/135)) ([cc1c2c9](https://github.com/tollgate-ai/tollgate/commit/cc1c2c9560530ff50446d9a58c4fbe0860ccacba))
+
 ## [0.7.0](https://github.com/tollgate-ai/tollgate/compare/v0.6.0...v0.7.0) (2026-11-24)
 
 
