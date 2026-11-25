@@ -21,6 +21,15 @@ def read_inside(root: str, file: str) -> str | None:
         return None
 
 
+def folder_exists(root: str, folder: str) -> bool:
+    """True when root/folder is a folder inside root. The root itself counts."""
+    try:
+        path = Path(root, folder).resolve()
+        return path.is_relative_to(Path(root).resolve()) and path.is_dir()
+    except (OSError, TypeError, ValueError):
+        return False
+
+
 def line_exists(root: str, file: str, line) -> bool:
     """True when root/file has a line number `line`, counted from 1."""
     text = read_inside(root, file)

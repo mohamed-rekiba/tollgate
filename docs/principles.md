@@ -20,7 +20,7 @@ Three words first. A **try** is one builder session, then one run of the gate. T
 **How Tollgate does it.**
 
 - `driver/task.py` runs the analyst before the plan. The analyst is read-only: its policy denies every edit and every command.
-- `gate/analysis.py` reads the analysis and checks each citation, `[path:line]` or `[path::name]`, against the commit it read. A fact whose citation does not exist becomes an assumption.
+- `gate/analysis.py` reads the analysis and checks each citation, `[path:line]` or `[path::name]`, against the commit it read. A fact about something the project lacks cites the folder that would hold it, `[./]` or `[docs/]`, and it is confirmed when that folder exists. A fact whose citation does not exist becomes an assumption.
 - The driver keeps the checked analysis and puts it on the plan branch with the plan. The plan writer and the plan reviewers read it.
 - `/tollgate:analyze` runs the same analysis by hand, and changes no file.
 
