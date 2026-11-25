@@ -218,7 +218,8 @@ class Task:
             self.log.add("plan_written", cost_usd=answer.cost_usd)
         problems = self.check_plan()
         if problems:
-            raise pl.PlanError("; ".join(problems))
+            raise Parked("the planner could not write a plan that passes the checks: "
+                         + "; ".join(problems))
 
     def review_plan(self, fix: str = "") -> list:
         """Up to 4 rounds. Return the findings still open, or [] after a clean round.
@@ -226,6 +227,13 @@ class Task:
         that judge need and readiness read the plan against them too."""
         open_findings = []
         for round_no in range(1, MAX_ROUNDS + 1):
+            problems = self.check_plan()
+            if problems:
+                # A plan or a ticket that breaks a format rule goes back to the planner.
+                # Session mode replays the review from its first round with the plan the
+                # copy holds now, so the fault is found here, before any lens reads it.
+                self.log.add("plan_invalid", problems=problems)
+                self.write_plan(problems)
             text = self.read_copy(pl.plan_path(self.id))
             plan = pl.parse(text)
             tickets = {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md") for t in plan.tickets}
@@ -260,6 +268,7 @@ class Task:
                 return escalated
             problems = self.check_plan()
             if problems:
+                self.log.add("plan_invalid", problems=problems)
                 self.write_plan(problems)
         return open_findings or [{"level": "major", "text": f"{MAX_ROUNDS} rounds with findings"}]
 

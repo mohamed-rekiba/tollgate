@@ -298,9 +298,9 @@ class TaskFromBriefTest(Case):
 
     def test_a_plan_that_drops_an_open_question_is_written_again(self):
         s, store = self.sample(builder="pass2 drop_questions=1", checkpoints=[])
-        with self.assertRaises(Exception) as err:
-            self.task(s, store, self.brief_text()).run()
-        self.assertIn("Should shout keep accents?", str(err.exception))
+        self.assertEqual(self.task(s, store, self.brief_text()).run(), 3)
+        waiting = [e for e in s.log("task-demo") if e["event"] == "task_waiting"]
+        self.assertIn("Should shout keep accents?", waiting[-1]["reason"])
         invalid = [e for e in s.log("task-demo") if e["event"] == "plan_invalid"]
         self.assertIn("Assumptions", invalid[0]["problems"][0])
 

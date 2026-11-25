@@ -26,7 +26,9 @@ Builder options: owntest=1 (the builder adds its own test, named for item C3), a
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file),
-drop_questions=1 (the plan leaves out the open questions of a brief).
+drop_questions=1 (the plan leaves out the open questions of a brief), bad_answer=1 (the
+answer to a plan finding revises the plan with an assumption of two sentences), bad_plan=1 (every
+plan has such an assumption), bad_ticket=1 (the first plan has a ticket with no Checklist).
 Brainstorm options: questions=<n> or always (the builder asks n questions, then states the
 idea; always asks one past the cap), idea_to=<path> (the builder adds each idea input to
 that file), brief=bad (the first brief breaks the format) or never, size=roadmap,
@@ -391,6 +393,9 @@ def main() -> int:
                 f"- {q}" for q in data["open_questions"]))
         if opts.get("ask") and not data.get("hint"):
             plan = plan.replace("## Assumptions\nnone", "## Assumptions\n- Should whisper keep accents?")
+        if opts.get("bad_plan"):
+            plan = plan.replace("## Assumptions\nnone",
+                                "## Assumptions\n- Is this the newest? Nobody looked it up.")
         if any("README.md" in problem for problem in data.get("problems", [])):
             plan = plan.replace("## Files\nmodify app.py", "## Files\nmodify app.py\ncreate README.md")
         written = [(f"{task}-1", TICKET_T1), (f"{task}-2", TICKET_T2)]
@@ -401,10 +406,20 @@ def main() -> int:
         Path(f".tollgate/plans/{task}.md").write_text(plan)
         for tid, text in written:
             Path(f".tollgate/tickets/{tid}").mkdir(parents=True, exist_ok=True)
-            Path(f".tollgate/tickets/{tid}/ticket.md").write_text(text.format(task=task))
+            body = text.format(task=task)
+            if opts.get("bad_ticket") and not data.get("problems") and tid.endswith("-1"):
+                body = body.replace("## Checklist", "## Items")   # a section the checker needs
+            Path(f".tollgate/tickets/{tid}/ticket.md").write_text(body)
         answer({"plan": f".tollgate/plans/{task}.md", "tickets": [f"{task}-1", f"{task}-2"]},
                cost)
     elif first == "# Role: builder" and data.get("mode") == "answer":
+        if opts.get("bad_answer"):
+            # The revised plan breaks a rule: an assumption of two sentences.
+            for plan_file in Path(".tollgate/plans").glob("*.md"):
+                text = plan_file.read_text().replace(
+                    "## Assumptions\nnone",
+                    "## Assumptions\n- Is this the newest? Nobody looked it up.")
+                plan_file.write_text(text)
         answer({"answers": [{"finding": i, "action": opts.get("answer", "fix"), "evidence": "x"}
                             for i, _ in enumerate(data.get("findings", []))]}, cost)
     elif first == "# Role: builder":
