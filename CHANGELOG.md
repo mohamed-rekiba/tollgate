@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/tollgate-ai/tollgate/compare/v0.9.2...v0.10.0) (2026-11-25)
+
+
+### Features
+
+* **diagram:** moving dots on every arrow, and one Tollgate hook run from setup/ ([#150](https://github.com/tollgate-ai/tollgate/issues/150)) ([088b120](https://github.com/tollgate-ai/tollgate/commit/088b1203559aace06a093d1c9783695c2ce2317c))
+
 ## [0.9.2](https://github.com/tollgate-ai/tollgate/compare/v0.9.1...v0.9.2) (2026-11-25)
 
 
