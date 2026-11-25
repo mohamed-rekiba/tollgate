@@ -42,6 +42,10 @@ CODE = ("import os, tests; "
         "print(sorted(k for k in os.environ if k in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE')))")
 
 
+PRE_COMMIT_CODE = ("import os, tests; "
+                   "print(sorted(k for k in os.environ if k.startswith('PRE_COMMIT_')))")
+
+
 class HookEnvironmentTest(unittest.TestCase):
     """git sets GIT_DIR for a hook that runs from a linked worktree."""
 
@@ -55,6 +59,17 @@ class HookEnvironmentTest(unittest.TestCase):
             [sys.executable, "-c", CODE],
             cwd=root, env=env, capture_output=True, text=True, check=False)
         self.assertEqual(done.stdout.strip(), "[]", done.stderr)
+
+    def test_the_tests_start_without_the_variables_that_pre_commit_sets_for_a_hook(self):
+        import os
+        import sys
+        env = dict(os.environ, PRE_COMMIT_REMOTE_NAME="origin", PRE_COMMIT_TO_REF="abc",
+                   PRE_COMMIT_HOME="/cache")
+        root = str(Path(__file__).resolve().parent.parent)
+        done = subprocess.run(
+            [sys.executable, "-c", PRE_COMMIT_CODE],
+            cwd=root, env=env, capture_output=True, text=True, check=False)
+        self.assertEqual(done.stdout.strip(), "['PRE_COMMIT_HOME']", done.stderr)
 
     def test_a_commit_in_a_temporary_repository_stays_in_it_when_git_dir_is_set(self):
         import os

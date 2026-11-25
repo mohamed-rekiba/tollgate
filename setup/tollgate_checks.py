@@ -1,28 +1,36 @@
-"""Run Tollgate's own checks of one git hook stage, side by side.
+"""Run the checks of one git hook stage, side by side: Tollgate's, and at a push, the project's.
 
-    uv run --no-project python .tollgate/checks/tollgate_checks.py <stage> [file ...]
+    uv run --no-project python .tollgate/checks/tollgate_checks.py [stage] [file ...]
 
-setup.precommit writes one pre-commit entry for each stage Tollgate uses, and each
-entry runs this one script with its stage. pre-commit does not tell a hook which
-stage runs it: it sets no variable for the stage, and pre-commit and
-pre-merge-commit look the same. The checks of each stage are:
+setup.precommit writes one pre-commit entry, for all four git steps, and it runs this
+one script. pre-commit does not tell a hook which step runs it, so the script works the
+step out, when no stage is named:
+
+- pre-push, when pre-commit gives the name of the remote (PRE_COMMIT_REMOTE_NAME);
+- commit-msg, when the first argument is a commit message file, such as COMMIT_EDITMSG;
+- pre-merge-commit, when git names the commits it merges (GITHEAD_<commit>);
+- pre-commit, in any other case.
+
+A stage that is named as the first argument is used as it is. The checks of each stage are:
 
 - pre-commit: check_locked.py, and check_writing.py --staged;
 - commit-msg: check_commit_msg.py, with the message file that pre-commit passes;
 - pre-merge-commit: check_locked.py, and check_merge.py merge;
-- pre-push: check_merge.py push.
+- pre-push: check_merge.py push, and each check under `checks` in
+  .tollgate/settings.json, except the writing check, which runs at a commit.
 
 Each check runs in its own process with the Python that runs this script, and the
 checks of a stage run side by side. The setting `parallel` in
 .tollgate/settings.json says how many run at once: true, the default, for all of
 them, a whole number for that many, false for one at a time. When a check ends,
 the script prints its output, then one line: PASS or FAIL and its name. It ends
-with 1 when a check failed. The project's own checks are not here: each one is a
-pre-commit entry of its own, so the project keeps them without Tollgate. It uses
-only the standard library.
+with 1 when a check failed. A project check runs with its own command, through `sh -c`,
+from the project folder, without the variables that pre-commit and git set for the hook. It uses only the standard library.
 """
 
 import json
+import os
+import re
 import subprocess
 import sys
 import threading
@@ -32,6 +40,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SETTINGS = ".tollgate/settings.json"
+
+# What pre-commit and git set for the hook that runs this script. A project check is a plain
+# command, so it does not get them: its own `git commit`, in a temporary repository of a
+# test, would otherwise take its step from them, and run the checks of a push.
+HOOK_ENV = ("PRE_COMMIT_REMOTE_NAME", "PRE_COMMIT_REMOTE_URL", "PRE_COMMIT_REMOTE_BRANCH",
+            "PRE_COMMIT_LOCAL_BRANCH", "PRE_COMMIT_FROM_REF", "PRE_COMMIT_TO_REF",
+            "PRE_COMMIT_ORIGIN", "PRE_COMMIT_SOURCE", "PRE_COMMIT_COMMIT_MSG_SOURCE",
+            "PRE_COMMIT_CHECKOUT_TYPE", "PRE_COMMIT_IS_SQUASH_MERGE",
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_PREFIX",
+            "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
+STAGE_WORD = re.compile(r"^[a-z]+(-[a-z]+)+$")   # a mistyped stage, such as post-commit
+MESSAGE_FILES = ("COMMIT_EDITMSG", "MERGE_MSG", "SQUASH_MSG", "TAG_EDITMSG")
+
+PROJECT_PREFIX = "check: "
 
 STAGES = {
     "pre-commit": [("locked", ["check_locked.py"]),
@@ -45,14 +67,43 @@ STAGES = {
 TAKES_FILES = ("commit-msg",)
 
 
-def commands(stage: str, files=()) -> list:
-    """(name, argv) for each check of the stage."""
+def stage_of(args: list, env) -> tuple:
+    """(stage, files) for a run that names no stage: the git step, worked out from what
+    pre-commit and git give the hook."""
+    if env.get("PRE_COMMIT_REMOTE_NAME"):
+        return "pre-push", []
+    if args and Path(args[0]).name in MESSAGE_FILES:
+        return "commit-msg", args
+    if any(name.startswith("GITHEAD_") for name in env):
+        return "pre-merge-commit", []
+    return "pre-commit", []
+
+
+def project_checks(root: str) -> list:
+    """(name, argv) for each check of the project under `checks` in the settings, with its
+    own command. The writing check is one of Tollgate's own, so it is left out."""
+    try:
+        checks = json.loads(Path(root, SETTINGS).read_text()).get("checks", {})
+    except (OSError, ValueError, AttributeError):
+        return []
+    found = []
+    for name, check in sorted(checks.items()):
+        run = check.get("run", "") if isinstance(check, dict) else ""
+        if run and name != "writing" and "check_writing.py" not in run:
+            found.append((f"{PROJECT_PREFIX}{name}", ["sh", "-c", run]))
+    return found
+
+
+def commands(stage: str, files=(), root: str = ".") -> list:
+    """(name, argv) for each check of the stage. A push also runs the project's checks."""
     found = []
     for name, (script, *args) in STAGES[stage]:
         argv = [sys.executable, str(HERE / script), *args]
         if stage in TAKES_FILES:
             argv += list(files)
         found.append((name, argv))
+    if stage == "pre-push":
+        found += project_checks(root)
     return found
 
 
@@ -69,11 +120,18 @@ def jobs(root: str, count: int) -> int:
     return max(1, min(value, count))
 
 
-def run_one(name: str, argv: list, cwd: str, stdin) -> dict:
+def project_env(environ=None) -> dict:
+    """The environment of a project check: the hook's own variables, and the GITHEAD_*
+    names git gives a merge hook, are left out."""
+    environ = os.environ if environ is None else environ
+    return {k: v for k, v in environ.items() if k not in HOOK_ENV and not k.startswith("GITHEAD_")}
+
+
+def run_one(name: str, argv: list, cwd: str, stdin, env=None) -> dict:
     """Run one check. Return its name, output, and code."""
     start = time.monotonic()
     proc = subprocess.run(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          stdin=stdin, check=False)
+                          stdin=stdin, env=env, check=False)
     return {"name": name, "output": proc.stdout.decode(errors="replace"),
             "code": proc.returncode, "seconds": time.monotonic() - start}
 
@@ -88,16 +146,22 @@ def report(result: dict, lock: threading.Lock) -> None:
 
 def main(argv=None, root: str = ".") -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv[0] not in STAGES:
-        print(f"tollgate_checks: name a stage: {', '.join(STAGES)}", file=sys.stderr)
+    if argv and argv[0] in STAGES:
+        stage, files = argv[0], argv[1:]
+    elif argv and STAGE_WORD.match(argv[0]):
+        print(f"tollgate_checks: not a stage: {argv[0]}. Stages: {', '.join(STAGES)}",
+              file=sys.stderr)
         return 2
-    found = commands(argv[0], argv[1:])
+    else:
+        stage, files = stage_of(argv, os.environ)
+    found = commands(stage, files, root)
     # One check may read the input pre-commit gives the hook. Two would race for it.
     stdin = None if len(found) == 1 else subprocess.DEVNULL
     lock = threading.Lock()
 
     def one(item):
-        result = run_one(*item, cwd=root, stdin=stdin)
+        env = project_env() if item[0].startswith(PROJECT_PREFIX) else None
+        result = run_one(*item, cwd=root, stdin=stdin, env=env)
         report(result, lock)
         return result
 

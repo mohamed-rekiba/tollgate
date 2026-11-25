@@ -6,13 +6,15 @@ The config holds three kinds of hooks:
 
 - Tollgate's own checks, copied into .tollgate/checks/. The plugin's folder changes
   on each update, so the project carries its own copy. One script, tollgate_checks.py,
-  runs the checks of a stage side by side, and the config has one entry for each stage
-  that runs it with that stage, because pre-commit does not tell a hook its stage. Each
-  entry runs it with uv (`uv run --no-project python`), so it does not depend on which
-  python3 is first on the PATH. It needs no network and no project file.
-- The project's checks from .tollgate/settings.json, before each push: one entry for
-  each check, with the check's own command, so the project keeps its checks without
-  Tollgate.
+  runs the checks of a git step side by side, and the config has one entry for it, for
+  all four steps. pre-commit does not tell a hook its step, so the script works it out
+  (see tollgate_checks.py). The entry runs it with uv (`uv run --no-project python`), so
+  it does not depend on which python3 is first on the PATH. It needs no network and no
+  project file. In Tollgate's own project the entry runs setup/tollgate_checks.py, the
+  source, and no copy is made.
+- The project's checks from .tollgate/settings.json, before each push: the same script
+  runs each one with its own command, side by side with the push check. The config has
+  no entry of its own for them.
 - The standard tool of each language the project uses, only when the project
   already uses that tool: a tool counts as used when its config file is there.
   Go's formatter has no config file, so every Go project gets it.
@@ -43,15 +45,13 @@ HOOK_TYPES = ("pre-commit", "commit-msg", "pre-merge-commit", "pre-push")
 
 RUN = "uv run --no-project python"
 
-# Tollgate's own checks: one entry for each stage, each running tollgate_checks.py with
-# its stage. Only commit-msg takes the file pre-commit passes: the message file.
-TOLLGATE_STAGES = [
-    ("tollgate-pre-commit", "Tollgate: locked files and plain words", "pre-commit", False),
-    ("tollgate-commit-msg", "Tollgate: commit message", "commit-msg", True),
-    ("tollgate-pre-merge-commit", "Tollgate: locked files and the gate of a merge",
-     "pre-merge-commit", False),
-    ("tollgate-pre-push", "Tollgate: each commit on main passed the gate", "pre-push", False),
-]
+# Tollgate's own checks: one entry, for all four stages. pre-commit passes the commit
+# message file at the commit-msg stage and the changed files at the others, so `files`
+# keeps only the message files, and the script gets no list of changed files.
+STAGE_FILES = r"(^|/)(COMMIT_EDITMSG|MERGE_MSG|SQUASH_MSG|TAG_EDITMSG)$"
+TOLLGATE_HOOK = {"id": "tollgate", "name": "Tollgate: the checks of each git step",
+                 "stages": list(HOOK_TYPES), "files": STAGE_FILES, "pass_filenames": True,
+                 "always_run": True}
 
 LANGUAGES = {
     "python": {"files": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"),
@@ -67,6 +67,16 @@ JS_FILES = r"\.(js|jsx|mjs|cjs|ts|tsx)$"
 
 class PrecommitError(RuntimeError):
     pass
+
+
+def is_tollgate(root: Path) -> bool:
+    """True for Tollgate's own project: it holds the checks as source, in setup/."""
+    return all((root / "setup" / name).is_file() for name in ("precommit.py", "tollgate_checks.py"))
+
+
+def checks_dir(root: Path) -> str:
+    """The folder that the config runs Tollgate's checks from."""
+    return "setup" if is_tollgate(root) else CHECKS_DIR
 
 
 def project_files(root: Path) -> list:
@@ -143,20 +153,6 @@ def tool_hooks(root: Path) -> list:
     return hooks
 
 
-def settings_hooks(settings: dict) -> list:
-    """The project's checks in the settings, before each push: one entry for each check,
-    with its own command, so the project keeps them without Tollgate. The writing check
-    is one of Tollgate's own checks, so it is left out here."""
-    hooks = []
-    for name, check in sorted(settings.get("checks", {}).items()):
-        if name == "writing" or "check_writing.py" in check.get("run", ""):
-            continue
-        hooks.append({"id": f"check-{name}", "name": f"check: {name}",
-                      "entry": "sh -c", "args": [check["run"]], "pass_filenames": False,
-                      "always_run": True, "stages": ["pre-push"]})
-    return hooks
-
-
 def _q(value) -> str:
     # A JSON string is a YAML string in double quotes.
     return json.dumps(value)
@@ -177,13 +173,11 @@ def _hook(hook: dict) -> list:
 
 
 def render(settings: dict, root: Path) -> str:
-    ours = [{"id": i, "name": n, "entry": f"{RUN} {CHECKS_DIR}/tollgate_checks.py {stage}",
-             "stages": [stage], "pass_filenames": files, **({} if files else {"always_run": True})}
-            for i, n, stage, files in TOLLGATE_STAGES]
+    ours = [{**TOLLGATE_HOOK, "entry": f"{RUN} {checks_dir(root)}/tollgate_checks.py"}]
     lines = [MARK, "# Change the checks in .tollgate/settings.json, then run /tollgate:init.",
              f"default_install_hook_types: [{', '.join(HOOK_TYPES)}]",
              "default_stages: [pre-commit]", "repos:", "- repo: local", "  hooks:"]
-    for hook in ours + settings_hooks(settings) + tool_hooks(root):
+    for hook in ours + tool_hooks(root):
         lines += _hook(hook)
     return "\n".join(lines) + "\n"
 
@@ -194,8 +188,15 @@ def write(project: str = ".", replace: bool = False) -> list:
     path = root / SETTINGS
     settings = json.loads(path.read_text()) if path.exists() else {}
     changed = []
+    own = is_tollgate(root)
     for name in SCRIPTS:
         target = root / CHECKS_DIR / name
+        if own:
+            # The checks run from setup/, so a copy in .tollgate/checks/ is a second truth.
+            if target.exists():
+                target.unlink()
+                changed.append(f"{CHECKS_DIR}/{name}")
+            continue
         data = (HERE / name).read_bytes()
         if not target.exists() or target.read_bytes() != data:
             target.parent.mkdir(parents=True, exist_ok=True)
