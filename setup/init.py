@@ -4,7 +4,7 @@
 
 The steps, in order:
 
-1. Check that git, pre-commit, and claude are installed. With the
+1. Check that git, uv, pre-commit, and claude are installed. With the
    isolation "container", the default, check that Docker is installed and running.
 2. Check that the project is a git repository on the branch main.
 3. Create the state folder.
@@ -31,7 +31,7 @@ from gate import settings as st
 from gate import state
 from setup import install_writing_check, precommit
 
-TOOLS = ("git", "pre-commit", "claude")
+TOOLS = ("git", "uv", "pre-commit", "claude")
 HARNESS = [".tollgate/checks/**", precommit.CONFIG]
 SUBJECT = "chore(tollgate): set up Tollgate"
 
@@ -47,10 +47,16 @@ def git(root, *args, check=True) -> str:
     return proc.stdout.strip()
 
 
+INSTALL = {"uv": "brew install uv, or see https://docs.astral.sh/uv/",
+           "pre-commit": "uv tool install pre-commit",
+           "claude": "npm install -g @anthropic-ai/claude-code"}
+
+
 def check_tools(which=shutil.which) -> None:
     missing = [t for t in TOOLS if not which(t)]
     if missing:
-        raise InitError(f"not installed: {', '.join(missing)}. Install them, then run again.")
+        how = "".join(f" {t}: {INSTALL[t]}." for t in missing if t in INSTALL)
+        raise InitError(f"not installed: {', '.join(missing)}. Install them, then run again.{how}")
 
 
 def docker_ready(which=shutil.which) -> str:

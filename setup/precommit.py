@@ -5,13 +5,16 @@
 The config holds three kinds of hooks:
 
 - Tollgate's checks, copied into .tollgate/checks/. The plugin's folder changes
-  on each update, so the project carries its own copy. Each is a stdlib script.
+  on each update, so the project carries its own copy. Each is a stdlib script,
+  and each hook runs it with uv (`uv run --no-project python`), so the hook does not
+  depend on which python3 is first on the PATH. It needs no network and no project file.
 - The project's checks from .tollgate/settings.json, before each push.
 - The standard tool of each language the project uses, only when the project
   already uses that tool: a tool counts as used when its config file is there.
   Go's formatter has no config file, so every Go project gets it.
 
-It refuses to replace a config that Tollgate did not write, unless --replace.
+It refuses to replace a config that Tollgate did not write, unless --replace. A config
+that Tollgate wrote with an older entry (python3) is rewritten with uv, with no --replace.
 Running it twice gives the same files. It prints each path that changed.
 """
 
@@ -30,18 +33,20 @@ MARK = "# Written by Tollgate: python3 -m setup.precommit."
 SCRIPTS = ("check_locked.py", "check_writing.py", "check_commit_msg.py", "check_merge.py")
 HOOK_TYPES = ("pre-commit", "commit-msg", "pre-merge-commit", "pre-push")
 
+RUN = "uv run --no-project python"
+
 # Tollgate's own hooks: id, name, entry, stages, and whether pre-commit passes file names.
 TOLLGATE_HOOKS = [
     ("tollgate-locked", "Tollgate: no change to a locked file",
-     "python3 .tollgate/checks/check_locked.py", ["pre-commit", "pre-merge-commit"], False),
+     f"{RUN} .tollgate/checks/check_locked.py", ["pre-commit", "pre-merge-commit"], False),
     ("tollgate-writing", "Tollgate: plain words",
-     "python3 .tollgate/checks/check_writing.py --staged", ["pre-commit"], False),
+     f"{RUN} .tollgate/checks/check_writing.py --staged", ["pre-commit"], False),
     ("tollgate-commit-msg", "Tollgate: commit message",
-     "python3 .tollgate/checks/check_commit_msg.py", ["commit-msg"], True),
+     f"{RUN} .tollgate/checks/check_commit_msg.py", ["commit-msg"], True),
     ("tollgate-merge", "Tollgate: a merge into main passed the gate",
-     "python3 .tollgate/checks/check_merge.py merge", ["pre-merge-commit"], False),
+     f"{RUN} .tollgate/checks/check_merge.py merge", ["pre-merge-commit"], False),
     ("tollgate-push", "Tollgate: each commit on main passed the gate",
-     "python3 .tollgate/checks/check_merge.py push", ["pre-push"], False),
+     f"{RUN} .tollgate/checks/check_merge.py push", ["pre-push"], False),
 ]
 
 LANGUAGES = {

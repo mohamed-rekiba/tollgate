@@ -347,6 +347,27 @@ class PrecommitTest(Env):
         self.assertNotIn("tollgate-check-writing", text)
         self.assertEqual(precommit.write(str(root)), [])
 
+    def test_the_hooks_of_tollgate_run_with_uv(self):
+        root = self.repo()
+        precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        for script in ("check_locked.py", "check_writing.py", "check_commit_msg.py",
+                       "check_merge.py"):
+            self.assertIn(f'"uv run --no-project python .tollgate/checks/{script}', text)
+        self.assertNotIn("python3 .tollgate/checks", text)
+
+    def test_a_config_tollgate_wrote_with_python3_is_rewritten_with_uv(self):
+        root = self.repo()
+        precommit.write(str(root))
+        config = Path(root, precommit.CONFIG)
+        old = config.read_text().replace("uv run --no-project python ", "python3 ")
+        config.write_text(old)
+        self.assertIn("python3 .tollgate/checks/check_locked.py", config.read_text())
+        self.assertEqual(precommit.write(str(root)), [precommit.CONFIG])
+        self.assertIn("uv run --no-project python .tollgate/checks/check_locked.py",
+                      config.read_text())
+        self.assertEqual(precommit.write(str(root)), [])
+
     def test_refuses_a_config_tollgate_did_not_write(self):
         root = self.repo()
         Path(root, precommit.CONFIG).write_text("repos: []\n")
@@ -431,6 +452,13 @@ class InitTest(Env):
         with self.assertRaisesRegex(setup_init.InitError, "not installed: claude"):
             setup_init.init(str(root),
                             which=lambda t: None if t == "claude" else "/bin/" + t)
+
+    def test_init_stops_when_uv_is_missing_and_says_how_to_install_it(self):
+        root = self.repo()
+        with self.assertRaisesRegex(setup_init.InitError,
+                                    "not installed: uv.*brew install uv"):
+            setup_init.init(str(root),
+                            which=lambda t: None if t == "uv" else "/bin/" + t)
 
     def test_init_stops_off_main(self):
         root = self.repo()
@@ -705,10 +733,24 @@ class HomeTest(Env):
 
 
 class HealthTest(Env):
+    def test_a_config_that_runs_a_check_with_python3_warns(self):
+        root = self.setup_project()
+        config = Path(root, precommit.CONFIG)
+        config.write_text(config.read_text().replace("uv run --no-project python ", "python3 "))
+        found = health.warnings(str(root), which=FOUND)
+        self.assertTrue(any("runs a check with python3, not uv" in w for w in found))
+
+    def test_a_missing_uv_warns_with_the_install_line(self):
+        root = self.setup_project()
+        found = health.warnings(str(root), which=lambda t: None if t == "uv" else "/bin/" + t)
+        self.assertTrue(any("uv is not installed" in w and "brew install uv" in w
+                            for w in found))
+
     def test_a_project_with_no_setup_warns_for_each_part(self):
         root = self.repo()
         found = health.warnings(str(root), which=lambda t: None)
-        self.assertIn("pre-commit is not installed", found[0])
+        self.assertTrue(any("uv is not installed" in w for w in found))
+        self.assertTrue(any("pre-commit is not installed" in w for w in found))
         self.assertTrue(any("pre-merge-commit" in w for w in found))
         self.assertTrue(any("check_merge.py is missing" in w for w in found))
 
