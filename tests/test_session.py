@@ -474,6 +474,35 @@ class StepTest(Case):
         plan = sh(s.project, "git", "show", "tg-plan/demo:.tollgate/plans/demo.md")
         self.assertIn("create README.md", plan)
 
+    def test_a_plan_that_breaks_a_rule_after_a_review_goes_back_to_the_planner(self):
+        # The answer to a plan finding revises the plan with a bad assumption. The next
+        # run must send the plan back with the fault, not stop with an error.
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 planfind=1 bad_answer=1")
+        self.assertTrue(out.get("done"), out)
+        invalid = [e for e in s.log("task-demo") if e["event"] == "plan_invalid"]
+        self.assertTrue(invalid)
+        self.assertIn("must end with a question mark", invalid[0]["problems"][0])
+        plan = sh(s.project, "git", "show", "tg-plan/demo:.tollgate/plans/demo.md")
+        self.assertNotIn("Nobody looked it up", plan)
+
+    def test_a_ticket_that_breaks_a_rule_goes_back_to_the_planner(self):
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 bad_ticket=1")
+        self.assertTrue(out.get("done"), out)
+        invalid = [e for e in s.log("task-demo") if e["event"] == "plan_invalid"]
+        self.assertEqual(len(invalid), 1)
+        self.assertIn("Checklist", " ".join(invalid[0]["problems"]))
+
+    def test_a_planner_that_keeps_breaking_the_rule_parks_the_task_with_the_reason(self):
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 bad_plan=1")
+        self.assertIn("parked", out, out)
+        self.assertIn("could not write a plan that passes the checks", out["parked"])
+        self.assertIn("must end with a question mark", out["parked"])
+        invalid = [e for e in s.log("task-demo") if e["event"] == "plan_invalid"]
+        self.assertEqual(len(invalid), 2)
+
     def test_the_stop_rule_counts_only_the_real_rejections(self):
         # Two real rejections are under the limit, however many times next replays them.
         s, store = self.task_sample(checks=self.style_check())
