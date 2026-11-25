@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/tollgate-ai/tollgate/compare/v0.8.1...v0.8.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **analysis:** let a fact about a missing item cite its folder, and say how to fix a refused analysis ([#139](https://github.com/tollgate-ai/tollgate/issues/139)) ([7319177](https://github.com/tollgate-ai/tollgate/commit/73191773cb6a163b91a2d5717f2a491769aea1dc))
+
 ## [0.8.1](https://github.com/tollgate-ai/tollgate/compare/v0.8.0...v0.8.1) (2026-11-25)
 
 
