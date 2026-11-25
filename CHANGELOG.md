@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/tollgate-ai/tollgate/compare/v0.9.0...v0.9.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **init:** run Tollgate's checks from one script, and keep the project's checks as plain hooks ([425af0b](https://github.com/tollgate-ai/tollgate/commit/425af0ba3548dc9fbd284bbb1a08fc45157295e7))
+
 ## [0.9.0](https://github.com/tollgate-ai/tollgate/compare/v0.8.2...v0.9.0) (2026-11-25)
 
 
