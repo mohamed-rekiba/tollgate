@@ -19,7 +19,9 @@ six sections, and each fact is one line that is confirmed, specified, or assumed
     - specified: a failed send is retried 3 times [docs/design.md::Retries]
     - assumed: the project runs on Python 3.11
 
-A confirmed fact cites the code: [path:line] or [path::name]. A specified fact is
+A confirmed fact cites the code: [path:line] or [path::name]. A fact about something
+the project lacks, such as no go.mod or no tests, cites the folder that would hold it:
+[./] for the project root, or [docs/]. It is confirmed when that folder exists. A specified fact is
 one that the spec docs of the project state as the intended design. It cites a spec
 doc: [path] or [path::heading]. verify() checks each citation against the commit the
 analysis read, and makes a fact whose citation does not exist an assumption. A
@@ -30,12 +32,12 @@ import posixpath
 import re
 from dataclasses import dataclass, field
 
-from gate.paths import heading_exists, line_exists, name_exists, read_inside
+from gate.paths import folder_exists, heading_exists, line_exists, name_exists, read_inside
 
 ANALYSES = ".tollgate/analysis"
 SECTIONS = ("Structure", "Entry points", "Frameworks", "Similar features", "Tests", "Standards")
 STATUSES = ("confirmed", "specified", "assumed")
-CITE = re.compile(r"\[([^\]\s:]+)(?::(\d+)|::([\w.]+))\]")
+CITE = re.compile(r"\[([^\]\s:]+)(?::(\d+)|::([\w.]+)|(/))\]")
 SPEC_CITE = re.compile(r"\[([^\]\s:]+)(?:::([^\]]+))?\]")
 
 
@@ -64,6 +66,7 @@ def analysis_path(task_id: str) -> str:
 
 def _cite(c) -> str:
     path, line, name = c
+    # A folder citation keeps its slash, so it prints as written.
     if line is not None:
         return f"{path}:{line}"
     return f"{path}::{name}" if name else path
@@ -102,16 +105,26 @@ def parse(text: str) -> Analysis:
             cites = [(m[1], None, m[2].strip() if m[2] else None)
                      for m in SPEC_CITE.finditer(claim)]
             if not cites:
-                raise AnalysisError(f"a specified fact cites no spec doc: {claim}")
+                raise AnalysisError(
+                    f"a specified fact cites no spec doc: {claim}. A specified fact cites a doc "
+                    "inside a spec path, [path] or [path::heading]. For a fact about code, or a "
+                    "file outside the spec paths, write confirmed with a code citation, or assumed")
         else:
-            cites = [(m[1], int(m[2]) if m[2] else None, m[3] or None)
+            # A folder citation, [docs/], is kept as the path with its slash, and no line or name.
+            cites = [(m[1] + "/" if m[4] else m[1], int(m[2]) if m[2] else None, m[3] or None)
                      for m in CITE.finditer(claim)]
             if status == "confirmed" and not cites:
-                raise AnalysisError(f"a confirmed fact cites no code: {claim}")
+                raise AnalysisError(
+                    f"a confirmed fact cites no code: {claim}. Cite [path:line] or [path::name]. "
+                    "For something the project lacks, cite the folder that would hold it, "
+                    "[./] or [docs/]. When you cannot cite, write assumed")
         sections[current].append(Fact(status, claim, cites))
     missing = [s for s in SECTIONS if not sections.get(s)]
     if missing:
-        raise AnalysisError(f"the analysis has empty or missing sections: {', '.join(missing)}")
+        raise AnalysisError(
+            f"the analysis has empty or missing sections: {', '.join(missing)}. The analysis "
+            "field of the json block holds the whole analysis, the header and all six sections, "
+            "as one string. It is not a pointer to the block above")
     return Analysis(header["task"], header["commit"], {s: sections[s] for s in SECTIONS})
 
 
@@ -136,6 +149,15 @@ def _spec_cite_exists(root: str, c, spec) -> bool:
     return heading_exists(root, path, heading)
 
 
+def _code_cite_exists(root: str, c) -> bool:
+    path, line, name = c
+    if line is not None:
+        return line_exists(root, path, line)
+    if name is None:    # a folder citation: the path ends in a slash
+        return folder_exists(root, path)
+    return name_exists(root, path, name)
+
+
 def verify(analysis: Analysis, root: str, spec=()) -> list:
     """Check every citation of a confirmed or specified fact against the files under root.
     A fact with a citation that does not exist becomes assumed. Return those citations.
@@ -145,9 +167,7 @@ def verify(analysis: Analysis, root: str, spec=()) -> list:
     for facts in analysis.sections.values():
         for f in facts:
             if f.status == "confirmed":
-                gone = [c for c in f.cites
-                        if not (line_exists(root, c[0], c[1]) if c[1] is not None
-                                else name_exists(root, c[0], c[2]))]
+                gone = [c for c in f.cites if not _code_cite_exists(root, c)]
             elif f.status == "specified":
                 gone = [c for c in f.cites if not _spec_cite_exists(root, c, spec)]
             else:

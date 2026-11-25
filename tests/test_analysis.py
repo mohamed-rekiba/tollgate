@@ -291,5 +291,70 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("an analysis starts with a --- line", out)
 
+
+ABSENT = TEXT.replace(
+    "- assumed: the project runs on Python 3.11",
+    "- confirmed: the project has no go.mod [./]\n"
+    "- confirmed: the project has no config folder [src/]\n"
+    "- assumed: the project runs on Python 3.11")
+
+
+class AbsenceTest(unittest.TestCase):
+    """A fact about something the project lacks cites the folder that would hold it."""
+
+    def test_reads_a_folder_citation(self):
+        facts = an.parse(ABSENT).sections["Frameworks"]
+        self.assertEqual([f.cites for f in facts], [[("./", None, None)], [("src/", None, None)], []])
+
+    def test_a_folder_that_exists_keeps_the_fact_confirmed(self):
+        a = an.parse(ABSENT)
+        self.assertEqual(an.verify(a, project()), [])
+        self.assertEqual([f.status for f in a.sections["Frameworks"]],
+                         ["confirmed", "confirmed", "assumed"])
+
+    def test_a_folder_that_does_not_exist_makes_the_fact_assumed(self):
+        a = an.parse(ABSENT.replace("[src/]", "[config/]"))
+        self.assertEqual(an.verify(a, project()), ["config/"])
+        fact = a.sections["Frameworks"][1]
+        self.assertEqual(fact.status, "assumed")
+        self.assertIn("(not found: config/)", fact.text)
+
+    def test_a_folder_outside_the_project_makes_the_fact_assumed(self):
+        a = an.parse(ABSENT.replace("[src/]", "[../]"))
+        self.assertEqual(an.verify(a, project()), ["../"])
+        self.assertEqual(a.sections["Frameworks"][1].status, "assumed")
+
+    def test_a_file_is_not_a_folder(self):
+        a = an.parse(ABSENT.replace("[src/]", "[src/send.py/]"))
+        self.assertEqual(an.verify(a, project()), ["src/send.py/"])
+
+    def test_a_code_citation_still_needs_a_line_or_a_name(self):
+        with self.assertRaisesRegex(an.AnalysisError, "cites no code: tests use unittest"):
+            an.parse(TEXT.replace(" [tests/test_send.py:1]", " [tests/test_send.py]"))
+
+    def test_the_message_says_how_to_cite_what_is_missing(self):
+        with self.assertRaisesRegex(an.AnalysisError, r"folder that would hold it, \[\./\]"):
+            an.parse(TEXT.replace(" [tests/test_send.py:1]", ""))
+
+    def test_a_roadmap_is_not_a_spec_doc(self):
+        text = SPEC_TEXT.replace("[docs/design.md]", "[.tollgate/roadmaps/r.md]")
+        a = an.parse(text)
+        self.assertEqual(an.verify(a, spec_project(), ["docs"]), [".tollgate/roadmaps/r.md"])
+        self.assertEqual(a.sections["Frameworks"][1].status, "assumed")
+
+    def test_a_specified_message_says_what_to_write_instead(self):
+        text = SPEC_TEXT.replace("[docs/design.md]", "[.tollgate/roadmaps/r.md:11]")
+        with self.assertRaisesRegex(an.AnalysisError, "write confirmed with a code citation, or assumed"):
+            an.parse(text)
+
+
+class PointerTest(unittest.TestCase):
+    def test_a_pointer_in_place_of_the_analysis_is_refused_with_the_fix(self):
+        pointer = "---\ntask: retries\ncommit: 3d549d7\n---\n(see the block above)\n"
+        with self.assertRaisesRegex(an.AnalysisError,
+                                    "empty or missing sections: Structure.*not a pointer to the block above"):
+            an.parse(pointer)
+
+
 if __name__ == "__main__":
     unittest.main()

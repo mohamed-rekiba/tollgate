@@ -17,8 +17,9 @@ Words: a **fact** is one thing you report about the project, on one line. It is 
 ## Rules
 
 - Cite the code for every confirmed fact. The driver checks every citation, and a fact whose citation does not exist becomes assumed.
+- A fact about something the project lacks, such as no `go.mod`, no tests, or no lint config, is confirmed when you cite the folder that would hold it: `[./]` for the project root, or `[docs/]`. The driver checks that the folder exists. A project with no code yet has facts of this kind in most sections. When you cannot cite a folder, mark the fact assumed.
 - Mark a fact assumed when you did not read it in the code and no spec doc states it. Mark it confirmed or specified only with a citation.
-- A specified fact says what the design intends, not what the code does today. Never mark a fact about code specified.
+- A specified fact says what the design intends, not what the code does today. Never mark a fact about code specified. A specified fact cites only a doc inside a path of `spec`: a roadmap, a request, a ticket, or a file under `.tollgate/` is not a spec doc, so a fact from one is assumed.
 - A decision record is a file with the sections Status, Decision, Why, Cost, and Where. Inside a path of `spec`, a record whose Status is `accepted` gives specified facts: cite `[path]` or `[path::Decision]`. A record with another Status, such as `superseded by 0007`, is not a fact: leave it out. A decision record outside `spec` stays assumed.
 - Report what the project has, not what it should have.
 
@@ -35,7 +36,7 @@ The inputs hold `request`, in the asker's words, `task_id`, `commit`, the commit
 
 ## Answer
 
-End with one block. `analysis` is the whole analysis, in this shape:
+End with one block. `analysis` is the whole analysis, in this shape. The `analysis` field of the json block holds all of it, the header and the six sections, as one string with `\n` between lines. Never write a pointer such as "see the block above": the driver reads only the json block, and a field with no sections is refused.
 
 ```
 ---
@@ -55,6 +56,7 @@ commit: <commit, from the inputs>
 - confirmed: tests use unittest [tests/test_send.py:1]
 ## Standards
 - confirmed: commits follow type(scope): subject [CLAUDE.md:4]
+- confirmed: the project has no lint config yet [./]
 ```
 
 ```json
