@@ -16,6 +16,7 @@
   "How Tollgate works",
   "three loops: check the plan, try until it scores 70%, learn"
  ],
+ "packets": true,
  "lanes": [
   {
    "path": [
@@ -80,7 +81,8 @@
    ],
    "label": "lessons become rules",
    "at": 0.72,
-   "side": true
+   "side": true,
+   "kind": "ai"
   },
   {
    "path": [
@@ -94,7 +96,8 @@
     ]
    ],
    "label": "after 3 tries",
-   "side": true
+   "side": true,
+   "kind": "advisor"
   },
   {
    "path": [
@@ -117,7 +120,8 @@
    ],
    "label": "try again",
    "at": 0.35,
-   "side": true
+   "side": true,
+   "kind": "advisor"
   },
   {
    "path": [
@@ -129,7 +133,8 @@
      0,
      64
     ]
-   ]
+   ],
+   "kind": "ai"
   },
   {
    "path": [
@@ -155,7 +160,8 @@
      0,
      -166
     ]
-   ]
+   ],
+   "kind": "server"
   },
   {
    "path": [
@@ -167,7 +173,8 @@
      323,
      -220
     ]
-   ]
+   ],
+   "kind": "check"
   },
   {
    "path": [
@@ -179,7 +186,8 @@
      0,
      324
     ]
-   ]
+   ],
+   "kind": "you"
   },
   {
    "path": [
@@ -191,7 +199,8 @@
      0,
      214
     ]
-   ]
+   ],
+   "kind": "ai"
   }
  ],
  "objects": [

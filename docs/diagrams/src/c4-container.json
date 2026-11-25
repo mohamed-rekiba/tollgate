@@ -3,6 +3,7 @@
  "level": "container",
  "title": "Tollgate",
  "desc": "Inside Tollgate: your Claude Code session asks the driver for each step and runs the hooks before each tool call. The driver runs the gate after each try and reaches the state folder only through the store. The store locks tests, writes records, and merges a ready change into your project.",
+ "packets": true,
  "names": {"server": "Your machine"},
  "boundaries": [{"id": "tollgate", "name": "Tollgate", "type": "Software System"}],
  "elements": [

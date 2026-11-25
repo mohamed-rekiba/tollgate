@@ -3,6 +3,7 @@
  "level": "context",
  "title": "Tollgate",
  "desc": "You type a task in your Claude Code session. Tollgate, on your machine, runs each step of it: in session mode your session runs each role, and in background mode Tollgate starts each role on its own. Every role works with the model. You push main to GitHub, and Tollgate checks each push before it goes.",
+ "packets": true,
  "names": {"server": "Your machine"},
  "elements": [
   {"id": "you", "type": "person", "name": "You", "description": "An engineer who lets an AI write most of each change", "col": 0, "row": 0},

@@ -2,6 +2,7 @@
  "type": "sequence",
  "title": "One ticket in session mode",
  "desc": "Your Claude Code session asks the driver for the next step. The driver replays its log and the saved answers, then names one role and its prompt. Your session runs that role as a subagent in the copy and hands its answer back. The driver saves it, and runs on to the next step, until the gate passes a try and the store writes its pass record.",
+ "packets": true,
  "names": {"server": "Your machine", "you": "Claude Code"},
  "participants": [
   {"id": "session", "text": "Your session", "kind": "you"},

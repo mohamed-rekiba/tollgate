@@ -2,6 +2,7 @@
  "type": "usecase",
  "title": "Who does what with Tollgate",
  "desc": "You give a task, merge a ready change, and approve a change of tier 3 or 4, which extends the merge. The advisor answers questions. The builder builds a ticket, which always includes passing the gate; the reviewer reviews a try; the test writer writes the locked tests.",
+ "packets": true,
  "names": {"server": "The store"},
  "system": "Tollgate",
  "actors": [

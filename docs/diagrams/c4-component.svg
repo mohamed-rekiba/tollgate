@@ -2,20 +2,28 @@
 <title id="title">Component diagram for The driver</title>
 <desc id="desc">Inside the driver: the step commands run the task loop up to the next step. The task loop runs each ticket in plan order. The ticket loop asks the role caller for each role, asks the stop rules whether to stop, and runs the gate on each try. When the tries stop, the stop rules hand the stop to the part that asks the advisor, who decides.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-40" y="-54" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
-<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
 <rect x="-40" y="-54" width="1104" height="1027" fill="#ffffff"/>
 <rect x="-40" y="-54" width="1104" height="1027" fill="url(#grid)"/>
 <g class="boundary">
 <rect x="-16.0" y="230.0" width="1055.6" height="559.0" rx="6" fill="none" stroke="#59636e" stroke-width="1.4" stroke-dasharray="7 5"/>
 </g>
 <path class="main" d="M114.8,120.0 L114.8,268.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M114.8,120.0 L114.8,268.0" dur="1.35s" begin="-0.37s" repeatCount="indefinite"/></circle>
 <path class="main" d="M229.6,328.0 L403.6,328.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M229.6,328.0 L403.6,328.0" dur="1.58s" begin="-1.11s" repeatCount="indefinite"/></circle>
 <path class="main" d="M518.4,388.0 L518.4,452.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M518.4,388.0 L518.4,452.0" dur="1.20s" begin="-0.65s" repeatCount="indefinite"/></circle>
 <path class="main" d="M403.6,520.5 L229.6,520.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M403.6,520.5 L229.6,520.5" dur="1.58s" begin="-1.01s" repeatCount="indefinite"/></circle>
 <path class="main" d="M633.2,520.5 L794.0,520.5" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M633.2,520.5 L794.0,520.5" dur="1.46s" begin="-0.41s" repeatCount="indefinite"/></circle>
 <path class="main" d="M114.8,589.0 L114.8,653.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M114.8,589.0 L114.8,653.0" dur="1.20s" begin="-0.47s" repeatCount="indefinite"/></circle>
 <path class="main" d="M518.4,589.0 L518.4,813.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M518.4,589.0 L518.4,813.0" dur="2.04s" begin="-0.74s" repeatCount="indefinite"/></circle>
 <path class="main" d="M908.8,589.0 L908.8,813.0" fill="none" stroke="#818b98" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M908.8,589.0 L908.8,813.0" dur="2.04s" begin="-1.48s" repeatCount="indefinite"/></circle>
 <g class="boundary-label">
 <rect x="-10.0" y="234.0" width="217.4" height="19" fill="#ffffff"/>
 <text x="-4.0" y="248.0" font-size="13" font-weight="700" fill="#1f2328">The driver</text>

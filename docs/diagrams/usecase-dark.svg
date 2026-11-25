@@ -2,7 +2,7 @@
 <title id="title">Who does what with Tollgate</title>
 <desc id="desc">You give a task, merge a ready change, and approve a change of tier 3 or 4, which extends the merge. The advisor answers questions. The builder builds a ticket, which always includes passing the gate; the reviewer reviews a try; the test writer writes the locked tests.</desc>
 <defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-24" y="-62" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
-<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}</style>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
 <rect x="-24" y="-62" width="1168" height="725" fill="#0d1117"/>
 <rect x="-24" y="-62" width="1168" height="725" fill="url(#grid)"/>
 <g class="system">
@@ -16,7 +16,9 @@
 <path class="line" d="M876.0,398.0 L828.0,398.0" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path class="line" d="M876.0,558.5 L828.0,558.5" fill="none" stroke="#656c76" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path class="side" d="M706.0,129.0 L706.0,193.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M706.0,129.0 L706.0,193.0" dur="1.20s" begin="-0.56s" repeatCount="indefinite"/></circle>
 <path class="side" d="M414.0,342.0 L414.0,278.0" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M414.0,342.0 L414.0,278.0" dur="1.20s" begin="-0.10s" repeatCount="indefinite"/></circle>
 <g class="system-label">
 <rect x="282.0" y="-34.0" width="68.4" height="19" fill="#0d1117"/>
 <text x="288.0" y="-20.0" font-size="13" font-weight="700" fill="#f0f6fc">Tollgate</text>

@@ -54,6 +54,7 @@
    "kind": "server"
   }
  ],
+ "packets": true,
  "lanes": [
   {
    "path": [
@@ -75,7 +76,8 @@
     ]
    ],
    "label": "shared rules",
-   "at": 0.55
+   "at": 0.55,
+   "kind": "you"
   },
   {
    "path": [
@@ -88,7 +90,8 @@
      0
     ]
    ],
-   "at": 0.55
+   "at": 0.55,
+   "kind": "you"
   },
   {
    "path": [
@@ -109,7 +112,8 @@
      250
     ]
    ],
-   "at": 0.55
+   "at": 0.55,
+   "kind": "you"
   }
  ],
  "objects": [

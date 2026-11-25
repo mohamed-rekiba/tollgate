@@ -1,6 +1,7 @@
 {
  "title": "The four tiers",
  "desc": "Each change gets a tier from the files it touches. Tier 1, a small fix, needs locked tests. Tier 2, a normal change, adds an approved plan and a review. Tollgate can merge tiers 1 and 2 itself. Tier 3, login, payments, or user data, and tier 4, the test setup, the settings, or production, add a security review, and you merge them.",
+ "packets": true,
  "nodes": [
   {
    "id": "t1",

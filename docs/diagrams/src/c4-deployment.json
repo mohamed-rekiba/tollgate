@@ -3,6 +3,7 @@
  "level": "deployment",
  "title": "Tollgate",
  "desc": "Everything runs on your machine. In session mode your Claude Code session asks the driver for each step and runs the role itself. In background mode the driver starts each role in Docker, with only its copy. The store keeps its records in the state folder. Only the prompts leave the machine, to the model.",
+ "packets": true,
  "names": {
   "server": "Your machine"
  },

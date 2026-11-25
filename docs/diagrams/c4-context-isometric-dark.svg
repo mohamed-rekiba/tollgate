@@ -2,7 +2,7 @@
 <title id="title">System Context diagram for Tollgate</title>
 <desc id="desc">You type a task in your Claude Code session. Tollgate, on your machine, runs each step of it: in session mode your session runs each role, and in background mode Tollgate starts each role on its own. Every role works with the model. You push main to GitHub, and Tollgate checks each push before it goes.</desc>
 <defs><radialGradient id="glow" cx="0.377" cy="0.283" r="0.6"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="fade"><rect width="965" height="706" fill="url(#glow)"/></mask><marker id="arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#ab7df8"/></marker><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker></defs>
-<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.still-arm{display:none}.pulse{transform-box:fill-box;transform-origin:center;opacity:0;animation:pulse 4.2s ease-out infinite}@keyframes pulse{0%{transform:scale(1);opacity:.8}25%{transform:scale(2.5);opacity:0}100%{opacity:0}}@media (prefers-reduced-motion:reduce){.main,.side,.pulse{animation:none}.ticket,.moving-arm{display:none}.still-arm{display:inline}}</style>
+<style>.main{stroke-width:3;stroke-dasharray:0 8;animation:flow .8s linear infinite}.side{stroke-width:1.8;stroke-dasharray:6 6;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-8}}@keyframes side{to{stroke-dashoffset:-12}}.still-arm{display:none}.pulse{transform-box:fill-box;transform-origin:center;opacity:0;animation:pulse 4.2s ease-out infinite}@keyframes pulse{0%{transform:scale(1);opacity:.8}25%{transform:scale(2.5);opacity:0}100%{opacity:0}}@media (prefers-reduced-motion:reduce){.main,.side,.pulse{animation:none}.ticket,.packet,.moving-arm{display:none}.still-arm{display:inline}}</style>
 <rect width="965" height="706" fill="#0d1117"/>
 <g mask="url(#fade)">
 <line x1="363.4" y1="-952.2" x2="-1631.9" y2="199.8" stroke="#656c76" stroke-opacity="0.28" stroke-width="1"/>
@@ -394,22 +394,28 @@
 </g>
 <text x="40" y="48" font-size="13" font-weight="700" letter-spacing="2" fill="#f0f6fc">SYSTEM CONTEXT DIAGRAM FOR TOLLGATE</text>
 <text x="40" y="68" font-size="12" fill="#9198a1">who uses it, and the systems around it</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M383.1,210.0 L579.0,323.1" dur="2.06s" begin="-0.37s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="1" x="439.9" y="260.9" width="121.6" height="34" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="500.7" y="274.9" text-anchor="middle" font-size="11" fill="#9198a1">Types a task</text>
 <text x="500.7" y="288.9" text-anchor="middle" font-size="11" fill="#9198a1">[/tollgate:task]</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M646.6,362.1 L828.4,467.1" dur="1.91s" begin="-0.74s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="2" x="673.4" y="397.6" width="128.2" height="34" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="737.5" y="411.6" text-anchor="middle" font-size="11" fill="#9198a1">Sends each prompt</text>
 <text x="737.5" y="425.6" text-anchor="middle" font-size="11" fill="#9198a1">[HTTPS]</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M579.0,362.1 L397.2,456.3" dur="1.86s" begin="-1.11s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="3" x="422.4" y="382.8" width="167.8" height="34" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="506.3" y="396.8" text-anchor="middle" font-size="11" fill="#9198a1">Runs each step it names</text>
 <text x="506.3" y="410.8" text-anchor="middle" font-size="11" fill="#9198a1">[session mode]</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M397.2,495.3 L612.8,619.8 L828.4,506.1" dur="4.48s" begin="-1.48s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="4" x="545.3" y="593.8" width="128.2" height="48" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="609.4" y="607.8" text-anchor="middle" font-size="11" fill="#9198a1">Starts each</text>
 <text x="609.4" y="621.8" text-anchor="middle" font-size="11" fill="#9198a1">role on its own</text>
 <text x="609.4" y="635.8" text-anchor="middle" font-size="11" fill="#9198a1">[background mode]</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M329.6,456.3 L147.8,362.1" dur="1.86s" begin="-1.85s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="5" x="196.1" y="401.6" width="121.6" height="34" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="256.9" y="415.6" text-anchor="middle" font-size="11" fill="#9198a1">Checks each push</text>
 <text x="256.9" y="429.6" text-anchor="middle" font-size="11" fill="#9198a1">[pre-commit]</text>
+<circle class="packet" r="3.8" fill="#ab7df8" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M343.7,210.0 L147.8,323.1" dur="2.06s" begin="-0.16s" repeatCount="indefinite"/></circle>
 <rect class="pill" data-lane="6" x="197.5" y="251.8" width="88.6" height="34" rx="3" fill="#0d1117" stroke="#9198a1"/>
 <text x="241.8" y="265.8" text-anchor="middle" font-size="11" fill="#9198a1">Pushes main</text>
 <text x="241.8" y="279.8" text-anchor="middle" font-size="11" fill="#9198a1">[git]</text>
