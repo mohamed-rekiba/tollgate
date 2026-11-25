@@ -24,7 +24,7 @@ _Avoid_: survey, discovery, research
 **citation**: The code or the spec doc that proves a fact: `[path:line]` or `[path::name]` for code, `[path]` or `[path::heading]` for a spec doc. The driver checks that it exists.
 _Avoid_: source link
 
-**spec**: The docs that state the intended design of a project, named in the setting `spec`. A fact from them is specified. A plan follows them, or changes them. List the folder of decision records in `spec`.
+**spec**: The docs that state the intended design of a project, named in the setting `spec`. A fact from them is specified. A plan follows them, or changes them, and a plan that adds behavior writes it into them. List the folder of decision records in `spec`.
 _Avoid_: requirements, PRD
 
 **decision record**: One file that records a choice that is costly to undo, or that a builder could settle the other way. It has the sections Status, Decision, Why, Cost, and Where. A new record supersedes an old one, and only the old record's Status line changes.

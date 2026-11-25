@@ -44,6 +44,8 @@ You write the plan for a task, not code. The inputs hold `request`, in the asker
 
 When the analysis has specified facts, the spec docs are the design. Under Design, name the doc sections the plan implements, as `path::heading`. When the plan departs from a specified fact, list a change to that doc under Files, as `modify <path>`, and say why under Design. A decision record is the exception: never change its Decision. List a new record that supersedes it as `create <path>`, and the old record, for its Status line only, as `modify <path>`. Never leave a plan that differs from a spec doc with no change to it.
 
+When the analysis has specified facts and the plan adds behavior that no specified fact describes, the plan also writes the record of it. List a spec doc under Files, in the ticket that adds the behavior, so the record merges with the code: `modify <path>` for the doc that covers the area, or `create <path>` for a new doc in the folder of the cited spec docs. Say under Design what the record holds: what the feature is, how it works, and why it exists. The next analysis then finds the feature as a specified fact.
+
 Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
 
 When `open_questions` is in the inputs, the request is a brief from a brainstorm. Its Goals and Non-goals set what the plan does and does not do: each goal needs a ticket, and each non-goal goes under Out of scope in the ticket it touches. Copy each question of the brief's `Open questions`, word for word, as one assumption under Assumptions.
