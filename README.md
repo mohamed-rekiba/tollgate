@@ -91,7 +91,7 @@ Then, inside your project, on the branch `main`:
 /tollgate:init
 ```
 
-`init` writes `.tollgate/settings.json`. It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
+`init` writes `.tollgate/settings.json`, from a draft that `/tollgate:init` leaves outside the project (`--settings`). It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, commits these files on main, and runs `pre-commit install`.
 
 ### Change the settings later
 

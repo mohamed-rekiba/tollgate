@@ -90,6 +90,21 @@ class EditTest(Env):
         self.assertRefuses("under .tollgate/", "Write",
                            {"file_path": ".tollgate/settings.json", "content": "x"}, role="planner")
 
+    def test_your_own_session_writes_the_request_but_not_the_settings(self):
+        self.assertLets("Write", {"file_path": ".tollgate/requests/demo.md", "content": "x"},
+                        role="")
+        self.assertLets("Write", {"file_path": ".tollgate/plans/demo.md", "content": "x"},
+                        role="")
+        for path in (".tollgate/settings.json", ".tollgate/checks/x.py", ".tollgate/runner/x",
+                     ".tollgate/lenses/x.md"):
+            self.assertRefuses("only the driver writes there", "Write",
+                               {"file_path": path, "content": "x"}, role="")
+
+    def test_a_planner_does_not_write_requests(self):
+        self.assertRefuses("under .tollgate/", "Write",
+                           {"file_path": ".tollgate/requests/demo.md", "content": "x"},
+                           role="planner")
+
     def test_an_edit_in_the_state_folder_outside_the_copy_is_refused(self):
         lock = state.path(str(self.project), "locks", "T-1.json")
         self.assertRefuses("in the state folder", "Write", {"file_path": str(lock), "content": "{}"})

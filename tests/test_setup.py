@@ -461,6 +461,63 @@ class InitTest(Env):
         self.assertIn("checks", said)
 
 
+class InitSettingsFileTest(Env):
+    """init --settings takes a draft of the settings from a file outside the project."""
+
+    def draft(self, text):
+        path = Path(self.tmp, "draft.json")
+        path.write_text(text)
+        return str(path)
+
+    def test_a_valid_draft_becomes_the_settings(self):
+        root = self.repo()
+        draft = self.draft(json.dumps({"checks": {"vet": {"run": "go vet ./..."}},
+                                       "tiers": {"3": ["internal/caller/**"], "4": []}}))
+        setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        settings = json.loads(sh(root, "git", "show", "main:.tollgate/settings.json").stdout)
+        self.assertEqual(settings["checks"]["vet"], {"run": "go vet ./..."})
+        self.assertEqual(settings["tiers"]["3"], ["internal/caller/**"])
+        self.assertEqual(settings["isolation"], "container")
+        self.assertIn(".tollgate/checks/**", settings["harness"])
+
+    def test_an_unknown_key_is_refused_and_nothing_is_written(self):
+        root = self.repo()
+        draft = self.draft(json.dumps({"signers": []}))
+        with self.assertRaisesRegex(setup_init.st.SettingsError, "unknown key: signers"):
+            setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        self.assertFalse(Path(root, ".tollgate/settings.json").exists())
+
+    def test_a_file_that_is_not_an_object_is_refused(self):
+        root = self.repo()
+        with self.assertRaisesRegex(setup_init.st.SettingsError, "one JSON object"):
+            setup_init.init(str(root), install=False, which=FOUND,
+                            settings_file=self.draft("[1, 2]"))
+        self.assertFalse(Path(root, ".tollgate/settings.json").exists())
+
+    def test_a_missing_file_is_refused(self):
+        root = self.repo()
+        with self.assertRaisesRegex(setup_init.InitError, "cannot read the settings file"):
+            setup_init.init(str(root), install=False, which=FOUND,
+                            settings_file=str(Path(self.tmp, "none.json")))
+
+    def test_settings_that_differ_are_not_overwritten(self):
+        root = self.repo()
+        Path(root, ".tollgate").mkdir()
+        mine = '{"check_minutes": 5}\n'
+        Path(root, ".tollgate/settings.json").write_text(mine)
+        draft = self.draft(json.dumps({"check_minutes": 9}))
+        with self.assertRaisesRegex(setup_init.InitError, "already exists and differs"):
+            setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        self.assertEqual(Path(root, ".tollgate/settings.json").read_text(), mine)
+
+    def test_the_same_draft_a_second_time_changes_nothing(self):
+        root = self.repo()
+        draft = self.draft(json.dumps({"check_minutes": 9}))
+        setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        again = setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        self.assertIn("files: already in place", again)
+
+
 REAL_DOCKER_READY = setup_init.docker_ready
 
 

@@ -1,6 +1,6 @@
 """Set up Tollgate in a project, on this machine. It calls no outside service.
 
-    python3 -m setup.init [--project .] [--replace]
+    python3 -m setup.init [--project .] [--replace] [--settings FILE]
 
 The steps, in order:
 
@@ -8,7 +8,11 @@ The steps, in order:
    isolation "container", the default, check that Docker is installed and running.
 2. Check that the project is a git repository on the branch main.
 3. Create the state folder.
-4. Write .tollgate/settings.json, with the writing check.
+4. Write .tollgate/settings.json, with the writing check. With --settings, FILE is a
+   JSON draft of the settings, written outside the project. Init checks it, then writes it
+   here, because the guard does not let your own session write under .tollgate/ except
+   plans, tickets, roadmaps, and requests. If .tollgate/settings.json already exists and
+   differs from the draft, init stops and leaves the file as it is.
 5. Copy the checks into .tollgate/checks/ and write .pre-commit-config.yaml.
 6. Commit these files on main, so the checks read the settings from main.
 7. Run `pre-commit install`.
@@ -80,14 +84,61 @@ def check_isolation(root: Path, which=shutil.which) -> str:
     return "isolation: container, Docker is running"
 
 
+def with_harness(settings: dict) -> dict:
+    """The settings with the isolation default and the harness that init adds."""
+    settings.setdefault("isolation", "container")
+    harness = settings.setdefault("harness", [])
+    harness += [h for h in HARNESS if h not in harness]
+    return settings
+
+
+def read_draft(file: str) -> dict:
+    """The settings in a draft file. Raise InitError or SettingsError when it cannot be used."""
+    try:
+        text = Path(file).read_text()
+    except OSError as err:
+        raise InitError(f"cannot read the settings file {file}: {err}") from None
+    st.parse(text)
+    return json.loads(text)
+
+
+def covers(existing: dict, draft: dict) -> bool:
+    """True when the settings on disk hold everything in the draft. Init adds the harness, the
+    writing check, and a test check, so the file may hold more than the draft."""
+    for key, value in draft.items():
+        have = existing.get(key)
+        if key == "harness":
+            if not all(item in (have or []) for item in value):
+                return False
+        elif key == "checks":
+            if not all((have or {}).get(name) == check for name, check in value.items()):
+                return False
+        elif have != value:
+            return False
+    return True
+
+
+def place_draft(root: Path, file: str) -> bool:
+    """Write the draft as the project's settings. Return True when the file was written.
+    It never replaces settings that differ: the user edits those."""
+    draft = read_draft(file)
+    path = root / st.PATH
+    if path.exists():
+        if covers(json.loads(path.read_text()), draft):
+            return False
+        raise InitError(f"{st.PATH} already exists and differs from {file}. Edit it yourself, "
+                        "or delete it, then run init again.")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(with_harness(draft), indent=2) + "\n")
+    return True
+
+
 def write_settings(root: Path) -> bool:
     """Add the harness to the settings. Return True when the file changed."""
     path = root / st.PATH
     settings = json.loads(path.read_text()) if path.exists() else {}
     before = json.dumps(settings, sort_keys=True)
-    settings.setdefault("isolation", "container")
-    harness = settings.setdefault("harness", [])
-    harness += [h for h in HARNESS if h not in harness]
+    with_harness(settings)
     if json.dumps(settings, sort_keys=True) == before:
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +174,7 @@ def add_test_check(root: Path) -> str:
     return f"tests: {found['run']}"
 
 
-def init(project=".", replace=False, which=shutil.which, install=True) -> list:
+def init(project=".", replace=False, which=shutil.which, install=True, settings_file=None) -> list:
     """Run every step. Return one line for each step."""
     root = Path(project).resolve()
     out = []
@@ -138,7 +189,10 @@ def init(project=".", replace=False, which=shutil.which, install=True) -> list:
     for kind in state.KINDS:
         state.path(str(root), kind)
     out.append(f"state folder: {state.state_dir(str(root))}")
-    changed = install_writing_check.install(str(root))
+    changed = []
+    if settings_file and place_draft(root, settings_file):   # first: a bad draft changes no file
+        changed.append(st.PATH)
+    changed += install_writing_check.install(str(root))
     if write_settings(root):
         changed.append(st.PATH)
     before = (root / st.PATH).read_text()
@@ -171,9 +225,12 @@ def main(argv=None) -> int:
     parser.add_argument("--project", default=".")
     parser.add_argument("--replace", action="store_true",
                         help="replace a pre-commit config that Tollgate did not write")
+    parser.add_argument("--settings", metavar="FILE",
+                        help="a JSON draft of the settings, written outside the project; init "
+                             "checks it and writes it as .tollgate/settings.json")
     args = parser.parse_args(argv)
     try:
-        for line in init(args.project, args.replace):
+        for line in init(args.project, args.replace, settings_file=args.settings):
             print(line)
     except (InitError, precommit.PrecommitError, st.SettingsError, OSError) as err:
         print(f"init: {err}", file=sys.stderr)

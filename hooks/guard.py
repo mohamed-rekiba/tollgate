@@ -13,7 +13,8 @@ It refuses an edit (Edit, Write, MultiEdit, NotebookEdit) of:
 
 - a file in the lock of any ticket,
 - a file under `.tollgate/` (a planner, or your own session, may write plans,
-  tickets, and roadmaps there),
+  tickets, and roadmaps there; your own session may also write the request of a
+  task under `.tollgate/requests/`),
 - a file in the state folder, except in the role's own copy,
 - a file in the key folder,
 - any file at all, for a reviewer, the advisor, or the analyst,
@@ -67,6 +68,8 @@ GLOB_CHARS = re.compile(r"[*?\[{]")
 READ_ONLY = ("reviewer", "advisor", "analyst")   # the one list; policy and roles read it
 # What a planner, and your own session, may write under .tollgate/.
 DRAFTS = (".tollgate/plans/", ".tollgate/tickets/", ".tollgate/roadmaps/")
+# What only your own session may also write: the request of a task (step 2 of /tollgate:task).
+SESSION_DRAFTS = (".tollgate/requests/",)
 MAIN = {"main", "master", "refs/heads/main", "refs/heads/master"}
 # The roles a Tollgate subagent can be. The plugin names them "tollgate:<role>".
 ROLES = ("analyst", "test_writer", "builder", "reviewer", "advisor", "planner")
@@ -117,8 +120,9 @@ def check_edit(path: str, cwd: str, role: str, copy: str, project: str) -> str:
     if not _under(target, base):
         return ""
     rel = target.relative_to(base).as_posix()
+    allowed = DRAFTS + SESSION_DRAFTS if role == "" else DRAFTS
     if (rel.startswith(".tollgate/") or rel == ".tollgate") and not (
-            role in ("planner", "") and rel.startswith(DRAFTS)):
+            role in ("planner", "") and rel.startswith(allowed)):
         return f"{rel} is under .tollgate/; only the driver writes there"
     ticket = locked_files(project).get(rel)
     if ticket:
