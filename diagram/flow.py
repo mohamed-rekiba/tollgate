@@ -18,6 +18,7 @@ A spec is a dict, often read from JSON:
                 "tone": "pass" | "fail", "dashed": true,
                 "loop": "left" | "right" | "above" | "below",
                 "route": "vhv" | "vh" | "hv", "arrow": false}],
+     "packets": true,
      "names": {"server": "GitHub"},
      "heading": "A title drawn over the diagram",
      "groups": [{"label": "The server", "nodes": ["a", "b"], "kind": "server",
@@ -76,6 +77,7 @@ The output is plain SVG: real text, a viewBox, role="img" with a title and a
 description named by aria-labelledby, no scripts, and no external files.
 """
 
+import math
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
@@ -103,6 +105,25 @@ MOTION = (
     "@keyframes side{to{stroke-dashoffset:-11}}"
     "@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket{display:none}}"
 )
+
+
+def motion(packets=False):
+    """The style of the moving arrows. With packets, those dots stop for less motion too."""
+    if not packets:
+        return MOTION
+    return MOTION.replace(".ticket{display:none}", ".ticket,.packet{display:none}")
+
+
+def packet(path, points, color, page, n, side=False):
+    """One small dot that runs along an arrow, over and over. Main arrows run faster
+    than side arrows, and arrow n starts at its own point of the trip, so the dots do
+    not move in step. `path` is the arrow as an SVG path, `points` where it turns."""
+    length = sum(math.dist(a, b) for a, b in pairwise(points))
+    dur = max(length / (60 if side else 110), 1.2)
+    return (f'<circle class="packet" r="{3 if side else 3.8}" fill="{color}" '
+            f'stroke="{page}" stroke-width="1.2">'
+            f'<animateMotion path="{path}" dur="{dur:.2f}s" begin="-{n * 0.37 % dur:.2f}s" '
+            f'repeatCount="indefinite"/></circle>')
 
 # Every pair passes WCAG 2.1: text 4.5 to 1 on its fill, lines 3 to 1 on the page.
 # tests/test_diagrams.py checks this.
@@ -728,6 +749,9 @@ def draw(spec, theme):
             edges.append(f'<path class="{flow}" d="{rounded(pts)}" fill="none" stroke="{color}" '
                          f'stroke-linecap="round" stroke-linejoin="round" '
                          f'marker-end="url(#arrow-{tone or "plain"})"/>')
+            if spec.get("packets"):
+                edges.append(packet(rounded(pts), pts, color, t["page"], len(edges),
+                                    side=bool(e.get("dashed"))))
         else:
             edges.append(f'<path class="line" d="{rounded(pts)}" fill="none" stroke="{color}" '
                          f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -775,7 +799,7 @@ def draw(spec, theme):
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
         f'<defs>{"".join(markers)}{grid}</defs>',
-        f"<style>{MOTION}</style>",
+        f"<style>{motion(spec.get('packets'))}</style>",
         # A full square: no corner is see-through, whatever the page behind it.
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="url(#grid)"/>',

@@ -80,6 +80,8 @@ def to_flow(spec):
                        "nodes": [c["id"] for c in spec["cases"]]}]}
     if spec.get("names"):
         out["names"] = spec["names"]
+    if spec.get("packets"):
+        out["packets"] = True
     return out
 
 

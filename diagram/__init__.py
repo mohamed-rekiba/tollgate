@@ -30,7 +30,9 @@ A scene spec:
      "size": [1120, 640], "origin": [560, 330], "scale": 0.8,
      "caption": ["Big title", "one line under it"],
      "zones":   [{"at": [x0, y0, x1, y1], "kind": "ai", "z": 0, "height": 8}],
+     "packets": true,
      "lanes":   [{"path": [[x, y], [x, y]], "label": "the change", "at": 0.5,
+                  "kind": "you" | "ai" | "server" | "check" | "advisor" | "neutral",
                   "tone": "pass" | "fail", "side": true}],
      "objects": [{"type": "room" | "gate" | "server" | "vault" | "papers" | "laptop" |
                           "board" | "house" | "database" | "pedestal" | "aws" | "wall" |
@@ -47,6 +49,10 @@ A scene spec:
      "callouts": [{"n": 1, "head": "Plan first", "line": "One short sentence or two.",
                    "to": [x, y, z], "side": "left" | "right" | "bottom", "kind": "ai"}]}
 
+"packets": true puts one small dot on every lane, each in its lane's color, so
+all the lanes show their direction at once; the ticket stays the one dot that
+tells the order. A lane's "kind" sets its color and arrowhead, as for a label;
+a "tone" wins over a kind, and a lane with neither keeps the old look.
 Ground units: x runs down-right on the page, y runs down-left, z runs up.
 "gate" takes "arm_to" (where the barrier ends) and "axis" ("x" or "y");
 "pedestal" takes "icon"; "aws" takes "aws" (a service name); "wall" takes "to".

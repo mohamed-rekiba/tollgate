@@ -196,6 +196,8 @@ def to_flow(spec):
            "groups": groups(spec)}
     if spec.get("names"):
         out["names"] = spec["names"]
+    if spec.get("packets"):
+        out["packets"] = True
     return out
 
 

@@ -55,6 +55,7 @@ The format, with every option, is at the top of `$TG/diagram/flow.py`. In short:
 - `edges`: arrows. `label` says what travels or why. `tone` is `pass` (green) or `fail` (red), always with a label. `dashed` is a side path. `loop` (left, right, above, below) is an arrow that goes back. `route` (vhv, vh, hv) picks where it bends.
 - `groups`: a border around boxes that belong together, such as "For each ticket".
 - `ticket`: one dot that travels a path of arrows, to show one thing moving through. At most once per diagram.
+- `"packets": true`: a small dot runs along every arrow, in the arrow's color, so each arrow shows its direction at once. The `ticket` stays the one dot that tells the order. Use it on a diagram with few arrows: many dots hide the picture.
 
 ## A sequence
 
@@ -65,6 +66,7 @@ A UML sequence diagram: one scenario between parts, in time order. Set `"type": 
 - `activations`: a bar on a lifeline while that part is busy, from one message to another, counted from 0.
 - `frames`: a box around messages. `loop` repeats them, `alt` picks one of two or more ways, `opt` happens only when its guard holds. Write each guard as a plain condition; the brackets are added.
 - `"ticket": true`: one dot follows the messages in order.
+- `"packets": true`: a small dot runs along every message, so each message shows its direction. A reply runs slower than a request.
 - About ten to fourteen messages. Split a longer scenario.
 
 ## A state machine
@@ -75,6 +77,7 @@ A UML state machine: the states one thing is in, and the events that move it. Se
 - `parent`: puts a state inside another one, one level deep. The outer state may have its own start dot.
 - `transitions`: arrows labeled with the `event`, then the `guard` in brackets, both optional. A transition from a state to itself is a loop, such as another try. `loop`, `route`, and `tone` work as in a flow; `shift` moves an arrow along a side so two arrows can share it.
 - `ticket`: one dot follows a path of transitions, such as the path that works.
+- `"packets": true`: a small dot runs along every transition. Use it on a machine with few transitions.
 - About eight to twelve states. Name each for what is true while the thing waits there, such as "At the gate", not for a function.
 
 ## A C4 diagram
@@ -92,6 +95,7 @@ A diagram of software architecture, as C4 draws it, built on the flow. Set `"typ
 - Keep two lines in a box: a short description, wrapped. Put an arrow's label where the gap has room: an arrow that goes straight across or straight down gets room for its label.
 - `"style": "isometric"`: the same spec, at any level, drawn in three dimensions, in the look of the hero pictures. The layout comes from your grid. Each of the `boundaries` is a raised zone, and nested deployment nodes stack as platforms. Each type has its own object: a person, a building, a box with a lid for a container, a cylinder, a pipe, a small block for a component, and a cloud for a node whose stereotype says cloud. Each relation is a lane with moving dots; at the `dynamic` level one dot follows the numbered steps in order. A relation with `loop`, or to its own element, has no isometric drawing: it is refused. Pick isometric for the big picture: a README, a talk, a first look. Pick flat, the default, for detail a reader studies.
 - To draw one spec both ways, add a second file with one line: `{"from": "c4-container.json", "style": "isometric"}`. It draws the first spec with its own keys on top, and follows every change to it.
+- `"packets": true`: a small dot runs along every relationship, in the flat drawing and in the isometric one.
 
 ## A use case diagram
 
@@ -101,6 +105,7 @@ A UML use case diagram, built on the flow. Set `"type": "usecase"`. The format, 
 - `actors`: people or roles, drawn as a person, outside the border, on a grid of `col` and `row`.
 - `cases`: ovals inside the border, each a goal in a few words, such as "Approve a change".
 - `links`: a plain line from an actor to a use case. `"type": "include"` or `"extend"` joins two use cases with a dashed arrow labeled «include» or «extend». Put the two in one column or one row, so the label has room.
+- `"packets": true`: a small dot runs along every link and every dashed arrow.
 
 ## A class diagram
 
@@ -129,6 +134,7 @@ An isometric picture: zones on the ground, objects on them, lanes with moving do
 - Ground units: x runs down-right on the page, y runs down-left. Put things that happen first on the left.
 - Put each label beside its object, never over another object or label.
 - A `ticket` travels the lanes; `lift` names the leg during which a gate opens.
+- `"packets": true` puts a small dot on every lane, so each lane shows its direction. Use it with the `ticket`: the packets show where things flow, the ticket shows the order. Give each lane a `kind` (`you`, `ai`, `server`, `check`, `advisor`, `neutral`) to color the lanes by who acts, and keep the same kind for the same group of lanes.
 - One object, one meaning. Give each object `means`: the thing it stands for, such as `"means": "the gate"`. `build` refuses a folder where one object (its type, kind, and icon) stands for two things, or one thing is drawn as two objects. `means` is not drawn.
 
 ## AWS architecture

@@ -18,7 +18,7 @@ from itertools import pairwise
 from xml.sax.saxutils import escape
 
 from diagram import aws
-from diagram.flow import MONO, THEMES
+from diagram.flow import MONO, THEMES, packet
 from diagram.icons import icon
 
 CIRCLE = [(math.cos(k * math.pi / 12), math.sin(k * math.pi / 12)) for k in range(24)]
@@ -59,6 +59,8 @@ class Scene:
         self.s = scale
         self.back, self.out, self.front = [], [], []  # ground, objects, labels on top
         self.legs = []  # the ticket's path
+        self.packets = False  # a small dot on every lane, when the spec asks for it
+        self.lane_kinds = set()  # kinds that color a lane: each needs its own arrowhead
         self.css = []
         self.ids = 0
 
@@ -136,22 +138,37 @@ class Scene:
             self.front.append(f'<text x="{px:.1f}" y="{ty:.1f}" text-anchor="middle" '
                               f'font-size="11" fill="{color}">{escape(line)}</text>')
 
-    def lane(self, ground, label=None, at=0.5, tone=None, side=False, z=2):
+    def lane(self, ground, label=None, at=0.5, tone=None, side=False, z=2, kind=None):
         """A path through (x, y) points on the ground, or (x, y, z) points above it,
-        with dots that move along it."""
-        color = self.c["tones"].get(tone, self.c["edge"] if side else self.c["kinds"]["ai"][0])
+        with dots that move along it. A tone (fail, pass) wins over a kind; with neither,
+        a side lane is gray and any other is the color of "ai"."""
+        if kind is not None and kind not in self.c["kinds"]:
+            raise ValueError(f"lane kind must be one of {', '.join(self.c['kinds'])}, not {kind!r}")
+        base = self.c["kinds"][kind][0] if kind else self.c["edge"] if side else self.c["kinds"]["ai"][0]
+        color = self.c["tones"].get(tone, base)
         points = [self.iso(*p) if len(p) == 3 else self.iso(*p, z) for p in ground]
-        marker = f"arrow-{tone or ('side' if side else 'main')}"
+        if kind and tone not in self.c["tones"]:
+            self.lane_kinds.add(kind)
+        marker = f"arrow-{tone or kind or ('side' if side else 'main')}"
         self.lanes = getattr(self, "lanes", 0) + 1
         self.back.append(f'<polyline class="{"side" if side else "main"}" '
                          f'data-lane="{self.lanes}" '
                          f'points="{self.pts(points)}" fill="none" stroke="{color}" '
                          f'stroke-linecap="round" stroke-linejoin="round" '
                          f'marker-end="url(#{marker})"/>')
+        if self.packets:
+            self.packet(points, color, side, self.lanes)
         if label:
             px, py = self.along(points, at)
             self.pill(px, py, label, self.c["tones"].get(tone, self.c["sub"]), self.lanes)
         return points
+
+    def packet(self, points, color, side, n):
+        """One small dot that runs along a lane, over and over. Main lanes run faster than
+        side lanes, and each lane starts at its own point of the trip, so the dots do not
+        move in step."""
+        path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points)
+        self.front.append(packet(path, points, color, self.c["page"], n, side))
 
     @staticmethod
     def along(points, at):
@@ -665,8 +682,9 @@ class Scene:
     def render(self, title, desc):
         c = self.c
         markers = []
+        kinds = [(k, c["kinds"][k][0]) for k in c["kinds"] if k in self.lane_kinds]
         for name, color in (("main", c["kinds"]["ai"][0]), ("side", c["edge"]),
-                            ("fail", c["tones"]["fail"]), ("pass", c["tones"]["pass"])):
+                            ("fail", c["tones"]["fail"]), ("pass", c["tones"]["pass"]), *kinds):
             markers.append(f'<marker id="arrow-{name}" viewBox="0 0 10 10" refX="9" refY="5" '
                            f'markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" '
                            f'orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" '
@@ -680,7 +698,8 @@ class Scene:
                  "@keyframes pulse{0%{transform:scale(1);opacity:.8}25%{transform:scale(2.5);"
                  "opacity:0}100%{opacity:0}}"
                  "@media (prefers-reduced-motion:reduce){.main,.side,.pulse{animation:none}"
-                 ".ticket,.moving-arm{display:none}.still-arm{display:inline}}")
+                 f".ticket,{'.packet,' if self.packets else ''}.moving-arm{{display:none}}"
+                 ".still-arm{display:inline}}")
         lifts = getattr(self, "lifts", {})
         self.out = [re.sub(r"<!--lift:([\w-]+)-->", lambda m: lifts.get(m.group(1), ""), s)
                     for s in self.out]
@@ -901,9 +920,10 @@ def from_spec(spec: dict, theme: str) -> str:
         z0 = zone.get("z", 0)
         s.prism(x0, y0, x1, y1, z0, z0 + zone.get("height", 8), zone.get("kind", "neutral"),
                 into=s.back, cls="zone")
+    s.packets = bool(spec.get("packets"))
     for lane in spec.get("lanes", []):
         s.lane([tuple(p) for p in lane["path"]], lane.get("label"), lane.get("at", 0.5),
-               lane.get("tone"), lane.get("side", False))
+               lane.get("tone"), lane.get("side", False), kind=lane.get("kind"))
     for o in spec.get("objects", []):
         check_object(o)
     # Objects from back to front, so nearer ones cover farther ones.

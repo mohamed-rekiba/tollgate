@@ -58,7 +58,17 @@ description named by aria-labelledby, no scripts, and no external files.
 from itertools import pairwise
 from xml.sax.saxutils import escape
 
-from diagram.flow import LABEL, MONO, MOTION, THEMES, draw_node, node_size, rounded, text_width
+from diagram.flow import (
+    LABEL,
+    MONO,
+    THEMES,
+    draw_node,
+    motion,
+    node_size,
+    packet,
+    rounded,
+    text_width,
+)
 from diagram.icons import ICONS
 
 FRAME_KINDS = ("alt", "loop", "opt")
@@ -503,6 +513,8 @@ def draw(spec, theme):
                       f'data-from="{escape(m["from"])}" data-to="{escape(m["to"])}" '
                       f'd="{rounded(pts, 6)}" fill="none" stroke="{color}" stroke-width="1.6" '
                       f'stroke-linejoin="round"{dash} marker-end="url(#{head})"/>')
+        if spec.get("packets"):
+            arrows.append(packet(rounded(pts, 6), pts, color, t["page"], i, side=reply))
         seen += pts
         ink = t["tones"].get(tone, t["text"])
         frame = t["tones"].get(tone, t["border"])
@@ -560,7 +572,7 @@ def draw(spec, theme):
         f'<title id="title">{escape(spec["title"])}</title>',
         f'<desc id="desc">{escape(spec["desc"])}</desc>',
         f'<defs>{"".join(markers)}{grid}</defs>',
-        f"<style>{MOTION}</style>",
+        f"<style>{motion(spec.get('packets'))}</style>",
         # A full square: no corner is see-through, whatever the page behind it.
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="{t["page"]}"/>',
         f'<rect x="{x0:.0f}" y="{y0:.0f}" width="{w:.0f}" height="{h:.0f}" fill="url(#grid)"/>',
