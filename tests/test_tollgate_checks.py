@@ -178,6 +178,26 @@ class TollgateChecksTest(unittest.TestCase):
         self.assertIn("FAIL check: tests", out.getvalue())
         self.assertIn("PASS push", out.getvalue())
 
+    def test_a_project_check_does_not_get_the_variables_of_the_hook(self):
+        self.settings(env={"run": "echo remote=${PRE_COMMIT_REMOTE_NAME:-none} "
+                                  "dir=${GIT_DIR:-none} head=${GITHEAD_1:-none}"})
+        self.script("push.py", "import os; print('push sees', os.environ.get("
+                               "'PRE_COMMIT_REMOTE_NAME', 'none'))")
+        stages = {"pre-push": [("push", ["push.py"])]}
+        hook = {"PRE_COMMIT_REMOTE_NAME": "origin", "GIT_DIR": "/x/.git", "GITHEAD_1": "topic"}
+        with mock.patch.dict("os.environ", hook):
+            code, out = self.run_stage(stages, ["pre-push"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("remote=none dir=none head=none", out)
+        self.assertIn("push sees origin", out)   # Tollgate's own check keeps what it needs
+
+    def test_project_env_drops_only_the_hook_variables(self):
+        env = tc.project_env({"PATH": "/bin", "HOME": "/h", "PRE_COMMIT_HOME": "/cache",
+                              "PRE_COMMIT_REMOTE_NAME": "origin", "GIT_DIR": "/x",
+                              "GITHEAD_abc": "t", "GIT_AUTHOR_NAME": "a"})
+        self.assertEqual(env, {"PATH": "/bin", "HOME": "/h", "PRE_COMMIT_HOME": "/cache",
+                               "GIT_AUTHOR_NAME": "a"})
+
     def test_only_the_commit_message_stage_passes_files_on(self):
         self.assertNotIn("x.py", dict(tc.commands("pre-commit", ["x.py"]))["locked"])
         self.assertIn("msg", dict(tc.commands("commit-msg", ["msg"]))["commit message"])

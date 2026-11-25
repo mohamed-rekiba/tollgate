@@ -16,6 +16,12 @@ if "GIT_CONFIG_COUNT" not in os.environ:
                        "GIT_CONFIG_KEY_0": "commit.gpgsign", "GIT_CONFIG_VALUE_0": "false",
                        "GIT_CONFIG_KEY_1": "tag.gpgsign", "GIT_CONFIG_VALUE_1": "false"})
 
+# The same goes for what pre-commit sets for a hook. A test that commits in a temporary repository
+# with Tollgate's hooks would otherwise take its git step from the hook that runs the tests.
+for _name in [k for k in os.environ if k.startswith("PRE_COMMIT_")
+              and k not in ("PRE_COMMIT_HOME", "PRE_COMMIT_NO_CONCURRENCY")]:
+    os.environ.pop(_name, None)
+
 for _name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_PREFIX",
               "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE"):
     os.environ.pop(_name, None)

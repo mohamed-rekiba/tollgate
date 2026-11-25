@@ -25,7 +25,7 @@ checks of a stage run side by side. The setting `parallel` in
 them, a whole number for that many, false for one at a time. When a check ends,
 the script prints its output, then one line: PASS or FAIL and its name. It ends
 with 1 when a check failed. A project check runs with its own command, through `sh -c`,
-from the project folder. It uses only the standard library.
+from the project folder, without the variables that pre-commit and git set for the hook. It uses only the standard library.
 """
 
 import json
@@ -41,8 +41,19 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SETTINGS = ".tollgate/settings.json"
 
+# What pre-commit and git set for the hook that runs this script. A project check is a plain
+# command, so it does not get them: its own `git commit`, in a temporary repository of a
+# test, would otherwise take its step from them, and run the checks of a push.
+HOOK_ENV = ("PRE_COMMIT_REMOTE_NAME", "PRE_COMMIT_REMOTE_URL", "PRE_COMMIT_REMOTE_BRANCH",
+            "PRE_COMMIT_LOCAL_BRANCH", "PRE_COMMIT_FROM_REF", "PRE_COMMIT_TO_REF",
+            "PRE_COMMIT_ORIGIN", "PRE_COMMIT_SOURCE", "PRE_COMMIT_COMMIT_MSG_SOURCE",
+            "PRE_COMMIT_CHECKOUT_TYPE", "PRE_COMMIT_IS_SQUASH_MERGE",
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_PREFIX",
+            "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
 STAGE_WORD = re.compile(r"^[a-z]+(-[a-z]+)+$")   # a mistyped stage, such as post-commit
 MESSAGE_FILES = ("COMMIT_EDITMSG", "MERGE_MSG", "SQUASH_MSG", "TAG_EDITMSG")
+
+PROJECT_PREFIX = "check: "
 
 STAGES = {
     "pre-commit": [("locked", ["check_locked.py"]),
@@ -79,7 +90,7 @@ def project_checks(root: str) -> list:
     for name, check in sorted(checks.items()):
         run = check.get("run", "") if isinstance(check, dict) else ""
         if run and name != "writing" and "check_writing.py" not in run:
-            found.append((f"check: {name}", ["sh", "-c", run]))
+            found.append((f"{PROJECT_PREFIX}{name}", ["sh", "-c", run]))
     return found
 
 
@@ -109,11 +120,18 @@ def jobs(root: str, count: int) -> int:
     return max(1, min(value, count))
 
 
-def run_one(name: str, argv: list, cwd: str, stdin) -> dict:
+def project_env(environ=None) -> dict:
+    """The environment of a project check: the hook's own variables, and the GITHEAD_*
+    names git gives a merge hook, are left out."""
+    environ = os.environ if environ is None else environ
+    return {k: v for k, v in environ.items() if k not in HOOK_ENV and not k.startswith("GITHEAD_")}
+
+
+def run_one(name: str, argv: list, cwd: str, stdin, env=None) -> dict:
     """Run one check. Return its name, output, and code."""
     start = time.monotonic()
     proc = subprocess.run(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          stdin=stdin, check=False)
+                          stdin=stdin, env=env, check=False)
     return {"name": name, "output": proc.stdout.decode(errors="replace"),
             "code": proc.returncode, "seconds": time.monotonic() - start}
 
@@ -142,7 +160,8 @@ def main(argv=None, root: str = ".") -> int:
     lock = threading.Lock()
 
     def one(item):
-        result = run_one(*item, cwd=root, stdin=stdin)
+        env = project_env() if item[0].startswith(PROJECT_PREFIX) else None
+        result = run_one(*item, cwd=root, stdin=stdin, env=env)
         report(result, lock)
         return result
 
