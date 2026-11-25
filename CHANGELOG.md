@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/tollgate-ai/tollgate/compare/v0.9.1...v0.9.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **tests:** start the tests without the git location variables ([#147](https://github.com/tollgate-ai/tollgate/issues/147)) ([8e15561](https://github.com/tollgate-ai/tollgate/commit/8e1556105f400bccfa6f1fe7759c31285e4f54ea))
+
 ## [0.9.1](https://github.com/tollgate-ai/tollgate/compare/v0.9.0...v0.9.1) (2026-11-25)
 
 
