@@ -1,11 +1,17 @@
 """Run the checks of one git hook stage, side by side: Tollgate's, and at a push, the project's.
 
-    uv run --no-project python .tollgate/checks/tollgate_checks.py <stage> [file ...]
+    uv run --no-project python .tollgate/checks/tollgate_checks.py [stage] [file ...]
 
-setup.precommit writes one pre-commit entry for each stage Tollgate uses, and each
-entry runs this one script with its stage. pre-commit does not tell a hook which
-stage runs it: it sets no variable for the stage, and pre-commit and
-pre-merge-commit look the same. The checks of each stage are:
+setup.precommit writes one pre-commit entry, for all four git steps, and it runs this
+one script. pre-commit does not tell a hook which step runs it, so the script works the
+step out, when no stage is named:
+
+- pre-push, when pre-commit gives the name of the remote (PRE_COMMIT_REMOTE_NAME);
+- commit-msg, when the first argument is a commit message file, such as COMMIT_EDITMSG;
+- pre-merge-commit, when git names the commits it merges (GITHEAD_<commit>);
+- pre-commit, in any other case.
+
+A stage that is named as the first argument is used as it is. The checks of each stage are:
 
 - pre-commit: check_locked.py, and check_writing.py --staged;
 - commit-msg: check_commit_msg.py, with the message file that pre-commit passes;
@@ -23,6 +29,8 @@ from the project folder. It uses only the standard library.
 """
 
 import json
+import os
+import re
 import subprocess
 import sys
 import threading
@@ -32,6 +40,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SETTINGS = ".tollgate/settings.json"
+
+STAGE_WORD = re.compile(r"^[a-z]+(-[a-z]+)+$")   # a mistyped stage, such as post-commit
+MESSAGE_FILES = ("COMMIT_EDITMSG", "MERGE_MSG", "SQUASH_MSG", "TAG_EDITMSG")
 
 STAGES = {
     "pre-commit": [("locked", ["check_locked.py"]),
@@ -43,6 +54,18 @@ STAGES = {
 }
 # The stages whose files pre-commit passes on to the check.
 TAKES_FILES = ("commit-msg",)
+
+
+def stage_of(args: list, env) -> tuple:
+    """(stage, files) for a run that names no stage: the git step, worked out from what
+    pre-commit and git give the hook."""
+    if env.get("PRE_COMMIT_REMOTE_NAME"):
+        return "pre-push", []
+    if args and Path(args[0]).name in MESSAGE_FILES:
+        return "commit-msg", args
+    if any(name.startswith("GITHEAD_") for name in env):
+        return "pre-merge-commit", []
+    return "pre-commit", []
 
 
 def project_checks(root: str) -> list:
@@ -105,10 +128,15 @@ def report(result: dict, lock: threading.Lock) -> None:
 
 def main(argv=None, root: str = ".") -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv[0] not in STAGES:
-        print(f"tollgate_checks: name a stage: {', '.join(STAGES)}", file=sys.stderr)
+    if argv and argv[0] in STAGES:
+        stage, files = argv[0], argv[1:]
+    elif argv and STAGE_WORD.match(argv[0]):
+        print(f"tollgate_checks: not a stage: {argv[0]}. Stages: {', '.join(STAGES)}",
+              file=sys.stderr)
         return 2
-    found = commands(argv[0], argv[1:], root)
+    else:
+        stage, files = stage_of(argv, os.environ)
+    found = commands(stage, files, root)
     # One check may read the input pre-commit gives the hook. Two would race for it.
     stdin = None if len(found) == 1 else subprocess.DEVNULL
     lock = threading.Lock()

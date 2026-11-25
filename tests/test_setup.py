@@ -344,7 +344,7 @@ class PrecommitTest(Env):
         self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
                       "pre-push]", text)
         self.assertNotIn("id: check-", text)
-        self.assertEqual(text.count("tollgate_checks.py pre-push"), 1)
+        self.assertEqual(text.count("tollgate_checks.py"), 1)
         self.assertEqual(precommit.write(str(root)), [])
 
     def project_with_checks(self, **extra):
@@ -365,25 +365,63 @@ class PrecommitTest(Env):
         self.assertNotIn("id: check-", text)
         self.assertNotIn("go test", text)
         self.assertNotIn("golangci-lint", text)
-        self.assertEqual(text.count('stages: ["pre-push"]'), 1)
+        self.assertEqual(text.count("    stages:"), 1)   # the one Tollgate entry, for all four
         self.assertNotIn("run_checks.py", text)
 
-    def test_tollgates_checks_are_one_script_with_one_entry_for_each_stage(self):
+    def test_tollgates_checks_are_one_script_with_one_entry_for_all_four_stages(self):
         root = self.repo()
         precommit.write(str(root))
         text = Path(root, precommit.CONFIG).read_text()
-        run = "uv run --no-project python .tollgate/checks/tollgate_checks.py"
-        for stage in precommit.HOOK_TYPES:
-            self.assertIn(f'entry: "{run} {stage}"', text)
-            self.assertIn(f'stages: ["{stage}"]', text)
+        self.assertEqual(text.count("id: tollgate\n"), 1)
+        self.assertEqual(text.count("tollgate_checks.py"), 1)
+        block = text[text.index("  - id: tollgate\n"):]
+        block = block[:block.index("  - id:", 5)] if "  - id:" in block[5:] else block
+        self.assertIn('entry: "uv run --no-project python .tollgate/checks/tollgate_checks.py"',
+                      block)
+        self.assertIn('stages: ["pre-commit", "commit-msg", "pre-merge-commit", "pre-push"]',
+                      block)
+        self.assertIn("pass_filenames: true", block)
+        self.assertIn("always_run: true", block)
+        self.assertIn("COMMIT_EDITMSG|MERGE_MSG|SQUASH_MSG|TAG_EDITMSG", block)
         for script in ("check_locked.py", "check_writing.py", "check_commit_msg.py",
                        "check_merge.py"):
             self.assertNotIn(f".tollgate/checks/{script}", text)
         self.assertNotIn("python3 .tollgate/checks", text)
-        commit_msg = text[text.index("  - id: tollgate-commit-msg\n"):]
-        commit_msg = commit_msg[:commit_msg.index("  - id:", 5)]
-        self.assertIn("pass_filenames: true", commit_msg)
         self.assertTrue(Path(root, ".tollgate/checks/tollgate_checks.py").exists())
+
+    def tollgate_project(self):
+        """A project that holds the checks as source, in setup/, as Tollgate's own does."""
+        root = self.repo()
+        Path(root, "setup").mkdir()
+        for name in ("precommit.py", "tollgate_checks.py"):
+            Path(root, "setup", name).write_text("# source\n")
+        return root
+
+    def test_in_tollgates_own_project_the_entry_runs_the_source_and_no_copy_is_made(self):
+        root = self.tollgate_project()
+        Path(root, ".tollgate/checks").mkdir(parents=True)
+        for name in precommit.SCRIPTS:
+            Path(root, ".tollgate/checks", name).write_text("# a copy\n")
+        changed = precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        self.assertIn('entry: "uv run --no-project python setup/tollgate_checks.py"', text)
+        self.assertNotIn(".tollgate/checks/tollgate_checks.py", text)
+        self.assertEqual(sorted(changed), sorted([precommit.CONFIG] + [
+            f".tollgate/checks/{n}" for n in precommit.SCRIPTS]))
+        for name in precommit.SCRIPTS:
+            self.assertFalse(Path(root, ".tollgate/checks", name).exists(), name)
+        self.assertEqual(precommit.write(str(root)), [])
+
+    def test_health_wants_no_copy_in_tollgates_own_project(self):
+        root = self.tollgate_project()
+        precommit.write(str(root))
+        found = health.warnings(str(root), which=FOUND, plugin=self.tmp)
+        self.assertEqual([w for w in found if ".tollgate/checks/" in w], [])
+        plain = self.repo("plain")
+        precommit.write(str(plain))
+        Path(plain, ".tollgate/checks/check_merge.py").unlink()
+        found = health.warnings(str(plain), which=FOUND, plugin=self.tmp)
+        self.assertTrue(any(".tollgate/checks/check_merge.py is missing" in w for w in found))
 
     def test_an_old_config_moves_to_the_one_script_and_the_old_runner_goes(self):
         root = self.project_with_checks()
@@ -401,7 +439,7 @@ class PrecommitTest(Env):
         text = config.read_text()
         self.assertNotIn("tollgate-checks", text)
         self.assertNotIn("python3 .tollgate/checks", text)
-        self.assertIn("tollgate_checks.py pre-commit", text)
+        self.assertEqual(text.count("id: tollgate\n"), 1)
         self.assertEqual(precommit.write(str(root)), [])
 
     def test_a_config_tollgate_wrote_with_python3_is_rewritten_with_uv(self):
@@ -458,6 +496,28 @@ class HooksTest(Env):
         self.assertNotEqual(done.returncode, 0)
         done = sh(self.root, "git", "commit", "-m", "feat(a): add a", check=False)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_push_runs_the_project_checks_through_the_one_entry(self):
+        remote = self.tmp / "remote.git"
+        sh(self.tmp, "git", "init", "-q", "--bare", str(remote))
+        sh(self.root, "git", "remote", "add", "origin", str(remote))
+        sh(self.root, "git", "checkout", "-q", "-b", "t1")
+        path = Path(self.root, ".tollgate/settings.json")
+        settings = json.loads(path.read_text())
+        settings.setdefault("checks", {})["broken"] = {"run": "echo the check broke; exit 1"}
+        path.write_text(json.dumps(settings))
+        done = sh(self.root, "git", "push", "origin", "t1", check=False)
+        out = done.stdout + done.stderr
+        self.assertNotEqual(done.returncode, 0, out)
+        self.assertIn("the check broke", out)
+        self.assertIn("FAIL check: broken", out)
+        self.assertIn("PASS push", out)
+        self.assertEqual(sh(self.root, "git", "ls-remote", "--heads", str(remote)).stdout.strip(), "")
+        del settings["checks"]["broken"]
+        path.write_text(json.dumps(settings))
+        done = sh(self.root, "git", "push", "origin", "t1", check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("t1", sh(self.root, "git", "ls-remote", "--heads", str(remote)).stdout)
 
     def test_a_merge_into_main_needs_a_pass(self):
         commit = self.branch(self.root, "t1", {"a.py": "x = 1\n"}, verify=True)
@@ -817,11 +877,13 @@ if __name__ == "__main__":
 
 
 class OwnChecksTest(unittest.TestCase):
-    def test_this_repository_carries_the_same_checks_it_copies_into_a_project(self):
+    def test_a_copy_of_a_check_in_this_repository_is_the_source(self):
         root = Path(__file__).resolve().parent.parent
         for name in ("check_locked.py", "check_writing.py", "check_commit_msg.py",
-                     "check_merge.py"):
+                     "check_merge.py", "tollgate_checks.py"):
             with self.subTest(check=name):
-                self.assertEqual((root / ".tollgate/checks" / name).read_text(),
-                                 (root / "setup" / name).read_text(),
-                                 "run python3 -m setup.precommit after changing a check")
+                copy = root / ".tollgate/checks" / name
+                self.assertTrue((root / "setup" / name).is_file())
+                if copy.exists():   # this project may run the source in setup/ and hold no copy
+                    self.assertEqual(copy.read_text(), (root / "setup" / name).read_text(),
+                                     "run python3 -m setup.precommit after changing a check")

@@ -57,6 +57,7 @@ from gate.store import Store, StoreError
 
 PLAN_LENSES = ("simplicity", "fresh_reader", "readiness")
 WRITING_CHECK = ".tollgate/checks/check_writing.py"
+OWN_WRITING_CHECK = "setup/check_writing.py"   # in Tollgate's own project, which holds the source
 MAX_ROUNDS = 4
 OPEN_LEVELS = ("blocking", "major")
 TASK_TIER = 2   # the review of the whole task reads like a tier 2 review: the review lens only
@@ -156,7 +157,10 @@ class Task:
     def required_files(self, plan) -> list:
         """A file that a check of the project requires, and that the plan leaves missing.
         Today, one: the README that the writing check fails without."""
-        if (Path(self.copy, WRITING_CHECK).exists() and not Path(self.copy, "README.md").exists()
+        has_check = (Path(self.copy, WRITING_CHECK).exists()
+                     or (Path(self.copy, OWN_WRITING_CHECK).exists()
+                         and Path(self.copy, "setup", "tollgate_checks.py").exists()))
+        if (has_check and not Path(self.copy, "README.md").exists()
                 and plan.files.get("README.md") != "create"):
             return [("README.md is missing, and the project's writing check fails without it: "
                      "add 'create README.md' to Files, and a checklist item that covers it")]
