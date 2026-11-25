@@ -347,6 +347,43 @@ class PrecommitTest(Env):
         self.assertNotIn("tollgate-check-writing", text)
         self.assertEqual(precommit.write(str(root)), [])
 
+    def project_with_checks(self, **extra):
+        root = self.repo()
+        Path(root, ".tollgate").mkdir()
+        Path(root, ".tollgate/settings.json").write_text(json.dumps(
+            {"checks": {"tests": {"run": "go test ./..."}, "lint": {"run": "golangci-lint run"},
+                        "writing": {"run": "python3 .tollgate/checks/check_writing.py"}},
+             **extra}))
+        return root
+
+    def test_two_checks_get_one_hook_that_runs_them_side_by_side(self):
+        root = self.project_with_checks()
+        precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        self.assertIn("id: tollgate-checks", text)
+        self.assertIn('"uv run --no-project python .tollgate/checks/run_checks.py"', text)
+        self.assertNotIn("tollgate-check-tests", text)
+        self.assertNotIn("tollgate-check-lint", text)
+        self.assertTrue(Path(root, ".tollgate/checks/run_checks.py").exists())
+
+    def test_parallel_false_keeps_one_hook_for_each_check(self):
+        root = self.project_with_checks(parallel=False)
+        precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        self.assertIn("tollgate-check-tests", text)
+        self.assertIn("tollgate-check-lint", text)
+        self.assertNotIn("id: tollgate-checks\n", text)
+
+    def test_an_old_config_with_a_hook_for_each_check_moves_to_one_hook(self):
+        root = self.project_with_checks(parallel=False)
+        precommit.write(str(root))
+        settings = json.loads(Path(root, ".tollgate/settings.json").read_text())
+        del settings["parallel"]
+        Path(root, ".tollgate/settings.json").write_text(json.dumps(settings))
+        self.assertEqual(precommit.write(str(root)), [precommit.CONFIG])
+        self.assertIn("id: tollgate-checks", Path(root, precommit.CONFIG).read_text())
+        self.assertEqual(precommit.write(str(root)), [])
+
     def test_the_hooks_of_tollgate_run_with_uv(self):
         root = self.repo()
         precommit.write(str(root))

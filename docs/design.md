@@ -209,6 +209,9 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 | Commit message | `check_commit_msg.py` | A subject that is not `type(scope): subject`, or a line that credits an AI |
 | Merge | `check_merge.py merge` | A merge into main with no pass record, or a tier 3 or 4 merge with no approval |
 | Push | `check_merge.py push` | A push to main with a merge that has no pass record, or a commit made on main itself |
+| Push | `run_checks.py` | A push when a check under `checks` in the settings fails or runs out of time |
+
+pre-commit runs its hooks one after another. So when the settings name two or more checks besides the writing check, `init` writes one pre-push hook, `run_checks.py`, that runs them side by side. It prints each check's output and a PASS or FAIL line when the check ends. The setting `parallel` sets how many run at once: `true`, the default, for all of them, a whole number for that many, or `false` for one hook for each check, one after another. Heavy checks, such as tests with a race detector, may want a number or `false` on a small machine.
 
 A merge may change locked files when the commit it merges passed the gate. Commits from before `init` are not checked.
 
