@@ -4,8 +4,8 @@
 
 It prints one warning for each missing part, and ends with 1 when there is one:
 
-- pre-commit is not installed, the project has no .pre-commit-config.yaml, or
-  a git hook of pre-commit is not installed;
+- uv or pre-commit is not installed, the project has no .pre-commit-config.yaml, it
+  still runs a check with python3 instead of uv, or a git hook of pre-commit is not installed;
 - a check in .tollgate/checks/ is missing or differs from the plugin's copy;
 - the plugin has no Claude Code hooks file, hooks/hooks.json.
 """
@@ -31,11 +31,17 @@ def hooks_dir(root: Path) -> Path:
 def warnings(project: str = ".", which=shutil.which, plugin: Path = PLUGIN) -> list:
     root = Path(project).resolve()
     found = []
+    if not which("uv"):
+        found.append("uv is not installed, so the Tollgate checks cannot run before a commit. "
+                     "Install it: brew install uv, or see https://docs.astral.sh/uv/")
     if not which("pre-commit"):
         found.append("pre-commit is not installed, so no check runs before a commit. "
                      "Install it: uv tool install pre-commit")
-    if not (root / precommit.CONFIG).exists():
+    config = root / precommit.CONFIG
+    if not config.exists():
         found.append(f"{precommit.CONFIG} is missing. {FIX}")
+    elif "python3 .tollgate/checks/" in config.read_text(errors="replace"):
+        found.append(f"{precommit.CONFIG} runs a check with python3, not uv. {FIX}")
     folder = hooks_dir(root)
     for kind in precommit.HOOK_TYPES:
         hook = folder / kind

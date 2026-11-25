@@ -200,7 +200,7 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 
 **Layer 1: Claude Code hooks and policies.** Each role gets a policy: a Claude Code settings file with permission rules. The rules deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. They deny `git push`, `git merge`, and the commands that skip the checks. A deny rule matches a command by its start only, so the hook checks every tool call again. The plugin runs the same hook in your own session in the project.
 
-**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and writes `.pre-commit-config.yaml`.
+**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and writes `.pre-commit-config.yaml`. Each hook runs its check with `uv run --no-project python`, so the hook does not depend on which `python3` comes first on the PATH.
 
 | Git step | Check | What it refuses |
 | --- | --- | --- |
@@ -345,7 +345,7 @@ You install the plugin in Claude Code once. There is no separate program to inst
 /plugin install tollgate@tollgate-ai
 ```
 
-The machine needs Python 3.11, git, and pre-commit. Background mode with the container isolation also needs Docker.
+The machine needs Python 3.11, git, uv, and pre-commit. Background mode with the container isolation also needs Docker.
 
 | You type in Claude Code | What happens |
 | --- | --- |
