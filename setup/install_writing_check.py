@@ -2,8 +2,11 @@
 
 It copies setup/check_writing.py to .tollgate/checks/check_writing.py, adds the
 check "writing" to .tollgate/settings.json, and marks the copy as harness, so a
-change cannot weaken the check that judges it. Running it twice gives the same
-files. It prints each path that changed.
+change cannot weaken the check that judges it. The check runs with uv
+(`uv run --no-project python`), like Tollgate's hooks. A writing check that an older
+Tollgate added with python3 is rewritten with uv, and only that command changes: the
+rest of the settings file stays as it is, byte for byte. Running it twice gives the
+same files. It prints each path that changed.
 """
 
 import argparse
@@ -14,7 +17,19 @@ from pathlib import Path
 SOURCE = Path(__file__).resolve().parent / "check_writing.py"
 TARGET = ".tollgate/checks/check_writing.py"
 SETTINGS = ".tollgate/settings.json"
-CHECK = {"run": f"python3 {TARGET}"}
+CHECK = {"run": f"uv run --no-project python {TARGET}"}
+OLD_RUN = f"python3 {TARGET}"
+
+
+def migrate(path: Path) -> bool:
+    """Rewrite the command of an older writing check in place. Return True when it changed."""
+    text = path.read_text()
+    old = json.dumps(OLD_RUN)
+    settings = json.loads(text)
+    if settings.get("checks", {}).get("writing", {}).get("run") != OLD_RUN or text.count(old) != 1:
+        return False
+    path.write_text(text.replace(old, json.dumps(CHECK["run"])))
+    return True
 
 
 def install(project: str = ".") -> list:
@@ -27,6 +42,8 @@ def install(project: str = ".") -> list:
         target.write_bytes(data)
         changed.append(TARGET)
     path = Path(project, SETTINGS)
+    if path.exists() and migrate(path):
+        changed.append(SETTINGS)
     settings = json.loads(path.read_text()) if path.exists() else {}
     before = json.dumps(settings, sort_keys=True)
     settings.setdefault("checks", {})["writing"] = CHECK
@@ -36,7 +53,8 @@ def install(project: str = ".") -> list:
     if json.dumps(settings, sort_keys=True) != before:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(settings, indent=2) + "\n")
-        changed.append(SETTINGS)
+        if SETTINGS not in changed:
+            changed.append(SETTINGS)
     return changed
 
 

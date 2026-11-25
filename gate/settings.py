@@ -77,8 +77,9 @@ DEFAULTS = {
     "checkpoints": ["plan", "task"],
     # The time limit of a check that sets no "minutes" of its own.
     "check_minutes": 20,
-    # How many checks of the pre-push hook run at once: true for all of them, a whole
-    # number for that many, false for one at a time. Heavy checks may want fewer.
+    # How many of Tollgate's own checks of one git hook stage run at once: true for all of
+    # them, a whole number for that many, false for one at a time. The project's checks
+    # are entries of their own in the pre-commit config, and pre-commit runs those in turn.
     "parallel": True,
     # The base suite: one command for each of the five things a base must prove.
     "base": {"checks_run": "", "parallel_tests": "", "env_up_down": "",

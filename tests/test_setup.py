@@ -343,8 +343,8 @@ class PrecommitTest(Env):
         text = Path(root, precommit.CONFIG).read_text()
         self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
                       "pre-push]", text)
-        self.assertIn("tollgate-check-tests", text)
-        self.assertNotIn("tollgate-check-writing", text)
+        self.assertIn("id: check-tests", text)
+        self.assertNotIn("check-writing", text)
         self.assertEqual(precommit.write(str(root)), [])
 
     def project_with_checks(self, **extra):
@@ -352,56 +352,69 @@ class PrecommitTest(Env):
         Path(root, ".tollgate").mkdir()
         Path(root, ".tollgate/settings.json").write_text(json.dumps(
             {"checks": {"tests": {"run": "go test ./..."}, "lint": {"run": "golangci-lint run"},
-                        "writing": {"run": "python3 .tollgate/checks/check_writing.py"}},
+                        "writing": {"run": "uv run --no-project python "
+                                           ".tollgate/checks/check_writing.py"}},
              **extra}))
         return root
 
-    def test_two_checks_get_one_hook_that_runs_them_side_by_side(self):
+    def test_each_project_check_is_a_plain_entry_with_its_own_command(self):
         root = self.project_with_checks()
         precommit.write(str(root))
         text = Path(root, precommit.CONFIG).read_text()
-        self.assertIn("id: tollgate-checks", text)
-        self.assertIn('"uv run --no-project python .tollgate/checks/run_checks.py"', text)
-        self.assertNotIn("tollgate-check-tests", text)
-        self.assertNotIn("tollgate-check-lint", text)
-        self.assertTrue(Path(root, ".tollgate/checks/run_checks.py").exists())
+        for name, run in (("tests", "go test ./..."), ("lint", "golangci-lint run")):
+            block = text[text.index(f"  - id: check-{name}\n"):]
+            block = block[:block.index("always_run")]
+            self.assertIn('entry: "sh -c"', block)
+            self.assertIn(f'args: [{json.dumps(run)}]', block)
+            self.assertIn('stages: ["pre-push"]', block)
+            self.assertNotIn(".tollgate", block)
+        self.assertNotIn("check-writing", text)
+        self.assertNotIn("run_checks.py", text)
 
-    def test_parallel_false_keeps_one_hook_for_each_check(self):
-        root = self.project_with_checks(parallel=False)
-        precommit.write(str(root))
-        text = Path(root, precommit.CONFIG).read_text()
-        self.assertIn("tollgate-check-tests", text)
-        self.assertIn("tollgate-check-lint", text)
-        self.assertNotIn("id: tollgate-checks\n", text)
-
-    def test_an_old_config_with_a_hook_for_each_check_moves_to_one_hook(self):
-        root = self.project_with_checks(parallel=False)
-        precommit.write(str(root))
-        settings = json.loads(Path(root, ".tollgate/settings.json").read_text())
-        del settings["parallel"]
-        Path(root, ".tollgate/settings.json").write_text(json.dumps(settings))
-        self.assertEqual(precommit.write(str(root)), [precommit.CONFIG])
-        self.assertIn("id: tollgate-checks", Path(root, precommit.CONFIG).read_text())
-        self.assertEqual(precommit.write(str(root)), [])
-
-    def test_the_hooks_of_tollgate_run_with_uv(self):
+    def test_tollgates_checks_are_one_script_with_one_entry_for_each_stage(self):
         root = self.repo()
         precommit.write(str(root))
         text = Path(root, precommit.CONFIG).read_text()
+        run = "uv run --no-project python .tollgate/checks/tollgate_checks.py"
+        for stage in precommit.HOOK_TYPES:
+            self.assertIn(f'entry: "{run} {stage}"', text)
+            self.assertIn(f'stages: ["{stage}"]', text)
         for script in ("check_locked.py", "check_writing.py", "check_commit_msg.py",
                        "check_merge.py"):
-            self.assertIn(f'"uv run --no-project python .tollgate/checks/{script}', text)
+            self.assertNotIn(f".tollgate/checks/{script}", text)
         self.assertNotIn("python3 .tollgate/checks", text)
+        commit_msg = text[text.index("  - id: tollgate-commit-msg\n"):]
+        commit_msg = commit_msg[:commit_msg.index("  - id:", 5)]
+        self.assertIn("pass_filenames: true", commit_msg)
+        self.assertTrue(Path(root, ".tollgate/checks/tollgate_checks.py").exists())
+
+    def test_an_old_config_moves_to_the_one_script_and_the_old_runner_goes(self):
+        root = self.project_with_checks()
+        precommit.write(str(root))
+        config = Path(root, precommit.CONFIG)
+        Path(root, ".tollgate/checks/run_checks.py").write_text("# older Tollgate\n")
+        config.write_text(precommit.MARK + "\nrepos:\n- repo: local\n  hooks:\n"
+                          "  - id: tollgate-locked\n    entry: \"python3 .tollgate/checks/"
+                          "check_locked.py\"\n  - id: tollgate-checks\n    entry: \"uv run "
+                          "--no-project python .tollgate/checks/run_checks.py\"\n")
+        changed = precommit.write(str(root))
+        self.assertEqual(sorted(changed), sorted([".tollgate/checks/run_checks.py",
+                                                  precommit.CONFIG]))
+        self.assertFalse(Path(root, ".tollgate/checks/run_checks.py").exists())
+        text = config.read_text()
+        self.assertNotIn("tollgate-checks", text)
+        self.assertNotIn("python3 .tollgate/checks", text)
+        self.assertIn("tollgate_checks.py pre-commit", text)
+        self.assertEqual(precommit.write(str(root)), [])
 
     def test_a_config_tollgate_wrote_with_python3_is_rewritten_with_uv(self):
         root = self.repo()
         precommit.write(str(root))
         config = Path(root, precommit.CONFIG)
-        old = config.read_text().replace("uv run --no-project python ", "python3 ")
-        config.write_text(old)
-        self.assertIn("python3 .tollgate/checks/check_locked.py", config.read_text())
+        config.write_text(config.read_text().replace("uv run --no-project python ", "python3 "))
+        self.assertIn("python3 .tollgate/checks/tollgate_checks.py", config.read_text())
         self.assertEqual(precommit.write(str(root)), [precommit.CONFIG])
-        self.assertIn("uv run --no-project python .tollgate/checks/check_locked.py",
+        self.assertIn("uv run --no-project python .tollgate/checks/tollgate_checks.py",
                       config.read_text())
         self.assertEqual(precommit.write(str(root)), [])
 
@@ -776,6 +789,16 @@ class HealthTest(Env):
         config.write_text(config.read_text().replace("uv run --no-project python ", "python3 "))
         found = health.warnings(str(root), which=FOUND)
         self.assertTrue(any("runs a check with python3, not uv" in w for w in found))
+
+    def test_settings_that_run_a_tollgate_check_with_python3_warn(self):
+        root = self.setup_project()
+        path = Path(root, ".tollgate/settings.json")
+        settings = json.loads(path.read_text())
+        settings["checks"]["writing"] = {"run": "python3 .tollgate/checks/check_writing.py"}
+        path.write_text(json.dumps(settings))
+        found = health.warnings(str(root), which=FOUND)
+        self.assertTrue(any("settings.json runs a Tollgate check with python3" in w
+                            for w in found))
 
     def test_a_missing_uv_warns_with_the_install_line(self):
         root = self.setup_project()

@@ -5,7 +5,8 @@
 It prints one warning for each missing part, and ends with 1 when there is one:
 
 - uv or pre-commit is not installed, the project has no .pre-commit-config.yaml, it
-  still runs a check with python3 instead of uv, or a git hook of pre-commit is not installed;
+  or .tollgate/settings.json still runs a Tollgate check with python3 instead of uv, or a
+  git hook of pre-commit is not installed;
 - a check in .tollgate/checks/ is missing or differs from the plugin's copy;
 - the plugin has no Claude Code hooks file, hooks/hooks.json.
 """
@@ -42,6 +43,9 @@ def warnings(project: str = ".", which=shutil.which, plugin: Path = PLUGIN) -> l
         found.append(f"{precommit.CONFIG} is missing. {FIX}")
     elif "python3 .tollgate/checks/" in config.read_text(errors="replace"):
         found.append(f"{precommit.CONFIG} runs a check with python3, not uv. {FIX}")
+    settings = root / precommit.SETTINGS
+    if settings.exists() and "python3 .tollgate/checks/" in settings.read_text(errors="replace"):
+        found.append(f"{precommit.SETTINGS} runs a Tollgate check with python3, not uv. {FIX}")
     folder = hooks_dir(root)
     for kind in precommit.HOOK_TYPES:
         hook = folder / kind

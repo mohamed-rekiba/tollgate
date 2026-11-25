@@ -335,12 +335,28 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(changed, [install_writing_check.TARGET, install_writing_check.SETTINGS])
             settings = json.loads(Path(tmp, ".tollgate/settings.json").read_text())
             self.assertEqual(settings["checks"]["writing"],
-                             {"run": "python3 .tollgate/checks/check_writing.py"})
+                             {"run": "uv run --no-project python .tollgate/checks/check_writing.py"})
             self.assertIn("tests", settings["checks"])
             self.assertEqual(settings["harness"],
                              ["tests/helpers.py", ".tollgate/checks/check_writing.py"])
             self.assertEqual(Path(tmp, install_writing_check.TARGET).read_bytes(),
                              install_writing_check.SOURCE.read_bytes())
+            self.assertEqual(install_writing_check.install(tmp), [])
+
+    def test_an_old_python3_writing_check_moves_to_uv_and_the_rest_stays_byte_for_byte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, ".tollgate").mkdir()
+            old = ('{\n  "checks": {\n    "tests": { "run": "go test ./..." },\n'
+                   '    "writing": {\n      "run": "python3 .tollgate/checks/check_writing.py"\n'
+                   '    }\n  },\n  "spec": ["docs"],\n'
+                   '  "harness": [".tollgate/checks/check_writing.py"]\n}\n')
+            path = Path(tmp, ".tollgate/settings.json")
+            path.write_text(old)
+            changed = install_writing_check.install(tmp)
+            self.assertIn(install_writing_check.SETTINGS, changed)
+            want = old.replace('"python3 .tollgate/checks/check_writing.py"',
+                               '"uv run --no-project python .tollgate/checks/check_writing.py"')
+            self.assertEqual(path.read_text(), want)
             self.assertEqual(install_writing_check.install(tmp), [])
 
     def test_help_installs_nothing_and_project_names_the_folder(self):
