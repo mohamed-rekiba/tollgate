@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/tollgate-ai/tollgate/compare/v0.8.2...v0.9.0) (2026-11-25)
+
+
+### Features
+
+* **init:** run the project's checks side by side before a push ([#144](https://github.com/tollgate-ai/tollgate/issues/144)) ([5f26250](https://github.com/tollgate-ai/tollgate/commit/5f26250019200c97ffa7215d1c6108d548057201))
+
+
+### Bug Fixes
+
+* **init:** run the hook checks with uv ([#143](https://github.com/tollgate-ai/tollgate/issues/143)) ([442ea27](https://github.com/tollgate-ai/tollgate/commit/442ea279c77ebc4d1da7a89e0d96d6b829b1805f))
+* **plan:** send a plan that breaks a rule back to the planner, not stop the task ([#141](https://github.com/tollgate-ai/tollgate/issues/141)) ([0f02602](https://github.com/tollgate-ai/tollgate/commit/0f02602a323b2dd3bfc52d6c9b726bf89c2310f3))
+
 ## [0.8.2](https://github.com/tollgate-ai/tollgate/compare/v0.8.1...v0.8.2) (2026-11-25)
 
 
