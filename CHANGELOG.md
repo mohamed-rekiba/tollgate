@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/tollgate-ai/tollgate/compare/v0.8.0...v0.8.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **init:** write the settings from a draft file, so the guard stays closed ([#137](https://github.com/tollgate-ai/tollgate/issues/137)) ([db81be9](https://github.com/tollgate-ai/tollgate/commit/db81be93bd750a0dab90b7b2ba707f3a497ab2d8))
+
 ## [0.8.0](https://github.com/tollgate-ai/tollgate/compare/v0.7.0...v0.8.0) (2026-11-25)
 
 
