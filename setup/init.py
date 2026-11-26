@@ -1,6 +1,6 @@
 """Set up Tollgate in a project, on this machine. It calls no outside service.
 
-    python3 -m setup.init [--project .] [--replace] [--settings FILE]
+    python3 -m setup.init [--project .] [--settings FILE]
 
 The steps, in order:
 
@@ -13,7 +13,11 @@ The steps, in order:
    here, because the guard does not let your own session write under .tollgate/ except
    plans, tickets, roadmaps, and requests. If .tollgate/settings.json already exists and
    differs from the draft, init stops and leaves the file as it is.
-5. Copy the checks into .tollgate/checks/ and write .pre-commit-config.yaml.
+5. Copy the checks into .tollgate/checks/, and add or update the hook `tollgate` in
+   .pre-commit-config.yaml. The config is the project's own: init keeps every other repo
+   and hook as it is. A check that the settings or the draft still keep as a command,
+   under `run`, is written once as a local hook `check-<name>`, and the settings then
+   name that hook (see setup/precommit.py).
 6. Commit these files on main, so the checks read the settings from main.
 7. Run `pre-commit install`.
 
@@ -98,20 +102,36 @@ def with_harness(settings: dict) -> dict:
     return settings
 
 
+def with_hooks(settings: dict) -> dict:
+    """The settings as init leaves them: each command under `run` of a project check
+    replaced by the name of its hook."""
+    checks = settings.get("checks")
+    if not isinstance(checks, dict):
+        return settings
+    return {**settings, "checks": precommit.migrate_checks(checks)[0]}
+
+
 def read_draft(file: str) -> dict:
-    """The settings in a draft file. Raise InitError or SettingsError when it cannot be used."""
+    """The settings in a draft file. Raise InitError or SettingsError when it cannot be used.
+    A check of the draft may hold a command under `run`: init moves it into a hook."""
     try:
         text = Path(file).read_text()
     except OSError as err:
         raise InitError(f"cannot read the settings file {file}: {err}") from None
-    st.parse(text)
-    return json.loads(text)
+    try:
+        draft = json.loads(text)
+    except ValueError:
+        st.parse(text)   # it raises SettingsError, which names the problem
+        raise
+    st.parse(json.dumps(with_hooks(draft)) if isinstance(draft, dict) else text)
+    return draft
 
 
 def covers(existing: dict, draft: dict) -> bool:
     """True when the settings on disk hold everything in the draft. Init adds the harness, the
-    writing check, and a test check, so the file may hold more than the draft."""
-    for key, value in draft.items():
+    writing check, and a test check, so the file may hold more than the draft. A command of
+    the draft counts as the hook that init moves it into."""
+    for key, value in with_hooks(draft).items():
         have = existing.get(key)
         if key == "harness":
             if not all(item in (have or []) for item in value):
@@ -155,7 +175,8 @@ def write_settings(root: Path) -> bool:
 def test_check(root: Path) -> dict | None:
     """The gate's test check for the test suite init finds, or None. It knows a
     Python suite: test_*.py files under tests/ or test/, run with pytest. The gate
-    reads the JUnit report the check writes."""
+    reads the JUnit report the check writes. The command goes under `run`, and
+    setup.precommit then moves it into the hook check-tests."""
     for folder in ("tests", "test"):
         if any(Path(root, folder).rglob("test_*.py")):
             return {"run": f"python3 -m pytest -q -p no:cacheprovider "
@@ -169,18 +190,21 @@ def add_test_check(root: Path) -> str:
     settings = json.loads(path.read_text())
     checks = settings.setdefault("checks", {})
     if "tests" in checks:
-        return f"tests: {checks['tests'].get('run', '')}"
+        tests = checks["tests"]
+        return (f"tests: the hook {tests['hook']}" if "hook" in tests else
+                f"tests: {tests.get('run', '')}, as the hook check-tests")
     found = test_check(root)
     if not found:
-        return ("tests: no test suite found. Add a check named \"tests\" to \"checks\" in "
-                f"{st.PATH}, a command that writes a JUnit report, and set \"report\" to its "
-                "file. Until then the gate runs no tests.")
+        return ("tests: no test suite found. Add a hook to .pre-commit-config.yaml that runs "
+                "the tests and writes a JUnit report, then name it in a check \"tests\" in "
+                f"{st.PATH}: {{\"hook\": \"<its id>\", \"report\": \"<the report file>\"}}. "
+                "Until then the gate runs no tests.")
     checks["tests"] = found
     path.write_text(json.dumps(settings, indent=2) + "\n")
-    return f"tests: {found['run']}"
+    return f"tests: {found['run']}, as the hook check-tests"
 
 
-def init(project=".", replace=False, which=shutil.which, install=True, settings_file=None) -> list:
+def init(project=".", which=shutil.which, install=True, settings_file=None) -> list:
     """Run every step. Return one line for each step."""
     root = Path(project).resolve()
     out = []
@@ -205,7 +229,7 @@ def init(project=".", replace=False, which=shutil.which, install=True, settings_
     tests_line = add_test_check(root)
     if (root / st.PATH).read_text() != before:
         changed.append(st.PATH)
-    changed += precommit.write(str(root), replace)
+    changed += precommit.write(str(root))
     changed = sorted(set(changed))
     out.append(f"files: {', '.join(changed) if changed else 'already in place'}")
     out.append(tests_line)
@@ -229,14 +253,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="init", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--project", default=".")
-    parser.add_argument("--replace", action="store_true",
-                        help="replace a pre-commit config that Tollgate did not write")
     parser.add_argument("--settings", metavar="FILE",
                         help="a JSON draft of the settings, written outside the project; init "
                              "checks it and writes it as .tollgate/settings.json")
     args = parser.parse_args(argv)
     try:
-        for line in init(args.project, args.replace, settings_file=args.settings):
+        for line in init(args.project, settings_file=args.settings):
             print(line)
     except (InitError, precommit.PrecommitError, st.SettingsError, OSError) as err:
         print(f"init: {err}", file=sys.stderr)

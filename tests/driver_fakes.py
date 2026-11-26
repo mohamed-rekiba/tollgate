@@ -21,6 +21,7 @@ from gate import settings as st
 from gate.gitio import fingerprint, show_bytes
 from gate.store import StoreError
 from tests.fakes import RUN_TESTS, TICKET
+from tests.helpers import write_checks
 
 FAKE_ROLE = str(Path(__file__).resolve().parent / "fake_role.py")
 
@@ -81,8 +82,7 @@ class Sample:
             (p / ".tollgate/tickets/T-1/ticket.md").write_text(TICKET)
 
     def write_settings(self, **settings_args):
-        (self.project / ".tollgate/settings.json").write_text(
-            json.dumps(settings(**settings_args)))
+        write_checks(self.project, settings(**settings_args))
 
     def commit_settings(self, **settings_args):
         self.write_settings(**settings_args)

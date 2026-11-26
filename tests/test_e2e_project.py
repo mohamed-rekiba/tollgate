@@ -34,7 +34,10 @@ class MakeProjectTest(unittest.TestCase):
         settings = json.loads(subprocess.run(
             ["git", "show", "main:.tollgate/settings.json"], cwd=project, check=True,
             capture_output=True, text=True).stdout)
-        self.assertIn("pytest", settings["checks"]["tests"]["run"])
+        self.assertEqual(settings["checks"]["tests"]["hook"], "check-tests")
+        config = subprocess.run(["git", "show", "main:.pre-commit-config.yaml"], cwd=project,
+                                check=True, capture_output=True, text=True).stdout
+        self.assertIn("pytest", config)
         self.assertNotIn("signers", settings)
         self.assertNotIn("owners", settings)
         out, code = step.next_step(project, make_project.TASK)

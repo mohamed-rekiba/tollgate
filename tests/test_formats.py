@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 
 from gate import checks, junit, manifest, paths, settings, tickets, tiers
-from tests.helpers import TICKET, Repo, settings_text, within
+from gate import precommit_config as pc
+from tests.helpers import TICKET, Repo, hook_checks, within
 from tests.helpers import junit as make_junit
 
 
@@ -26,9 +27,22 @@ class SettingsTest(unittest.TestCase):
         with self.assertRaisesRegex(settings.SettingsError, "unknown key: stop.retries"):
             settings.parse('{"stop": {"retries": 2}}')
 
-    def test_check_needs_a_run_command(self):
-        with self.assertRaisesRegex(settings.SettingsError, "checks.tests needs a run"):
-            settings.parse('{"checks": {"tests": {"report": "x.xml"}}}')
+    def test_a_check_names_a_hook_and_only_the_writing_check_keeps_a_command(self):
+        found = settings.parse('{"checks": {"tests": {"hook": "check-tests", "report": "r.xml"},'
+                               ' "writing": {"run": "uv run python check_writing.py"}}}')
+        self.assertEqual(found["checks"]["tests"]["hook"], "check-tests")
+        cases = [
+            ('{"tests": {"report": "x.xml"}}', "checks.tests needs a hook"),
+            ('{"tests": {"hook": " "}}', "checks.tests needs a hook"),
+            ('{"tests": {"run": "make test"}}', "checks.tests has a run command.*tollgate:init"),
+            ('{"writing": {"hook": "w", "run": "x"}}', "both a hook and a run command"),
+            ('{"writing": {}}', "checks.writing needs a run command"),
+            ('{"tests": {"hook": "t", "stage": "x"}}', "unknown key: checks.tests.stage"),
+            ('{"tests": "make test"}', "checks.tests must be an object"),
+        ]
+        for checks_, error in cases:
+            with self.subTest(checks_), self.assertRaisesRegex(settings.SettingsError, error):
+                settings.parse(f'{{"checks": {checks_}}}')
 
     def test_isolation_is_container_or_sandbox(self):
         self.assertEqual(settings.parse('{"isolation": "sandbox"}')["isolation"], "sandbox")
@@ -326,41 +340,141 @@ class TiersTest(unittest.TestCase):
 
 
 class ChecksTest(unittest.TestCase):
+    """A check runs its hook with pre-commit, in a git repository."""
+
+    def project(self, **commands) -> tuple:
+        """(repo, settings): a repository whose pre-commit config holds a local hook
+        check-<name> for each command, and the settings that name them."""
+        repo = Repo()
+        self.addCleanup(repo.close)
+        raw = {name: {"run": c} if isinstance(c, str) else c for name, c in commands.items()}
+        found, config = hook_checks(raw)
+        repo.write(".pre-commit-config.yaml", config)
+        repo.commit()
+        return repo, settings.parse(json.dumps({"checks": found}))
+
     def test_runs_checks_and_reads_the_report(self):
-        with tempfile.TemporaryDirectory() as d:
-            Path(d, "r.xml").write_text(make_junit({"t::test_c1_a": "passed"}))
-            s = settings.parse(settings_text(checks={
-                "tests": {"run": "cp r.xml report.xml", "report": "report.xml"},
-                "style": {"run": "exit 3"}}))
-            r = checks.run(s, d)
+        repo, s = self.project(tests={"run": "cp r.xml report.xml", "report": "report.xml"},
+                               style="exit 3")
+        repo.write("r.xml", make_junit({"t::test_c1_a": "passed"}))
+        r = checks.run(s, repo.path)
         self.assertEqual(r.failed_checks(), ["style"])
         self.assertEqual(r.tests["t::test_c1_a"]["status"], "passed")
         self.assertEqual(checks.Results.from_json(r.to_json()).tests, r.tests)
+
+    def test_a_check_runs_its_hook_through_pre_commit_at_the_hook_s_stage(self):
+        repo, s = self.project(tests="echo ran by pre-commit; exit 1")
+        command, problem = checks.command_of(s["checks"]["tests"], repo.path)
+        self.assertEqual((command, problem), (["pre-commit", "run", "check-tests", "--all-files",
+                                               "--hook-stage", "pre-push", "--color", "never"],
+                                              ""))
+        result = checks.run(s, repo.path).checks[0]
+        self.assertFalse(result.passed, result.output)
+        self.assertIn("ran by pre-commit", result.output)
+        self.assertIn("- hook id: check-tests", result.output)
+
+    def test_a_hook_that_is_not_in_the_config_fails_and_says_so(self):
+        repo, _ = self.project(tests="true")
+        s = settings.parse('{"checks": {"vet": {"hook": "check-vet"}}}')
+        result = checks.run(s, repo.path).checks[0]
+        self.assertFalse(result.passed)
+        self.assertIn("the hook check-vet is not in .pre-commit-config.yaml", result.output)
+
+    def test_the_writing_check_runs_its_own_command(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = settings.parse('{"checks": {"writing": {"run": "echo plain; exit 1"}}}')
+            result = checks.run(s, d).checks[0]
+        self.assertFalse(result.passed)
+        self.assertIn("plain", result.output)
 
     def test_project_commands_do_not_see_tollgates_import_path(self):
         import os
         os.environ["PYTHONPATH"] = "/tollgate/code"
         self.addCleanup(os.environ.pop, "PYTHONPATH", None)
-        with tempfile.TemporaryDirectory() as d:
-            s = settings.parse('{"checks": {"env": {"run": "test -z \\"$PYTHONPATH\\""}}}')
-            self.assertEqual(checks.run(s, d).failed_checks(), [])
+        repo, s = self.project(env='test -z "$PYTHONPATH"')
+        self.assertEqual(checks.run(s, repo.path).failed_checks(), [])
 
     def test_project_commands_see_no_token(self):
         import os
         for name in ("GH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"):
             os.environ[name] = "secret"
             self.addCleanup(os.environ.pop, name, None)
-        with tempfile.TemporaryDirectory() as d:
-            s = settings.parse(json.dumps({"checks": {"env": {
-                "run": 'test -z "$GH_TOKEN" && test -z "$CLAUDE_CODE_OAUTH_TOKEN"'}}}))
-            self.assertEqual(checks.run(s, d).failed_checks(), [])
+        repo, s = self.project(env='test -z "$GH_TOKEN" && test -z "$CLAUDE_CODE_OAUTH_TOKEN"')
+        self.assertEqual(checks.run(s, repo.path).failed_checks(), [])
 
     def test_a_check_past_its_time_limit_fails(self):
-        with tempfile.TemporaryDirectory() as d:
-            s = settings.parse('{"checks": {"slow": {"run": "sleep 5", "minutes": 0.01}}}')
-            r = checks.run(s, d)
+        repo, s = self.project(slow={"run": "sleep 5", "minutes": 0.01})
+        r = checks.run(s, repo.path)
         self.assertTrue(r.checks[0].timed_out)
         self.assertFalse(r.checks[0].passed)
+
+
+class PrecommitConfigTest(unittest.TestCase):
+    """gate.precommit_config reads the hooks and stages of a config with no YAML library."""
+
+    CONFIG = """# a comment
+default_stages: [pre-commit, push]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # a pin
+    hooks:
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+    - id: "check-tests"
+      name: tests
+      entry: make test
+      language: system
+      stages:
+        - manual
+        - 'push'
+    -   id: check-vet   # go vet
+        name: vet
+        entry: go vet ./...
+        language: system
+        stages: [pre-commit]
+    - name: lint
+      id: check-lint
+      entry: make lint
+      language: system
+"""
+
+    def test_hooks_ids_and_stages(self):
+        text = self.CONFIG
+        self.assertEqual(pc.hook_ids(text),
+                         ["trailing-whitespace", "check-tests", "check-vet", "check-lint"])
+        self.assertEqual(pc.default_stages(text), ["pre-commit", "pre-push"])
+        self.assertEqual(pc.stages(text, "check-tests"), ["manual", "pre-push"])
+        self.assertEqual(pc.stages(text, "check-vet"), ["pre-commit"])
+        self.assertEqual(pc.stages(text, "check-lint"), ["pre-commit", "pre-push"])
+        self.assertIsNone(pc.stages(text, "check-none"))
+
+    def test_the_gate_runs_a_hook_at_a_push_when_it_can(self):
+        text = self.CONFIG
+        self.assertEqual(pc.run_stage(text, "check-tests"), "pre-push")
+        self.assertEqual(pc.run_stage(text, "check-vet"), "pre-commit")
+        self.assertEqual(pc.run_stage(text, "check-lint"), "pre-push")
+        self.assertIsNone(pc.run_stage(text, "check-none"))
+        plain = "repos:\n- repo: local\n  hooks:\n  - id: a\n    stages: [commit-msg]\n"
+        self.assertEqual(pc.run_stage(plain, "a"), "commit-msg")
+        self.assertEqual(pc.run_stage("repos:\n- repo: local\n  hooks:\n  - id: b\n", "b"),
+                         "pre-commit")
+
+    def test_an_item_ends_before_the_next_item_and_its_trailing_comments(self):
+        lines = self.CONFIG.splitlines()
+        item = pc.find(self.CONFIG, "check-tests")
+        self.assertEqual(lines[item.start], '    - id: "check-tests"')
+        self.assertEqual(lines[item.end - 1], "        - 'push'")
+        self.assertEqual((item.indent, item.column), (4, 6))
+        vet = pc.find(self.CONFIG, "check-vet")
+        self.assertEqual((vet.indent, vet.column), (4, 8))
+
+    def test_scalars(self):
+        self.assertEqual(pc.scalar('"a \\"b\\" c"  # x'), 'a "b" c')
+        self.assertEqual(pc.scalar("'it''s'"), "it's")
+        self.assertEqual(pc.scalar("plain  # comment"), "plain")
+        self.assertEqual(pc.scalar("# only a comment"), "")
+        self.assertEqual(pc.flow_list('["a", b ]  # c'), ["a", "b"])
 
 
 if __name__ == "__main__":

@@ -104,7 +104,30 @@ class Repo:
         self._tmp.cleanup()
 
 
+def hook_checks(checks: dict) -> tuple:
+    """(checks, config): the checks with each command under "run", other than the writing
+    check's, moved into a local hook of a pre-commit config, as init moves it."""
+    from setup import precommit
+    moved, hooks = precommit.migrate_checks(checks)
+    lines = ["repos:", "- repo: local", "  hooks:"]
+    for hook in hooks:
+        lines += precommit.hook_lines(hook)
+    return moved, "\n".join(lines) + "\n"
+
+
+def write_checks(root, settings: dict) -> dict:
+    """Write the settings and the pre-commit config that holds their commands. Return the
+    settings as written."""
+    checks, config = hook_checks(settings.get("checks", {}))
+    settings = {**settings, "checks": checks}
+    Path(root, ".tollgate").mkdir(parents=True, exist_ok=True)
+    Path(root, ".tollgate/settings.json").write_text(json.dumps(settings))
+    Path(root, ".pre-commit-config.yaml").write_text(config)
+    return settings
+
+
 def settings_text(**extra) -> str:
-    base = {"checks": {"tests": {"run": "true", "report": "report.xml"}}, "require_plan": False}
+    base = {"checks": {"tests": {"hook": "check-tests", "report": "report.xml"}},
+            "require_plan": False}
     base.update(extra)
     return json.dumps(base)

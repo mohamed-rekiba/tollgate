@@ -91,7 +91,15 @@ Then, inside your project, on the branch `main`:
 /tollgate:init
 ```
 
-`init` writes `.tollgate/settings.json`, from a draft that `/tollgate:init` leaves outside the project (`--settings`). It copies the checks into `.tollgate/checks/`, writes `.pre-commit-config.yaml`, whose hooks run each check with `uv run --no-project python`, commits these files on main, and runs `pre-commit install`.
+`init` writes `.tollgate/settings.json`, from a draft that `/tollgate:init` leaves outside the project (`--settings`). It copies Tollgate's checks into `.tollgate/checks/`, and adds one hook, `tollgate`, to `.pre-commit-config.yaml`, which runs them with `uv run --no-project python`. It commits these files on main, and runs `pre-commit install`.
+
+The project's own checks, such as its tests and its lint, are hooks of the project's `.pre-commit-config.yaml`, so the project works without Tollgate. The settings name the hook of each check, and the gate runs it with `pre-commit run <hook> --all-files`:
+
+```json
+"checks": {"tests": {"hook": "check-tests", "report": "report.xml"}, "vet": {"hook": "check-vet"}}
+```
+
+`init` keeps every other repo and hook of the config as it is. A check that the settings still keep as a command, under `run`, is written once as a local hook `check-<name>` that runs before each push, and the settings then name that hook. pre-commit runs the hooks one after another. To run checks side by side, make one hook that runs them, such as `make -j check`.
 
 ### Change the settings later
 

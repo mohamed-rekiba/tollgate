@@ -88,7 +88,7 @@ _Avoid_: approval step
 
 ### Proof
 
-**checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets. They are the project's own tools.
+**checks**: Commands that pass or fail with no AI: tests, style, types, a scan for secrets. They are the project's own tools, as hooks of its pre-commit config, and the settings name each hook. The writing check is Tollgate's own, and the settings hold its command.
 _Avoid_: linters, validators
 
 **harness**: The files that decide how tests run: test settings, shared test helpers, dependency lists, the pre-commit config, Tollgate's settings and checks.

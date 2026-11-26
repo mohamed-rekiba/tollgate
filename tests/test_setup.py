@@ -15,6 +15,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from gate import precommit_config as pc
+from gate import settings as st
 from gate import state
 from setup import (
     check_commit_msg,
@@ -339,11 +341,13 @@ class PrecommitTest(Env):
                         "writing": {"run": "python3 .tollgate/checks/check_writing.py"}}}))
         changed = precommit.write(str(root))
         self.assertIn(precommit.CONFIG, changed)
-        self.assertEqual(len(changed), len(precommit.SCRIPTS) + 1)
+        self.assertIn(precommit.SETTINGS, changed)
+        self.assertEqual(len(changed), len(precommit.SCRIPTS) + 2)
         text = Path(root, precommit.CONFIG).read_text()
+        self.assertTrue(text.startswith("\n".join(precommit.HEADER) + "\n"))
         self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
                       "pre-push]", text)
-        self.assertNotIn("id: check-", text)
+        self.assertEqual(text.count("id: check-tests\n"), 1)
         self.assertEqual(text.count("tollgate_checks.py"), 1)
         self.assertEqual(precommit.write(str(root)), [])
 
@@ -351,22 +355,107 @@ class PrecommitTest(Env):
         root = self.repo()
         Path(root, ".tollgate").mkdir()
         Path(root, ".tollgate/settings.json").write_text(json.dumps(
-            {"checks": {"tests": {"run": "go test ./..."}, "lint": {"run": "golangci-lint run"},
+            {"checks": {"tests": {"run": "go test ./...", "report": "report.xml",
+                                  "minutes": 5},
+                        "lint": {"run": "golangci-lint run"},
                         "writing": {"run": "uv run --no-project python "
                                            ".tollgate/checks/check_writing.py"}},
              **extra}))
         return root
 
-    def test_the_project_checks_have_no_entry_of_their_own(self):
-        # The pre-push entry of tollgate_checks.py runs them, side by side with the push check.
+    def test_a_command_in_the_settings_moves_once_into_a_hook_that_the_settings_name(self):
         root = self.project_with_checks()
         precommit.write(str(root))
         text = Path(root, precommit.CONFIG).read_text()
-        self.assertNotIn("id: check-", text)
+        for name, command in (("tests", "go test ./..."), ("lint", "golangci-lint run")):
+            item = pc.find(text, f"check-{name}")
+            self.assertIsNotNone(item, name)
+            block = "\n".join(text.splitlines()[item.start:item.end])
+            self.assertIn('entry: "sh -c"', block)
+            self.assertIn(f"args: [{json.dumps(command)}]", block)
+            self.assertIn('stages: ["pre-push"]', block)
+            self.assertIn("pass_filenames: false", block)
+            self.assertIn("always_run: true", block)
+            self.assertEqual(pc.run_stage(text, f"check-{name}"), "pre-push")
+        self.assertNotIn("check-writing", text)
+        settings = json.loads(Path(root, precommit.SETTINGS).read_text())
+        self.assertEqual(settings["checks"]["tests"],
+                         {"hook": "check-tests", "report": "report.xml", "minutes": 5})
+        self.assertEqual(settings["checks"]["lint"], {"hook": "check-lint"})
+        self.assertIn("run", settings["checks"]["writing"])
+        st.parse(json.dumps(settings))
+        self.assertEqual(precommit.write(str(root)), [])
+        self.assertEqual(Path(root, precommit.CONFIG).read_text().count("id: check-tests"), 1)
+
+    def test_a_hook_the_config_already_has_is_named_and_not_written_again(self):
+        root = self.project_with_checks()
+        own = ("repos:\n- repo: local\n  hooks:\n  - id: check-tests\n    name: tests\n"
+               "    entry: make test\n    language: system\n")
+        Path(root, precommit.CONFIG).write_text(own)
+        precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        self.assertEqual(text.count("id: check-tests"), 1)
+        self.assertIn("entry: make test", text)
         self.assertNotIn("go test", text)
-        self.assertNotIn("golangci-lint", text)
-        self.assertEqual(text.count("    stages:"), 1)   # the one Tollgate entry, for all four
-        self.assertNotIn("run_checks.py", text)
+        self.assertEqual(json.loads(Path(root, precommit.SETTINGS).read_text())
+                         ["checks"]["tests"]["hook"], "check-tests")
+
+    def test_the_project_s_own_config_keeps_every_repo_hook_and_line(self):
+        root = self.repo()
+        own = ("# the team's hooks\n"
+               "repos:\n"
+               "  - repo: https://github.com/pre-commit/pre-commit-hooks\n"
+               "    rev: v5.0.0\n"
+               "    hooks:\n"
+               "      - id: trailing-whitespace\n"
+               "  - repo: local\n"
+               "    hooks:\n"
+               "      - id: check-vet   # go vet\n"
+               "        name: vet\n"
+               "        entry: go vet ./...\n"
+               "        language: system\n"
+               "        pass_filenames: false\n"
+               "        stages:\n"
+               "          - push\n")
+        Path(root, precommit.CONFIG).write_text(own)
+        self.assertIn(precommit.CONFIG, precommit.write(str(root)))
+        text = Path(root, precommit.CONFIG).read_text()
+        for line in own.splitlines():
+            self.assertIn(line + "\n", text)
+        lines = text.splitlines()
+        order = [lines.index(x) for x in ("      - id: trailing-whitespace",
+                                          "      - id: tollgate",
+                                          "      - id: check-vet   # go vet")]
+        self.assertEqual(order, sorted(order))
+        self.assertEqual(pc.hook_ids(text), ["trailing-whitespace", "tollgate", "check-vet"])
+        self.assertEqual(pc.run_stage(text, "check-vet"), "pre-push")
+        self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
+                      "pre-push]", text)
+        self.assertEqual(precommit.write(str(root)), [])
+
+    def test_a_config_with_no_local_repo_gets_one_before_the_other_repos(self):
+        root = self.repo()
+        Path(root, precommit.CONFIG).write_text(
+            "default_install_hook_types: [pre-commit]\nrepos:\n- repo: https://x\n"
+            "  rev: v1\n  hooks:\n  - id: a\n")
+        precommit.write(str(root))
+        text = Path(root, precommit.CONFIG).read_text()
+        self.assertEqual(pc.hook_ids(text), ["tollgate", "a"])
+        self.assertIn("default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, "
+                      "pre-push]", text)
+        self.assertLess(text.index("- repo: local"), text.index("- repo: https://x"))
+        for config in ("repos: []\n", ""):
+            Path(root, precommit.CONFIG).write_text(config)
+            precommit.write(str(root))
+            self.assertEqual(pc.hook_ids(Path(root, precommit.CONFIG).read_text()), ["tollgate"])
+
+    def test_a_list_on_one_line_is_refused_and_the_config_stays(self):
+        root = self.repo()
+        flow = "repos: [{repo: local, hooks: [{id: a, name: a, entry: a, language: system}]}]\n"
+        Path(root, precommit.CONFIG).write_text(flow)
+        with self.assertRaisesRegex(precommit.PrecommitError, "block list"):
+            precommit.write(str(root))
+        self.assertEqual(Path(root, precommit.CONFIG).read_text(), flow)
 
     def test_tollgates_checks_are_one_script_with_one_entry_for_all_four_stages(self):
         root = self.repo()
@@ -428,7 +517,7 @@ class PrecommitTest(Env):
         precommit.write(str(root))
         config = Path(root, precommit.CONFIG)
         Path(root, ".tollgate/checks/run_checks.py").write_text("# older Tollgate\n")
-        config.write_text(precommit.MARK + "\nrepos:\n- repo: local\n  hooks:\n"
+        config.write_text(precommit.OLD_HEADER[0] + "\nrepos:\n- repo: local\n  hooks:\n"
                           "  - id: tollgate-locked\n    entry: \"python3 .tollgate/checks/"
                           "check_locked.py\"\n  - id: tollgate-checks\n    entry: \"uv run "
                           "--no-project python .tollgate/checks/run_checks.py\"\n")
@@ -438,6 +527,8 @@ class PrecommitTest(Env):
         self.assertFalse(Path(root, ".tollgate/checks/run_checks.py").exists())
         text = config.read_text()
         self.assertNotIn("tollgate-checks", text)
+        self.assertNotIn("tollgate-locked", text)
+        self.assertNotIn(precommit.OLD_HEADER[0], text)
         self.assertNotIn("python3 .tollgate/checks", text)
         self.assertEqual(text.count("id: tollgate\n"), 1)
         self.assertEqual(precommit.write(str(root)), [])
@@ -453,12 +544,15 @@ class PrecommitTest(Env):
                       config.read_text())
         self.assertEqual(precommit.write(str(root)), [])
 
-    def test_refuses_a_config_tollgate_did_not_write(self):
-        root = self.repo()
-        Path(root, precommit.CONFIG).write_text("repos: []\n")
-        with self.assertRaises(precommit.PrecommitError):
-            precommit.write(str(root))
-        self.assertIn(precommit.CONFIG, precommit.write(str(root), replace=True))
+    @unittest.skipUnless(HAS_PRECOMMIT, "pre-commit is not installed")
+    def test_pre_commit_reads_the_config_tollgate_changed(self):
+        root = self.project_with_checks()
+        Path(root, precommit.CONFIG).write_text(
+            "repos:\n  - repo: local\n    hooks:\n      - id: own\n        name: own\n"
+            "        entry: 'true'\n        language: system\n")
+        precommit.write(str(root))
+        done = sh(root, "pre-commit", "validate-config", precommit.CONFIG, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     @unittest.skipUnless(HAS_PRECOMMIT, "pre-commit is not installed")
     def test_pre_commit_runs_the_generated_config(self):
@@ -497,7 +591,7 @@ class HooksTest(Env):
         done = sh(self.root, "git", "commit", "-m", "feat(a): add a", check=False)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
-    def test_a_push_runs_the_project_checks_through_the_one_entry(self):
+    def test_a_push_runs_a_hook_of_the_project_as_a_hook_of_its_own(self):
         remote = self.tmp / "remote.git"
         sh(self.tmp, "git", "init", "-q", "--bare", str(remote))
         sh(self.root, "git", "remote", "add", "origin", str(remote))
@@ -506,15 +600,21 @@ class HooksTest(Env):
         settings = json.loads(path.read_text())
         settings.setdefault("checks", {})["broken"] = {"run": "echo the check broke; exit 1"}
         path.write_text(json.dumps(settings))
+        precommit.write(str(self.root))
+        self.assertEqual(json.loads(path.read_text())["checks"]["broken"], {"hook": "check-broken"})
+        sh(self.root, "git", "add", precommit.CONFIG)   # pre-commit reads a staged config
         done = sh(self.root, "git", "push", "origin", "t1", check=False)
         out = done.stdout + done.stderr
         self.assertNotEqual(done.returncode, 0, out)
         self.assertIn("the check broke", out)
-        self.assertIn("FAIL check: broken", out)
-        self.assertIn("PASS push", out)
+        self.assertRegex(out, r"check: broken\.+Failed")
+        self.assertRegex(out, r"Tollgate: the checks of each git step\.+Passed")
         self.assertEqual(sh(self.root, "git", "ls-remote", "--heads", str(remote)).stdout.strip(), "")
-        del settings["checks"]["broken"]
-        path.write_text(json.dumps(settings))
+        config = Path(self.root, precommit.CONFIG)
+        item = pc.find(config.read_text(), "check-broken")
+        lines = config.read_text().splitlines()
+        config.write_text("\n".join(lines[:item.start] + lines[item.end:]) + "\n")
+        sh(self.root, "git", "add", precommit.CONFIG)
         done = sh(self.root, "git", "push", "origin", "t1", check=False)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("t1", sh(self.root, "git", "ls-remote", "--heads", str(remote)).stdout)
@@ -581,10 +681,16 @@ class InitTest(Env):
         sh(root, "git", "commit", "-q", "-m", "test(shop): start")
         lines = setup_init.init(str(root), install=False, which=FOUND)
         tests = json.loads(Path(root, ".tollgate/settings.json").read_text())["checks"]["tests"]
-        self.assertEqual(tests["report"], "report.xml")
-        self.assertIn("pytest", tests["run"])
-        self.assertIn("--junitxml=report.xml tests", tests["run"])
-        self.assertTrue(any(line.startswith("tests: ") for line in lines))
+        self.assertEqual(tests, {"hook": "check-tests", "report": "report.xml"})
+        config = Path(root, precommit.CONFIG).read_text()
+        item = pc.find(config, "check-tests")
+        block = "\n".join(config.splitlines()[item.start:item.end])
+        self.assertIn("pytest", block)
+        self.assertIn("--junitxml=report.xml tests", block)
+        said = next(line for line in lines if line.startswith("tests: "))
+        self.assertIn("as the hook check-tests", said)
+        shown = sh(root, "git", "show", "main:.tollgate/settings.json").stdout
+        self.assertIn("check-tests", shown)   # init commits the settings it moved
 
     def test_init_says_when_it_finds_no_tests(self):
         root = self.repo()
@@ -593,7 +699,7 @@ class InitTest(Env):
         self.assertNotIn("tests", checks)
         said = next(line for line in lines if line.startswith("tests: "))
         self.assertIn("no test suite found", said)
-        self.assertIn("checks", said)
+        self.assertIn('{"hook": "<its id>"', said)
 
 
 class InitSettingsFileTest(Env):
@@ -610,7 +716,11 @@ class InitSettingsFileTest(Env):
                                        "tiers": {"3": ["internal/caller/**"], "4": []}}))
         setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
         settings = json.loads(sh(root, "git", "show", "main:.tollgate/settings.json").stdout)
-        self.assertEqual(settings["checks"]["vet"], {"run": "go vet ./..."})
+        self.assertEqual(settings["checks"]["vet"], {"hook": "check-vet"})
+        config = sh(root, "git", "show", f"main:{precommit.CONFIG}").stdout
+        self.assertIn('args: ["go vet ./..."]', config)
+        again = setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        self.assertIn("files: already in place", again)
         self.assertEqual(settings["tiers"]["3"], ["internal/caller/**"])
         self.assertEqual(settings["isolation"], "container")
         self.assertIn(".tollgate/checks/**", settings["harness"])
@@ -644,6 +754,17 @@ class InitSettingsFileTest(Env):
         with self.assertRaisesRegex(setup_init.InitError, "already exists and differs"):
             setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
         self.assertEqual(Path(root, ".tollgate/settings.json").read_text(), mine)
+
+    def test_a_draft_may_name_a_hook_and_a_bad_check_is_refused(self):
+        root = self.repo()
+        draft = self.draft(json.dumps({"checks": {"vet": {"hook": "check-vet", "minutes": 2}}}))
+        setup_init.init(str(root), install=False, which=FOUND, settings_file=draft)
+        settings = json.loads(Path(root, ".tollgate/settings.json").read_text())
+        self.assertEqual(settings["checks"]["vet"], {"hook": "check-vet", "minutes": 2})
+        other = self.repo("other")
+        bad = self.draft(json.dumps({"checks": {"vet": {"hook": ""}}}))
+        with self.assertRaisesRegex(setup_init.st.SettingsError, "checks.vet needs a hook"):
+            setup_init.init(str(other), install=False, which=FOUND, settings_file=bad)
 
     def test_the_same_draft_a_second_time_changes_nothing(self):
         root = self.repo()
@@ -856,6 +977,25 @@ class HealthTest(Env):
         found = health.warnings(str(root), which=FOUND)
         self.assertTrue(any("settings.json runs a Tollgate check with python3" in w
                             for w in found))
+
+    def test_a_check_that_names_a_hook_the_config_does_not_have_warns(self):
+        root = self.setup_project()
+        path = Path(root, ".tollgate/settings.json")
+        settings = json.loads(path.read_text())
+        settings["checks"]["vet"] = {"hook": "check-vet"}
+        settings["checks"]["lint"] = {"run": "golangci-lint run"}
+        path.write_text(json.dumps(settings))
+        found = health.warnings(str(root), which=FOUND)
+        self.assertTrue(any("names the hook check-vet, which is not in .pre-commit-config.yaml"
+                            in w for w in found), found)
+        self.assertTrue(any("the check lint keeps its command" in w for w in found), found)
+        self.assertFalse(any("the check writing" in w for w in found), found)
+        precommit.write(str(root))   # init moves lint into a hook
+        Path(root, precommit.CONFIG).write_text(Path(root, precommit.CONFIG).read_text() +
+                                                "  - id: check-vet\n    name: vet\n"
+                                                "    entry: go vet\n    language: system\n")
+        found = health.check_hooks(root)
+        self.assertEqual(found, [])
 
     def test_a_missing_uv_warns_with_the_install_line(self):
         root = self.setup_project()

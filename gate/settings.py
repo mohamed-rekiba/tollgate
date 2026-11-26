@@ -86,7 +86,10 @@ DEFAULTS = {
              "bad_setting_stops": "", "one_log_line": ""},
 }
 
-CHECK_KEYS = {"run", "report", "minutes"}
+CHECK_KEYS = {"hook", "run", "report", "minutes"}
+# The one check that runs a command of its own: Tollgate's writing check. Each other check
+# names a hook of the project's .pre-commit-config.yaml, which holds the project's command.
+OWN_CHECK = "writing"
 CHECKPOINTS = ("plan", "ticket", "task")
 ISOLATIONS = ("container", "sandbox")
 RUNNERS = ("session", "background")
@@ -109,6 +112,26 @@ def _merge(base, extra, where):
             base[key] = value
 
 
+def check_one(name: str, check) -> None:
+    """Raise SettingsError when a check under `checks` cannot be used."""
+    if not isinstance(check, dict):
+        raise SettingsError(f"checks.{name} must be an object")
+    extra = set(check) - CHECK_KEYS
+    if extra:
+        raise SettingsError(f"unknown key: checks.{name}.{min(extra)}")
+    if "run" in check and name != OWN_CHECK:
+        raise SettingsError(f"checks.{name} has a run command. The project's commands live "
+                            "in .pre-commit-config.yaml: run /tollgate:init to move it there "
+                            "as a hook, and the settings then name the hook")
+    key = "run" if name == OWN_CHECK and "hook" not in check else "hook"
+    if not isinstance(check.get(key), str) or not check[key].strip():
+        raise SettingsError(f"checks.{name} needs a hook: the id of a hook in "
+                            ".pre-commit-config.yaml" if key == "hook" else
+                            f"checks.{name} needs a run command")
+    if "hook" in check and "run" in check:
+        raise SettingsError(f"checks.{name} has both a hook and a run command")
+
+
 def parse(text: str) -> dict:
     """Return the settings with defaults filled in. Raise SettingsError on a bad file."""
     try:
@@ -120,11 +143,7 @@ def parse(text: str) -> dict:
     settings = deepcopy(DEFAULTS)
     _merge(settings, raw, "")
     for name, check in settings["checks"].items():
-        if not isinstance(check, dict) or "run" not in check:
-            raise SettingsError(f"checks.{name} needs a run command")
-        extra = set(check) - CHECK_KEYS
-        if extra:
-            raise SettingsError(f"unknown key: checks.{name}.{min(extra)}")
+        check_one(name, check)
     points = settings["checkpoints"]
     if not isinstance(points, list) or any(p not in CHECKPOINTS for p in points):
         raise SettingsError(f"checkpoints must be a list of: {', '.join(CHECKPOINTS)}")

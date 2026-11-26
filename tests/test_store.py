@@ -12,7 +12,7 @@ from gate import manifest as mf
 from gate import plan as pl
 from gate.store import Store, StoreError
 from tests.fakes import RUN_TESTS, TICKET
-from tests.helpers import Repo
+from tests.helpers import Repo, write_checks
 from tests.test_plan_review import PLAN
 
 TESTS = '''import unittest
@@ -51,9 +51,9 @@ class StoreCase(unittest.TestCase):
         self.store = Store(str(r.path))
 
     def write_settings(self, **extra):
-        self.repo.write(".tollgate/settings.json", json.dumps({
+        write_checks(self.repo.path, {
             "checks": {"tests": {"run": f"{sys.executable} run_tests.py", "report": "report.xml"}},
-            "harness": ["run_tests.py"], "require_plan": False, **extra}))
+            "harness": ["run_tests.py"], "require_plan": False, **extra})
 
     def ticket_branch(self, tests=TESTS, ticket=TICKET):
         r = self.repo
