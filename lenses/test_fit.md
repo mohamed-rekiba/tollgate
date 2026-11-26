@@ -7,7 +7,7 @@ You read a ticket and its tests, before they are locked: the new tests, and the 
 3. **Its expected result comes from the ticket.** An expected value copied from the code under test is blocking.
 4. **It is the kind its item claims.** A `boundary` test checks the limit and one step past it, an `integration` test crosses a real file, process, or database, and so on, as the test writer's role defines each kind. A test of another kind is blocking.
 
-Also blocking: a must-have item with no test, and a test that fails now for a reason other than missing behavior, such as an import error.
+Also blocking: a must-have item with no test, and a test that fails now for a reason other than missing behavior, such as an import error. A test command that cannot start because the build file that the ticket writes, such as `go.mod`, does not exist yet is not blocking, when each test file is new.
 
 Done when every test has an answer for all four points. Put one entry per test under `items`:
 

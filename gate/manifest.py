@@ -106,21 +106,13 @@ def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None
                               f"named for its item, such as test_{entry['item'].lower()}_")
 
 
-def build(repo, commit: str, ticket, test_results: dict, start: str | None = None) -> dict:
-    """Return the manifest for a ticket at a commit.
-
-    test_results maps a test id to a junit.TestResult from a run of the tests
-    at that commit, before any code is built. start is the commit the ticket
-    started from: its tests must be kept as they were.
-    """
+def claim(repo, commit: str, ticket, test_results: dict, start: str | None = None) -> dict:
+    """{test id: item id} for each test of the report that the ticket claims: a test of
+    the ticket's test files that maps to a checklist item by its name or by the map.
+    Raise FreezeError when the report has no test of those files, or a file has no test
+    that maps to an item."""
     mapped = read_map(repo, commit, ticket.id)
     paths = test_files(ticket, mapped)
-    files = {}
-    for path in [ticket_path(ticket.id), *paths] + ([map_path(ticket.id)] if mapped else []):
-        data = show_bytes(repo, commit, path)
-        if data is None:
-            raise FreezeError(f"{path} is not in commit {commit}")
-        files[path] = fingerprint(data)
     mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, paths)}
     if not mine:
         raise FreezeError("the test report has no test from the ticket's test files")
@@ -151,11 +143,59 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         if in_file and not any(t in items for t in in_file):
             raise FreezeError(f"{in_file[0]} names no checklist item, such as c1_ in its name,"
                               f" and no test of {path} is in the test map")
+    return {t: items[t] for t in sorted(mine) if t in items}
+
+
+def missing_items(ticket, items: dict) -> list:
+    """The must-have items that no claimed test covers."""
+    covered = set(items.values())
+    return [i.id for i in ticket.items if i.must and i.id not in covered]
+
+
+def failed_at_setup(repo, ticket, paths: list, test_results: dict, start: str | None,
+                    tests_failed: bool) -> bool:
+    """True when the tests could not start before the build, and that still counts as the
+    locked tests failing: every locked test file is new, so no test of it was there to run,
+    the report lists no test at all, and the test command ended with an error. In a new
+    project the first ticket may write the build file, such as go.mod: until then the
+    test command fails at its setup and writes no report. A ticket that keeps behavior
+    needs its tests to pass before the build, so it cannot be locked this way."""
+    if test_results or not tests_failed or not start or not paths:
+        return False
+    if any(show_bytes(repo, start, path) is not None for path in paths):
+        return False
+    return not any(i.keeps_behavior for i in ticket.items if i.must)
+
+
+def build(repo, commit: str, ticket, test_results: dict, start: str | None = None,
+          tests_failed: bool = False) -> dict:
+    """Return the manifest for a ticket at a commit.
+
+    test_results maps a test id to a junit.TestResult from a run of the tests
+    at that commit, before any code is built. start is the commit the ticket
+    started from: its tests must be kept as they were. tests_failed is True when the
+    test command ended with an error.
+
+    When the tests could not start at all (see failed_at_setup), the manifest has no
+    test ids and `failed_at_setup` is true. The gate then takes the locked tests from
+    the report of each try: the tests of the locked files that the ticket claims.
+    """
+    mapped = read_map(repo, commit, ticket.id)
+    paths = test_files(ticket, mapped)
+    files = {}
+    for path in [ticket_path(ticket.id), *paths] + ([map_path(ticket.id)] if mapped else []):
+        data = show_bytes(repo, commit, path)
+        if data is None:
+            raise FreezeError(f"{path} is not in commit {commit}")
+        files[path] = fingerprint(data)
+    if failed_at_setup(repo, ticket, paths, test_results, start, tests_failed):
+        return {"ticket": ticket.id, "commit": commit, "files": files, "tests": [],
+                "keeps_behavior": [], "items": {}, "failed_at_setup": True}
+    items = claim(repo, commit, ticket, test_results, start)
     tests, keeps = [], []
-    for test_id, result in sorted(mine.items()):
-        if test_id not in items:
-            continue    # a test of the file that the ticket does not claim
-        item = ticket.item(items[test_id])
+    for test_id, item_id in items.items():
+        result = test_results[test_id]
+        item = ticket.item(item_id)
         if result.status == "skipped":
             raise FreezeError(f"{test_id} was skipped")
         if item.keeps_behavior:
@@ -165,8 +205,7 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         elif result.status == "passed":
             raise FreezeError(f"{test_id} passed before the build, so it tests nothing new")
         tests.append(test_id)
-    covered = {items[t] for t in tests}
-    missing = [i.id for i in ticket.items if i.must and i.id not in covered]
+    missing = missing_items(ticket, items)
     if missing:
         raise FreezeError(f"must-have items with no test: {', '.join(missing)}")
     return {
@@ -175,8 +214,19 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         "files": files,
         "tests": tests,
         "keeps_behavior": keeps,
-        "items": {t: items[t] for t in tests},
+        "items": items,
     }
+
+
+def after_setup(repo, lock: dict, ticket, test_results: dict) -> dict:
+    """{test id: item id}: the locked tests of a lock made when the tests could not start
+    before the build, as the report of a try lists them. Raise FreezeError when the report
+    has none, or a must-have item has no test."""
+    items = claim(repo, lock["commit"], ticket, test_results, lock.get("base_commit"))
+    missing = missing_items(ticket, items)
+    if missing:
+        raise FreezeError(f"must-have items with no test: {', '.join(missing)}")
+    return items
 
 
 def changed(manifest: dict, repo, ref: str) -> list:

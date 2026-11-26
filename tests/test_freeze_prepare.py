@@ -65,6 +65,55 @@ class FreezeTest(unittest.TestCase):
 
 
 
+class FailedAtSetupTest(unittest.TestCase):
+    """In a new project the first ticket may write the build file, such as go.mod. Before
+    the build the test command then fails at its setup and writes no report."""
+
+    NEW = TICKET.replace("[C2, must, keeps behavior, regression]", "[C2, must, regression]")
+
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.close)
+        self.repo.write(".tollgate/settings.json", settings_text())
+        self.start = self.repo.commit("start")
+        self.settings = st.load_from_ref(str(self.repo.path), "main")
+
+    def lock(self, ticket=None, tests=None, failed=True, start=None):
+        self.repo.write(mf.ticket_path("T-1"), ticket or self.NEW)
+        self.repo.write("tests/test_t1.py", "# tests\n")
+        commit = self.repo.commit("test(T-1): the ticket and its locked tests")
+        return freeze.record(str(self.repo.path), "T-1", commit, start or self.start,
+                             self.settings, tests or {}, 1, failed)
+
+    def test_new_test_files_no_report_and_a_failed_command_lock_with_no_test_ids(self):
+        manifest = self.lock()["manifest"]
+        self.assertTrue(manifest["failed_at_setup"])
+        self.assertEqual((manifest["tests"], manifest["items"]), ([], {}))
+        self.assertIn("tests/test_t1.py", manifest["files"])
+
+    def test_it_is_refused_when_any_condition_does_not_hold(self):
+        no_test = "the test report has no test from the ticket's test files"
+        with self.subTest("the command passed"), self.assertRaisesRegex(mf.FreezeError, no_test):
+            self.lock(failed=False)
+        with self.subTest("the report lists a test"), \
+                self.assertRaisesRegex(mf.FreezeError, no_test):
+            self.lock(tests={"other::test_x": {"status": "failed", "file": ""}})
+        with self.subTest("an item keeps behavior"), \
+                self.assertRaisesRegex(mf.FreezeError, no_test):
+            self.lock(ticket=TICKET)
+
+    def test_it_is_refused_when_a_locked_test_file_was_there_at_the_start(self):
+        self.repo.write("tests/test_t1.py", "# an older test file\n")
+        start = self.repo.commit("an older test file")
+        with self.assertRaisesRegex(mf.FreezeError, "no test from the ticket's test files"):
+            self.lock(start=start)
+
+    def test_a_normal_lock_has_no_mark(self):
+        tests = {f"tests.test_t1::test_c{n}_x": {"status": "failed", "file": ""}
+                 for n in (1, 2, 3)}
+        self.assertNotIn("failed_at_setup", self.lock(tests=tests)["manifest"])
+
+
 CALC = """import unittest
 
 import calc

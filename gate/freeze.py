@@ -81,12 +81,13 @@ def check_guarded(ticket, settings: dict, paths: list | None = None) -> None:
 
 
 def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, tests: dict,
-           number: int) -> dict:
+           number: int, tests_failed: bool = False) -> dict:
     """Return the lock record of a ticket at a commit, without its time.
 
     tests maps a test id to {"status", "file"}, from one run of the tests at
-    that commit with the harness of base_commit. Raise FreezeError when the
-    ticket cannot be locked.
+    that commit with the harness of base_commit. tests_failed is True when the test
+    command of that run ended with an error. Raise FreezeError when the ticket cannot be
+    locked.
     """
     check_id(ticket_id)
     if number > MAX_FREEZES:
@@ -94,11 +95,12 @@ def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, 
     ticket = ticket_at(repo, commit, ticket_id)
     check_guarded(ticket, settings, mf.test_files(ticket, mf.read_map(repo, commit, ticket_id)))
     found = {i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in tests.items()}
-    built = mf.build(repo, commit, ticket, found, base_commit)
+    built = mf.build(repo, commit, ticket, found, base_commit, tests_failed)
+    keys = ("files", "tests", "keeps_behavior", "items", "failed_at_setup")
     return {
         "ticket": ticket_id,
         "base_commit": base_commit,
         "commit": commit,
-        "manifest": {k: built[k] for k in ("files", "tests", "keeps_behavior", "items")},
+        "manifest": {k: built[k] for k in keys if k in built},
         "number": number,
     }

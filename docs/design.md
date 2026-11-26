@@ -102,6 +102,7 @@ The driver parks the ticket when it cost 10 USD, or the task cost 60 USD. No adv
 
 - **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor. A `retry` or `stronger` from the advisor then sends the tests back to the test writer with the hint, for up to 2 more rejections.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item `keeps behavior`, and the store accepts that one test as passing.
+- **The tests cannot start before the build.** In a new project the first ticket may write the build file, such as `go.mod`. Until then the test command fails at its setup and writes no report. The store still locks the ticket when each locked test file is new, not in the commit the ticket starts from, the report is missing or lists no test, the test command ended with an error, and no item keeps behavior. The lock then names no test and is marked `failed_at_setup`. After the build, the gate takes the locked tests from the report of each try: the tests of the locked files that the ticket claims. The report must list them, they must cover each must-have item, and each must pass.
 
 A locked test can be wrong. The builder cannot change it. The store allows one replacement lock for a ticket, but the driver has no step that asks for one.
 

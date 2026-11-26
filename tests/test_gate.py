@@ -333,5 +333,54 @@ class CommandLineTest(GateCase):
                 self.assertEqual(gate.main(argv), 0)
 
 
+class FailedAtSetupTest(GateCase):
+    """A lock made when the tests could not start before the build names no test. The
+    gate takes the locked tests from the report of the try."""
+
+    def setUp(self):
+        super().setUp()
+        self.lock["manifest"].update(tests=[], failed_at_setup=True)
+        self.write_lock(self.lock)
+
+    def results(self, passed=True, **status):
+        tests = {t: {"status": "passed", "file": ""} for t in TESTS}
+        for name, value in status.items():
+            test_id = f"tests.test_t1::{name}"
+            if value is None:
+                tests.pop(test_id)
+            else:
+                tests[test_id] = {"status": value, "file": ""}
+        return Results([CheckResult("tests", passed)], tests)
+
+    def test_the_tests_of_the_locked_files_in_the_report_are_the_locked_tests(self):
+        before = state.path(self.project, "locks", "T-1.json").read_bytes()
+        facts = self.facts(self.results())
+        self.assertEqual(gate.evaluate(facts), [])
+        self.assertEqual(facts.lock["manifest"]["tests"], TESTS)
+        self.assertEqual(facts.lock["manifest"]["items"], dict(zip(TESTS, ["C1", "C2"])))
+        self.assertEqual(state.path(self.project, "locks", "T-1.json").read_bytes(), before)
+
+    def test_a_report_with_no_test_of_the_locked_files_fails_and_the_builder_can_fix_it(self):
+        findings = gate.evaluate(self.facts(Results([CheckResult("tests", False)], {})))
+        tests = [f for f in findings if f["check"] == "tests"]
+        self.assertTrue(any("could not start before the build" in f["message"] and
+                            "no test from the ticket's test files" in f["message"]
+                            for f in tests), findings)
+        self.assertTrue(all(f["fixable"] for f in tests))
+
+    def test_a_failed_or_skipped_locked_test_fails(self):
+        for status in ("failed", "skipped"):
+            with self.subTest(status=status):
+                findings = gate.evaluate(self.facts(self.results(test_c1_retries=status)))
+                self.assertIn(f"locked test {'was skipped' if status == 'skipped' else 'failed'}:"
+                              f" tests.test_t1::test_c1_retries",
+                              [f["message"] for f in findings])
+
+    def test_a_must_have_item_with_no_test_in_the_report_fails(self):
+        findings = gate.evaluate(self.facts(self.results(test_c2_sent_once=None)))
+        self.assertTrue(any("must-have items with no test: C2" in f["message"]
+                            for f in findings), findings)
+
+
 if __name__ == "__main__":
     unittest.main()

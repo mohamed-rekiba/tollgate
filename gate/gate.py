@@ -11,6 +11,11 @@ The six checks:
     locked_files  every locked file has its fingerprint at the try
     tier          the tier, from the files the try changes
     tests         every check passes and every locked test ran and passed
+
+A lock made when the tests could not start before the build (`failed_at_setup` in its
+manifest) names no test. The gate then takes the locked tests from the report of the
+try: each test of the locked test files that the ticket claims. The report must list
+them, they must cover each must-have item, and each must pass.
     review        tier 2 and up need a passed review
 
 Approvals are not checked here: the store checks them at merge.
@@ -23,11 +28,11 @@ import sys
 import time
 from dataclasses import dataclass, field
 
+from gate import junit, state, tiers
 from gate import settings as st
-from gate import state, tiers
 from gate.checks import Results
 from gate.gitio import GitError, changed_files, fingerprint, git, show_bytes
-from gate.manifest import python_tests, ticket_path
+from gate.manifest import FreezeError, after_setup, python_tests, ticket_path
 
 BRANCH_PREFIX = "tg/"
 CHECKS = ("lock", "plan", "locked_files", "tier", "tests", "review")
@@ -59,6 +64,8 @@ class Facts:
     plan: dict | None = None   # the plan lock
     plan_error: str = ""
     review_passed: bool | None = None  # the review verdict the driver hands in
+    late_error: str = ""       # why the try's report cannot name the tests of a lock made
+                               # when the tests could not start before the build
 
 
 def ticket_of(branch: str) -> str | None:
@@ -148,6 +155,8 @@ def evaluate(facts: Facts) -> list:
                 fail("tests", f"locked test was skipped: {test_id}")
             elif got["status"] != "passed":
                 fail("tests", f"locked test failed: {test_id}")
+    if facts.late_error:
+        fail("tests", facts.late_error)
 
     # Review.
     if level >= 2 and facts.review_passed is not True:
@@ -295,9 +304,13 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
     if data is not None:
         from gate.tickets import parse
         try:
-            facts.plan_task = parse(data.decode()).plan
+            parsed = parse(data.decode())
+            facts.plan_task = parsed.plan
         except ValueError as err:
+            parsed = None
             facts.plan_error = f"the ticket cannot be read: {err}"
+        if parsed and lock["manifest"].get("failed_at_setup"):
+            take_late_tests(facts, repo, parsed)
     if facts.plan_task:
         plan, _, error = _read(project, "plans", facts.plan_task)
         facts.plan = plan
@@ -306,6 +319,22 @@ def collect(project: str, repo, base: str, head: str, ticket: str, results: Resu
     elif not facts.plan_error:
         facts.plan_error = "the ticket names no plan"
     return facts
+
+
+def take_late_tests(facts: Facts, repo, ticket) -> None:
+    """For a lock made when the tests could not start before the build: put the tests
+    that the try's report lists for the locked files into the facts' copy of the lock, as
+    if the lock had named them. The record on disk does not change."""
+    found = {t: junit.TestResult(t, r["status"], r.get("file", ""))
+             for t, r in facts.results.tests.items()}
+    try:
+        items = after_setup(repo, facts.lock, ticket, found)
+    except FreezeError as err:
+        facts.late_error = (f"the tests could not start before the build, so the report "
+                            f"must list the locked tests now: {err}")
+        return
+    manifest = {**facts.lock["manifest"], "tests": sorted(items), "items": items}
+    facts.lock = {**facts.lock, "manifest": manifest}
 
 
 def summary(findings: list, level: int) -> tuple:
