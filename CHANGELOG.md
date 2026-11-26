@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/tollgate-ai/tollgate/compare/v0.10.0...v0.11.0) (2026-11-26)
+
+
+### Features
+
+* **setup:** the project's checks are hooks of its own pre-commit config ([#152](https://github.com/tollgate-ai/tollgate/issues/152)) ([9c746af](https://github.com/tollgate-ai/tollgate/commit/9c746af488f10212aa666445f5c558a177219e6a))
+
 ## [0.10.0](https://github.com/tollgate-ai/tollgate/compare/v0.9.2...v0.10.0) (2026-11-25)
 
 
