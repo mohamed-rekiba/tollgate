@@ -133,7 +133,10 @@ MISSING_NAME = [(re.compile(p), order) for p, order in (
     (r"no function or associated item named `(\w+)` found for \w+ `([\w:]+)`", (2, 1)),
 )]
 NOT_A_NAME = {"crate", "self", "super"}
-TOO_MANY = re.compile(r":\d+:\d+: too many errors")
+# Lines that name a file but are no error of their own: the Go compiler stops after 10
+# errors with "too many errors", and golangci-lint heads a package that does not compile
+# with "file:1: : # <package>".
+NOT_AN_ERROR = re.compile(r":\d+:\d+: too many errors|:\d+: : # \S")
 
 
 def _parts(text: str) -> list:
@@ -154,7 +157,9 @@ def only_missing_seams(output: str, files: list, seams: list) -> bool:
     logging.Cause` for the seam `internal/logging.Cause`. The name matches when its parts
     end the seam's parts. A Rust error names its file on a later `-->` line, so that line
     counts as the `error` line above it. The Go compiler stops after 10 errors with a line
-    `too many errors`, which names the file but is no error of its own, so it is skipped.
+    `too many errors`, and golangci-lint heads a package that does not compile with a
+    line `file:1: : # <package>`. Each names the file but is no error of its own, so it
+    is skipped.
 
     Before the build, a new test that calls a seam the builder adds does not compile, so
     a vet, type, or lint check fails on it. That is the test failing for the right reason.
@@ -163,7 +168,7 @@ def only_missing_seams(output: str, files: list, seams: list) -> bool:
     seam_parts = [_parts(s) for s in seams]
     named = 0
     for i, line in enumerate(lines):
-        if not any(f in line for f in files) or TOO_MANY.search(line):
+        if not any(f in line for f in files) or NOT_AN_ERROR.search(line):
             continue
         named += 1
         if line.lstrip().startswith("-->"):

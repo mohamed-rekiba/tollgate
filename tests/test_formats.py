@@ -468,6 +468,16 @@ class MissingSeamsTest(unittest.TestCase):
             "internal/logging/cause_test.go:68:26: too many errors (compile)\n"),
             "a line that only says too many errors is no seam error")
 
+    def test_the_golangci_lint_package_header_is_not_an_error_of_its_own(self):
+        lint = ("internal/logging/cause_test.go:1: : # example.com/m/internal/logging_test "
+                "[example.com/m/internal/logging.test]\n"
+                "internal/logging/cause_test.go:66:12: undefined: logging.Cause\n"
+                "internal/logging/cause_test.go:139:12: undefined: logging.Cause (typecheck)\n"
+                "package logging_test\n1 issues:\n* typecheck: 1\n")
+        self.assertTrue(self.allowed(lint))
+        self.assertFalse(self.allowed(lint.replace("logging.Cause (typecheck)",
+                                                   "strngs.Cut (typecheck)")))
+
     def test_a_go_method_that_is_a_seam_is_allowed(self):
         out = ("internal/logging/cause_test.go:9:4: l.Cause undefined (type *logging.Logger "
                "has no field or method Cause)\n")
