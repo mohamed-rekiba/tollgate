@@ -426,6 +426,20 @@ class MissingSeamsTest(unittest.TestCase):
         self.assertTrue(self.allowed(vet))
         self.assertTrue(self.allowed(lint))
 
+    def test_the_go_too_many_errors_line_is_not_an_error_of_its_own(self):
+        # staticcheck and golangci-lint end with this line after 10 compile errors.
+        errors = "".join(f"internal/logging/cause_test.go:{n}:19: undefined: logging.Cause\n"
+                         for n in range(18, 28))
+        staticcheck = ("-: # example.com/m/internal/logging_test\n" + errors +
+                       "internal/logging/cause_test.go:68:26: too many errors (compile)\n")
+        lint = ("internal/logging/async_test.go:1: : # example.com/m/internal/logging_test\n"
+                + errors + "internal/logging/cause_test.go:68:26: too many errors\n")
+        self.assertTrue(self.allowed(staticcheck))
+        self.assertTrue(self.allowed(lint))
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:68:26: too many errors (compile)\n"),
+            "a line that only says too many errors is no seam error")
+
     def test_a_go_method_that_is_a_seam_is_allowed(self):
         out = ("internal/logging/cause_test.go:9:4: l.Cause undefined (type *logging.Logger "
                "has no field or method Cause)\n")
