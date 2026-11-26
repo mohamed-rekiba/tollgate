@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/tollgate-ai/tollgate/compare/v0.11.1...v0.11.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **task:** run a roadmap in session mode, the same as a task ([#157](https://github.com/tollgate-ai/tollgate/issues/157)) ([f709c3d](https://github.com/tollgate-ai/tollgate/commit/f709c3d04ff54a8579f55d81283bfd14d24bdcd9))
+
 ## [0.11.1](https://github.com/tollgate-ai/tollgate/compare/v0.11.0...v0.11.1) (2026-11-26)
 
 
