@@ -54,6 +54,8 @@
   "base": {
     "checks_run": "uv run --no-project --with-requirements requirements-dev.txt ruff check .",
     "parallel_tests": "uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto tests",
-    "bad_setting_stops": "f=$(mktemp) && echo '{\"isolation\":\"bogus\"}' > \"$f\" && python3 -m gate.settings \"$f\" 2>&1 >/dev/null | grep -q \"isolation must be\""
+    "bad_setting_stops": "f=$(mktemp) && echo '{\"isolation\":\"bogus\"}' > \"$f\" && python3 -m gate.settings \"$f\" 2>&1 >/dev/null | grep -q \"isolation must be\"",
+    "env_up_down": "python3 setup/base_env.py",
+    "one_log_line": "python3 setup/base_log_line.py"
   }
 }
