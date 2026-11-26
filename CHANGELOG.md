@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/tollgate-ai/tollgate/compare/v0.11.0...v0.11.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **init:** set up Tollgate's own project, which runs its checks from setup/ ([#154](https://github.com/tollgate-ai/tollgate/issues/154)) ([2f5b377](https://github.com/tollgate-ai/tollgate/commit/2f5b377891c197fcd4c3b10231bffe60e40e6c1b))
+
 ## [0.11.0](https://github.com/tollgate-ai/tollgate/compare/v0.10.0...v0.11.0) (2026-11-26)
 
 
