@@ -234,7 +234,11 @@ def init(project=".", which=shutil.which, install=True, settings_file=None) -> l
     out.append(f"files: {', '.join(changed) if changed else 'already in place'}")
     out.append(tests_line)
     paths = [st.PATH, precommit.CHECKS_DIR, precommit.CONFIG]
-    git(root, "add", "--", *paths)
+    git(root, "add", "--", *[p for p in paths if (root / p).exists()])
+    # Tollgate's own project has no files in .tollgate/checks: its checks run from setup/.
+    # A path that git knows neither in the index nor in HEAD would stop the commit.
+    paths = [p for p in paths if git(root, "ls-files", "--", p)
+             or git(root, "ls-tree", "-r", "--name-only", "HEAD", "--", p, check=False)]
     if git(root, "diff", "--cached", "--name-only", "--", *paths):
         # You run init, so this commit is yours. --no-verify: the locked-file check
         # would refuse a commit that changes .tollgate/.

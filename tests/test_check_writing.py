@@ -343,6 +343,22 @@ class InstallTest(unittest.TestCase):
                              install_writing_check.SOURCE.read_bytes())
             self.assertEqual(install_writing_check.install(tmp), [])
 
+    def test_in_tollgates_own_project_the_check_runs_from_setup_and_no_copy_is_made(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "setup").mkdir()
+            for name in ("precommit.py", "tollgate_checks.py"):
+                Path(tmp, "setup", name).write_text("# source\n")
+            Path(tmp, ".tollgate").mkdir()
+            settings_path = Path(tmp, ".tollgate/settings.json")
+            settings_path.write_text(json.dumps(
+                {"checks": {"writing": {"run": "uv run --no-project python setup/check_writing.py"}},
+                 "harness": ["setup/**"]}))
+            self.assertEqual(install_writing_check.install(tmp), [])
+            settings = json.loads(settings_path.read_text())
+            self.assertEqual(settings["checks"]["writing"], install_writing_check.OWN_CHECK)
+            self.assertEqual(settings["harness"], ["setup/**"])
+            self.assertFalse(Path(tmp, install_writing_check.TARGET).exists())
+
     def test_an_old_python3_writing_check_moves_to_uv_and_the_rest_stays_byte_for_byte(self):
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, ".tollgate").mkdir()
