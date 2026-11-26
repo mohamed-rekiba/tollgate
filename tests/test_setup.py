@@ -654,6 +654,27 @@ class InitTest(Env):
                       setup_init.init(str(root), install=False, which=FOUND))
         self.assertTrue(lines)
 
+    def test_init_commits_in_tollgates_own_project_with_no_checks_folder(self):
+        root = self.repo()
+        Path(root, "setup").mkdir()
+        for name in ("precommit.py", "tollgate_checks.py", "check_writing.py"):
+            Path(root, "setup", name).write_text("# source\n")
+        Path(root, ".tollgate").mkdir(exist_ok=True)
+        Path(root, ".tollgate/settings.json").write_text(json.dumps({"checks": {
+            "style": {"run": "ruff check ."},
+            "writing": {"run": "uv run --no-project python setup/check_writing.py"}}}))
+        sh(root, "git", "add", "-A")
+        sh(root, "git", "commit", "-q", "-m", "chore(setup): the checks as source")
+        Path(root, ".tollgate/checks").mkdir()   # an empty folder, as an older init left
+        lines = setup_init.init(str(root), install=False, which=FOUND)
+        self.assertTrue(any(line.startswith("commit: ") for line in lines), lines)
+        self.assertEqual(list(Path(root, ".tollgate/checks").iterdir()), [])
+        settings = json.loads(sh(root, "git", "show", "main:.tollgate/settings.json").stdout)
+        self.assertEqual(settings["checks"]["style"], {"hook": "check-style"})
+        self.assertEqual(settings["checks"]["writing"],
+                         {"run": "uv run --no-project python setup/check_writing.py"})
+        self.assertEqual(sh(root, "git", "status", "--short").stdout.strip(), "")
+
     def test_init_stops_when_a_tool_is_missing(self):
         root = self.repo()
         with self.assertRaisesRegex(setup_init.InitError, "not installed: claude"):
