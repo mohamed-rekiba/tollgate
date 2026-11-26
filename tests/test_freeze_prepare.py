@@ -373,6 +373,10 @@ class GoNotBuiltTest(unittest.TestCase):
 
     def report(self, components="passed", logging="failed"):
         """A gotestsum-shaped report: no file attribute, the import path as class name."""
+        failure = "<failure message='Failed'><![CDATA[FAIL]]></failure>"
+        main = "" if logging == "empty" else (
+            f'    <testcase classname="{MODULE}logging" name="TestMain" time="0.000000">'
+            f'{failure if logging == "failed" else ""}</testcase>')
         with tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False) as f:
             f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
 <testsuites tests="3" failures="1" errors="0" time="0.400000">
@@ -384,8 +388,7 @@ class GoNotBuiltTest(unittest.TestCase):
   </testsuite>
   <testsuite tests="0" failures="0" time="0.000000" name="{MODULE}logging">
     <properties><property name="go.version" value="go1.25.0 darwin/arm64"></property></properties>
-    <testcase classname="{MODULE}logging" name="TestMain" time="0.000000">\
-{"<failure message='Failed'><![CDATA[FAIL]]></failure>" if logging == "failed" else ""}</testcase>
+{main}
   </testsuite>
 </testsuites>
 """)
@@ -412,6 +415,16 @@ class GoNotBuiltTest(unittest.TestCase):
         # The gate requires each locked test to run and pass on each try.
         self.assertEqual(sorted(manifest["tests"]), sorted([*new, keep]))
         self.assertNotIn(f"{MODULE}components::TestOther", manifest["tests"])
+
+    def test_an_empty_suite_and_the_build_failed_line_lock_as_failing(self):
+        # gotestsum v1.13 writes a package that does not compile as an empty test suite,
+        # with no TestMain case; the output names it as FAIL <import path> [build failed].
+        manifest = self.lock(logging="empty")
+        self.assertEqual(manifest["not_built"], [f"{MODULE}logging::TestC1CauseKeepsAShortText",
+                                                 f"{MODULE}logging::TestC2CauseNeverPanics"])
+        with self.subTest("no build failed line"), \
+                self.assertRaisesRegex(mf.FreezeError, "did not run"):
+            self.lock(logging="empty", output=SEAM_OUTPUT.replace(" [build failed]", ""))
 
     def test_a_keeps_behavior_test_must_still_pass_before_the_build(self):
         with self.assertRaisesRegex(mf.FreezeError, "TestACauseIsShort keeps behavior"):

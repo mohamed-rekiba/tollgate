@@ -8,8 +8,8 @@ A Go report, such as gotestsum's, has no `file` attribute, and its class name is
 package's import path, such as `example.com/app/internal/logging`. A test of it belongs
 to a Go test file when the import path ends with the file's folder and the file
 defines the test's function. Only the caller can read the file, so it passes the names
-each Go file defines. A package that does not compile has one failed test case,
-`<import path>::TestMain`, and none for its tests.
+each Go file defines. A package that does not compile has no test case for its tests: gotestsum writes
+an empty test suite or one failed `<import path>::TestMain`.
 """
 
 import xml.etree.ElementTree as ET

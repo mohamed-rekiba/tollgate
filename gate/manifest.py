@@ -113,6 +113,9 @@ def go_defined(repo, commit: str, paths: list) -> dict:
     return {p: go_tests(show_bytes(repo, commit, p)) for p in paths if p.endswith("_test.go")}
 
 
+BUILD_FAILED = re.compile(r"^FAIL\s+(\S+) \[build failed\]", re.MULTILINE)
+
+
 def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
               output: str) -> dict:
     """{test id: a failed junit.TestResult} for each test of the ticket in a Go test file
@@ -121,8 +124,10 @@ def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
     the build. The ticket's tests of a file are those the map names for it, and its new
     tests that carry an item in their name.
 
-    A file counts only when all of these hold: the report has exactly one failed
-    `<import path>::TestMain` for the file's folder and no other test of that package;
+    A file counts only when all of these hold: the package of the file's folder failed
+    to build, as a failed `<import path>::TestMain` in the report or a line `FAIL
+    <import path> [build failed]` in the output (gotestsum v1.13 writes such a package
+    as an empty test suite), and the report has no other test of that package;
     the file has at least one test of the ticket; each one is defined in the file and was
     not there at the start; and each line of the test check's output that names a file
     of the folder is a compile error about a seam's name (checks.only_missing_seams). A
@@ -132,12 +137,15 @@ def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
     for path in test_files(ticket, mapped):
         if not path.endswith("_test.go"):
             continue
-        builds = [t for t, r in test_results.items() if t.endswith("::TestMain")
-                  and r.status == "failed" and junit.in_package(t.split("::")[0], path)]
+        failed_main = {t for t, r in test_results.items() if t.endswith("::TestMain")
+                       and r.status == "failed"}
+        builds = {t.split("::")[0] for t in failed_main
+                  if junit.in_package(t.split("::")[0], path)}
+        builds |= {p for p in BUILD_FAILED.findall(output or "") if junit.in_package(p, path)}
         if len(builds) != 1:
             continue
-        package = builds[0].split("::")[0]
-        if any(t.split("::")[0] == package for t in test_results if t != builds[0]):
+        package = builds.pop()
+        if any(t.split("::")[0] == package for t in test_results if t not in failed_main):
             continue
         now, before = defined_tests(repo, commit, path), defined_tests(repo, start, path)
         named = sorted(n for n in now - before if ticket.item(item_of_test(n) or ""))
