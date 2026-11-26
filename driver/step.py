@@ -2,6 +2,7 @@
 
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --task <task id>
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --brainstorm <id>
+    PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --roadmap <id>
     PYTHONPATH=<tollgate> python3 -P -m driver.step answer --project . --key <key> --nonce <nonce> < answer.md
 
 `next` runs the task's driver in session mode, from its log and the saved
@@ -28,6 +29,15 @@ With --brainstorm, `next` runs a brainstorm instead (see driver/brainstorm.py): 
 idea is .tollgate/ideas/<id>.md, and its end is {"done": true, "brief": <path>,
 "size": "task" or "roadmap", "open_questions": <count>}. `answer` goes on with the
 brainstorm or the task that the waiting step belongs to.
+
+With --roadmap, `next` runs a roadmap in session mode (see driver/roadmap.py): its
+file is .tollgate/roadmaps/<id>.md. It freezes the checklist's tests, runs each
+task in order, checks the base suite after the base tasks, and goes on to the next
+task when one is done. Each step is printed as for a task. The step file notes the
+roadmap, so `answer` goes on with the roadmap. Its end is {"done": true,
+"roadmap": <id>, "tasks": [task ids], "result": <done and still to do>,
+"merged": [tickets], "reports": [paths]}. A base suite that fails, or a task that
+does not finish, ends with {"parked": <the reason>} or a question.
 """
 
 import argparse
@@ -37,14 +47,17 @@ import sys
 from pathlib import Path
 
 from driver import advisor, history, report, roles, session
+from driver import roadmap as roadmap_driver
 from driver.brainstorm import Brainstorm
 from driver.driver import Busy, run_lock
 from driver.log import read
 from driver.task import Task
 from gate import brief as bf
+from gate import manifest as mf
 from gate import plan as pl
+from gate import roadmap as rm
 from gate import settings as st
-from gate import state
+from gate import state, tickets
 from gate.store import Store, StoreError
 
 
@@ -83,8 +96,9 @@ def _merged(project: str, task: str) -> list:
     return out
 
 
-def _paused(project: str, lock_name: str) -> tuple:
-    """The step that waits, with a new nonce. Return (what to print, exit code)."""
+def _paused(project: str, lock_name: str, roadmap: str = "") -> tuple:
+    """The step that waits, with a new nonce. Return (what to print, exit code).
+    roadmap names the roadmap the step belongs to, so answer goes on with it."""
     # The nonce goes in under the run lock, so a second next cannot interleave.
     lock = run_lock(project, lock_name)
     try:
@@ -96,6 +110,8 @@ def _paused(project: str, lock_name: str) -> tuple:
         if step is None:
             return {"error": "the driver paused, but no step file is there; run next "
                              "again"}, 1
+        if roadmap:
+            session.note_roadmap(project, roadmap)
         nonce = session.new_nonce(project)
     finally:
         lock.release()
@@ -171,6 +187,54 @@ def next_step(project: str, task: str, store=None) -> tuple:
     return {"error": f"the driver ended with {code}"}, 1
 
 
+def _checklist_task(project: str, checklist: str) -> str:
+    """The task the checklist ticket's events name: its plan, or else its own id."""
+    try:
+        text = Path(project, mf.ticket_path(checklist)).read_text()
+        return tickets.parse(text).plan or checklist
+    except (OSError, tickets.TicketError):
+        return checklist
+
+
+def next_roadmap(project: str, roadmap_id: str, store=None) -> tuple:
+    """Run the roadmap in session mode to its next step. Return (what to print, exit code)."""
+    project = str(Path(project).resolve())
+    problem = session.cannot_pass(project)
+    if problem:
+        return {"error": problem}, 1
+    path = Path(project, rm.roadmap_path(roadmap_id))
+    if not pl.ID.match(roadmap_id) or not path.exists():
+        return {"error": f"the roadmap is missing: write it to {rm.roadmap_path(roadmap_id)}"}, 1
+    store = store or Store(project)
+    try:
+        found = rm.parse(path.read_text())
+        code = roadmap_driver.run(project, roadmap_id, store, runner="session")
+    except Busy as err:
+        return {"error": str(err)}, 1
+    except (roles.RoleError, pl.PlanError, rm.RoadmapError, st.SettingsError, StoreError,
+            OSError, subprocess.CalledProcessError) as err:
+        return {"error": str(err)}, 1
+    if code == roadmap_driver.PAUSED:
+        return _paused(project, f"roadmap-{roadmap_id}", roadmap=roadmap_id)
+    task_ids = [task_id for _, task_id, _ in found.tasks]
+    if code == 0:
+        return {"done": True, "roadmap": roadmap_id, "tasks": task_ids,
+                "result": report.brief(project),
+                "merged": [t for task_id in task_ids for t in _merged(project, task_id)],
+                "reports": [str(state.path(project, "reports", f"{task_id}.md"))
+                            for task_id in task_ids]}, 0
+    events = read(str(state.path(project, "logs", f"roadmap-{roadmap_id}.jsonl")))
+    # The task that stopped the roadmap, or else the checklist, may wait for a person.
+    stopped = [e["task"] for e in events if e["event"] == "task_done" and e.get("code")]
+    for task_id in [*stopped[-1:], _checklist_task(project, found.checklist)]:
+        question = _question(project, task_id, store)
+        if question:
+            return {"question": question}, 0
+    waiting = [e for e in events if e["event"] == "roadmap_waiting"]
+    reason = waiting[-1].get("reason") if waiting else ""
+    return {"parked": reason or "the roadmap waits"}, 0
+
+
 def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> tuple:
     """Save the answer to the waiting step, then run next. Return (what to print, exit code)."""
     import hmac
@@ -190,6 +254,8 @@ def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> t
                          "with a ```json block."}, 1
     except (OSError, subprocess.CalledProcessError) as err:
         return {"error": f"the answer was not saved: {err}"}, 1
+    if isinstance(step.get("roadmap"), str) and step["roadmap"]:
+        return next_roadmap(project, step["roadmap"], store)
     if step["log"] == f"brainstorm-{step['task']}":
         return next_brainstorm(project, step["task"], store)
     return next_step(project, step["task"], store)
@@ -204,6 +270,7 @@ def main(argv=None, store=None, stdin=None) -> int:
     which = found.add_mutually_exclusive_group(required=True)
     which.add_argument("--task")
     which.add_argument("--brainstorm")
+    which.add_argument("--roadmap")
     given = sub.add_parser("answer", help="save the answer to the waiting step (on stdin)")
     given.add_argument("--project", default=".")
     given.add_argument("--key", required=True)
@@ -211,6 +278,8 @@ def main(argv=None, store=None, stdin=None) -> int:
     args = parser.parse_args(argv)
     if args.command == "next" and args.brainstorm:
         out, code = next_brainstorm(args.project, args.brainstorm, store)
+    elif args.command == "next" and args.roadmap:
+        out, code = next_roadmap(args.project, args.roadmap, store)
     elif args.command == "next":
         out, code = next_step(args.project, args.task, store)
     else:

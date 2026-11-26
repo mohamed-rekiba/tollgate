@@ -4,8 +4,14 @@ The task skill starts this for a request too large for one plan, after it writes
 the roadmap file and its checklist ticket in the project's working folder.
 A task that does not finish stops the roadmap, because later tasks build on it.
 After the base tasks, the base suite must pass before the skeleton starts.
-Exit codes as for driver.task. A roadmap runs in the background: its tasks and
-tickets start each role as its own process, whatever the setting `runner` says.
+Exit codes as for driver.task.
+
+This command runs a roadmap in background mode: its tasks and tickets start each
+role as its own process. For `runner: "session"`, the task skill runs the same
+roadmap with `driver.step next --roadmap <id>` instead: run() then takes
+runner="session", and ends with 5 when a role waits for your session. A pause
+logs nothing here, so the next run goes on with the task or the checklist where
+it stopped.
 """
 
 import argparse
@@ -24,6 +30,7 @@ from gate.store import Store
 from setup import base_suite
 
 BACKGROUND = "background"
+PAUSED = 5    # a role waits for your session; see driver/session.py
 
 
 def check_base(project: str, log, ref: str = BASE) -> int:
@@ -48,7 +55,9 @@ def check_base(project: str, log, ref: str = BASE) -> int:
     return 0
 
 
-def run(project: str, roadmap_id: str, store=None) -> int:
+def run(project: str, roadmap_id: str, store=None, runner: str = BACKGROUND) -> int:
+    """Run the roadmap from where its log says it stopped. runner is "background", or
+    "session" for driver.step."""
     project = os.path.abspath(project)
     store = store or Store(project)
     roadmap = rm.parse(Path(project, rm.roadmap_path(roadmap_id)).read_text())
@@ -60,7 +69,9 @@ def run(project: str, roadmap_id: str, store=None) -> int:
         frozen = any(e["event"] == "checklist_frozen" for e in read(log_path))
         with Log(log_path, roadmap=roadmap_id) as log:
             if not frozen:
-                code = Driver(project, roadmap.checklist, store, runner=BACKGROUND).run(until="frozen")
+                code = Driver(project, roadmap.checklist, store, runner=runner).run(until="frozen")
+                if code == PAUSED:
+                    return code
                 if code != 0:
                     log.add("roadmap_waiting", reason="the checklist could not be frozen")
                     return code
@@ -75,7 +86,9 @@ def run(project: str, roadmap_id: str, store=None) -> int:
                     base_checked = True
                 if done.get(task_id) == 0:
                     continue
-                code = Task(project, task_id, request, store, runner=BACKGROUND).run()
+                code = Task(project, task_id, request, store, runner=runner).run()
+                if code == PAUSED:
+                    return code
                 log.add("task_done", stage=stage, task=task_id, code=code)
                 if code != 0:
                     log.add("roadmap_waiting", reason=f"task {task_id} did not finish")
@@ -84,7 +97,9 @@ def run(project: str, roadmap_id: str, store=None) -> int:
                 code = check_base(project, log)
                 if code != 0:
                     return code
-            code = Driver(project, roadmap.checklist, store, runner=BACKGROUND).run()
+            code = Driver(project, roadmap.checklist, store, runner=runner).run()
+            if code == PAUSED:
+                return code
             log.add("roadmap_done" if code == 0 else "roadmap_waiting", checklist_code=code)
             return code
     finally:
