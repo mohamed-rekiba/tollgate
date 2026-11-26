@@ -2,12 +2,12 @@
   "setup": [],
   "checks": {
     "tests": {
-      "run": "uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto --junitxml=report.xml tests",
+      "hook": "check-tests",
       "report": "report.xml",
       "minutes": 15
     },
     "style": {
-      "run": "uv run --no-project --with-requirements requirements-dev.txt ruff check ."
+      "hook": "check-style"
     },
     "writing": {
       "run": "uv run --no-project python setup/check_writing.py"
