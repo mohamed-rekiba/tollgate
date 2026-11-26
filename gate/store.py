@@ -110,9 +110,10 @@ class Store:
                 # UNFINISHED: the tests run here, not in the builder's isolation.
                 results = checks.run(settings, d, ["tests"])
                 failed = any(c.name == "tests" and not c.passed for c in results.checks)
+                output = "\n".join(c.output for c in results.checks if c.name == "tests")
                 try:
                     lock = fz.record(d, ticket, commit, started, settings, results.tests,
-                                     number, failed)
+                                     number, failed, output)
                 except mf.FreezeError as err:
                     said = [c.output for c in results.checks if c.output]
                     if results.tests or not said:

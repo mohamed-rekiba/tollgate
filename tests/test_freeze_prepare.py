@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from typing import ClassVar
 
-from gate import freeze, gate, prepare
+from gate import freeze, gate, junit, prepare
 from gate import manifest as mf
 from gate import settings as st
 from gate.checks import CheckResult, Results
@@ -282,6 +282,169 @@ class PrepareTest(unittest.TestCase):
         touched = prepare.restore(str(r.path), "main", self.frozen, m)
         self.assertEqual(touched, ["tests/test_t1.py"])
         self.assertEqual((r.path / "tests/test_t1.py").read_text(), "# locked\n")
+
+
+GO_TICKET = """---
+id: T-1
+plan: retries
+seams: internal/logging.Cause
+tests: internal/logging/cause_test.go, internal/components/components_test.go
+---
+## Current behavior
+The cause rule is in internal/components.
+
+## Desired behavior
+logging.Cause masks a text and cuts it.
+
+## Checklist
+- [C1, must, happy] logging.Cause keeps a short text.
+- [C2, must, error] logging.Cause of an invalid text never panics.
+- [C3, must, keeps behavior, regression] The components cause is still short: \
+internal/components/components_test.go::TestACauseIsShort.
+
+## Not covered
+- edge: Cause has no other input.
+- boundary: no limit changes.
+- integration: Cause reads no file.
+- e2e: there is no screen.
+- security: Cause reads nothing from a user.
+- performance: no time limit is asked for.
+- concurrency: Cause keeps no state.
+
+## Out of scope
+Other cuts.
+"""
+
+COMPONENTS_TEST = """package components
+
+import "testing"
+
+func TestACauseIsShort(t *testing.T) {}
+
+func TestOther(t *testing.T) {}
+"""
+
+CAUSE_TEST = """package logging_test
+
+import (
+	"testing"
+
+	"example.com/app/internal/logging"
+)
+
+func TestC1CauseKeepsAShortText(t *testing.T) { _ = logging.Cause("a", 8) }
+
+func TestC2CauseNeverPanics(t *testing.T) { _ = logging.Cause("\\xff", 8) }
+"""
+
+MODULE = "example.com/app/internal/"
+# What gotestsum prints when internal/logging does not compile: the build errors, then
+# one line per package.
+SEAM_OUTPUT = """check-tests..............................................................Failed
+=== Errors
+# example.com/app/internal/logging_test [example.com/app/internal/logging.test]
+internal/logging/cause_test.go:9:59: undefined: logging.Cause
+internal/logging/cause_test.go:11:55: undefined: logging.Cause
+DONE 2 tests, 1 failure, 1 error in 0.4s
+FAIL	example.com/app/internal/logging [build failed]
+"""
+
+
+class GoNotBuiltTest(unittest.TestCase):
+    """A new Go test that calls a seam the builder adds does not compile, so gotestsum
+    writes one failed TestMain for its package and no case for its tests."""
+
+    MAP: ClassVar[list] = [
+        {"item": "C1", "file": "internal/logging/cause_test.go",
+         "name": "TestC1CauseKeepsAShortText"},
+        {"item": "C2", "file": "internal/logging/cause_test.go", "name": "TestC2CauseNeverPanics"},
+        {"item": "C3", "file": "internal/components/components_test.go",
+         "name": "TestACauseIsShort"},
+    ]
+
+    def setUp(self):
+        self.repo = Repo()
+        self.addCleanup(self.repo.close)
+        self.repo.write(".tollgate/settings.json", settings_text())
+        self.repo.write("go.mod", "module example.com/app\n")
+        self.repo.write("internal/components/components_test.go", COMPONENTS_TEST)
+        self.start = self.repo.commit("start")
+        self.settings = st.load_from_ref(str(self.repo.path), "main")
+
+    def report(self, components="passed", logging="failed"):
+        """A gotestsum-shaped report: no file attribute, the import path as class name."""
+        with tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False) as f:
+            f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="3" failures="1" errors="0" time="0.400000">
+  <testsuite tests="2" failures="0" time="0.010000" name="{MODULE}components">
+    <properties><property name="go.version" value="go1.25.0 darwin/arm64"></property></properties>
+    <testcase classname="{MODULE}components" name="TestACauseIsShort" time="0.000000">\
+{"<failure message='Failed'></failure>" if components == "failed" else ""}</testcase>
+    <testcase classname="{MODULE}components" name="TestOther" time="0.000000"></testcase>
+  </testsuite>
+  <testsuite tests="0" failures="0" time="0.000000" name="{MODULE}logging">
+    <properties><property name="go.version" value="go1.25.0 darwin/arm64"></property></properties>
+    <testcase classname="{MODULE}logging" name="TestMain" time="0.000000">\
+{"<failure message='Failed'><![CDATA[FAIL]]></failure>" if logging == "failed" else ""}</testcase>
+  </testsuite>
+</testsuites>
+""")
+        self.addCleanup(Path(f.name).unlink)
+        return {t: {"status": r.status, "file": r.file} for t, r in junit.read(f.name).items()}
+
+    def lock(self, output=SEAM_OUTPUT, cause=CAUSE_TEST, mapped=None, **report):
+        import json
+        self.repo.write(mf.ticket_path("T-1"), GO_TICKET)
+        self.repo.write("internal/logging/cause_test.go", cause)
+        self.repo.write(mf.map_path("T-1"), json.dumps(mapped or self.MAP))
+        commit = self.repo.commit("test(T-1): the ticket and its locked tests")
+        return freeze.record(str(self.repo.path), "T-1", commit, self.start, self.settings,
+                             self.report(**report), 1, True, output)["manifest"]
+
+    def test_new_tests_of_a_package_that_needs_a_seam_lock_as_failing(self):
+        manifest = self.lock()
+        new = [f"{MODULE}logging::TestC1CauseKeepsAShortText",
+               f"{MODULE}logging::TestC2CauseNeverPanics"]
+        keep = f"{MODULE}components::TestACauseIsShort"
+        self.assertEqual(manifest["items"], {new[0]: "C1", new[1]: "C2", keep: "C3"})
+        self.assertEqual(manifest["keeps_behavior"], [keep])
+        self.assertEqual(manifest["not_built"], new)
+        # The gate requires each locked test to run and pass on each try.
+        self.assertEqual(sorted(manifest["tests"]), sorted([*new, keep]))
+        self.assertNotIn(f"{MODULE}components::TestOther", manifest["tests"])
+
+    def test_a_keeps_behavior_test_must_still_pass_before_the_build(self):
+        with self.assertRaisesRegex(mf.FreezeError, "TestACauseIsShort keeps behavior"):
+            self.lock(components="failed")
+
+    def test_a_compile_error_that_is_not_a_seam_is_refused(self):
+        other = SEAM_OUTPUT.replace("undefined: logging.Cause", "undefined: strngs.Cut", 1)
+        with self.assertRaisesRegex(mf.FreezeError, "TestC1CauseKeepsAShortText.*did not run"):
+            self.lock(output=other)
+        with self.subTest("no output"), self.assertRaisesRegex(mf.FreezeError, "did not run"):
+            self.lock(output="")
+
+    def test_a_package_that_built_is_not_counted_as_failing(self):
+        with self.assertRaisesRegex(mf.FreezeError, "TestC1CauseKeepsAShortText.*did not run"):
+            self.lock(logging="passed")
+
+    def test_a_mapped_test_the_file_does_not_define_is_refused(self):
+        mapped = [*self.MAP, {"item": "C2", "file": "internal/logging/cause_test.go",
+                              "name": "TestC2Missing"}]
+        with self.assertRaisesRegex(mf.FreezeError, "did not run"):
+            self.lock(mapped=mapped)
+
+    def test_a_new_test_named_for_its_item_needs_no_map_entry(self):
+        named = CAUSE_TEST.replace("TestC2CauseNeverPanics", "Test_c2_cause_never_panics")
+        manifest = self.lock(cause=named, mapped=[self.MAP[0], self.MAP[2]])
+        self.assertEqual(manifest["items"][f"{MODULE}logging::Test_c2_cause_never_panics"],
+                         "C2")
+
+    def test_a_test_that_was_there_at_the_start_is_not_counted_as_failing(self):
+        self.repo.write("internal/logging/cause_test.go", CAUSE_TEST)
+        self.start = self.repo.commit("the tests were there")
+        with self.assertRaisesRegex(mf.FreezeError, "did not run"):
+            self.lock()
 
 
 class SummaryTest(unittest.TestCase):

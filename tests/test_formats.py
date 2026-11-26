@@ -273,6 +273,34 @@ class JunitTest(unittest.TestCase):
         self.assertTrue(junit.in_files(found["tests.test_t1::test_a"], ["tests/test_t1.py"]))
         self.assertFalse(junit.in_files(found["tests.test_t1::test_a"], ["tests/test_t2.py"]))
 
+    def test_a_go_test_matches_its_file_by_package_and_function(self):
+        # gotestsum writes no file attribute, and the import path as the class name.
+        pkg = "github.com/acme/app/internal/components"
+        result = junit.TestResult(f"{pkg}::TestACause", "passed", "")
+        sub = junit.TestResult(f"{pkg}::TestACause/short", "passed", "")
+        path = "internal/components/components_test.go"
+        defined = {path: {"TestACause"}}
+        self.assertTrue(junit.in_files(result, [path], defined))
+        self.assertTrue(junit.in_files(sub, [path], defined))
+        with self.subTest("the file does not define it"):
+            self.assertFalse(junit.in_files(result, [path], {path: {"TestOther"}}))
+            self.assertFalse(junit.in_files(result, [path]))
+        with self.subTest("another package"):
+            other = "internal/logging/cause_test.go"
+            self.assertFalse(junit.in_files(result, [other], {other: {"TestACause"}}))
+            self.assertFalse(junit.in_files(
+                junit.TestResult("github.com/acme/app/x/internal/components2::TestACause",
+                                 "passed", ""), [path], defined))
+        with self.subTest("a file in the root folder"):
+            self.assertFalse(junit.in_files(result, ["a_test.go"], {"a_test.go": {"TestACause"}}))
+
+    def test_go_tests_reads_test_functions(self):
+        text = (b"package x\n\nfunc TestMain(m *testing.M) {}\nfunc TestA(t *testing.T) {}\n"
+                b"func Testable() {}\nfunc FuzzB(f *testing.F) {}\nfunc helper() {}\n"
+                b"func Test_c(t *testing.T) {}\n")
+        self.assertEqual(manifest.go_tests(text), {"TestA", "FuzzB", "Test_c"})
+        self.assertEqual(manifest.go_tests(None), set())
+
 
 class ManifestTest(unittest.TestCase):
     def setUp(self):

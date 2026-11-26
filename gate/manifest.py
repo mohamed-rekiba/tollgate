@@ -15,13 +15,20 @@ next to it. A mapped test that is not there at the start must carry its item
 in its name, as a new test does. Only a new test maps by its name: one that was
 there at the start, such as an earlier ticket's test_c1_, counts only through
 the map.
+
+A Go test file's new tests may call a seam that the builder adds. Then their package
+does not compile before the build, and the report has no test of it (see not_built).
+The lock names those tests by the package's import path and counts them as failing.
+The gate requires each of them to run and pass on each try, as it does any locked test.
 """
 
 import ast
 import json
+import re
 from pathlib import PurePosixPath
 
 from gate import junit
+from gate.checks import only_missing_seams
 from gate.gitio import fingerprint, show_bytes
 from gate.tickets import item_of_test
 
@@ -81,6 +88,71 @@ def python_tests(data: bytes | None) -> dict:
             if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name.startswith("test")}
 
 
+# A Go test function: Test, Fuzz, or Example, then a name that does not start in lower
+# case. TestMain runs the tests of a package and is no test of its own.
+GO_TEST = re.compile(r"^func\s+((?:Test|Fuzz|Example)(?![a-z])\w*)\s*\(", re.MULTILINE)
+
+
+def go_tests(data: bytes | None) -> set:
+    """The names of the test functions in a Go file. An empty set for a missing file."""
+    if data is None:
+        return set()
+    return set(GO_TEST.findall(data.decode(errors="replace"))) - {"TestMain"}
+
+
+def defined_tests(repo, commit: str | None, path: str) -> set:
+    """The names of the test functions in a Python or Go file at a commit."""
+    if not commit:
+        return set()
+    data = show_bytes(repo, commit, path)
+    return go_tests(data) if path.endswith(".go") else set(python_tests(data))
+
+
+def go_defined(repo, commit: str, paths: list) -> dict:
+    """{Go test file: the names of its test functions at the commit}, for junit.in_files."""
+    return {p: go_tests(show_bytes(repo, commit, p)) for p in paths if p.endswith("_test.go")}
+
+
+def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
+              output: str) -> dict:
+    """{test id: a failed junit.TestResult} for each test of the ticket in a Go test file
+    whose package did not compile before the build, only because a new test calls a seam
+    the builder adds. The id is `<import path>::<name>`, as the report names it after
+    the build. The ticket's tests of a file are those the map names for it, and its new
+    tests that carry an item in their name.
+
+    A file counts only when all of these hold: the report has exactly one failed
+    `<import path>::TestMain` for the file's folder and no other test of that package;
+    the file has at least one test of the ticket; each one is defined in the file and was
+    not there at the start; and each line of the test check's output that names a file
+    of the folder is a compile error about a seam's name (checks.only_missing_seams). A
+    test that keeps behavior must pass, so one that cannot compile is refused later."""
+    found = {}
+    mapped = read_map(repo, commit, ticket.id)
+    for path in test_files(ticket, mapped):
+        if not path.endswith("_test.go"):
+            continue
+        builds = [t for t, r in test_results.items() if t.endswith("::TestMain")
+                  and r.status == "failed" and junit.in_package(t.split("::")[0], path)]
+        if len(builds) != 1:
+            continue
+        package = builds[0].split("::")[0]
+        if any(t.split("::")[0] == package for t in test_results if t != builds[0]):
+            continue
+        now, before = defined_tests(repo, commit, path), defined_tests(repo, start, path)
+        named = sorted(n for n in now - before if ticket.item(item_of_test(n) or ""))
+        names = list(dict.fromkeys([*(e["name"] for e in mapped if e["file"] == path), *named]))
+        if not names or any(n not in now or n in before for n in names):
+            continue
+        folder = str(PurePosixPath(path).parent) + "/"
+        if not only_missing_seams(output, [folder], ticket.seams):
+            continue
+        for name in names:
+            test_id = f"{package}::{name}"
+            found[test_id] = junit.TestResult(test_id, "failed", "")
+    return found
+
+
 def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None:
     """Refuse a change to a test that was there at the start, and a mapped test that is
     neither there at the start nor named for its item."""
@@ -113,13 +185,14 @@ def claim(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     that maps to an item."""
     mapped = read_map(repo, commit, ticket.id)
     paths = test_files(ticket, mapped)
-    mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, paths)}
+    defined = go_defined(repo, commit, paths)
+    mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, paths, defined)}
     if not mine:
         raise FreezeError("the test report has no test from the ticket's test files")
     items = {}
     for entry in mapped:
         found = [t for t, r in mine.items() if t.split("::")[-1] == entry["name"]
-                 and junit.in_files(r, [entry["file"]])]
+                 and junit.in_files(r, [entry["file"]], defined)]
         if not found:
             raise FreezeError(f"{entry['file']}::{entry['name']} is mapped to {entry['item']}, "
                               "but it did not run")
@@ -131,15 +204,15 @@ def claim(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         check_kept(repo, commit, start, paths, mapped)
     # A test that was there at the start, such as an earlier ticket's test_c1_, maps
     # only through the map: only a new test maps by its name.
-    old = {path: python_tests(show_bytes(repo, start, path)) if start else {}
-           for path in paths}
+    old = {path: defined_tests(repo, start, path) for path in paths}
     for test_id, result in mine.items():
-        was_there = any(test_id.split("::")[-1] in names and junit.in_files(result, [path])
+        was_there = any(test_id.split("::")[-1] in names
+                        and junit.in_files(result, [path], defined)
                         for path, names in old.items())
         if test_id not in items and not was_there and ticket.item(item_of_test(test_id) or ""):
             items[test_id] = item_of_test(test_id)
     for path in paths:
-        in_file = [t for t, r in mine.items() if junit.in_files(r, [path])]
+        in_file = [t for t, r in mine.items() if junit.in_files(r, [path], defined)]
         if in_file and not any(t in items for t in in_file):
             raise FreezeError(f"{in_file[0]} names no checklist item, such as c1_ in its name,"
                               f" and no test of {path} is in the test map")
@@ -168,7 +241,7 @@ def failed_at_setup(repo, ticket, paths: list, test_results: dict, start: str | 
 
 
 def build(repo, commit: str, ticket, test_results: dict, start: str | None = None,
-          tests_failed: bool = False) -> dict:
+          tests_failed: bool = False, output: str = "") -> dict:
     """Return the manifest for a ticket at a commit.
 
     test_results maps a test id to a junit.TestResult from a run of the tests
@@ -179,6 +252,10 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     When the tests could not start at all (see failed_at_setup), the manifest has no
     test ids and `failed_at_setup` is true. The gate then takes the locked tests from
     the report of each try: the tests of the locked files that the ticket claims.
+
+    output is the test check's output. When a Go package of a locked test file did not
+    compile only for a seam the builder adds (see not_built), its mapped tests count as
+    failing, and the manifest lists them under `not_built` as well as under `tests`.
     """
     mapped = read_map(repo, commit, ticket.id)
     paths = test_files(ticket, mapped)
@@ -191,6 +268,8 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     if failed_at_setup(repo, ticket, paths, test_results, start, tests_failed):
         return {"ticket": ticket.id, "commit": commit, "files": files, "tests": [],
                 "keeps_behavior": [], "items": {}, "failed_at_setup": True}
+    late = not_built(repo, commit, ticket, test_results, start, output)
+    test_results = {**test_results, **late}
     items = claim(repo, commit, ticket, test_results, start)
     tests, keeps = [], []
     for test_id, item_id in items.items():
@@ -208,7 +287,7 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     missing = missing_items(ticket, items)
     if missing:
         raise FreezeError(f"must-have items with no test: {', '.join(missing)}")
-    return {
+    built = {
         "ticket": ticket.id,
         "commit": commit,
         "files": files,
@@ -216,6 +295,9 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         "keeps_behavior": keeps,
         "items": items,
     }
+    if late:
+        built["not_built"] = sorted(t for t in late if t in items)
+    return built
 
 
 def after_setup(repo, lock: dict, ticket, test_results: dict) -> dict:

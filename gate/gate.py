@@ -15,8 +15,10 @@ The six checks:
 A lock made when the tests could not start before the build (`failed_at_setup` in its
 manifest) names no test. The gate then takes the locked tests from the report of the
 try: each test of the locked test files that the ticket claims. The report must list
-them, they must cover each must-have item, and each must pass.
-    review        tier 2 and up need a passed review
+them, they must cover each must-have item, and each must pass. A lock whose Go test
+package did not compile before the build names those tests under `tests` too (and
+`not_built`), so they are checked here as any locked test.
+    review       tier 2 and up need a passed review
 
 Approvals are not checked here: the store checks them at merge.
 """
