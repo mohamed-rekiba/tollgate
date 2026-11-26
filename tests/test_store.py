@@ -124,6 +124,15 @@ class FreezeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "passed before the build"):
             self.store.freeze("T-1")
 
+    def test_a_report_with_no_test_shows_what_the_test_check_printed(self):
+        self.write_settings(checks={"tests": {"run": "echo the build file is missing; exit 1",
+                                              "report": "report.xml"}})
+        self.repo.commit("settings")
+        self.ticket_branch()
+        with self.assertRaisesRegex(StoreError, "(?s)no test from the ticket's test files.*"
+                                    "The test check said:.*the build file is missing"):
+            self.store.freeze("T-1")
+
     def test_runs_with_mains_harness(self):
         # The ticket's commit weakens the harness so that every test passes; main's copy wins.
         self.repo.git("checkout", "-q", "-b", "tg/T-1", "main")

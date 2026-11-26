@@ -75,8 +75,9 @@ class ContainerTest(unittest.TestCase):
     def test_a_role_in_the_container_works_on_the_copy_and_cannot_push(self):
         env_before = dict(os.environ)
         os.environ["DEPLOY_TOKEN"] = "must-not-reach-the-container"
-        self.addCleanup(os.environ.clear)
+        # Cleanups run last first: clear the environment, then put it back.
         self.addCleanup(os.environ.update, env_before)
+        self.addCleanup(os.environ.clear)
         answer = roles.run("python3 probe.py", "builder", {"x": 1}, str(self.copy), 2,
                            isolation="container", image=IMAGE)
         data = answer.data
