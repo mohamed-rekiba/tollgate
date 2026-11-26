@@ -409,6 +409,69 @@ class ChecksTest(unittest.TestCase):
         self.assertFalse(r.checks[0].passed)
 
 
+class MissingSeamsTest(unittest.TestCase):
+    """Before the build, a check may fail on the new tests only because a seam is not there."""
+
+    GO = ("internal/logging/cause_test.go",)
+
+    def allowed(self, output, files=None, seams=("internal/logging.Cause",)):
+        return checks.only_missing_seams(output, list(files or self.GO), list(seams))
+
+    def test_a_go_compile_error_on_a_seam_name_is_allowed(self):
+        vet = ("check-vet................Failed\n- hook id: check-vet\n- exit code: 1\n"
+               "# example.com/m/internal/logging\n"
+               "vet: internal/logging/cause_test.go:12:9: undefined: logging.Cause\n")
+        lint = ("internal/logging/cause_test.go:12:9: undefined: logging.Cause (typecheck)\n"
+                "internal/logging/cause_test.go:20:9: undefined: logging.Cause (typecheck)\n")
+        self.assertTrue(self.allowed(vet))
+        self.assertTrue(self.allowed(lint))
+
+    def test_a_go_method_that_is_a_seam_is_allowed(self):
+        out = ("internal/logging/cause_test.go:9:4: l.Cause undefined (type *logging.Logger "
+               "has no field or method Cause)\n")
+        self.assertTrue(self.allowed(out, seams=["internal/logging.Logger.Cause"]))
+        self.assertFalse(self.allowed(out, seams=["internal/logging.Cause"]))
+
+    def test_a_compile_error_on_a_name_that_is_not_a_seam_is_blocking(self):
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:12:9: undefined: logging.Caus\n"))
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:12:9: undefined: other.Cause\n"))
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:3:2: undefined: logging.Cause\n"
+            "internal/logging/cause_test.go:4:2: undefined: helper\n"))
+
+    def test_a_lint_error_that_is_not_a_compile_error_is_blocking(self):
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:12:9: undefined: logging.Cause (typecheck)\n"
+            "internal/logging/cause_test.go:30:2: ineffectual assignment to err (ineffassign)\n"))
+        self.assertFalse(self.allowed(
+            "internal/logging/cause_test.go:5:1: exported func should have comment (revive)\n"))
+
+    def test_an_output_that_names_no_new_test_file_is_not_allowed_here(self):
+        self.assertFalse(self.allowed("internal/logging/log.go:1:1: undefined: logging.Cause\n"))
+
+    def test_typescript_mypy_and_rust_errors_on_a_seam_are_allowed(self):
+        ts = ("src/cause.test.ts(3,10): error TS2305: Module '\"./logging\"' has no exported "
+              "member 'cause'.\n")
+        self.assertTrue(self.allowed(ts, ["src/cause.test.ts"], ["src/logging.cause"]))
+        self.assertFalse(self.allowed(ts.replace("TS2305: Module '\"./logging\"' has no "
+                                                 "exported member 'cause'",
+                                                 "TS2345: Argument of type 'string' is not "
+                                                 "assignable"),
+                                      ["src/cause.test.ts"], ["src/logging.cause"]))
+        mypy = ('tests/test_cause.py:3: error: Module "app.logging" has no attribute "cause"'
+                "  [attr-defined]\n")
+        self.assertTrue(self.allowed(mypy, ["tests/test_cause.py"], ["app.logging.cause"]))
+        self.assertFalse(self.allowed(mypy, ["tests/test_cause.py"], ["app.other.cause"]))
+        rust = ("error[E0425]: cannot find function `cause` in module `logging`\n"
+                " --> tests/cause.rs:4:22\n  |\n4 |     logging::cause(err);\n")
+        self.assertTrue(self.allowed(rust, ["tests/cause.rs"], ["logging::cause"]))
+        self.assertFalse(self.allowed(rust.replace("cannot find function `cause` in module "
+                                                   "`logging`", "mismatched types"),
+                                      ["tests/cause.rs"], ["logging::cause"]))
+
+
 class PrecommitConfigTest(unittest.TestCase):
     """gate.precommit_config reads the hooks and stages of a config with no YAML library."""
 

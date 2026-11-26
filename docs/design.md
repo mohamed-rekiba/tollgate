@@ -98,9 +98,10 @@ The driver stops and asks the advisor when one of these is true:
 
 The driver parks the ticket when it cost 10 USD, or the task cost 60 USD. No advisor can lift a cost stop. Each number is a setting under `stop`.
 
-### Two special cases
+### Special cases
 
 - **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor. A `retry` or `stronger` from the advisor then sends the tests back to the test writer with the hint, for up to 2 more rejections.
+- **A new test names a seam that is not built yet.** In a compiled or type-checked language, such as Go, TypeScript, Python with mypy, or Rust, a test that calls a new function does not compile until the builder writes it, so a vet, type, or lint check fails on the new tests. The driver does not send the tests back for that failure when each line of it that names a locked test file is a compile or type error about a name that ends one of the ticket's seams, such as `undefined: logging.Cause` for the seam `internal/logging.Cause` (`gate/checks.py::only_missing_seams`). Any other error on the new tests still sends them back. The log notes the waiting checks on `tests_reviewed`, and the gate runs every check on each try, where it must pass.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item `keeps behavior`, and the store accepts that one test as passing.
 - **The tests cannot start before the build.** In a new project the first ticket may write the build file, such as `go.mod`. Until then the test command fails at its setup and writes no report. The store still locks the ticket when each locked test file is new, not in the commit the ticket starts from, the report is missing or lists no test, the test command ended with an error, and no item keeps behavior. The lock then names no test and is marked `failed_at_setup`. After the build, the gate takes the locked tests from the report of each try: the tests of the locked files that the ticket claims. The report must list them, they must cover each must-have item, and each must pass.
 

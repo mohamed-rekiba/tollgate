@@ -377,11 +377,18 @@ class Driver:
                 # builder: the gate runs every check on each try.
                 failed = [c for c in (found.checks if found else []) if not c.passed
                           and any(t in (c.output or "") for t in self.ticket.tests)]
+                # A test that calls a seam the builder adds does not compile yet, so a
+                # vet, type, or lint check fails on it. That failure waits for the
+                # builder too, when it is only about seam names.
+                waiting = [c.name for c in failed if checks.only_missing_seams(
+                    c.output or "", self.ticket.tests, self.ticket.seams)]
+                failed = [c for c in failed if c.name not in waiting]
                 if failed:
                     findings = [{"level": "blocking", "text": f"check {c.name} fails on the "
                                  f"new tests:\n{c.output}"} for c in failed]
                 else:
-                    self.log.add("tests_reviewed", cost_usd=review.cost_usd)
+                    extra = {"waiting_checks": waiting} if waiting else {}
+                    self.log.add("tests_reviewed", cost_usd=review.cost_usd, **extra)
                     st_.tests_done = True
                     break
             st_.rejections += 1

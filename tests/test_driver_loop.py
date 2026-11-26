@@ -98,6 +98,31 @@ class BuildTest(LoopCase):
         self.assertTrue(rejected)
         self.assertIn("tests/test_t1.py", rejected[0]["findings"][0]["text"])
 
+    def vet_sample(self, line):
+        py = sys.executable
+        vet = f"{py} -c \"print('{line}'); raise SystemExit(1)\""
+        return self.sample(checks={"tests": {"run": f"{py} run_tests.py",
+                                             "report": "report.xml"},
+                                   "vet": {"run": vet}})
+
+    def test_a_compile_error_on_a_seam_name_waits_for_the_builder(self):
+        # Until the builder writes shout, a test that calls it does not compile.
+        s = self.vet_sample("tests/test_t1.py:3:5: undefined: app.shout")
+        d, _ = driver(s)
+        d.run()
+        self.assertNotIn("tests_rejected", s.events())
+        reviewed = [e for e in s.log() if e["event"] == "tests_reviewed"]
+        self.assertEqual(reviewed[0]["waiting_checks"], ["vet"])
+        failed = [e for e in s.log() if e["event"] == "try_failed"]
+        self.assertTrue(failed, "the gate still runs the vet check on the try")
+
+    def test_a_compile_error_on_a_name_that_is_not_a_seam_sends_the_tests_back(self):
+        s = self.vet_sample("tests/test_t1.py:3:5: undefined: app.helper")
+        d, _ = driver(s)
+        d.run()
+        rejected = [e for e in s.log() if e["event"] == "tests_rejected"]
+        self.assertIn("check vet fails on the new tests", rejected[0]["findings"][0]["text"])
+
     def test_a_check_failure_the_tests_did_not_cause_waits_for_the_builder(self):
         # A project with no README fails the writing check before any test is written.
         # The test writer may not write a README, so the tests go on, and the gate

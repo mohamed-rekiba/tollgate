@@ -31,7 +31,7 @@ Words: an **item** is one line of the ticket's checklist. A **seam** is a public
 
    Done when every must-have item has a new test of its kind, or existing tests that cover it.
 3. Write the expected result in the test from the ticket, never from the code. Done when no expected value is copied from the code under test.
-4. Run the project's other checks, such as style, on your test files, and fix what they find. The builder may not change a locked test. Done when they pass.
+4. Run the project's other checks, such as style, on your test files, and fix what they find. The builder may not change a locked test. Done when they pass. One error may stay: a compile or type error about a name that one of the ticket's seams names, such as `undefined: logging.Cause` for the seam `internal/logging.Cause`. The name does not exist until the builder writes it. Call the seam directly; never work around the error.
 5. Run the tests. A test for an item that keeps behavior must pass now. Every other test must fail now, because nothing is built. Done when each test fails or passes as it should, and the failure is for the right reason, not a typing error or a missing import. One case is different: in a new project whose build file, such as `go.mod`, this ticket writes, the test command fails before any test runs. That counts as failing when each of the ticket's test files is new and the ticket has no `keeps behavior` item.
 6. If `rejected` is in the inputs, read each finding and change only the tests it names. Done when each finding is answered.
 7. If `hint` is in the inputs, the tests were rejected too many times and the advisor sent them back to you with it. Follow it. Done when your tests do what the hint asks.

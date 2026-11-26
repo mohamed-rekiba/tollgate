@@ -13,6 +13,7 @@ it keeps its command in the settings, under `run`.
 import argparse
 import json
 import os
+import re
 import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -110,6 +111,66 @@ def run(settings: dict, workdir, only=None) -> Results:
             for test_id, test in junit.read(report).items():
                 results.tests[test_id] = {"status": test.status, "file": test.file}
     return results
+
+
+# A compile or type error about a name that is not there yet, in Go, TypeScript, mypy,
+# pyright, and Rust. Each pattern gives the parts of the name, the qualifier first.
+MISSING_NAME = [(re.compile(p), order) for p, order in (
+    (r"undefined: ([\w.]+)", (1,)),                                          # Go
+    (r"\S+ undefined \(type \*?([\w.]+) has no (?:field or )?method (\w+)", (1, 2)),
+    (r"has no exported member (?:named )?'([\w$]+)'", (1,)),                  # TypeScript
+    (r"Cannot find name '([\w$]+)'", (1,)),
+    (r"Property '([\w$]+)' does not exist on type", (1,)),
+    (r'Module "([\w.]+)" has no attribute "(\w+)"', (1, 2)),                  # mypy
+    (r'Name "(\w+)" is not defined', (1,)),
+    (r'"(\w+)" has no attribute "(\w+)"', (1, 2)),
+    (r'"(\w+)" is not a known attribute of module "([\w.]+)"', (2, 1)),       # pyright
+    (r'"(\w+)" is unknown import symbol', (1,)),
+    (r"cannot find \w+(?: or \w+)? `(\w+)` in (?:module|crate) `([\w:]+)`", (2, 1)),  # Rust
+    (r"cannot find \w+(?: or \w+)? `(\w+)`", (1,)),
+    (r"unresolved import `([\w:]+)`", (1,)),
+    (r"no method named `(\w+)` found", (1,)),
+    (r"no function or associated item named `(\w+)` found for \w+ `([\w:]+)`", (2, 1)),
+)]
+NOT_A_NAME = {"crate", "self", "super"}
+
+
+def _parts(text: str) -> list:
+    return [p for p in re.findall(r"[A-Za-z_$][\w$]*", text) if p not in NOT_A_NAME]
+
+
+def _missing_name(line: str) -> list | None:
+    for pattern, order in MISSING_NAME:
+        found = pattern.search(line)
+        if found:
+            return [p for g in order for p in _parts(found.group(g))]
+    return None
+
+
+def only_missing_seams(output: str, files: list, seams: list) -> bool:
+    """True when each line of a check's output that names one of the files is a compile
+    or type error about a name that one of the seams names, such as `undefined:
+    logging.Cause` for the seam `internal/logging.Cause`. The name matches when its parts
+    end the seam's parts. A Rust error names its file on a later `-->` line, so that line
+    counts as the `error` line above it.
+
+    Before the build, a new test that calls a seam the builder adds does not compile, so
+    a vet, type, or lint check fails on it. That is the test failing for the right reason.
+    Any other error on the files, and an output that names none of them, gives False."""
+    lines = output.splitlines()
+    seam_parts = [_parts(s) for s in seams]
+    named = 0
+    for i, line in enumerate(lines):
+        if not any(f in line for f in files):
+            continue
+        named += 1
+        if line.lstrip().startswith("-->"):
+            line = next((x for x in reversed(lines[:i]) if x.lstrip().startswith("error")), "")
+        parts = _missing_name(line)
+        if not parts or not any(len(parts) <= len(s) and s[-len(parts):] == parts
+                                for s in seam_parts):
+            return False
+    return named > 0
 
 
 def main(argv=None) -> int:
