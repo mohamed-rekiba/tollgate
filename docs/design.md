@@ -130,7 +130,9 @@ Each role works in a copy of the project in the state folder, `builders/<ticket>
 The driver decides every step, the gate scores every try, and the store signs and merges, in both modes. Only the place where a role runs differs. The setting `"runner"` picks the mode.
 
 - **Session mode**, the default. Your own Claude Code session runs each role as one of Tollgate's subagents, one step at a time. Nothing runs when your session is closed, and no Docker image or login inside Docker is needed.
-- **Background mode.** The driver starts each role as its own `claude -p` process, in its isolation: Docker, or Claude Code's sandbox. It keeps running after you close Claude Code. A roadmap always runs this way.
+- **Background mode.** The driver starts each role as its own `claude -p` process, in its isolation: Docker, or Claude Code's sandbox. It keeps running after you close Claude Code.
+
+A roadmap runs in the same mode as a task. In session mode, `driver.step next --roadmap <id>` walks it: the checklist's tests, each task in order, the base suite after the base tasks, and the checklist at the end. The step file then notes the roadmap, so `answer` goes on with it. In background mode, `driver.roadmap` runs it as its own process.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/session-ticket-dark.svg">
@@ -141,7 +143,7 @@ The driver decides every step, the gate scores every try, and the store signs an
 
 The driver asks for each role through one caller. In session mode, the caller works out a key for the question: the SHA-256 of the role, the lens, and the inputs. If `logs/<log>.answers.jsonl` in the state folder already holds an answer with that key, the caller returns it. If not, it writes the step file, `run/step.json`: the role, the lens, the full prompt, the copy, the key, and the task and ticket. Then the driver lets go of its run lock and ends with 5.
 
-`python3 -P -m driver.step next --project . --task <task id>` runs the driver up to the next step and prints it: the subagent to start, its prompt, its folder, and the key. `driver.step answer --project . --key <key> --nonce <nonce>` takes the subagent's whole answer on standard input. Each `next` prints a new nonce and keeps only its hash in the step file, so only the session that ran `next` can answer, and the hook refuses a role's plain run of a Tollgate command. These are defense in depth: see [Threat model](#threat-model). `answer` refuses a key or a nonce that is not the waiting step's, and never prints them, and it refuses an answer with no final json block. It saves the answer, then runs `next` again. `next` also prints the end of the task, or a question for you, which you answer as `/tollgate:inbox` does.
+`python3 -P -m driver.step next --project . --task <task id>` runs the driver up to the next step and prints it: the subagent to start, its prompt, its folder, and the key. `driver.step answer --project . --key <key> --nonce <nonce>` takes the subagent's whole answer on standard input. Each `next` prints a new nonce and keeps only its hash in the step file, so only the session that ran `next` can answer, and the hook refuses a role's plain run of a Tollgate command. These are defense in depth: see [Threat model](#threat-model). `answer` refuses a key or a nonce that is not the waiting step's, and never prints them, and it refuses an answer with no final json block. It saves the answer, then runs `next` again. `next` also prints the end of the task, or a question for you, which you answer as `/tollgate:inbox` does. With `--roadmap <id>` in place of `--task`, `next` runs a roadmap the same way.
 
 ### The replay
 

@@ -625,5 +625,131 @@ class ReadyTest(Case):
             Task(str(s.project), "demo", "Add shout.", FakeStore(s.project)).run()
 
 
+ROADMAP = """---
+id: road
+checklist: T-1
+---
+## Request
+Add shout and whisper.
+## Base
+{base}
+## Skeleton
+## Features
+{features}
+## Not yet specified
+Other languages.
+"""
+BASE_PASSES = [{"name": "builds", "passed": True, "why": ""}]
+BASE_FAILS = [{"name": "builds", "passed": False, "why": "no command"}]
+
+
+class RoadmapStepTest(Case):
+    """driver.step next --roadmap: a roadmap runs in session mode, one step at a time."""
+
+    step = StepTest.step
+    answer = StepTest.answer
+
+    def roadmap_sample(self, base="- demo: Add shout and whisper.", features=""):
+        s = self.sample()   # its ticket T-1 is the roadmap's checklist
+        Path(s.project, ".tollgate/roadmaps").mkdir(parents=True)
+        Path(s.project, ".tollgate/roadmaps/road.md").write_text(
+            ROADMAP.format(base=base, features=features))
+        return s, FakeStore(s.project)
+
+    def next_roadmap(self, s, store):
+        return self.step(store, "next", "--project", str(s.project), "--roadmap", "road")
+
+    def run_roadmap(self, s, store, rounds=200):
+        """next and answer until the roadmap is done or parked. Return (out, agents)."""
+        code, out = self.next_roadmap(s, store)
+        agents = []
+        for _ in range(rounds):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                options = out["question"]["options"]
+                pick = "approve" if "approve" in options else "continue"
+                self.assertIn(pick, options)
+                store.answer(out["question"]["n"], f"tollgate decide {pick}")
+                code, out = self.next_roadmap(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                return out, agents
+            self.assertEqual(session.read_step(str(s.project))["roadmap"], "road")
+            agents.append(out["agent"])
+            code, out = self.answer(s, store, out, fake_answer(out))
+        self.fail(f"the roadmap did not end: {out}")
+
+    def roadmap_log(self, s):
+        return s.log("roadmap-road")
+
+    def test_a_whole_roadmap_runs_through_next_and_answer(self):
+        s, store = self.roadmap_sample()
+        with mock.patch("setup.base_suite.run", return_value=BASE_PASSES):
+            out, agents = self.run_roadmap(s, store)
+        self.assertTrue(out.get("done"), out)
+        self.assertEqual((out["roadmap"], out["tasks"]), ("road", ["demo"]))
+        # The checklist's tests come first, then the task, then the checklist's build.
+        self.assertEqual(agents[0], "tollgate:test_writer")
+        self.assertIn("tollgate:analyst", agents)
+        events = self.roadmap_log(s)
+        self.assertEqual(events[0]["event"], "checklist_frozen")
+        # A task that waits for a person stops the roadmap with 3, as in background mode;
+        # the next run goes on with it.
+        self.assertEqual([(e["event"], e.get("code")) for e in events[-3:]],
+                         [("task_done", 0), ("base_passed", None), ("roadmap_done", None)])
+        self.assertNotIn(5, [e.get("code") for e in events])
+        self.assertIsNone(session.read_step(str(s.project)))
+        self.assertTrue(Path(out["reports"][0]).exists())
+
+    def test_the_roadmap_goes_on_to_the_next_task_when_one_is_done(self):
+        s, store = self.roadmap_sample(features="- more: Add shout and whisper again.")
+        with mock.patch("setup.base_suite.run", return_value=BASE_PASSES):
+            out, _ = self.run_roadmap(s, store, rounds=400)
+        self.assertTrue(out.get("done"), out)
+        self.assertEqual(out["tasks"], ["demo", "more"])
+        self.assertEqual([e.get("task") for e in self.roadmap_log(s)
+                          if e["event"] == "task_done" and e["code"] == 0], ["demo", "more"])
+
+    def test_a_base_suite_that_fails_parks_the_roadmap_before_the_next_stage(self):
+        s, store = self.roadmap_sample(base="", features="- demo: Add shout and whisper.")
+        with mock.patch("setup.base_suite.run", return_value=BASE_FAILS):
+            out, agents = self.run_roadmap(s, store)
+        self.assertIn("the base is not ready: builds (no command)", out["parked"])
+        self.assertNotIn("tollgate:analyst", agents)   # the task did not start
+        self.assertEqual([e["event"] for e in self.roadmap_log(s)],
+                         ["checklist_frozen", "roadmap_waiting"])
+
+    def test_next_refuses_a_roadmap_that_is_not_there(self):
+        s, store = self.roadmap_sample()
+        code, out = self.step(store, "next", "--project", str(s.project), "--roadmap", "nope")
+        self.assertEqual(code, 1)
+        self.assertIn(".tollgate/roadmaps/nope.md", out["error"])
+
+    def test_a_pause_logs_nothing_in_the_roadmap(self):
+        s, store = self.roadmap_sample()
+        code, out = self.next_roadmap(s, store)
+        self.assertEqual((code, out["agent"]), (0, "tollgate:test_writer"))
+        self.assertEqual(self.roadmap_log(s), [])
+
+    def test_the_background_roadmap_still_runs_each_role_as_its_own_process(self):
+        from driver import roadmap
+        s, store = self.roadmap_sample()
+        runners = []
+
+        def fake(kind):
+            def make(*args, runner=None, **kwargs):
+                runners.append((kind, runner))
+                return mock.Mock(run=mock.Mock(return_value=0))
+            return make
+
+        with mock.patch.object(roadmap, "Driver", fake("checklist")), \
+                mock.patch.object(roadmap, "Task", fake("task")), \
+                mock.patch("setup.base_suite.run", return_value=BASE_PASSES):
+            self.assertEqual(roadmap.main(["--project", str(s.project), "--roadmap", "road"],
+                                          store=store), 0)
+        self.assertEqual(runners, [("checklist", "background"), ("task", "background"),
+                                   ("checklist", "background")])
+
+
 if __name__ == "__main__":
     unittest.main()

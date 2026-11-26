@@ -155,6 +155,16 @@ def new_nonce(project: str) -> str:
     return nonce
 
 
+def note_roadmap(project: str, roadmap: str) -> None:
+    """Note in the step that waits that it belongs to this roadmap, so that answer goes
+    on with the roadmap, not only with the step's task."""
+    step = read_step(project)
+    if step is None:
+        raise roles.RoleError("no step waits")
+    step["roadmap"] = roadmap
+    _write_step(project, step)
+
+
 def clear_step(project: str) -> None:
     step_path(project).unlink(missing_ok=True)
 

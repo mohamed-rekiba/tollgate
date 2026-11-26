@@ -46,7 +46,7 @@ For a roadmap:
 2. Write the checklist for the whole request as a ticket, `.tollgate/tickets/<task id>-done/ticket.md`, in the format at the top of `$TG/gate/tickets.py`. Each must-have item is something the user asked for, checked from the outside.
 3. If `base` in the settings has an empty command, tell the user which of the five base checks has none. The roadmap stops after the base tasks until all five pass.
 4. Run `PYTHONPATH="$TG" python3 -P -c 'import sys; from gate import roadmap as rm; rm.parse(open(sys.argv[1]).read())' ".tollgate/roadmaps/<task id>.md"`. Done when it ends with no error.
-5. Start it as in step 5. A roadmap always runs in background mode.
+5. Run it in the mode that `runner` names: in session mode as in step 4, with `--roadmap "<task id>"` in place of `--task "<task id>"`; in background mode as in step 5.
 
 ## 4. Session mode: run each step here
 
@@ -55,6 +55,8 @@ Run this from the project folder, as one command:
 ```
 PYTHONPATH="$TG" python3 -P -m driver.step next --project . --task "<task id>"
 ```
+
+For a roadmap, run `next` with `--roadmap "<task id>"` in place of `--task "<task id>"`. It freezes the checklist's tests, runs each task of the roadmap in order, checks the base suite after the base tasks, and goes on to the next task when one is done. Its steps and its answers are the same as for one task.
 
 It prints one JSON object. Loop on it:
 
@@ -66,15 +68,15 @@ It prints one JSON object. Loop on it:
 
   It saves the answer and prints the next object. Loop again.
 - **A question**, `{"question": {"n", "title", "body", "options"}}`: show the user the title, the body, and the options, and ask which option they pick, with an optional hint. Record their answer the way `/tollgate:inbox` does: `PYTHONPATH="$TG" python3 -P -m setup.inbox --project . answer <n> <decision> [hint]`. Then run `next` again. Never pick an option for the user. If they have no answer yet, stop: `/tollgate:task` with the same task id goes on later.
-- **The end**, `{"done": true, "result", "merged", "report"}`: go to step 6.
-- **Parked**, `{"parked": <reason>}`: tell the user the reason and stop.
+- **The end**, `{"done": true, "result", "merged", "report"}`, or for a roadmap `{"done": true, "roadmap", "tasks", "result", "merged", "reports"}`: go to step 6.
+- **Parked**, `{"parked": <reason>}`: tell the user the reason and stop. A roadmap whose base suite fails parks with the checks that failed; `next` with the same `--roadmap` goes on once they pass.
 - **An error**, `{"error": <reason>}`: show it to the user and stop. If it says to run `/tollgate:init`, the task cannot pass until they do.
 
 Never give the nonce to a subagent, and never put it in a file in the project. Never edit a file of the copy yourself, never change an answer, and never answer for a subagent: the driver asks again for anything it has no answer to. Run `next` again at any time to see the step that waits. The cost of the roles is your session's own; the report shows it as unknown.
 
 ## 5. Background mode: start the driver
 
-The driver runs on this machine, in the background. Its logs go to the state folder. Find the folder once:
+Use this step only when `runner` is `background`. The driver runs on this machine, in the background. Its logs go to the state folder. Find the folder once:
 
 ```
 logs="$(PYTHONPATH="$TG" python3 -P -c 'from gate import state; print(state.path(".", "logs"))')"
