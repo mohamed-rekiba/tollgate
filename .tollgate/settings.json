@@ -50,5 +50,10 @@
     "ticket_usd": 5.0,
     "task_usd": 60.0
   },
-  "isolation": "container"
+  "isolation": "container",
+  "base": {
+    "checks_run": "uv run --no-project --with-requirements requirements-dev.txt ruff check .",
+    "parallel_tests": "uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto tests",
+    "bad_setting_stops": "f=$(mktemp) && echo '{\"isolation\":\"bogus\"}' > \"$f\" && python3 -m gate.settings \"$f\" 2>&1 >/dev/null | grep -q \"isolation must be\""
+  }
 }
