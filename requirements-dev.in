@@ -7,3 +7,5 @@ ruff==0.17.6
 pyyaml==6.0.4
 pytest==9.2.0
 pytest-xdist==3.8.0
+# The gate runs each check of a project with pre-commit, so the tests need it.
+pre-commit==4.7.0

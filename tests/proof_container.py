@@ -7,6 +7,7 @@ is set: then it fails, so CI cannot pass by skipping. A model is not needed: the
 fake roles with the same contract, and the Claude Code test runs claude --version only.
 """
 
+import json
 import os
 import subprocess
 import tempfile
@@ -74,8 +75,9 @@ class ContainerTest(unittest.TestCase):
     def test_a_role_in_the_container_works_on_the_copy_and_cannot_push(self):
         env_before = dict(os.environ)
         os.environ["DEPLOY_TOKEN"] = "must-not-reach-the-container"
-        self.addCleanup(os.environ.clear)
+        # Cleanups run last first: clear the environment, then put it back.
         self.addCleanup(os.environ.update, env_before)
+        self.addCleanup(os.environ.clear)
         answer = roles.run("python3 probe.py", "builder", {"x": 1}, str(self.copy), 2,
                            isolation="container", image=IMAGE)
         data = answer.data
@@ -118,7 +120,8 @@ class ContainerTest(unittest.TestCase):
         subprocess.run(["git", "add", "fake_role.py"], cwd=p.project, check=True)
         subprocess.run(["git", "commit", "-q", "-m", "fake role"], cwd=p.project, check=True)
         result = p.drive()
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr + "\n" + "\n".join(
+            json.dumps(e) for e in p.log_of("T-1")))   # the log says why the driver stopped
         log = p.log_of("T-1")
         self.assertEqual([e["event"] for e in tries(log)], ["try_failed", "try_passed"])
         self.assertEqual(events(log)[-1], "waiting_for_merge")

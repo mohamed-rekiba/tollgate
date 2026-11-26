@@ -12,7 +12,7 @@ from gate import manifest as mf
 from gate import plan as pl
 from gate.store import Store, StoreError
 from tests.fakes import RUN_TESTS, TICKET
-from tests.helpers import Repo
+from tests.helpers import Repo, write_checks
 from tests.test_plan_review import PLAN
 
 TESTS = '''import unittest
@@ -51,9 +51,9 @@ class StoreCase(unittest.TestCase):
         self.store = Store(str(r.path))
 
     def write_settings(self, **extra):
-        self.repo.write(".tollgate/settings.json", json.dumps({
+        write_checks(self.repo.path, {
             "checks": {"tests": {"run": f"{sys.executable} run_tests.py", "report": "report.xml"}},
-            "harness": ["run_tests.py"], "require_plan": False, **extra}))
+            "harness": ["run_tests.py"], "require_plan": False, **extra})
 
     def ticket_branch(self, tests=TESTS, ticket=TICKET):
         r = self.repo
@@ -122,6 +122,15 @@ class FreezeTest(StoreCase):
     def test_refuses_a_test_that_passes_before_the_build(self):
         self.ticket_branch(tests=TESTS.replace('app.shout("ann")', '"HELLO ANN"'))
         with self.assertRaisesRegex(StoreError, "passed before the build"):
+            self.store.freeze("T-1")
+
+    def test_a_report_with_no_test_shows_what_the_test_check_printed(self):
+        self.write_settings(checks={"tests": {"run": "echo the build file is missing; exit 1",
+                                              "report": "report.xml"}})
+        self.repo.commit("settings")
+        self.ticket_branch()
+        with self.assertRaisesRegex(StoreError, "(?s)no test from the ticket's test files.*"
+                                    "The test check said:.*the build file is missing"):
             self.store.freeze("T-1")
 
     def test_runs_with_mains_harness(self):

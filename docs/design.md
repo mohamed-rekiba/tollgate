@@ -102,6 +102,7 @@ The driver parks the ticket when it cost 10 USD, or the task cost 60 USD. No adv
 
 - **A test is rejected** by the reviewer in step 2 or by the store in step 3. It goes back to the test writer, at most 2 times, then to the advisor. A `retry` or `stronger` from the advisor then sends the tests back to the test writer with the hint, for up to 2 more rejections.
 - **An item keeps existing behavior.** Its test passes before the build. The ticket marks the item `keeps behavior`, and the store accepts that one test as passing.
+- **The tests cannot start before the build.** In a new project the first ticket may write the build file, such as `go.mod`. Until then the test command fails at its setup and writes no report. The store still locks the ticket when each locked test file is new, not in the commit the ticket starts from, the report is missing or lists no test, the test command ended with an error, and no item keeps behavior. The lock then names no test and is marked `failed_at_setup`. After the build, the gate takes the locked tests from the report of each try: the tests of the locked files that the ticket claims. The report must list them, they must cover each must-have item, and each must pass.
 
 A locked test can be wrong. The builder cannot change it. The store allows one replacement lock for a ticket, but the driver has no step that asks for one.
 
@@ -200,7 +201,7 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 
 **Layer 1: Claude Code hooks and policies.** Each role gets a policy: a Claude Code settings file with permission rules. The rules deny an edit of a locked file, of the settings, of the key folder, and of the state folder outside the role's copy. They deny `git push`, `git merge`, and the commands that skip the checks. A deny rule matches a command by its start only, so the hook checks every tool call again. The plugin runs the same hook in your own session in the project.
 
-**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and writes `.pre-commit-config.yaml`. One script, `tollgate_checks.py`, runs the checks of a git step side by side: Tollgate's, and at a push, the project's. The config has one entry for it, for all four git steps. pre-commit does not tell a hook which step runs it, so the script works the step out: a push when pre-commit gives the name of the remote, a commit message when the first argument is a message file, a merge when git names the commits it merges, and a commit in any other case. The entry runs the script with `uv run --no-project python`, so it does not depend on which `python3` comes first on the PATH. In Tollgate's own project the entry runs `setup/tollgate_checks.py`, the source, and `.tollgate/checks/` holds no copy. The writing check under `checks` in the settings runs the same way.
+**Layer 2: pre-commit.** `init` copies Tollgate's checks into `.tollgate/checks/` and adds one hook, `tollgate`, to `.pre-commit-config.yaml`. The config is the project's own: `init` keeps every other repo and hook as it is. One script, `tollgate_checks.py`, runs Tollgate's checks of a git step side by side. The hook `tollgate` runs it, for all four git steps. pre-commit does not tell a hook which step runs it, so the script works the step out: a push when pre-commit gives the name of the remote and git gives no index file, a commit message when the first argument is a message file, a merge when git names the commits it merges, and a commit in any other case. The entry runs the script with `uv run --no-project python`, so it does not depend on which `python3` comes first on the PATH. In Tollgate's own project the entry runs `setup/tollgate_checks.py`, the source, and `.tollgate/checks/` holds no copy. The writing check under `checks` in the settings runs the same way.
 
 | Git step | Check | What it refuses |
 | --- | --- | --- |
@@ -209,11 +210,10 @@ The gate proves that the locked tests ran unchanged and passed, and that the try
 | Commit message | `check_commit_msg.py` | A subject that is not `type(scope): subject`, or a line that credits an AI |
 | Merge | `check_merge.py merge` | A merge into main with no pass record, or a tier 3 or 4 merge with no approval |
 | Push | `check_merge.py push` | A push to main with a merge that has no pass record, or a commit made on main itself |
-| Push | each check under `checks`, except the writing check | A push when a check of the project fails. It runs with its own command, side by side with the push check. |
 
 The checks of one git step run side by side, and the script prints each check's output and a PASS or FAIL line when the check ends. The setting `parallel` sets how many run at once: `true`, the default, for all of them, a whole number for that many, or `false` for one at a time.
 
-At a push, the script also runs each check under `checks` in the settings, except the writing check, with the check's own command through `sh -c`. The config has no entry of its own for them, so a push shows one Tollgate hook, and the style check and the tests run at the same time as the push check.
+The project's own checks, such as its tests and its lint, are hooks of their own in the config, and pre-commit runs them. The settings name the hook of each check, so the project keeps its checks without Tollgate. `init` writes a check that the settings still keep as a command, under `run`, once as a local hook `check-<name>` that runs before each push, and the settings then name that hook. pre-commit runs the hooks one after another, so the project's checks do not run side by side. To run them side by side, make one hook that runs them all, such as `make -j check`.
 
 A merge may change locked files when the commit it merges passed the gate. Commits from before `init` are not checked.
 
@@ -535,10 +535,11 @@ A ticket that marks no kind fails, and the message says what to add.
 ```json
 {
   "checks": {
-    "tests": {"run": "make test", "report": "build/junit.xml"},
-    "style": {"run": "make lint"},
-    "types": {"run": "make types"},
-    "secrets": {"run": "gitleaks detect"}
+    "tests": {"hook": "check-tests", "report": "build/junit.xml"},
+    "style": {"hook": "check-style"},
+    "types": {"hook": "check-types"},
+    "secrets": {"hook": "gitleaks"},
+    "writing": {"run": "uv run --no-project python .tollgate/checks/check_writing.py"}
   },
   "harness": ["Makefile"],
   "tiers": {
@@ -565,7 +566,9 @@ A ticket that marks no kind fails, and the message says what to add.
 
 `.tollgate/settings.json` is a locked file: the locked-file check refuses a commit that changes it, so a role's commit cannot loosen the rules. You change it on main and commit it yourself, from your own terminal, with `git commit --no-verify`, as `init` does. Tollgate's hook refuses `--no-verify` inside Claude Code.
 
-The commands, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. Without `container_image`, a role runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned by digest in `gate/settings.py`. It has git, Python, Node, and Go. Name your own image when the project's tests need more. CI runs `tests/proof_container.py` on the pinned image, and a weekly workflow proposes a newer build once that proof passes on it. `"spec"` is optional: a list of files and folders, relative to the project root, with no `..`. List the folder of decision records in `spec`: the analyst then treats each accepted record as a specified fact, and a record that a newer one supersedes is left out. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
+Each check names a hook of the project's `.pre-commit-config.yaml`. The gate runs it in the builder's copy with `pre-commit run <hook> --all-files --hook-stage <stage>`, at a push when the hook runs there, and reads the JUnit report that `report` names. A check may set its own time limit in `minutes`. The writing check is Tollgate's own, so it keeps its command under `run`; no other check may. `setup.health` warns when a check names a hook that the config does not have.
+
+The hooks, the image, and the model names are examples. `"runner"` is `"session"` (the default) or `"background"`; `ai`, `isolation`, `container_image`, and the USD stops count only in background mode. Without `container_image`, a role runs in Docker's own Claude Code image, `docker/sandbox-templates:claude-code`, pinned by digest in `gate/settings.py`. It has git, Python, Node, and Go. Name your own image when the project's tests need more. CI runs `tests/proof_container.py` on the pinned image, and a weekly workflow proposes a newer build once that proof passes on it. `"spec"` is optional: a list of files and folders, relative to the project root, with no `..`. List the folder of decision records in `spec`: the analyst then treats each accepted record as a specified fact, and a record that a newer one supersedes is left out. The built-in harness counts as tier 4 without a line in `tiers`. The settings file rejects an unknown key.
 
 ### What the gate returns
 

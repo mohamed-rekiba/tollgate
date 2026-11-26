@@ -5,7 +5,7 @@
 It makes, under the folder:
 
     project/   a git repository on main: calc.py, its tests, and Tollgate set up
-               by setup.init, with a tests check that runs pytest
+               by setup.init, with a tests check: the hook check-tests, which runs pytest
     state/     the state folder root, for TOLLGATE_STATE
     keys/      the key folder, with the machine secret, for TOLLGATE_KEYS
     gitconfig  a git identity for the run, for GIT_CONFIG_GLOBAL

@@ -1,4 +1,14 @@
-"""Run the check commands of a project and collect their results."""
+"""Run the checks of a project and collect their results.
+
+A check names a hook of the project's .pre-commit-config.yaml, and runs as
+
+    pre-commit run <hook> --all-files --hook-stage <stage>
+
+in the folder of the copy, at the stage the hook runs at (see
+gate.precommit_config.run_stage). The project's commands stay in the project's own
+config, so the project works without Tollgate. The writing check is Tollgate's own, so
+it keeps its command in the settings, under `run`.
+"""
 
 import argparse
 import json
@@ -8,6 +18,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from gate import junit
+from gate import precommit_config as pc
 
 
 @dataclass
@@ -52,6 +63,20 @@ def _tail(text: str, lines: int = 40) -> str:
     return "\n".join(text.splitlines()[-lines:])
 
 
+def command_of(check: dict, workdir) -> tuple:
+    """(command, problem) for a check. The command is a list for a hook, and a string for
+    a shell to run for the writing check. problem says why the check cannot run."""
+    if "hook" not in check:
+        return check["run"], ""
+    config = Path(workdir, pc.CONFIG)
+    text = config.read_text(errors="replace") if config.is_file() else ""
+    stage = pc.run_stage(text, check["hook"])
+    if stage is None:
+        return None, f"the hook {check['hook']} is not in {pc.CONFIG}"
+    return ["pre-commit", "run", check["hook"], "--all-files", "--hook-stage", stage,
+            "--color", "never"], ""
+
+
 def run(settings: dict, workdir, only=None) -> Results:
     """Run each check in the folder and read each test report it names.
 
@@ -65,14 +90,21 @@ def run(settings: dict, workdir, only=None) -> Results:
         report = Path(workdir, check["report"]) if check.get("report") else None
         if report and report.exists():
             report.unlink()
-        try:
-            proc = subprocess.run(
-                check["run"], shell=True, cwd=workdir, capture_output=True, text=True, check=False,
-                timeout=minutes * 60, env=project_env(),
-            )
-            result = CheckResult(name, proc.returncode == 0, False, _tail(proc.stdout + proc.stderr))
-        except subprocess.TimeoutExpired:
-            result = CheckResult(name, False, True, f"ran longer than {minutes} minutes")
+        command, problem = command_of(check, workdir)
+        if problem:
+            result = CheckResult(name, False, False, problem)
+        else:
+            try:
+                proc = subprocess.run(
+                    command, shell=isinstance(command, str), cwd=workdir, capture_output=True,
+                    text=True, check=False, timeout=minutes * 60, env=project_env(),
+                )
+                result = CheckResult(name, proc.returncode == 0, False,
+                                     _tail(proc.stdout + proc.stderr))
+            except subprocess.TimeoutExpired:
+                result = CheckResult(name, False, True, f"ran longer than {minutes} minutes")
+            except OSError as err:
+                result = CheckResult(name, False, False, f"the check cannot start: {err}")
         results.checks.append(result)
         if report and report.exists():
             for test_id, test in junit.read(report).items():

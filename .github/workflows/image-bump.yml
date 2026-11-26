@@ -25,6 +25,9 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
+      - name: Install pre-commit
+        # The gate runs each check of a project with pre-commit, on this machine.
+        run: python -m pip install --require-hashes -r requirements-dev.txt
       - name: Find the newest build
         id: find
         run: |

@@ -56,8 +56,9 @@ The design follows UML, drawn in Tollgate's style:
   [from, to] moves the first leg and the last leg on their own. Two straight
   arrows that go both ways between two states take a shift each, such as -12
   and 12, and their labels then sit beside them.
-- Transitions are solid lines, as in UML. Only the ticket's dot moves, and
-  with "reduce motion" set, it is hidden.
+- Transitions are solid lines, as in UML. Only the ticket's dot moves, unless
+  the spec sets "packets": true: then a small dot also runs along every
+  transition. With "reduce motion" set, the dots are hidden.
 - "ticket" sends one dot along the transitions named in "path", in order. It
   waits where an arrow meets a state, and takes each arrow's tone as it goes.
   "wait" adds seconds at a state.
