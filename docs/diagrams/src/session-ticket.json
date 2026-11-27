@@ -1,0 +1,42 @@
+{
+ "type": "sequence",
+ "title": "One ticket in session mode",
+ "desc": "Your Claude Code session asks the driver for the next step. The driver replays its log and the saved answers, then names one role and its prompt. Your session runs that role as a subagent in the copy and hands its answer back. The driver saves it, and runs on to the next step, until the gate passes a try and the store writes its pass record.",
+ "packets": true,
+ "names": {"server": "Your machine", "you": "Claude Code"},
+ "participants": [
+  {"id": "session", "text": "Your session", "kind": "you"},
+  {"id": "driver", "text": "The driver", "kind": "server", "icon": "workflow"},
+  {"id": "role", "text": "A role\nas a subagent", "kind": "ai"},
+  {"id": "gate", "text": "The gate", "kind": "check", "icon": "gate"},
+  {"id": "store", "text": "The store", "kind": "server", "icon": "lock"}
+ ],
+ "messages": [
+  {"from": "session", "to": "driver", "text": "next"},
+  {"from": "driver", "to": "driver", "text": "replay the log", "note": "and the saved answers"},
+  {"from": "driver", "to": "session", "text": "a role and its prompt", "reply": true,
+   "note": "the driver pauses here"},
+  {"from": "session", "to": "role", "text": "work in the copy"},
+  {"from": "role", "to": "session", "text": "the answer", "reply": true},
+  {"from": "session", "to": "driver", "text": "answer, with the key"},
+  {"from": "driver", "to": "driver", "text": "save the answer", "note": "and the builder's work"},
+  {"from": "driver", "to": "store", "text": "lock the tests", "note": "once they pass review"},
+  {"from": "driver", "to": "gate", "text": "judge the try", "note": "after the checks run"},
+  {"from": "gate", "to": "driver", "text": "findings and tier", "reply": true},
+  {"from": "driver", "to": "store", "text": "write the pass record", "tone": "pass"},
+  {"from": "driver", "to": "session", "text": "done", "reply": true, "tone": "pass"}
+ ],
+ "activations": [
+  {"on": "driver", "from": 0, "to": 2},
+  {"on": "role", "from": 3, "to": 4},
+  {"on": "driver", "from": 5, "to": 11},
+  {"on": "store", "from": 7, "to": 7},
+  {"on": "gate", "from": 8, "to": 9},
+  {"on": "store", "from": 10, "to": 10}
+ ],
+ "frames": [
+  {"kind": "loop", "from": 0, "to": 9, "label": "one step for each role the driver needs"},
+  {"kind": "opt", "from": 10, "to": 11, "guards": [{"at": 10, "text": "the try passes"}]}
+ ],
+ "ticket": true
+}

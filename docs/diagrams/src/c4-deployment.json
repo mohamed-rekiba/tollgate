@@ -1,0 +1,137 @@
+{
+ "type": "c4",
+ "level": "deployment",
+ "title": "Tollgate",
+ "desc": "Everything runs on your machine. In session mode your Claude Code session asks the driver for each step and runs the role itself. In background mode the driver starts each role in Docker, with only its copy. The store keeps its records in the state folder. Only the prompts leave the machine, to the model.",
+ "packets": true,
+ "names": {
+  "server": "Your machine"
+ },
+ "boundaries": [
+  {
+   "id": "machine",
+   "name": "Your machine",
+   "type": "device"
+  },
+  {
+   "id": "claude",
+   "name": "Claude Code",
+   "type": "execution environment",
+   "parent": "machine"
+  },
+  {
+   "id": "python",
+   "name": "Python 3.11",
+   "type": "execution environment",
+   "parent": "machine"
+  },
+  {
+   "id": "docker",
+   "name": "Docker",
+   "type": "execution environment",
+   "parent": "machine"
+  }
+ ],
+ "elements": [
+  {
+   "id": "session",
+   "type": "container",
+   "kind": "you",
+   "name": "Your session",
+   "tech": "Claude Code",
+   "description": "Runs each role in session mode",
+   "col": 0,
+   "row": 0,
+   "parent": "claude"
+  },
+  {
+   "id": "driver",
+   "type": "container",
+   "name": "The driver",
+   "tech": "Python",
+   "description": "Decides every step",
+   "col": 0,
+   "row": 1,
+   "parent": "python",
+   "icon": "workflow"
+  },
+  {
+   "id": "store",
+   "type": "container",
+   "name": "The store",
+   "tech": "Python",
+   "description": "Locks, records, merges",
+   "col": 0,
+   "row": 2,
+   "parent": "python",
+   "icon": "lock"
+  },
+  {
+   "id": "role",
+   "type": "container",
+   "kind": "ai",
+   "name": "A role",
+   "tech": "Claude Code",
+   "description": "Runs in background mode, with only its copy",
+   "col": 1,
+   "row": 1,
+   "parent": "docker"
+  },
+  {
+   "id": "state",
+   "type": "database",
+   "name": "The state folder",
+   "tech": "files",
+   "description": "Records, copies, logs",
+   "col": 1,
+   "row": 2,
+   "parent": "machine"
+  },
+  {
+   "id": "model",
+   "type": "node",
+   "external": true,
+   "name": "The model",
+   "stereotype": "cloud service",
+   "col": 2,
+   "row": 1
+  }
+ ],
+ "relations": [
+  {
+   "from": "session",
+   "to": "driver",
+   "label": "Asks for the next step",
+   "tech": "session mode"
+  },
+  {
+   "from": "driver",
+   "to": "role",
+   "label": "Starts each role",
+   "tech": "background mode"
+  },
+  {
+   "from": "driver",
+   "to": "store",
+   "label": "Locks, records, merges with"
+  },
+  {
+   "from": "store",
+   "to": "state",
+   "label": "Keeps its records in"
+  },
+  {
+   "from": "session",
+   "to": "model",
+   "label": "Sends each prompt",
+   "tech": "HTTPS",
+   "route": "hv"
+  },
+  {
+   "from": "role",
+   "to": "model",
+   "label": "Sends each prompt",
+   "tech": "HTTPS"
+  }
+ ]
+}

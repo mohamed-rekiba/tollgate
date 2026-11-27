@@ -1,0 +1,56 @@
+{
+ "type": "sequence",
+ "title": "One ticket, in order",
+ "desc": "The test writer writes the tests, and the store locks them before any code exists. Then each try goes from the builder to the gate and a reviewer, until one passes or a stop rule fires: the store writes its pass record and marks it a ready change, and with auto merge on, the driver has the store merge tier 1 and 2.",
+ "packets": true,
+ "names": {"server": "Your machine"},
+ "participants": [
+  {"id": "driver", "text": "The driver", "kind": "server", "icon": "workflow"},
+  {"id": "writer", "text": "Test writer", "kind": "ai", "icon": "test"},
+  {"id": "store", "text": "The store", "kind": "server", "icon": "lock"},
+  {"id": "builder", "text": "Builder", "kind": "ai"},
+  {"id": "gate", "text": "The gate", "kind": "check", "icon": "gate"},
+  {"id": "reviewer", "text": "Reviewer", "kind": "ai", "icon": "search"}
+ ],
+ "messages": [
+  {"from": "driver", "to": "writer", "text": "write the tests"},
+  {"from": "writer", "to": "driver", "text": "the tests", "reply": true,
+   "note": "a reviewer checks them"},
+  {"from": "driver", "to": "store", "text": "lock the tests"},
+  {"from": "store", "to": "store", "text": "run the tests once",
+   "note": "new ones must fail"},
+  {"from": "driver", "to": "builder", "text": "build from the best try"},
+  {"from": "builder", "to": "driver", "text": "the try", "reply": true},
+  {"from": "driver", "to": "gate", "text": "judge the try", "note": "after the checks run"},
+  {"from": "gate", "to": "driver", "text": "findings and tier", "reply": true},
+  {"from": "driver", "to": "reviewer", "text": "check the items",
+   "note": "tier 2 and up: the change too"},
+  {"from": "reviewer", "to": "driver", "text": "items and findings", "reply": true},
+  {"from": "driver", "to": "gate", "text": "judge again", "note": "tier 2 and up"},
+  {"from": "driver", "to": "gate", "text": "make the pass record", "tone": "pass"},
+  {"from": "driver", "to": "store", "text": "write the pass record", "tone": "pass"},
+  {"from": "driver", "to": "driver", "text": "keep the best try", "tone": "fail"},
+  {"from": "driver", "to": "store", "text": "mark a ready change"},
+  {"from": "driver", "to": "store", "text": "merge the ready change", "tone": "pass",
+   "note": "you merge tier 3 and 4"}
+ ],
+ "activations": [
+  {"on": "driver", "from": 0, "to": 15},
+  {"on": "writer", "from": 0, "to": 1},
+  {"on": "store", "from": 2, "to": 3},
+  {"on": "builder", "from": 4, "to": 5},
+  {"on": "gate", "from": 6, "to": 7},
+  {"on": "reviewer", "from": 8, "to": 9},
+  {"on": "gate", "from": 10, "to": 10},
+  {"on": "gate", "from": 11, "to": 11},
+  {"on": "store", "from": 12, "to": 12},
+  {"on": "store", "from": 14, "to": 15}
+ ],
+ "frames": [
+  {"kind": "loop", "from": 4, "to": 13, "label": "until one passes or a stop rule fires"},
+  {"kind": "alt", "from": 11, "to": 13,
+   "guards": [{"at": 11, "text": "it passes, score 70 or more"}, {"at": 13, "text": "else"}]},
+  {"kind": "opt", "from": 15, "to": 15, "guards": [{"at": 15, "text": "auto merge, tier 1 or 2"}]}
+ ],
+ "ticket": true
+}

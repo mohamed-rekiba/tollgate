@@ -1,0 +1,403 @@
+{
+ "type": "state",
+ "title": "The life of a task",
+ "desc": "A task is analyzed, planned, and approved, then each ticket is built in order, each from the ready change before it: tests first, then tries at the gate until one passes or a stop sends it to the advisor. Every ready change is held. When every ticket is ready, a reviewer reads the whole task. Problems in the first review start one fix round: the plan gets new tickets, is approved and locked again, and the new tickets are built. Problems in the second review park the task with no merge. Once the review passes, the tickets merge in plan order. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.",
+ "packets": true,
+ "names": {
+  "server": "Store"
+ },
+ "states": [
+  {
+   "id": "start",
+   "initial": true,
+   "col": 0,
+   "row": 0
+  },
+  {
+   "id": "analyzing",
+   "text": "Analyzing\nThe analyst reads\nthe project",
+   "col": 1,
+   "row": 0,
+   "kind": "ai",
+   "icon": "search"
+  },
+  {
+   "id": "planning",
+   "text": "Planning\nThe builder writes it,\nreviewers check it",
+   "col": 2,
+   "row": 0,
+   "kind": "ai",
+   "icon": "plan"
+  },
+  {
+   "id": "approval",
+   "text": "Plan approval\nThe advisor approves\nor sends it back",
+   "col": 3,
+   "row": 0,
+   "kind": "advisor"
+  },
+  {
+   "id": "waits",
+   "text": "The task waits\nFor you; it starts again\nwhere it stopped",
+   "col": 4,
+   "row": 0,
+   "kind": "you",
+   "icon": "bell"
+  },
+  {
+   "id": "tickets",
+   "text": "Building the tickets\nIn plan order, each from\nthe ready change before it",
+   "col": 0,
+   "row": 1,
+   "kind": "ai",
+   "icon": "ticket"
+  },
+  {
+   "id": "ticket_start",
+   "initial": true,
+   "col": 0,
+   "row": 0,
+   "parent": "tickets"
+  },
+  {
+   "id": "tests",
+   "text": "Writing the tests\nOne for each\nmust-have item",
+   "col": 1,
+   "row": 0,
+   "kind": "ai",
+   "icon": "test",
+   "parent": "tickets"
+  },
+  {
+   "id": "building",
+   "text": "Building\nThe builder builds\nfrom the best try",
+   "col": 2,
+   "row": 0,
+   "kind": "ai",
+   "icon": "code",
+   "parent": "tickets"
+  },
+  {
+   "id": "gate",
+   "text": "At the gate\nThe checks run,\nthe gate judges",
+   "col": 3,
+   "row": 0,
+   "kind": "check",
+   "icon": "gate",
+   "parent": "tickets"
+  },
+  {
+   "id": "ready",
+   "text": "A ready change\nA pass record;\nheld for the task",
+   "col": 4,
+   "row": 0,
+   "kind": "server",
+   "icon": "merge",
+   "parent": "tickets"
+  },
+  {
+   "id": "ticket_waits",
+   "text": "The ticket waits\nParked, or a question;\nthe next one goes on",
+   "col": 2,
+   "row": 1,
+   "kind": "you",
+   "parent": "tickets"
+  },
+  {
+   "id": "advisor",
+   "text": "The advisor decides\nAfter a stop: retry,\nstronger, split, or park",
+   "col": 3,
+   "row": 1,
+   "kind": "advisor",
+   "parent": "tickets"
+  },
+  {
+   "id": "reviewing",
+   "text": "Reviewing the task\nA reviewer reads every\nticket's change together",
+   "col": 3,
+   "row": 2,
+   "kind": "check",
+   "icon": "search"
+  },
+  {
+   "id": "fixing",
+   "text": "The fix round\nOnce: the plan gets\ntickets for the problems",
+   "col": 2,
+   "row": 2,
+   "kind": "ai",
+   "icon": "plan"
+  },
+  {
+   "id": "merging",
+   "text": "Merging\nIn plan order, as auto\nmerge and tiers allow",
+   "col": 1,
+   "row": 2,
+   "kind": "server",
+   "icon": "merge"
+  },
+  {
+   "id": "done",
+   "final": true,
+   "col": 0,
+   "row": 2
+  }
+ ],
+ "transitions": [
+  {
+   "from": "start",
+   "to": "analyzing"
+  },
+  {
+   "from": "analyzing",
+   "to": "analyzing",
+   "event": "unreadable",
+   "guard": "fewer than 3 reads",
+   "loop": "below"
+  },
+  {
+   "from": "analyzing",
+   "to": "planning",
+   "event": "analysis written"
+  },
+  {
+   "from": "planning",
+   "to": "planning",
+   "event": "findings answered",
+   "guard": "under 4 rounds",
+   "loop": "below"
+  },
+  {
+   "from": "planning",
+   "to": "approval",
+   "event": "review done",
+   "shift": -10
+  },
+  {
+   "from": "approval",
+   "to": "planning",
+   "event": "sent back",
+   "tone": "fail",
+   "shift": 10
+  },
+  {
+   "from": "planning",
+   "to": "waits",
+   "event": "plan rewritten",
+   "guard": "after a send-back",
+   "loop": "above",
+   "shift": [
+    0,
+    -30
+   ]
+  },
+  {
+   "from": "analyzing",
+   "to": "waits",
+   "event": "unreadable",
+   "guard": "3 times",
+   "tone": "fail",
+   "loop": "above",
+   "shift": [
+    20,
+    0
+   ]
+  },
+  {
+   "from": "waits",
+   "to": "analyzing",
+   "event": "it runs again",
+   "guard": "skips finished steps",
+   "loop": "above",
+   "shift": [
+    30,
+    -20
+   ]
+  },
+  {
+   "from": "approval",
+   "to": "waits",
+   "event": "asked you",
+   "guard": "the advisor is a person"
+  },
+  {
+   "from": "approval",
+   "to": "tickets",
+   "event": "approved",
+   "tone": "pass"
+  },
+  {
+   "from": "ticket_start",
+   "to": "tests"
+  },
+  {
+   "from": "tests",
+   "to": "tests",
+   "event": "rejected",
+   "guard": "fewer than 3 times"
+  },
+  {
+   "from": "tests",
+   "to": "building",
+   "event": "tests locked"
+  },
+  {
+   "from": "tests",
+   "to": "advisor",
+   "event": "stopped",
+   "guard": "rejected 3 times",
+   "tone": "fail",
+   "loop": "below"
+  },
+  {
+   "from": "building",
+   "to": "gate",
+   "event": "builder done"
+  },
+  {
+   "from": "gate",
+   "to": "building",
+   "event": "failed",
+   "guard": "no stop",
+   "tone": "fail",
+   "loop": "above"
+  },
+  {
+   "from": "gate",
+   "to": "ready",
+   "event": "passed",
+   "guard": "score 70 or more",
+   "tone": "pass"
+  },
+  {
+   "from": "gate",
+   "to": "advisor",
+   "event": "failed",
+   "guard": "a stop",
+   "tone": "fail",
+   "shift": 14
+  },
+  {
+   "from": "advisor",
+   "to": "building",
+   "event": "retry",
+   "guard": "tests locked",
+   "shift": [
+    -40,
+    40
+   ]
+  },
+  {
+   "from": "advisor",
+   "to": "ticket_waits",
+   "event": "park, split, or ask you"
+  },
+  {
+   "from": "building",
+   "to": "ticket_waits",
+   "event": "stopped",
+   "guard": "cost limit reached",
+   "tone": "fail",
+   "shift": -14
+  },
+  {
+   "from": "tickets",
+   "to": "waits",
+   "event": "tickets done",
+   "guard": "one waits",
+   "route": "hv",
+   "shift": [
+    -180,
+    0
+   ]
+  },
+  {
+   "from": "tickets",
+   "to": "reviewing",
+   "event": "tickets done",
+   "guard": "every one ready",
+   "tone": "pass"
+  },
+  {
+   "from": "reviewing",
+   "to": "waits",
+   "event": "still problems",
+   "loop": "right",
+   "guard": "after the fix round",
+   "tone": "fail"
+  },
+  {
+   "from": "reviewing",
+   "to": "fixing",
+   "event": "problems found",
+   "guard": "first review",
+   "tone": "fail"
+  },
+  {
+   "from": "fixing",
+   "to": "tickets",
+   "event": "plan locked again"
+  },
+  {
+   "from": "reviewing",
+   "to": "merging",
+   "event": "passed",
+   "guard": "and the checkpoint says go on",
+   "tone": "pass",
+   "loop": "below"
+  },
+  {
+   "from": "merging",
+   "to": "done",
+   "event": "reported",
+   "tone": "pass"
+  }
+ ],
+ "ticket": {
+  "path": [
+   [
+    "start",
+    "analyzing"
+   ],
+   [
+    "analyzing",
+    "planning"
+   ],
+   [
+    "planning",
+    "approval"
+   ],
+   [
+    "approval",
+    "tickets"
+   ],
+   [
+    "ticket_start",
+    "tests"
+   ],
+   [
+    "tests",
+    "building"
+   ],
+   [
+    "building",
+    "gate"
+   ],
+   [
+    "gate",
+    "ready"
+   ],
+   [
+    "tickets",
+    "reviewing"
+   ],
+   [
+    "reviewing",
+    "merging"
+   ],
+   [
+    "merging",
+    "done"
+   ]
+  ]
+ }
+}

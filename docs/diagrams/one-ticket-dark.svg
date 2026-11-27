@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-7 -24 1053 541" width="1053" height="541" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">How one ticket is built</title>
+<desc id="desc">The AI builds from its best try. First the locked tests must pass; then the reviewers check the rest, and the try needs a score of 70% or more. Then the change gets a pass record and waits to merge. When a try fails, the AI tries again with the reasons. After 3 tries, it asks the advisor: a second AI, or you.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#656c76"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#f85149"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#3fb950"/></marker><pattern id="grid" x="-7" y="-24" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#161b22" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
+<rect x="-7" y="-24" width="1053" height="541" fill="#0d1117"/>
+<rect x="-7" y="-24" width="1053" height="541" fill="url(#grid)"/>
+<path class="main" d="M199.9,77.3 L271.3,77.3" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M199.9,77.3 L271.3,77.3" dur="1.20s" begin="-0.37s" repeatCount="indefinite"/></circle>
+<path class="main" d="M475.7,77.3 L543.8,77.3" fill="none" stroke="#3fb950" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#3fb950" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M475.7,77.3 L543.8,77.3" dur="1.20s" begin="-1.11s" repeatCount="indefinite"/></circle>
+<path class="main" d="M760.8,77.3 L839.7,77.3" fill="none" stroke="#3fb950" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#3fb950" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M760.8,77.3 L839.7,77.3" dur="1.20s" begin="-0.65s" repeatCount="indefinite"/></circle>
+<path class="main" d="M373.5,139.3 L373.5,218.6" fill="none" stroke="#f85149" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#f85149" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M373.5,139.3 L373.5,218.6" dur="1.20s" begin="-0.19s" repeatCount="indefinite"/></circle>
+<path class="main" d="M652.3,154.6 L652.3,268.6 Q652.3,280.6 640.3,280.6 L443.1,280.6" fill="none" stroke="#f85149" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#f85149" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M652.3,154.6 L652.3,268.6 Q652.3,280.6 640.3,280.6 L443.1,280.6" dur="3.05s" begin="-0.28s" repeatCount="indefinite"/></circle>
+<path class="main" d="M303.9,280.6 L120.5,280.6 Q108.5,280.6 108.5,268.6 L108.5,128.8" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M303.9,280.6 L120.5,280.6 Q108.5,280.6 108.5,268.6 L108.5,128.8" dur="3.16s" begin="-0.91s" repeatCount="indefinite"/></circle>
+<path class="main" d="M373.5,342.6 L373.5,406.6" fill="none" stroke="#656c76" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#656c76" stroke="#0d1117" stroke-width="1.2"><animateMotion path="M373.5,342.6 L373.5,406.6" dur="1.20s" begin="-0.01s" repeatCount="indefinite"/></circle>
+<g class="start">
+<rect x="17.1" y="25.8" width="182.8" height="103.0" rx="51.5" fill="#1b1430" stroke="#ab7df8" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(88.0,47.3) scale(0.7500)" fill="none" stroke="#ab7df8" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5l1.9 5.1L18 10.5l-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15l.8 2.2l2.2.8l-2.2.8l-.8 2.2l-.8-2.2l-2.2-.8l2.2-.8z"/></g>
+<text x="114.0" y="60.3" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#ab7df8">AI</text>
+<text x="108.5" y="87.3" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">The AI builds</text>
+<text x="108.5" y="105.3" text-anchor="middle" font-size="12" fill="#9198a1">From its best try</text>
+</g>
+<g class="decision">
+<polygon points="373.5,15.3 475.7,77.3 373.5,139.3 271.3,77.3" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(341.8,47.3) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="367.8" y="60.3" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="373.5" y="87.3" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">Locked tests</text>
+<text x="373.5" y="105.3" text-anchor="middle" font-size="12" fill="#9198a1">pass?</text>
+</g>
+<g class="decision">
+<polygon points="652.3,0.0 760.8,77.3 652.3,154.6 543.8,77.3" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(620.5,38.8) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
+<text x="646.5" y="51.8" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="652.3" y="78.8" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">Score 70%</text>
+<text x="652.3" y="96.8" text-anchor="middle" font-size="12" fill="#9198a1">or more?</text>
+<text x="652.3" y="113.8" text-anchor="middle" font-size="12" fill="#9198a1">Reviewers check</text>
+</g>
+<g class="end">
+<rect x="839.7" y="25.8" width="182.8" height="103.0" rx="51.5" fill="#0c2114" stroke="#3fb950" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(899.3,38.8) scale(0.7500)" fill="none" stroke="#3fb950" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="925.3" y="51.8" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3fb950">STORE</text>
+<text x="931.1" y="78.8" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">A ready change</text>
+<text x="931.1" y="96.8" text-anchor="middle" font-size="12" fill="#9198a1">Passed,</text>
+<text x="931.1" y="113.8" text-anchor="middle" font-size="12" fill="#9198a1">it waits to merge</text>
+</g>
+<g class="decision">
+<polygon points="373.5,218.6 443.1,280.6 373.5,342.6 303.9,280.6" fill="#221a08" stroke="#d29922" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(341.8,250.6) scale(0.7500)" fill="none" stroke="#d29922" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.4-3.2 8.2-7.5 9.5c-4.3-1.3-7.5-5.1-7.5-9.5V6z"/><path d="M8.8 12l2.2 2.2l4.3-4.4"/></g>
+<text x="367.8" y="263.6" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#d29922">CHECK</text>
+<text x="373.5" y="290.6" text-anchor="middle" font-size="14" font-weight="700" fill="#f0f6fc">3 tries</text>
+<text x="373.5" y="308.6" text-anchor="middle" font-size="12" fill="#9198a1">used?</text>
+</g>
+<g class="wait">
+<path d="M282.1,406.6 H421.9 A43.0,43.0 0 0 1 421.9,492.6 H282.1 Z" fill="#271608" stroke="#f0883e" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(296.1,418.6) scale(0.7500)" fill="none" stroke="#f0883e" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="322.1" y="431.6" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#f0883e">ADVISOR</text>
+<text x="296.1" y="458.6" font-size="14" font-weight="700" fill="#f0f6fc">Ask the advisor</text>
+<text x="296.1" y="476.6" font-size="12" fill="#9198a1">A second AI, or you</text>
+</g>
+<rect class="label" x="492.9" y="67.3" width="33.8" height="20" rx="3" fill="#0d1117" stroke="#3fb950" stroke-width="1"/>
+<text x="509.8" y="81.1" text-anchor="middle" font-size="11" fill="#3fb950">yes</text>
+<rect class="label" x="783.4" y="67.3" width="33.8" height="20" rx="3" fill="#0d1117" stroke="#3fb950" stroke-width="1"/>
+<text x="800.2" y="81.1" text-anchor="middle" font-size="11" fill="#3fb950">yes</text>
+<rect class="label" x="359.9" y="169.0" width="27.2" height="20" rx="3" fill="#0d1117" stroke="#f85149" stroke-width="1"/>
+<text x="373.5" y="182.8" text-anchor="middle" font-size="11" fill="#f85149">no</text>
+<rect class="label" x="638.7" y="207.6" width="27.2" height="20" rx="3" fill="#0d1117" stroke="#f85149" stroke-width="1"/>
+<text x="652.3" y="221.4" text-anchor="middle" font-size="11" fill="#f85149">no</text>
+<rect class="label" x="156.3" y="270.6" width="99.8" height="20" rx="3" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="206.2" y="284.4" text-anchor="middle" font-size="11" fill="#9198a1">no: try again</text>
+<rect class="label" x="356.6" y="364.6" width="33.8" height="20" rx="3" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="373.5" y="378.4" text-anchor="middle" font-size="11" fill="#9198a1">yes</text>
+<g class="ticket">
+<circle r="13" fill="#ab7df8" opacity="0.2"><animate attributeName="fill" values="#ab7df8;#3fb950;#3fb950" keyTimes="0.0000;0.2689;0.4397" calcMode="discrete" dur="3.71s" repeatCount="indefinite"/></circle>
+<circle r="6.5" fill="#ab7df8" stroke="#0d1117" stroke-width="2"><animate attributeName="fill" values="#ab7df8;#3fb950;#3fb950" keyTimes="0.0000;0.2689;0.4397" calcMode="discrete" dur="3.71s" repeatCount="indefinite"/></circle>
+<animateMotion path="M199.9,77.3 L271.3,77.3 L475.7,77.3 L543.8,77.3 L760.8,77.3 L839.7,77.3" keyPoints="0.0000;0.0000;0.1116;0.1116;0.4311;0.5375;0.5375;0.8767;1.0000;1.0000;1.0000" keyTimes="0.0000;0.0943;0.1745;0.2689;0.2689;0.3454;0.4397;0.4397;0.5283;0.6226;1.0000" calcMode="linear" dur="3.71s" repeatCount="indefinite"/>
+</g>
+</svg>

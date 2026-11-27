@@ -1,0 +1,29 @@
+{
+ "type": "c4",
+ "level": "dynamic",
+ "title": "One ticket in background mode",
+ "desc": "One ticket in background mode, in order: you type the task, your session starts the driver, the driver has the store lock the tests and starts the builder in its copy, the builder works with the model, the driver runs the gate, the gate reads the lock from the store, and the store merges the ready change into your project.",
+ "packets": true,
+ "names": {"server": "Your machine"},
+ "boundaries": [{"id": "tollgate", "name": "Tollgate", "type": "Software System"}],
+ "elements": [
+  {"id": "you", "type": "person", "name": "You", "col": 0, "row": 0},
+  {"id": "session", "type": "system", "external": true, "name": "Your Claude Code session", "col": 1, "row": 0},
+  {"id": "model", "type": "system", "external": true, "name": "The model", "col": 2, "row": 0},
+  {"id": "driver", "type": "container", "name": "The driver", "tech": "Python", "col": 1, "row": 1, "parent": "tollgate", "icon": "workflow"},
+  {"id": "builder", "type": "container", "kind": "ai", "name": "The builder", "tech": "Docker", "description": "Works in its own copy", "col": 2, "row": 1},
+  {"id": "gate", "type": "container", "kind": "check", "name": "The gate", "tech": "Python", "col": 0, "row": 2, "parent": "tollgate", "icon": "gate"},
+  {"id": "store", "type": "container", "name": "The store", "tech": "Python", "col": 1, "row": 2, "parent": "tollgate", "icon": "lock"},
+  {"id": "project", "type": "database", "external": true, "name": "Your project", "tech": "git", "col": 1, "row": 3}
+ ],
+ "relations": [
+  {"from": "you", "to": "session", "label": "Types the task", "tech": "/tollgate:task"},
+  {"from": "session", "to": "driver", "label": "Starts the driver"},
+  {"from": "driver", "to": "store", "label": "Locks the tests"},
+  {"from": "driver", "to": "builder", "label": "Starts a try"},
+  {"from": "builder", "to": "model", "label": "Writes the code with"},
+  {"from": "driver", "to": "gate", "label": "Runs the gate", "route": "hv"},
+  {"from": "gate", "to": "store", "label": "Reads the lock"},
+  {"from": "store", "to": "project", "label": "Merges the change", "tech": "git"}
+ ]
+}

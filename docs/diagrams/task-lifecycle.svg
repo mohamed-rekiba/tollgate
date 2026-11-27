@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -134 1898 1043" width="1898" height="1043" role="img" aria-labelledby="title desc" font-family="ui-monospace, SFMono-Regular, 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace">
+<title id="title">The life of a task</title>
+<desc id="desc">A task is analyzed, planned, and approved, then each ticket is built in order, each from the ready change before it: tests first, then tries at the gate until one passes or a stop sends it to the advisor. Every ready change is held. When every ticket is ready, a reviewer reads the whole task. Problems in the first review start one fix round: the plan gets new tickets, is approved and locked again, and the new tickets are built. Problems in the second review park the task with no merge. Once the review passes, the tickets merge in plan order. A question, a parked ticket, a send-back, or a stop at a checkpoint makes the task wait for you; when it runs again, it skips every finished step.</desc>
+<defs><marker id="arrow-plain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#818b98"/></marker><marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#cf222e"/></marker><marker id="arrow-pass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 L3.2,5 z" fill="#1a7f37"/></marker><pattern id="grid" x="-24" y="-134" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#eef1f4" stroke-width="1"/></pattern></defs>
+<style>.main{stroke-width:2.6;stroke-dasharray:0 7;animation:flow 0.8s linear infinite}.side{stroke-width:1.6;stroke-dasharray:6 5;animation:side 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-7}}@keyframes side{to{stroke-dashoffset:-11}}@media (prefers-reduced-motion:reduce){.main,.side{animation:none}.ticket,.packet{display:none}}</style>
+<rect x="-24" y="-134" width="1898" height="1043" fill="#ffffff"/>
+<rect x="-24" y="-134" width="1898" height="1043" fill="url(#grid)"/>
+<g class="parent" data-state="tickets">
+<rect x="0.0" y="173.0" width="1435.2" height="503.0" rx="16" fill="#f9f6ff" fill-opacity="0.35" stroke="#8250df" stroke-width="1.3"/>
+<path d="M0.0,274.0 V189.0 Q0.0,173.0 16.0,173.0 H1419.2 Q1435.2,173.0 1435.2,189.0 V274.0 Z" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3" stroke-linejoin="round"/>
+<g transform="translate(14.0,185.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v3.2a1.8 1.8 0 0 0 0 3.6V17h-17v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M15 7v2M15 11v2M15 15v2"/></g>
+<text x="40.0" y="198.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="14.0" y="225.0" font-size="14" font-weight="700" fill="#1f2328">Building the tickets</text>
+<text x="14.0" y="243.0" font-size="12" fill="#59636e">In plan order, each from</text>
+<text x="14.0" y="260.0" font-size="12" fill="#59636e">the ready change before it</text>
+</g>
+<path class="transition" d="M19.0,51.5 L118.8,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M19.0,51.5 L118.8,51.5" dur="1.20s" begin="-0.00s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M233.2,103.0 L233.2,117.0 Q233.2,129.0 221.2,129.0 L217.2,129.0 Q205.2,129.0 205.2,117.0 L205.2,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M233.2,103.0 L233.2,117.0 Q233.2,129.0 221.2,129.0 L217.2,129.0 Q205.2,129.0 205.2,117.0 L205.2,103.0" dur="1.20s" begin="-0.37s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M319.6,51.5 L467.2,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M319.6,51.5 L467.2,51.5" dur="1.34s" begin="-0.74s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M581.6,103.0 L581.6,117.0 Q581.6,129.0 569.6,129.0 L565.6,129.0 Q553.6,129.0 553.6,117.0 L553.6,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M581.6,103.0 L581.6,117.0 Q581.6,129.0 569.6,129.0 L565.6,129.0 Q553.6,129.0 553.6,117.0 L553.6,103.0" dur="1.20s" begin="-1.11s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M668.0,41.5 L901.4,41.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M668.0,41.5 L901.4,41.5" dur="2.12s" begin="-1.48s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M901.4,61.5 L668.0,61.5" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M901.4,61.5 L668.0,61.5" dur="2.12s" begin="-1.85s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M567.6,0.0 L567.6,-20.0 Q567.6,-32.0 579.6,-32.0 L1433.6,-32.0 Q1445.6,-32.0 1445.6,-20.0 L1445.6,0.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M567.6,0.0 L567.6,-20.0 Q567.6,-32.0 579.6,-32.0 L1433.6,-32.0 Q1445.6,-32.0 1445.6,-20.0 L1445.6,0.0" dur="8.56s" begin="-2.22s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M239.2,0.0 L239.2,-54.0 Q239.2,-66.0 251.2,-66.0 L1463.6,-66.0 Q1475.6,-66.0 1475.6,-54.0 L1475.6,0.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M239.2,0.0 L239.2,-54.0 Q239.2,-66.0 251.2,-66.0 L1463.6,-66.0 Q1475.6,-66.0 1475.6,-54.0 L1475.6,0.0" dur="12.44s" begin="-2.59s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1505.6,0.0 L1505.6,-88.0 Q1505.6,-100.0 1493.6,-100.0 L211.2,-100.0 Q199.2,-100.0 199.2,-88.0 L199.2,0.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1505.6,0.0 L1505.6,-88.0 Q1505.6,-100.0 1493.6,-100.0 L211.2,-100.0 Q199.2,-100.0 199.2,-88.0 L199.2,0.0" dur="13.69s" begin="-2.96s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1102.2,51.5 L1375.2,51.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1102.2,51.5 L1375.2,51.5" dur="2.48s" begin="-0.85s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1001.8,103.0 L1001.8,173.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#1a7f37" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1001.8,103.0 L1001.8,173.0" dur="1.20s" begin="-0.10s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M34.0,395.5 L90.0,395.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M34.0,395.5 L90.0,395.5" dur="1.20s" begin="-0.47s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M176.4,344.0 L176.4,330.0 Q176.4,318.0 188.4,318.0 L192.4,318.0 Q204.4,318.0 204.4,330.0 L204.4,344.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M176.4,344.0 L176.4,330.0 Q176.4,318.0 188.4,318.0 L192.4,318.0 Q204.4,318.0 204.4,330.0 L204.4,344.0" dur="1.20s" begin="-0.84s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M290.8,395.5 L412.0,395.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M290.8,395.5 L412.0,395.5" dur="1.20s" begin="-0.01s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M190.4,447.0 L190.4,634.0 Q190.4,646.0 202.4,646.0 L895.0,646.0 Q907.0,646.0 907.0,634.0 L907.0,614.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M190.4,447.0 L190.4,634.0 Q190.4,646.0 202.4,646.0 L895.0,646.0 Q907.0,646.0 907.0,634.0 L907.0,614.0" dur="8.61s" begin="-5.18s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M612.8,395.5 L806.6,395.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M612.8,395.5 L806.6,395.5" dur="1.76s" begin="-0.26s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M907.0,344.0 L907.0,324.0 Q907.0,312.0 895.0,312.0 L524.4,312.0 Q512.4,312.0 512.4,324.0 L512.4,344.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M907.0,344.0 L907.0,324.0 Q907.0,312.0 895.0,312.0 L524.4,312.0 Q512.4,312.0 512.4,324.0 L512.4,344.0" dur="4.17s" begin="-1.75s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1007.4,395.5 L1214.4,395.5" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#1a7f37" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1007.4,395.5 L1214.4,395.5" dur="1.88s" begin="-0.64s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M921.0,447.0 L921.0,511.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M921.0,447.0 L921.0,511.0" dur="1.20s" begin="-0.66s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M867.0,511.0 L867.0,491.0 Q867.0,479.0 855.0,479.0 L564.4,479.0 Q552.4,479.0 552.4,467.0 L552.4,447.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M867.0,511.0 L867.0,491.0 Q867.0,479.0 855.0,479.0 L564.4,479.0 Q552.4,479.0 552.4,467.0 L552.4,447.0" dur="3.44s" begin="-0.15s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M806.6,562.5 L612.8,562.5" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M806.6,562.5 L612.8,562.5" dur="1.76s" begin="-0.35s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M498.4,447.0 L498.4,511.0" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M498.4,447.0 L498.4,511.0" dur="1.20s" begin="-0.57s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1435.2,244.5 L1463.6,244.5 Q1475.6,244.5 1475.6,232.5 L1475.6,103.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1435.2,244.5 L1463.6,244.5 Q1475.6,244.5 1475.6,232.5 L1475.6,103.0" dur="1.65s" begin="-1.53s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1001.8,676.0 L1001.8,740.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#1a7f37" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1001.8,676.0 L1001.8,740.0" dur="1.20s" begin="-0.11s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1102.2,791.5 L1711.8,791.5 Q1723.8,791.5 1723.8,779.5 L1723.8,63.5 Q1723.8,51.5 1711.8,51.5 L1576.0,51.5" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1102.2,791.5 L1711.8,791.5 Q1723.8,791.5 1723.8,779.5 L1723.8,63.5 Q1723.8,51.5 1711.8,51.5 L1576.0,51.5" dur="13.72s" begin="-8.88s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M901.4,791.5 L668.0,791.5" fill="none" stroke="#cf222e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fail)"/>
+<circle class="packet" r="3.8" fill="#cf222e" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M901.4,791.5 L668.0,791.5" dur="2.12s" begin="-0.76s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M567.6,740.0 L567.6,676.0" fill="none" stroke="#818b98" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-plain)"/>
+<circle class="packet" r="3.8" fill="#818b98" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M567.6,740.0 L567.6,676.0" dur="1.20s" begin="-0.02s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M1001.8,843.0 L1001.8,863.0 Q1001.8,875.0 989.8,875.0 L231.2,875.0 Q219.2,875.0 219.2,863.0 L219.2,843.0" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#1a7f37" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M1001.8,843.0 L1001.8,863.0 Q1001.8,875.0 989.8,875.0 L231.2,875.0 Q219.2,875.0 219.2,863.0 L219.2,843.0" dur="7.70s" begin="-2.29s" repeatCount="indefinite"/></circle>
+<path class="transition" d="M118.8,791.5 L24.0,791.5" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-pass)"/>
+<circle class="packet" r="3.8" fill="#1a7f37" stroke="#ffffff" stroke-width="1.2"><animateMotion path="M118.8,791.5 L24.0,791.5" dur="1.20s" begin="-0.76s" repeatCount="indefinite"/></circle>
+<g class="initial"><circle cx="12.0" cy="51.5" r="7" fill="#1f2328"/></g>
+<g class="state" data-state="analyzing">
+<rect x="118.8" y="0.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(132.8,13.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
+<text x="158.8" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="132.8" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Analyzing</text>
+<text x="132.8" y="71.0" font-size="12" fill="#59636e">The analyst reads</text>
+<text x="132.8" y="88.0" font-size="12" fill="#59636e">the project</text>
+</g>
+<g class="state" data-state="planning">
+<rect x="467.2" y="0.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(481.2,13.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="507.2" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="481.2" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Planning</text>
+<text x="481.2" y="71.0" font-size="12" fill="#59636e">The builder writes it,</text>
+<text x="481.2" y="88.0" font-size="12" fill="#59636e">reviewers check it</text>
+</g>
+<g class="state" data-state="approval">
+<rect x="901.4" y="0.0" width="200.8" height="103.0" rx="12" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3"/>
+<g transform="translate(915.4,13.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="941.4" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
+<text x="915.4" y="53.0" font-size="14" font-weight="700" fill="#1f2328">Plan approval</text>
+<text x="915.4" y="71.0" font-size="12" fill="#59636e">The advisor approves</text>
+<text x="915.4" y="88.0" font-size="12" fill="#59636e">or sends it back</text>
+</g>
+<g class="state" data-state="waits">
+<rect x="1375.2" y="0.0" width="200.8" height="103.0" rx="12" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3"/>
+<g transform="translate(1389.2,13.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g>
+<text x="1415.2" y="26.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">YOU</text>
+<text x="1389.2" y="53.0" font-size="14" font-weight="700" fill="#1f2328">The task waits</text>
+<text x="1389.2" y="71.0" font-size="12" fill="#59636e">For you; it starts again</text>
+<text x="1389.2" y="88.0" font-size="12" fill="#59636e">where it stopped</text>
+</g>
+<g class="initial"><circle cx="27.0" cy="395.5" r="7" fill="#1f2328"/></g>
+<g class="state" data-state="tests">
+<rect x="90.0" y="344.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(104.0,357.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5l-5.2 8.7A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3"/><path d="M7.4 15h9.2"/></g>
+<text x="130.0" y="370.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="104.0" y="397.0" font-size="14" font-weight="700" fill="#1f2328">Writing the tests</text>
+<text x="104.0" y="415.0" font-size="12" fill="#59636e">One for each</text>
+<text x="104.0" y="432.0" font-size="12" fill="#59636e">must-have item</text>
+</g>
+<g class="state" data-state="building">
+<rect x="412.0" y="344.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(426.0,357.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 8l-4 4l4 4"/><path d="M15.5 8l4 4l-4 4"/><path d="M13.5 5.5l-3 13"/></g>
+<text x="452.0" y="370.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="426.0" y="397.0" font-size="14" font-weight="700" fill="#1f2328">Building</text>
+<text x="426.0" y="415.0" font-size="12" fill="#59636e">The builder builds</text>
+<text x="426.0" y="432.0" font-size="12" fill="#59636e">from the best try</text>
+</g>
+<g class="state" data-state="gate">
+<rect x="806.6" y="344.0" width="200.8" height="103.0" rx="12" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(820.6,357.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8h3v12.5h-3z"/><path d="M6.5 10h14v3h-14z"/><path d="M10 10l-2 3M14 10l-2 3M18 10l-2 3"/><path d="M2 20.5h20"/></g>
+<text x="846.6" y="370.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">CHECK</text>
+<text x="820.6" y="397.0" font-size="14" font-weight="700" fill="#1f2328">At the gate</text>
+<text x="820.6" y="415.0" font-size="12" fill="#59636e">The checks run,</text>
+<text x="820.6" y="432.0" font-size="12" fill="#59636e">the gate judges</text>
+</g>
+<g class="state" data-state="ready">
+<rect x="1214.4" y="344.0" width="200.8" height="103.0" rx="12" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(1228.4,357.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="1254.4" y="370.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="1228.4" y="397.0" font-size="14" font-weight="700" fill="#1f2328">A ready change</text>
+<text x="1228.4" y="415.0" font-size="12" fill="#59636e">A pass record;</text>
+<text x="1228.4" y="432.0" font-size="12" fill="#59636e">held for the task</text>
+</g>
+<g class="state" data-state="ticket_waits">
+<rect x="412.0" y="511.0" width="200.8" height="103.0" rx="12" fill="#f3f8ff" stroke="#0969da" stroke-width="1.3"/>
+<g transform="translate(426.0,524.0) scale(0.7500)" fill="none" stroke="#0969da" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/><path d="M5 20.5c0-3.9 3.1-7 7-7s7 3.1 7 7"/></g>
+<text x="452.0" y="537.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0969da">YOU</text>
+<text x="426.0" y="564.0" font-size="14" font-weight="700" fill="#1f2328">The ticket waits</text>
+<text x="426.0" y="582.0" font-size="12" fill="#59636e">Parked, or a question;</text>
+<text x="426.0" y="599.0" font-size="12" fill="#59636e">the next one goes on</text>
+</g>
+<g class="state" data-state="advisor">
+<rect x="806.6" y="511.0" width="200.8" height="103.0" rx="12" fill="#fff5ee" stroke="#bc4c00" stroke-width="1.3"/>
+<g transform="translate(820.6,524.0) scale(0.7500)" fill="none" stroke="#bc4c00" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16v11H10l-4.5 4v-4H4z"/><path d="M8 8.5h8M8 11.5h5"/></g>
+<text x="846.6" y="537.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#bc4c00">ADVISOR</text>
+<text x="820.6" y="564.0" font-size="14" font-weight="700" fill="#1f2328">The advisor decides</text>
+<text x="820.6" y="582.0" font-size="12" fill="#59636e">After a stop: retry,</text>
+<text x="820.6" y="599.0" font-size="12" fill="#59636e">stronger, split, or park</text>
+</g>
+<g class="state" data-state="reviewing">
+<rect x="901.4" y="740.0" width="200.8" height="103.0" rx="12" fill="#fff9e5" stroke="#9a6700" stroke-width="1.3"/>
+<g transform="translate(915.4,753.0) scale(0.7500)" fill="none" stroke="#9a6700" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13z"/><path d="M15.5 15.5l5 5"/></g>
+<text x="941.4" y="766.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#9a6700">CHECK</text>
+<text x="915.4" y="793.0" font-size="14" font-weight="700" fill="#1f2328">Reviewing the task</text>
+<text x="915.4" y="811.0" font-size="12" fill="#59636e">A reviewer reads every</text>
+<text x="915.4" y="828.0" font-size="12" fill="#59636e">ticket's change together</text>
+</g>
+<g class="state" data-state="fixing">
+<rect x="467.2" y="740.0" width="200.8" height="103.0" rx="12" fill="#f9f6ff" stroke="#8250df" stroke-width="1.3"/>
+<g transform="translate(481.2,753.0) scale(0.7500)" fill="none" stroke="#8250df" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19"/><path d="M9 12h7M9 15.5h7M9 19h4"/></g>
+<text x="507.2" y="766.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#8250df">AI</text>
+<text x="481.2" y="793.0" font-size="14" font-weight="700" fill="#1f2328">The fix round</text>
+<text x="481.2" y="811.0" font-size="12" fill="#59636e">Once: the plan gets</text>
+<text x="481.2" y="828.0" font-size="12" fill="#59636e">tickets for the problems</text>
+</g>
+<g class="state" data-state="merging">
+<rect x="118.8" y="740.0" width="200.8" height="103.0" rx="12" fill="#f2fbf4" stroke="#1a7f37" stroke-width="1.3"/>
+<g transform="translate(132.8,753.0) scale(0.7500)" fill="none" stroke="#1a7f37" stroke-width="2.27" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 16a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M18 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z"/><path d="M6 8v8"/><path d="M6 8c0 3 4 4 10 4"/></g>
+<text x="158.8" y="766.0" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#1a7f37">STORE</text>
+<text x="132.8" y="793.0" font-size="14" font-weight="700" fill="#1f2328">Merging</text>
+<text x="132.8" y="811.0" font-size="12" fill="#59636e">In plan order, as auto</text>
+<text x="132.8" y="828.0" font-size="12" fill="#59636e">merge and tiers allow</text>
+</g>
+<g class="final"><circle cx="12.0" cy="791.5" r="11" fill="#ffffff" stroke="#1f2328" stroke-width="2"/><circle cx="12.0" cy="791.5" r="6" fill="#1f2328"/></g>
+<rect x="109.9" y="133.0" width="218.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="219.2" y="146.8" text-anchor="middle" font-size="11" fill="#59636e">unreadable [fewer than 3 reads]</text>
+<rect x="333.6" y="41.5" width="119.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="393.4" y="55.3" text-anchor="middle" font-size="11" fill="#59636e">analysis written</text>
+<rect x="448.4" y="133.0" width="238.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="567.6" y="146.8" text-anchor="middle" font-size="11" fill="#59636e">findings answered [under 4 rounds]</text>
+<rect x="741.4" y="17.5" width="86.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="784.7" y="31.3" text-anchor="middle" font-size="11" fill="#59636e">review done</text>
+<rect x="748.0" y="65.5" width="73.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="784.7" y="79.3" text-anchor="middle" font-size="11" fill="#cf222e">sent back</text>
+<rect x="902.4" y="-42.0" width="238.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1021.6" y="-28.2" text-anchor="middle" font-size="11" fill="#59636e">plan rewritten [after a send-back]</text>
+<rect x="774.4" y="-76.0" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="847.4" y="-62.2" text-anchor="middle" font-size="11" fill="#cf222e">unreadable [3 times]</text>
+<rect x="721.6" y="-110.0" width="251.6" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="847.4" y="-96.2" text-anchor="middle" font-size="11" fill="#59636e">it runs again [skips finished steps]</text>
+<rect x="1116.2" y="41.5" width="245.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1238.7" y="55.3" text-anchor="middle" font-size="11" fill="#59636e">asked you [the advisor is a person]</text>
+<rect x="968.4" y="128.0" width="66.8" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1001.8" y="141.8" text-anchor="middle" font-size="11" fill="#1a7f37">approved</text>
+<rect x="87.7" y="294.0" width="205.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="190.4" y="307.8" text-anchor="middle" font-size="11" fill="#59636e">rejected [fewer than 3 times]</text>
+<rect x="304.8" y="385.5" width="93.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="351.4" y="399.3" text-anchor="middle" font-size="11" fill="#59636e">tests locked</text>
+<rect x="455.9" y="636.0" width="185.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="548.7" y="649.8" text-anchor="middle" font-size="11" fill="#cf222e">stopped [rejected 3 times]</text>
+<rect x="663.1" y="385.5" width="93.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="399.3" text-anchor="middle" font-size="11" fill="#59636e">builder done</text>
+<rect x="649.9" y="302.0" width="119.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="709.7" y="315.8" text-anchor="middle" font-size="11" fill="#cf222e">failed [no stop]</text>
+<rect x="1021.4" y="385.5" width="179.0" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1110.9" y="399.3" text-anchor="middle" font-size="11" fill="#1a7f37">passed [score 70 or more]</text>
+<rect x="927.0" y="469.0" width="113.0" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="983.5" y="482.8" text-anchor="middle" font-size="11" fill="#cf222e">failed [a stop]</text>
+<rect x="636.7" y="469.0" width="146.0" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="482.8" text-anchor="middle" font-size="11" fill="#59636e">retry [tests locked]</text>
+<rect x="626.8" y="552.5" width="165.8" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="709.7" y="566.3" text-anchor="middle" font-size="11" fill="#59636e">park, split, or ask you</text>
+<rect x="293.6" y="469.0" width="198.8" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="393.0" y="482.8" text-anchor="middle" font-size="11" fill="#cf222e">stopped [cost limit reached]</text>
+<rect x="1389.4" y="163.8" width="172.4" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="1475.6" y="177.6" text-anchor="middle" font-size="11" fill="#59636e">tickets done [one waits]</text>
+<rect x="895.8" y="698.0" width="212.0" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="1001.8" y="711.8" text-anchor="middle" font-size="11" fill="#1a7f37">tickets done [every one ready]</text>
+<rect x="1598.0" y="411.5" width="251.6" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="1723.8" y="425.3" text-anchor="middle" font-size="11" fill="#cf222e">still problems [after the fix round]</text>
+<rect x="682.0" y="781.5" width="205.4" height="20" rx="3" fill="#ffffff" stroke="#cf222e" stroke-width="1"/>
+<text x="784.7" y="795.3" text-anchor="middle" font-size="11" fill="#cf222e">problems found [first review]</text>
+<rect x="504.5" y="698.0" width="126.2" height="20" rx="3" fill="#ffffff" stroke="#d1d9e0" stroke-width="1"/>
+<text x="567.6" y="711.8" text-anchor="middle" font-size="11" fill="#59636e">plan locked again</text>
+<rect x="478.1" y="865.0" width="264.8" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="610.5" y="878.8" text-anchor="middle" font-size="11" fill="#1a7f37">passed [and the checkpoint says go on]</text>
+<rect x="38.0" y="781.5" width="66.8" height="20" rx="3" fill="#ffffff" stroke="#1a7f37" stroke-width="1"/>
+<text x="71.4" y="795.3" text-anchor="middle" font-size="11" fill="#1a7f37">reported</text>
+<g class="ticket">
+<circle r="13" fill="#8250df" opacity="0.2"><animate attributeName="fill" values="#8250df;#8250df;#8250df;#1a7f37;#8250df;#8250df;#8250df;#1a7f37;#1a7f37;#1a7f37;#1a7f37" keyTimes="0.0000;0.0770;0.1436;0.2348;0.2791;0.3194;0.3784;0.4582;0.5419;0.5844;0.8520" calcMode="discrete" dur="14.49s" repeatCount="indefinite"/></circle>
+<circle r="6.5" fill="#8250df" stroke="#ffffff" stroke-width="2"><animate attributeName="fill" values="#8250df;#8250df;#8250df;#1a7f37;#8250df;#8250df;#8250df;#1a7f37;#1a7f37;#1a7f37;#1a7f37" keyTimes="0.0000;0.0770;0.1436;0.2348;0.2791;0.3194;0.3784;0.4582;0.5419;0.5844;0.8520" calcMode="discrete" dur="14.49s" repeatCount="indefinite"/></circle>
+<animateMotion path="M19.0,51.5 L118.8,51.5 L319.6,51.5 L467.2,51.5 L668.0,41.5 L901.4,41.5 L1001.8,103.0 L1001.8,173.0 L34.0,395.5 L90.0,395.5 L290.8,395.5 L412.0,395.5 L612.8,395.5 L806.6,395.5 L1007.4,395.5 L1214.4,395.5 L1001.8,676.0 L1001.8,740.0 L1001.8,843.0 L1001.8,875.0 L219.2,875.0 L219.2,843.0 L118.8,791.5 L24.0,791.5" keyPoints="0.0000;0.0000;0.0190;0.0190;0.0573;0.0854;0.0854;0.1256;0.1700;0.1700;0.2009;0.2142;0.2142;0.4410;0.4517;0.4517;0.4899;0.5130;0.5130;0.5513;0.5882;0.5882;0.6265;0.6659;0.6659;0.7599;0.7721;0.7721;0.7917;0.7978;0.9469;0.9530;0.9530;0.9819;1.0000;1.0000;1.0000" keyTimes="0.0000;0.0242;0.0528;0.0770;0.0770;0.1194;0.1436;0.1436;0.2107;0.2348;0.2348;0.2550;0.2791;0.2791;0.2952;0.3194;0.3194;0.3542;0.3784;0.3784;0.4341;0.4582;0.4582;0.5177;0.5419;0.5419;0.5603;0.5844;0.5844;0.5936;0.8186;0.8278;0.8520;0.8520;0.8792;0.9034;1.0000" calcMode="linear" dur="14.49s" repeatCount="indefinite"/>
+</g>
+</svg>

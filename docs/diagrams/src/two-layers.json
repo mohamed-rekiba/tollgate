@@ -1,0 +1,199 @@
+{
+ "type": "scene",
+ "title": "Two layers enforce the rules",
+ "desc": "An isometric scene in two parts with a wall between them. On the left, the AI's session in Claude Code: hooks and permission rules refuse an edit of a locked file, a push, and a merge. In the gap in the wall, pre-commit checks each commit, merge, and push. A commit that passes goes on to the right; a commit that fails comes back refused. On the right, the main branch and the records: a merge into main needs a pass record, and a risky change also needs your approval.",
+ "size": [
+  1120,
+  620
+ ],
+ "origin": [
+  560,
+  360
+ ],
+ "scale": 0.8,
+ "grid": 420,
+ "caption": [
+  "Two layers enforce the rules",
+  "Claude Code hooks, then pre-commit in git"
+ ],
+ "zones": [
+  {
+   "at": [
+    -310,
+    -175,
+    -60,
+    175
+   ],
+   "kind": "ai"
+  },
+  {
+   "at": [
+    60,
+    -175,
+    340,
+    175
+   ],
+   "kind": "server"
+  }
+ ],
+ "packets": true,
+ "lanes": [
+  {
+   "path": [
+    [
+     -160,
+     -34
+    ],
+    [
+     -34,
+     -34
+    ]
+   ],
+   "label": "a commit",
+   "at": 0.62,
+   "kind": "ai"
+  },
+  {
+   "path": [
+    [
+     34,
+     -16
+    ],
+    [
+     214,
+     -16
+    ]
+   ],
+   "label": "passed",
+   "at": 0.55,
+   "tone": "pass"
+  },
+  {
+   "path": [
+    [
+     -34,
+     40
+    ],
+    [
+     -160,
+     40
+    ]
+   ],
+   "label": "refused",
+   "at": 0.3,
+   "tone": "fail"
+  }
+ ],
+ "objects": [
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    -175
+   ],
+   "to": [
+    6,
+    -82
+   ],
+   "means": "a boundary"
+  },
+  {
+   "type": "server",
+   "at": [
+    260,
+    10
+   ],
+   "levels": 3,
+   "size": 80,
+   "means": "a project's main branch"
+  },
+  {
+   "type": "room",
+   "at": [
+    -210,
+    0
+   ],
+   "size": 100,
+   "means": "the AI's copy"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    0,
+    4
+   ],
+   "kind": "check",
+   "icon": "firewall",
+   "means": "pre-commit"
+  },
+  {
+   "type": "wall",
+   "at": [
+    -6,
+    64
+   ],
+   "to": [
+    6,
+    175
+   ],
+   "means": "a boundary"
+  },
+  {
+   "type": "vault",
+   "at": [
+    170,
+    -110
+   ],
+   "means": "the records"
+  }
+ ],
+ "labels": [
+  {
+   "at": [
+    -320,
+    60,
+    140
+   ],
+   "head": "Layer 1: Claude Code",
+   "sub": [
+    "hooks and permission rules",
+    "refuse a locked file,",
+    "a push, a merge"
+   ],
+   "anchor": "middle"
+  },
+  {
+   "at": [
+    250,
+    -150,
+    120
+   ],
+   "head": "Records",
+   "sub": [
+    "pass records",
+    "and approvals"
+   ],
+   "anchor": "start"
+  },
+  {
+   "at": [
+    320,
+    90,
+    -10
+   ],
+   "head": "Main branch",
+   "sub": "a merge needs a pass record",
+   "anchor": "start"
+  },
+  {
+   "head": "Layer 2: pre-commit",
+   "sub": "checks each commit, merge, push",
+   "at": [
+    30,
+    -200,
+    60
+   ],
+   "anchor": "start"
+  }
+ ]
+}

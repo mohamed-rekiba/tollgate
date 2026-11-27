@@ -1,0 +1,588 @@
+{
+ "type": "scene",
+ "title": "How Tollgate works, and where each rule holds",
+ "desc": "An isometric scene. You ask in plain words. The AI reads the project first, and each fact cites the code. It writes a plan of small tickets, and fresh AIs review it; when they find problems, it goes back to the plan. The tests are locked before any code. The AI builds in its own copy, from its best try. The gate has no AI inside and opens at a score of 70%; below 70%, the AI tries again. After 3 tries, the advisor decides: a second AI, or you. A change that passes goes into main, and you merge tiers 3 and 4. After the task, at most 3 lessons become rules, and rules never get looser. Numbers 1 to 7 mark where each rule holds: 1 the analysis, 2 the tests, 3 the build, 4 the gate, 5 the advisor, 6 main, 7 the lessons. Rule 8 holds everywhere: code enforces every rule, in plain words. A dot shows one change travelling: it fails once, then passes.",
+ "size": [
+  1260,
+  720
+ ],
+ "origin": [
+  550,
+  400
+ ],
+ "scale": 0.9,
+ "grid": 520,
+ "caption": [
+  "How Tollgate works",
+  "three loops: check the plan, try until it scores 70%, learn"
+ ],
+ "packets": true,
+ "lanes": [
+  {
+   "path": [
+    [
+     -30,
+     40
+    ],
+    [
+     -110,
+     40
+    ],
+    [
+     -110,
+     170
+    ],
+    [
+     -32,
+     170
+    ]
+   ],
+   "label": "problems found",
+   "tone": "fail",
+   "at": 0.78
+  },
+  {
+   "path": [
+    [
+     110,
+     -220
+    ],
+    [
+     110,
+     -360
+    ],
+    [
+     0,
+     -360
+    ],
+    [
+     0,
+     -274
+    ]
+   ],
+   "label": "below 70%: try again",
+   "at": 0.66,
+   "tone": "fail"
+  },
+  {
+   "path": [
+    [
+     370,
+     -174
+    ],
+    [
+     370,
+     170
+    ],
+    [
+     34,
+     170
+    ]
+   ],
+   "label": "lessons become rules",
+   "at": 0.72,
+   "side": true,
+   "kind": "ai"
+  },
+  {
+   "path": [
+    [
+     205,
+     -205
+    ],
+    [
+     205,
+     -84
+    ]
+   ],
+   "label": "after 3 tries",
+   "side": true,
+   "kind": "advisor"
+  },
+  {
+   "path": [
+    [
+     172,
+     -60
+    ],
+    [
+     100,
+     -60
+    ],
+    [
+     100,
+     -186
+    ],
+    [
+     54,
+     -186
+    ]
+   ],
+   "label": "try again",
+   "at": 0.35,
+   "side": true,
+   "kind": "advisor"
+  },
+  {
+   "path": [
+    [
+     0,
+     128
+    ],
+    [
+     0,
+     64
+    ]
+   ],
+   "kind": "ai"
+  },
+  {
+   "path": [
+    [
+     0,
+     18
+    ],
+    [
+     0,
+     -56
+    ]
+   ],
+   "label": "no problems",
+   "tone": "pass"
+  },
+  {
+   "path": [
+    [
+     0,
+     -124
+    ],
+    [
+     0,
+     -166
+    ]
+   ],
+   "kind": "server"
+  },
+  {
+   "path": [
+    [
+     54,
+     -220
+    ],
+    [
+     323,
+     -220
+    ]
+   ],
+   "kind": "check"
+  },
+  {
+   "path": [
+    [
+     0,
+     388
+    ],
+    [
+     0,
+     324
+    ]
+   ],
+   "kind": "you"
+  },
+  {
+   "path": [
+    [
+     0,
+     278
+    ],
+    [
+     0,
+     214
+    ]
+   ],
+   "kind": "ai"
+  }
+ ],
+ "objects": [
+  {
+   "type": "server",
+   "at": [
+    370,
+    -220
+   ],
+   "means": "a project's main branch"
+  },
+  {
+   "type": "room",
+   "at": [
+    0,
+    -220
+   ],
+   "size": 104,
+   "means": "the AI's copy"
+  },
+  {
+   "type": "gate",
+   "at": [
+    190,
+    -282
+   ],
+   "arm_to": -160,
+   "axis": "y",
+   "means": "the gate"
+  },
+  {
+   "type": "vault",
+   "at": [
+    0,
+    -90
+   ],
+   "means": "the records"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    205,
+    -60
+   ],
+   "kind": "advisor",
+   "icon": "advisor",
+   "means": "the advisor"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    0,
+    40
+   ],
+   "kind": "check",
+   "icon": "check",
+   "means": "the plan review"
+  },
+  {
+   "type": "board",
+   "at": [
+    470,
+    40
+   ],
+   "means": "the lessons"
+  },
+  {
+   "type": "papers",
+   "at": [
+    0,
+    170
+   ],
+   "means": "the plan"
+  },
+  {
+   "type": "laptop",
+   "at": [
+    0,
+    430
+   ],
+   "means": "you"
+  },
+  {
+   "type": "pedestal",
+   "at": [
+    0,
+    300
+   ],
+   "kind": "ai",
+   "icon": "search",
+   "means": "the analysis"
+  }
+ ],
+ "labels": [
+  {
+   "head": "You ask",
+   "sub": "in plain words",
+   "pin": [
+    10,
+    440,
+    16
+   ],
+   "drop": 70,
+   "kind": "you"
+  },
+  {
+   "n": 1,
+   "head": "The analysis",
+   "sub": "the code, with proof",
+   "pin": [
+    0,
+    300,
+    22
+   ],
+   "kind": "ai",
+   "drop": 62
+  },
+  {
+   "head": "The plan",
+   "sub": "small tickets",
+   "at": [
+    -150,
+    190,
+    20
+   ],
+   "anchor": "end",
+   "pin": [
+    8,
+    162,
+    18
+   ],
+   "kind": "ai"
+  },
+  {
+   "head": "Review",
+   "sub": "fresh AIs check the plan",
+   "pin": [
+    0,
+    40,
+    22
+   ],
+   "kind": "check",
+   "drop": 72
+  },
+  {
+   "n": 2,
+   "head": "The tests",
+   "sub": "locked before any code",
+   "at": [
+    -90,
+    -125,
+    24
+   ],
+   "anchor": "end",
+   "pin": [
+    0,
+    -90,
+    60
+   ],
+   "kind": "server"
+  },
+  {
+   "n": 3,
+   "head": "The AI builds",
+   "sub": "in its own copy, from its best try",
+   "at": [
+    0,
+    -300,
+    165
+   ],
+   "pin": [
+    0,
+    -220,
+    70
+   ],
+   "kind": "ai"
+  },
+  {
+   "n": 4,
+   "head": "The gate",
+   "sub": "no AI inside. Opens at 70%",
+   "at": [
+    250,
+    -330,
+    40
+   ],
+   "anchor": "start",
+   "pin": [
+    190,
+    -282,
+    78
+   ],
+   "kind": "check"
+  },
+  {
+   "n": 5,
+   "head": "The advisor",
+   "sub": "a second AI, or you",
+   "pin": [
+    205,
+    -60,
+    22
+   ],
+   "drop": 62,
+   "kind": "advisor"
+  },
+  {
+   "n": 6,
+   "head": "Main branch",
+   "sub": "you merge tiers 3 and 4",
+   "at": [
+    520.0,
+    -170.0,
+    0
+   ],
+   "anchor": "start",
+   "pin": [
+    370,
+    -220,
+    80
+   ],
+   "kind": "you",
+   "route": "level"
+  },
+  {
+   "n": 7,
+   "head": "Lessons",
+   "sub": "at most 3. Rules never get looser.",
+   "at": [
+    575,
+    40,
+    70
+   ],
+   "anchor": "start",
+   "pin": [
+    470,
+    40,
+    62
+   ],
+   "kind": "ai"
+  }
+ ],
+ "ticket": {
+  "legs": [
+   {
+    "path": [
+     [
+      0,
+      388
+     ],
+     [
+      0,
+      324
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      278
+     ],
+     [
+      0,
+      214
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      128
+     ],
+     [
+      0,
+      64
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      0,
+      18
+     ],
+     [
+      0,
+      -56
+     ]
+    ],
+    "tone": "pass"
+   },
+   {
+    "path": [
+     [
+      0,
+      -124
+     ],
+     [
+      0,
+      -166
+     ]
+    ]
+   },
+   {
+    "path": [
+     [
+      54,
+      -220
+     ],
+     [
+      110,
+      -220
+     ]
+    ],
+    "wait": 0.9
+   },
+   {
+    "path": [
+     [
+      110,
+      -220
+     ],
+     [
+      110,
+      -360
+     ],
+     [
+      0,
+      -360
+     ],
+     [
+      0,
+      -274
+     ]
+    ],
+    "tone": "fail",
+    "wait": 0.5
+   },
+   {
+    "path": [
+     [
+      0,
+      -274
+     ],
+     [
+      0,
+      -220
+     ],
+     [
+      54,
+      -220
+     ],
+     [
+      110,
+      -220
+     ]
+    ],
+    "wait": 0.9
+   },
+   {
+    "path": [
+     [
+      110,
+      -220
+     ],
+     [
+      323,
+      -220
+     ]
+    ],
+    "tone": "pass",
+    "wait": 0.6
+   }
+  ],
+  "lift": 8
+ },
+ "note": {
+  "n": 8,
+  "head": "Always",
+  "line": "code enforces every rule, in plain words",
+  "kind": "neutral"
+ }
+}

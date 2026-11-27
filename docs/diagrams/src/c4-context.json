@@ -1,0 +1,23 @@
+{
+ "type": "c4",
+ "level": "context",
+ "title": "Tollgate",
+ "desc": "You type a task in your Claude Code session. Tollgate, on your machine, runs each step of it: in session mode your session runs each role, and in background mode Tollgate starts each role on its own. Every role works with the model. You push main to GitHub, and Tollgate checks each push before it goes.",
+ "packets": true,
+ "names": {"server": "Your machine"},
+ "elements": [
+  {"id": "you", "type": "person", "name": "You", "description": "An engineer who lets an AI write most of each change", "col": 0, "row": 0},
+  {"id": "session", "type": "system", "external": true, "name": "Your Claude Code session", "description": "Runs Tollgate's skills, and the roles in session mode", "col": 1, "row": 0},
+  {"id": "model", "type": "system", "external": true, "name": "The model", "description": "The AI that every role runs on", "col": 2, "row": 0},
+  {"id": "github", "type": "system", "external": true, "name": "GitHub", "description": "Holds your project's main branch", "col": 0, "row": 1},
+  {"id": "tollgate", "type": "system", "name": "Tollgate", "description": "Merges a change only when tests locked before the build pass", "col": 1, "row": 1}
+ ],
+ "relations": [
+  {"from": "you", "to": "session", "label": "Types a task", "tech": "/tollgate:task"},
+  {"from": "session", "to": "model", "label": "Sends each prompt", "tech": "HTTPS"},
+  {"from": "session", "to": "tollgate", "label": "Runs each step it names", "tech": "session mode"},
+  {"from": "tollgate", "to": "model", "label": "Starts each role on its own", "tech": "background mode", "route": "hv"},
+  {"from": "tollgate", "to": "github", "label": "Checks each push", "tech": "pre-commit"},
+  {"from": "you", "to": "github", "label": "Pushes main", "tech": "git"}
+ ]
+}
