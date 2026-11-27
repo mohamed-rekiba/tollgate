@@ -1,0 +1,61 @@
+{
+  "setup": [],
+  "checks": {
+    "tests": {
+      "hook": "check-tests",
+      "report": "report.xml",
+      "minutes": 15
+    },
+    "style": {
+      "hook": "check-style"
+    },
+    "writing": {
+      "run": "uv run --no-project python setup/check_writing.py"
+    }
+  },
+  "harness": [
+    "tests/helpers.py",
+    "tests/fakes.py",
+    "tests/fake_role.py",
+    "checks/check_writing.py",
+    "checks/**",
+    ".pre-commit-config.yaml",
+    ".tollgate/checks/check_writing.py",
+    ".tollgate/checks/**"
+  ],
+  "tiers": {
+    "3": [
+      "driver/**",
+      "roles/**",
+      "lenses/**"
+    ],
+    "4": [
+      "gate/**",
+      "setup/**",
+      "skills/init/**",
+      "hooks/**"
+    ]
+  },
+  "require_plan": false,
+  "auto_merge": false,
+  "container_image": "tollgate-builder:ci",
+  "ai": {
+    "advisor": [
+      "claude -p"
+    ]
+  },
+  "stop": {
+    "attempts": 3,
+    "attempt_minutes": 30,
+    "ticket_usd": 5.0,
+    "task_usd": 60.0
+  },
+  "isolation": "container",
+  "base": {
+    "checks_run": "uv run --no-project --with-requirements requirements-dev.txt ruff check .",
+    "parallel_tests": "uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto tests",
+    "bad_setting_stops": "f=$(mktemp) && echo '{\"isolation\":\"bogus\"}' > \"$f\" && python3 -m gate.settings \"$f\" 2>&1 >/dev/null | grep -q \"isolation must be\"",
+    "env_up_down": "python3 setup/base_env.py",
+    "one_log_line": "python3 setup/base_log_line.py"
+  }
+}

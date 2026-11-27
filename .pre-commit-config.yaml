@@ -1,0 +1,36 @@
+# Tollgate: /tollgate:init writes the hook tollgate and keeps every other line.
+# The other hooks are the project's own. The settings name the ones the gate runs.
+default_install_hook_types: [pre-commit, commit-msg, pre-merge-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+- repo: local
+  hooks:
+  - id: tollgate
+    name: "Tollgate: the checks of each git step"
+    entry: "uv run --no-project python setup/tollgate_checks.py"
+    language: system
+    stages: ["pre-commit", "commit-msg", "pre-merge-commit", "pre-push"]
+    files: "(^|/)(COMMIT_EDITMSG|MERGE_MSG|SQUASH_MSG|TAG_EDITMSG)$"
+    pass_filenames: true
+    always_run: true
+  - id: check-tests
+    name: "check: tests"
+    entry: "sh -c"
+    language: system
+    args: ["uv run --no-project --with-requirements requirements-dev.txt pytest -q -p no:cacheprovider -n auto --junitxml=report.xml tests"]
+    stages: ["pre-push"]
+    pass_filenames: false
+    always_run: true
+  - id: check-style
+    name: "check: style"
+    entry: "sh -c"
+    language: system
+    args: ["uv run --no-project --with-requirements requirements-dev.txt ruff check ."]
+    stages: ["pre-push"]
+    pass_filenames: false
+    always_run: true
+  - id: ruff
+    name: "ruff"
+    entry: "ruff check --force-exclude"
+    language: system
+    types: ["python"]
