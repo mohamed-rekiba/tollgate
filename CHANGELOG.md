@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/tollgate-ai/tollgate/compare/v0.13.0...v0.13.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **driver:** replay the plan's writing in session mode so review stops at four rounds ([#164](https://github.com/tollgate-ai/tollgate/issues/164)) ([d3d815e](https://github.com/tollgate-ai/tollgate/commit/d3d815e28aad48dd9118e494c68484e02880fe52))
+
 ## [0.13.0](https://github.com/tollgate-ai/tollgate/compare/v0.12.1...v0.13.0) (2026-11-27)
 
 
