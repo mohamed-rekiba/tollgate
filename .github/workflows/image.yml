@@ -1,0 +1,48 @@
+# Runs tests/proof_container.py on the default container image, with the docker
+# arguments Tollgate uses for a role. It fails, not skips, when the image cannot run.
+name: image
+
+on:
+  pull_request:
+    paths:
+      - gate/settings.py
+      - driver/roles.py
+      - hooks/guard.py
+      - tests/proof_container.py
+      - requirements-dev.txt
+      - .github/workflows/image.yml
+  push:
+    branches: [main]
+    paths:
+      - gate/settings.py
+      - driver/roles.py
+      - tests/proof_container.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install pre-commit
+        # The gate runs each check of a project with pre-commit, on this machine.
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: Pull the default image
+        run: |
+          image=$(python3 -c 'from gate.settings import DEFAULT_IMAGE; print(DEFAULT_IMAGE)')
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          docker pull "$image"
+          docker image inspect "$image" --format 'entrypoint={{json .Config.Entrypoint}} user={{.Config.User}}'
+      - name: Run the container proof
+        env:
+          TOLLGATE_TEST_IMAGE_REQUIRED: "1"
+        run: TOLLGATE_TEST_IMAGE="$IMAGE" python -m unittest tests.proof_container -v

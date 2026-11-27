@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: A security hole
+    url: https://github.com/tollgate-ai/tollgate/security/advisories/new
+    about: Report it privately, never in a public issue. SECURITY.md says what counts.
