@@ -24,10 +24,13 @@ the best try so far.
 
 A run replays the step it stopped in, and each event of that part was logged by
 the run before, which went at least as far. So when a run pauses, it notes the
-key of the role it paused at in run/replay. The next run's logs write nothing
+key of the role it paused at in run/replay. The next run's logs hold each event
 until the run reaches that role again: once it gets that role's answer, or
 pauses at any role with no saved answer, it writes each event, whatever the
-event holds. A task that ends without a pause clears the note.
+event holds. A held event is written then, or when its log closes, unless the
+log file already has it, so a run that never reaches that role, because the path
+changed, still logs what is new, such as a question to a person. A task that
+ends without a pause clears the note.
 """
 
 import hashlib
