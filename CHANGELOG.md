@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.13.0](https://github.com/tollgate-ai/tollgate/compare/v0.12.1...v0.13.0) (2026-11-27)
+
+
+### Features
+
+* **diagram:** draw diagrams as SVG, in light and dark ([f7c68e1](https://github.com/tollgate-ai/tollgate/commit/f7c68e1bb2652840c5918e2242319d1527f8d669))
+* **driver:** analyze, plan, and build each ticket until it passes ([9f5c0ae](https://github.com/tollgate-ai/tollgate/commit/9f5c0ae6070b9948aa43b5042b1ea572c945c751))
+* **gate:** the gate, the store, and the formats it reads ([8766328](https://github.com/tollgate-ai/tollgate/commit/8766328d81d694a19c845205f4e861695b0053cf))
+* **hooks:** the guard and the policy of each role ([8901f93](https://github.com/tollgate-ai/tollgate/commit/8901f93bca19580be4980c0b2c257ca9e73ccdc2))
+* **roles:** the roles, their prompts, and the review lenses ([fb9a103](https://github.com/tollgate-ai/tollgate/commit/fb9a103419ff963ffb99aaa38dc770c78dbd0b83))
+* **setup:** set up a project, and run the checks of each git step ([6c1bee0](https://github.com/tollgate-ai/tollgate/commit/6c1bee0b31003e0876cbc9ba8fb4c64b31b0edc4))
+* **skills:** the commands you type in Claude Code ([1251c88](https://github.com/tollgate-ai/tollgate/commit/1251c88449dc324c88176146cee06a37fe082b28))
+
 ## [0.12.1](https://github.com/tollgate-ai/tollgate/compare/v0.12.0...v0.12.1) (2026-11-27)
 
 
