@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.1](https://github.com/tollgate-ai/tollgate/compare/v0.12.0...v0.12.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **checks:** skip the Go "too many errors" line in a seam error ([6ea196e](https://github.com/tollgate-ai/tollgate/commit/6ea196e60afba661e483c2e03ffa50221d530379))
+* **checks:** skip the golangci-lint package header in a seam error ([3abb338](https://github.com/tollgate-ai/tollgate/commit/3abb3389b537acd9241da653b4c7636463c2b61e))
+* **driver:** let a locked test name a seam that is not built yet ([9239806](https://github.com/tollgate-ai/tollgate/commit/9239806205271caea9d0c50f916279eb09bc80ac))
+* **freeze:** lock Go tests whose package needs a seam to compile ([4b8faff](https://github.com/tollgate-ai/tollgate/commit/4b8fafff944c298722c35108163e9cbe0c236ec4))
+* **freeze:** read a Go build failure from the output line too ([8525c13](https://github.com/tollgate-ai/tollgate/commit/8525c13ffa20e9c4c07a0a99bfea7af58bf57237))
+
 ## [0.12.0](https://github.com/tollgate-ai/tollgate/compare/v0.11.2...v0.12.0) (2026-11-26)
 
 
