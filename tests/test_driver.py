@@ -43,6 +43,32 @@ class LogTest(unittest.TestCase):
                 other.wait()
                 other.stdout.close()
 
+    def test_a_held_event_is_written_once_unless_the_file_has_it(self):
+        # A replay holds its events. Those an earlier run logged are not written again;
+        # the rest are written when the hold ends or the log closes, in order.
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "x.jsonl")
+            with Log(path) as log:
+                log.add("a")
+                log.add("b", n=1)
+            quiet = [True]
+            with Log(path) as log:
+                log.hold_while(lambda: quiet[0])
+                log.add("a")
+                log.add("b", n=1)
+                log.add("b", n=1)
+                log.add("c")
+                self.assertEqual([e["event"] for e in read(path)], ["a", "b"])
+                quiet[0] = False
+                log.add("d")
+            with Log(path) as log:
+                log.hold_while(lambda: True)
+                log.add("d")
+                log.add("e")
+            events = [(e["event"], e.get("n")) for e in read(path)]
+        self.assertEqual(events, [("a", None), ("b", 1), ("b", 1), ("c", None), ("d", None),
+                                  ("e", None)])
+
     def test_a_torn_last_line_is_dropped(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "x.jsonl")

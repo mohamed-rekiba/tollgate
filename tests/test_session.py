@@ -578,6 +578,41 @@ class StepTest(Case):
         self.assertEqual(events.count("plan_reviewed"), 3)
         self.assertIn("plan_locked", events)
 
+    def test_a_question_asked_while_a_stale_replay_holds_the_log_is_still_logged(self):
+        # A run that paused at a role leaves its key in the replay note. If the next run
+        # never reaches that role, for example after an update of Tollgate changed the
+        # path, and stops at a question to a person, the question must still be logged:
+        # the run after it reads the answer from the log, and must not ask again.
+        s, store = self.task_sample()
+        code, out = self.next(s, store)
+        for _ in range(20):
+            self.assertEqual(code, 0, out)
+            if "# Lens: readiness" in out.get("prompt", ""):
+                break
+            code, out = self.answer(s, store, out, fake_answer(out))
+        else:
+            self.fail(f"the plan review did not reach the readiness lens: {out}")
+        session.save_answer(str(s.project), session.read_step(str(s.project)),
+                            fake_answer(out))
+        session.replay_path(str(s.project)).write_text("a step no run reaches\n")
+        asked = []
+
+        def decide(question):
+            asked.append(question["n"])
+            return "approve"
+        code, out = self.next(s, store)
+        self.assertIn("question", out, out)
+        asked.append(out["question"]["n"])
+        store.answer(out["question"]["n"], "tollgate decide approve")
+        out = self.run_task(s, store, decide=decide)
+        self.assertTrue(out.get("done"), out)
+        events = s.log("task-demo")
+        self.assertEqual(len(asked), 1, "the plan question was asked again")
+        waiting = [e for e in events if e["event"] == "waiting_for_advisor"]
+        self.assertEqual([e["options"] for e in waiting].count(["approve", "send_back"]), 1)
+        self.assertEqual(len({e["question"] for e in waiting}), len(waiting))
+        self.assertEqual([e["event"] for e in events].count("plan_reviewed"), 3)
+
     def test_tests_the_freeze_refused_are_reviewed_again_once_rewritten(self):
         s, store = self.task_sample()
         reviewed = []
