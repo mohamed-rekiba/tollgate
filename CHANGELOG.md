@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/tollgate-ai/tollgate/compare/v0.12.1...v0.13.0) (2026-11-27)
+
+
+### Features
+
+* **setup:** add the base env check for the roadmap ([1f81251](https://github.com/tollgate-ai/tollgate/commit/1f812510feb753a8ac0fd86ac11d590519ac07ef))
+
+
+### Bug Fixes
+
+* **driver:** send a locked test that blocks the build back for one replacement lock ([87d8f4a](https://github.com/tollgate-ai/tollgate/commit/87d8f4a0d33508dbdeded542042321909cd4eabf))
+
 ## [0.12.1](https://github.com/tollgate-ai/tollgate/compare/v0.12.0...v0.12.1) (2026-11-27)
 
 
