@@ -276,6 +276,17 @@ class Task:
                 self.write_plan(problems)
         return open_findings or [{"level": "major", "text": f"{MAX_ROUNDS} rounds with findings"}]
 
+    @staticmethod
+    def sent_back_hint(events: list) -> str | None:
+        """The hint of a plan sent back after its last review, or None."""
+        last = None
+        for e in events:
+            if e["event"] == "plan_sent_back":
+                last = e.get("hint", "")
+            elif e["event"] == "plan_review_done":
+                last = None
+        return last
+
     def approve(self, open_findings: list) -> dict:
         plan = self.read_copy(pl.plan_path(self.id))
         assumptions = pl.parse(plan).assumptions
@@ -567,6 +578,13 @@ class Task:
                                     self.base)
                                 self.analyze()
                             self.write_plan()
+                        open_findings = self.review_plan()
+                        self.log.add("plan_review_done", open=open_findings)
+                    elif self.sent_back_hint(events) is not None:
+                        # A plan sent back after its last review is written again with
+                        # the hint and reviewed, before anyone decides on it. A session
+                        # run that paused in the builder or a reviewer starts here again.
+                        self.write_plan(hint=self.sent_back_hint(events))
                         open_findings = self.review_plan()
                         self.log.add("plan_review_done", open=open_findings)
                     else:
