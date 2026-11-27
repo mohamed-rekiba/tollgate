@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.2](https://github.com/tollgate-ai/tollgate/compare/v0.13.1...v0.13.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **session:** keep the events a replay holds when it never reaches its step ([#166](https://github.com/tollgate-ai/tollgate/issues/166)) ([0683ffe](https://github.com/tollgate-ai/tollgate/commit/0683ffef85c1abb522e7c1022e62fedf5bced6b4))
+* **task:** write and review a plan sent back before a new decision ([#168](https://github.com/tollgate-ai/tollgate/issues/168)) ([537390e](https://github.com/tollgate-ai/tollgate/commit/537390ea420264bfb4c7b142a8239690cb419859))
+
 ## [0.13.1](https://github.com/tollgate-ai/tollgate/compare/v0.13.0...v0.13.1) (2026-11-27)
 
 
