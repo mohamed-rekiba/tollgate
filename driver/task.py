@@ -554,10 +554,14 @@ class Task:
                 if "plan_locked" not in kinds:
                     if "plan_review_done" not in kinds:
                         # A plan the driver sent back is written again: the last of
-                        # plan_written and plan_invalid tells which came last.
+                        # plan_written and plan_invalid tells which came last. Session
+                        # mode always replays the writing too: its saved answers put back
+                        # the plan that each saved review read, so the review's rounds
+                        # count up to MAX_ROUNDS. Without it each run would start the
+                        # review at round 1 with the newest plan, and never reach the cap.
                         writes = [e["event"] for e in events
                                   if e["event"] in ("plan_written", "plan_invalid")]
-                        if not writes or writes[-1] == "plan_invalid":
+                        if not writes or writes[-1] == "plan_invalid" or in_session:
                             if "analysis_written" not in kinds:
                                 git(self.copy, "checkout", "-q", "-B", f"tg-plan/{self.id}",
                                     self.base)

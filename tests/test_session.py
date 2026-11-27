@@ -456,6 +456,20 @@ class StepTest(Case):
             self.assertEqual(len(lines), len(set(lines)), name)
 
 
+    def test_plan_review_stops_after_four_rounds_when_each_fix_changes_the_plan(self):
+        # Each answer to a finding changes the plan, so each round's reviewers get new
+        # inputs. A replay must put back the plan each saved answer started from, so the
+        # rounds count up to the cap and the open findings go to the plan decision.
+        s, store = self.task_sample()
+        out = self.run_task(s, store, "pass2 planfind=99 revise=1", rounds=80)
+        self.assertTrue(out.get("done"), out)
+        events = s.log("task-demo")
+        reviewed = [e["round"] for e in events if e["event"] == "plan_reviewed"]
+        self.assertEqual(reviewed, [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4])
+        done = [e for e in events if e["event"] == "plan_review_done"]
+        self.assertEqual(len(done), 1)
+        self.assertIn("4 rounds with findings", json.dumps(done[0]["open"]))
+
     def test_a_plan_sent_back_by_the_driver_is_replayed_to_its_new_version(self):
         # The driver sends the first plan back, with no README. The next run must replay
         # the new plan's answer and log it, not take the plan as written already.
