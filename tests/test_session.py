@@ -613,6 +613,39 @@ class StepTest(Case):
         self.assertEqual(len({e["question"] for e in waiting}), len(waiting))
         self.assertEqual([e["event"] for e in events].count("plan_reviewed"), 3)
 
+    def test_a_plan_a_person_sends_back_is_written_again_and_reviewed_before_a_new_decision(self):
+        # The person sends the plan back with a hint. The run pauses at the builder, so
+        # the next run starts again from the log: it must write the plan with the hint
+        # and review it, not ask for a decision on a plan that nobody reviewed.
+        s, store = self.task_sample()
+        hints, asked = [], []
+        code, out = self.next(s, store)
+        for _ in range(150):
+            self.assertEqual(code, 0, out)
+            if "question" in out:
+                q = out["question"]
+                asked.append(q["n"])
+                if "send_back" in q["options"] and len(asked) == 1:
+                    store.answer(q["n"], "tollgate decide send_back make it shorter")
+                else:
+                    pick = "approve" if "approve" in q["options"] else "continue"
+                    store.answer(q["n"], f"tollgate decide {pick}")
+                code, out = self.next(s, store)
+                continue
+            if out.get("done") or "parked" in out:
+                break
+            if out["agent"] == "tollgate:builder" and "make it shorter" in out["prompt"]:
+                hints.append(out["key"])
+            code, out = self.answer(s, store, out, fake_answer(out))
+        self.assertTrue(out.get("done"), out)
+        self.assertEqual(len(hints), 1, "the builder got the hint once")
+        events = [e["event"] for e in s.log("task-demo")]
+        self.assertEqual(events.count("plan_reviewed"), 6)
+        self.assertEqual(events.count("plan_review_done"), 2)
+        sent = events.index("plan_sent_back")
+        self.assertLess(sent, len(events) - events[::-1].index("plan_reviewed"))
+        self.assertEqual(len(asked), 3)  # the plan twice, then the task checkpoint
+
     def test_tests_the_freeze_refused_are_reviewed_again_once_rewritten(self):
         s, store = self.task_sample()
         reviewed = []
