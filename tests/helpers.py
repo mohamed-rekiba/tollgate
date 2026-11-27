@@ -1,0 +1,133 @@
+"""Shared helpers for tests: throwaway git repositories and sample files."""
+
+import contextlib
+import json
+import signal
+import subprocess
+import tempfile
+from pathlib import Path
+
+TICKET = """---
+id: T-1
+plan: retries
+seams: POST /deliver
+tests: tests/test_t1.py
+---
+## Current behavior
+A failed delivery is dropped.
+
+## Desired behavior
+A failed delivery is tried again.
+
+## Checklist
+- [C1, must, happy] A delivery that fails twice and then succeeds is marked delivered.
+- [C2, must, keeps behavior, regression] A delivery that succeeds at once is sent one time.
+- [C3, error] A delivery that fails 5 times is marked failed.
+
+## Not covered
+- edge: a delivery has no input of its own.
+- boundary: the only limit, 5 tries, is in C3.
+- integration: the change stays in one module.
+- e2e: there is no screen.
+- security: the change reads nothing from a user.
+- performance: no time limit is asked for.
+- concurrency: one delivery runs at a time.
+
+## Out of scope
+A screen to retry by hand.
+"""
+
+JUNIT = """<?xml version="1.0"?>
+<testsuites><testsuite name="s">
+{cases}
+</testsuite></testsuites>
+"""
+
+
+@contextlib.contextmanager
+def within(seconds: int):
+    """Fail the test if the block runs longer than `seconds`. Needs SIGALRM."""
+    def stop(*_):
+        raise TimeoutError(f"took longer than {seconds} s")
+    old = signal.signal(signal.SIGALRM, stop)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+
+
+def junit(cases: dict) -> str:
+    """cases maps 'classname::name' to passed, failed, or skipped."""
+    out = []
+    for test_id, status in cases.items():
+        cls, name = test_id.split("::")
+        inner = {"failed": "<failure/>", "skipped": "<skipped/>"}.get(status, "")
+        out.append(f'<testcase classname="{cls}" name="{name}">{inner}</testcase>')
+    return JUNIT.format(cases="\n".join(out))
+
+
+def sh(cwd, *args):
+    return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True).stdout
+
+
+class Repo:
+    """A git repository in a temporary folder."""
+
+    def __init__(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp.name)
+        sh(self.path, "git", "init", "-q", "-b", "main")
+        sh(self.path, "git", "config", "user.email", "t@example.com")
+        sh(self.path, "git", "config", "user.name", "Test")
+        sh(self.path, "git", "config", "tag.gpgsign", "false")
+        sh(self.path, "git", "config", "commit.gpgsign", "false")
+
+    def write(self, path, text):
+        target = self.path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+
+    def commit(self, message="change") -> str:
+        sh(self.path, "git", "add", "-A")
+        sh(self.path, "git", "commit", "-q", "--allow-empty", "-m", message)
+        return sh(self.path, "git", "rev-parse", "HEAD").strip()
+
+    def tag(self, name, message, commit="HEAD"):
+        sh(self.path, "git", "tag", "-a", name, "-m", message, commit)
+
+    def git(self, *args):
+        return sh(self.path, "git", *args)
+
+    def close(self):
+        self._tmp.cleanup()
+
+
+def hook_checks(checks: dict) -> tuple:
+    """(checks, config): the checks with each command under "run", other than the writing
+    check's, moved into a local hook of a pre-commit config, as init moves it."""
+    from setup import precommit
+    moved, hooks = precommit.migrate_checks(checks)
+    lines = ["repos:", "- repo: local", "  hooks:"]
+    for hook in hooks:
+        lines += precommit.hook_lines(hook)
+    return moved, "\n".join(lines) + "\n"
+
+
+def write_checks(root, settings: dict) -> dict:
+    """Write the settings and the pre-commit config that holds their commands. Return the
+    settings as written."""
+    checks, config = hook_checks(settings.get("checks", {}))
+    settings = {**settings, "checks": checks}
+    Path(root, ".tollgate").mkdir(parents=True, exist_ok=True)
+    Path(root, ".tollgate/settings.json").write_text(json.dumps(settings))
+    Path(root, ".pre-commit-config.yaml").write_text(config)
+    return settings
+
+
+def settings_text(**extra) -> str:
+    base = {"checks": {"tests": {"hook": "check-tests", "report": "report.xml"}},
+            "require_plan": False}
+    base.update(extra)
+    return json.dumps(base)
