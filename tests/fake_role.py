@@ -27,7 +27,8 @@ writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=
 decision=<d>, checkpoint=<continue or stop>.
 Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file),
 drop_questions=1 (the plan leaves out the open questions of a brief), bad_answer=1 (the
-answer to a plan finding revises the plan with an assumption of two sentences), bad_plan=1 (every
+answer to a plan finding revises the plan with an assumption of two sentences), revise=1 (each
+answer to plan findings adds a line to the plan's Design), bad_plan=1 (every
 plan has such an assumption), bad_ticket=1 (the first plan has a ticket with no Checklist).
 Brainstorm options: questions=<n> or always (the builder asks n questions, then states the
 idea; always asks one past the cap), idea_to=<path> (the builder adds each idea input to
@@ -413,6 +414,12 @@ def main() -> int:
         answer({"plan": f".tollgate/plans/{task}.md", "tickets": [f"{task}-1", f"{task}-2"]},
                cost)
     elif first == "# Role: builder" and data.get("mode") == "answer":
+        if opts.get("revise"):
+            # Each answer changes the plan, as a real fix does, so the next round's
+            # reviewers get new inputs.
+            for plan_file in Path(".tollgate/plans").glob("*.md"):
+                text = plan_file.read_text()
+                plan_file.write_text(text.replace("## Design\n", "## Design\nRevised once more.\n", 1))
         if opts.get("bad_answer"):
             # The revised plan breaks a rule: an assumption of two sentences.
             for plan_file in Path(".tollgate/plans").glob("*.md"):
@@ -490,7 +497,11 @@ def main() -> int:
         if opts.get("plan_review_to"):
             with open(opts["plan_review_to"], "a") as f:
                 f.write(json.dumps({"lens": lens, "inputs": data}) + "\n")
-        answer({"verdict": "pass", "findings": [{"level": "major", "text": "drop T-2?"}]
+        text = "drop T-2?"
+        if opts.get("revise"):
+            # A real finding is about the plan it read, so it differs in each round.
+            text += f" (revision {data.get('plan', '').count('Revised once more.')})"
+        answer({"verdict": "pass", "findings": [{"level": "major", "text": text}]
                 if found else [], "items": []}, cost)
     elif first == "# Role: reviewer" and any(f"# Lens: {k}\n" in prompt for k in
                                              ("need", "user", "risk", "shape")):
