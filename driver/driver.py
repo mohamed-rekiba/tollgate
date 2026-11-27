@@ -31,6 +31,7 @@ import argparse
 import fcntl
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -50,6 +51,12 @@ from gate.tickets import item_of_test
 
 MAX_REJECTIONS = 2
 MAX_AI_DECISIONS = 2
+MAX_RELOCKS = 1          # the store allows one replacement lock
+REPLACEMENT = ("The tests are already locked, and this is the one replacement lock. A check "
+               "fails on a locked test, or the builder says a locked test is wrong; the "
+               "rejected findings say which. Fix the test so that it fails or passes for the "
+               "right reason.")
+FILE_LINE = re.compile(r"(?:^|[\s(\"'])([\w./-]+\.\w+):\d+")
 BASE = "main"
 
 
@@ -348,6 +355,11 @@ class Driver:
         rejected = st_.rejected
         if st_.rejections > MAX_REJECTIONS:
             raise Stop(f"the tests were rejected {st_.rejections} times")
+        if st_.relock_from and not st_.rejections and not st_.tests_done:
+            # The replacement builds on the old lock, with none of the builder's code, so
+            # its new tests still fail before the build, as the store requires.
+            git(self.copy, "checkout", "-q", "-B", self.branch, st_.relock_from)
+            git(self.copy, "clean", "-q", "-fd")
         while not st_.tests_done:
             # The round tells two rounds apart, in the log and in session mode's saved answers.
             n = st_.rejections + 1
@@ -355,6 +367,8 @@ class Driver:
                       "rejected": rejected, "round": n}
             if st_.hint:
                 inputs["hint"] = st_.hint
+            if st_.relock_from:
+                inputs["replacement"] = REPLACEMENT
             stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
             answer = self.role("test_writer", inputs, command=stronger or None)
             self.log.add("tests_written", round=n, cost_usd=answer.cost_usd,
@@ -432,6 +446,52 @@ class Driver:
         self.log.add("frozen", commit=lock.get("commit", commit), number=lock.get("number"))
         st_.frozen = lock.get("commit", commit)
         st_.best_commit = st_.best_commit or st_.frozen
+        if st_.relock_from:
+            self.carry_over(st_)
+
+    def carry_over(self, st_: history.Ticket):
+        """After a replacement lock: a commit with the best try's files and the new lock's
+        files, with both as parents. The gate needs the lock commit in each try's history."""
+        git(self.copy, "checkout", "-q", "-B", self.branch, st_.frozen)
+        git(self.copy, "merge", "-q", "--no-ff", "--no-commit", "-s", "ours", st_.best_commit)
+        git(self.copy, "read-tree", "-u", "--reset", st_.best_commit)
+        files = (self.lock() or {}).get("manifest", {}).get("files", [])
+        if files:
+            git(self.copy, "checkout", st_.frozen, "--", *files)
+        commit = self.commit(f"build({self.ticket_id}): the best try on the replacement lock")
+        self.log.add("relocked", commit=commit, lock=st_.frozen, start=st_.best_commit)
+        st_.relock_from, st_.best_commit, st_.best_score = "", commit, -1
+
+    def locked_test_fault(self, results, answer) -> list:
+        """Findings for the test writer when the try cannot pass with the locked tests as
+        they are: each failed check names files, and each is a locked test file; or the
+        builder says a locked test is wrong. Empty otherwise: the builder tries again."""
+        wrong = answer.data.get("locked_test_wrong")
+        if wrong:
+            return [{"level": "blocking", "text": f"the builder says a locked test is wrong: "
+                     f"{wrong if isinstance(wrong, str) else json.dumps(wrong)}"}]
+        failed = [c for c in results.checks if not c.passed and c.name != "tests"]
+        if not failed:
+            return []
+        for c in failed:
+            named = {m.group(1) for m in FILE_LINE.finditer(c.output or "")}
+            if not named or not named <= set(self.ticket.tests):
+                return []
+        return [{"level": "blocking", "text": f"check {c.name} fails on a locked test:\n"
+                 f"{c.output}"} for c in failed]
+
+    def send_back(self, st_: history.Ticket, findings: list):
+        """Send the tests back to the test writer for the one replacement lock, or park
+        the ticket when it was used. The builder cannot change a locked test."""
+        if st_.relocks >= MAX_RELOCKS:
+            reason = ("a locked test still blocks the build after the one replacement lock: "
+                      + "; ".join(f["text"].splitlines()[0] for f in findings)
+                      + ". Fix the test by hand, or split the ticket?")
+            self.log.add("parked", reason=reason)
+            raise Parked(reason)
+        self.log.add("tests_sent_back", lock=st_.frozen, findings=findings)
+        st_.relock_from, st_.relocks = st_.frozen, st_.relocks + 1
+        st_.frozen, st_.tests_done, st_.rejections, st_.rejected = "", False, 0, findings
 
     def try_once(self, st_: history.Ticket):
         """One try, from the best try so far."""
@@ -494,6 +554,9 @@ class Driver:
             value, passed = score(self.ticket, locked, [], self.copy, mapped)
             self.log.add("try_failed", findings=findings, score=value, items=passed, **fields)
             self._keep_if_best(st_, value, commit)
+            back = self.locked_test_fault(results, answer)
+            if back:
+                self.send_back(st_, back)
             return
         # Only a locked test vouches for an item: the builder's own tests do not, so the
         # reviewer judges every item that no locked test covers, as score() counts them.
@@ -528,6 +591,9 @@ class Driver:
                  + (f". {reasons}" if reasons else "")}]
             self.log.add("try_failed", findings=why, **fields)
             self._keep_if_best(st_, value, commit)
+            back = self.locked_test_fault(results, answer)
+            if back and not findings:
+                self.send_back(st_, back)
             if findings:
                 raise Stop("the review of tier " + str(tier) + " failed: "
                            + "; ".join(f["message"] for f in findings))
@@ -664,11 +730,15 @@ class Driver:
                 while not st_.frozen:
                     self.write_tests(st_)
                     self.freeze(st_)
+                if st_.relock_from:
+                    self.carry_over(st_)    # a run that stopped after the replacement lock
                 if getattr(self, "until", None) == "frozen":
                     return 0
-                while not st_.passed_commit:
+                while not st_.passed_commit and st_.frozen:
                     self.stop_check()
                     self.try_once(st_)
+                if not st_.frozen:
+                    continue    # the tests went back to the test writer
                 if not st_.ready:
                     self.make_ready(st_)
                 return self.finish(st_)

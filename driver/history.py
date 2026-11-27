@@ -13,6 +13,7 @@ STATES = {
     "parked": "parked", "waiting_for_advisor": "waits for a person", "still_waiting":
     "waits for a person", "stopped": "stopped", "try_passed": "building",
     "try_failed": "building", "try_started": "building", "frozen": "frozen",
+    "tests_sent_back": "tests written", "relocked": "frozen",
     "tests_reviewed": "tests written", "tests_written": "tests written", "started": "started",
 }
 TRY_ENDS = ("try_failed", "try_passed")
@@ -39,6 +40,8 @@ class Ticket:
     ai_decisions: int = 0
     hint: str = ""
     stronger: bool = False
+    relock_from: str = ""      # the lock commit that a replacement lock builds on, while one waits
+    relocks: int = 0           # the tests sent back after the lock: at most one replacement
 
 
 def better(score: int, best: int) -> bool:
@@ -62,6 +65,15 @@ def replay(events: list) -> Ticket:
             t.tests_done = False
             t.rejections += 1
             t.rejected = e.get("findings", [])
+        elif kind == "tests_sent_back":
+            # A check failed on a locked test, or the builder said one is wrong: the test
+            # writer writes the tests again for the one replacement lock.
+            t.frozen, t.tests_done, t.rejections = "", False, 0
+            t.rejected = e.get("findings", [])
+            t.relock_from, t.relocks = e.get("lock", ""), t.relocks + 1
+        elif kind == "relocked":
+            # The build goes on from the best try, merged onto the replacement lock.
+            t.relock_from, t.best_commit, t.best_score = "", e.get("commit", ""), -1
         elif kind == "frozen":
             t.frozen = e.get("commit", "")
             t.best_commit = t.best_commit or e.get("commit", "")
