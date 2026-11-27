@@ -99,21 +99,21 @@ class Store:
             ticket_file = self._approved_ticket(ticket, commit, base)
             started = self._start(start, commit) if start else base
             with tempfile.TemporaryDirectory() as d:
-                git(d, "clone", "-q", "--no-checkout", self.project, ".")
-                git(d, "checkout", "-q", "--detach", commit)
-                prepare.restore(d, base, *ticket_file)
-                for command in settings["setup"]:
-                    done = subprocess.run(command, shell=True, cwd=d, capture_output=True,
-                                          text=True, check=False, env=checks.project_env())
-                    if done.returncode:
-                        raise mf.FreezeError(f"the setup command failed: {command}")
-                # UNFINISHED: the tests run here, not in the builder's isolation.
-                results = checks.run(settings, d, ["tests"])
+                results = self._run_tests(d, commit, base, settings, ticket_file)
                 failed = any(c.name == "tests" and not c.passed for c in results.checks)
                 output = "\n".join(c.output for c in results.checks if c.name == "tests")
                 try:
-                    lock = fz.record(d, ticket, commit, started, settings, results.tests,
-                                     number, failed, output)
+                    try:
+                        lock = fz.record(d, ticket, commit, started, settings, results.tests,
+                                         number, failed, output)
+                    except mf.KeptNotRunError:
+                        # A test that keeps behavior shares a compile unit with the new
+                        # tests, which do not build yet. It must pass on the code before
+                        # the new tests, so the tests run once more at the start.
+                        with tempfile.TemporaryDirectory() as s:
+                            then = self._run_tests(s, started, base, settings)
+                        lock = fz.record(d, ticket, commit, started, settings, results.tests,
+                                         number, failed, output, then.tests)
                 except mf.FreezeError as err:
                     said = [c.output for c in results.checks if c.output]
                     if results.tests or not said:
@@ -130,6 +130,21 @@ class Store:
             path.replace(old)
         state.write_record(path, lock)
         return str(path)
+
+    def _run_tests(self, folder: str, commit: str, base: str, settings: dict,
+                   ticket_file: tuple = (None, None)) -> checks.Results:
+        """Clone the project into folder at commit, put back main's harness and the
+        approved ticket file, run the setup commands, and run the test check."""
+        git(folder, "clone", "-q", "--no-checkout", self.project, ".")
+        git(folder, "checkout", "-q", "--detach", commit)
+        prepare.restore(folder, base, *ticket_file)
+        for command in settings["setup"]:
+            done = subprocess.run(command, shell=True, cwd=folder, capture_output=True,
+                                  text=True, check=False, env=checks.project_env())
+            if done.returncode:
+                raise mf.FreezeError(f"the setup command failed: {command}")
+        # UNFINISHED: the tests run here, not in the builder's isolation.
+        return checks.run(settings, folder, ["tests"])
 
     def _start(self, start: str, commit: str) -> str:
         """The full commit a ticket started from. Raise FreezeError unless it passed the

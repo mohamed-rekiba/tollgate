@@ -453,6 +453,44 @@ class GoNotBuiltTest(unittest.TestCase):
         self.assertEqual(manifest["items"][f"{MODULE}logging::Test_c2_cause_never_panics"],
                          "C2")
 
+    def test_a_kept_test_in_the_package_that_does_not_build_is_taken_from_the_start(self):
+        # The kept test is in the package of the new tests, so it cannot build before the
+        # build. It must pass on the code before the new tests, and after the build.
+        old = "package logging\n\nimport \"testing\"\n\nfunc TestACutIsShort(t *testing.T) {\n" \
+              "\tt.Log(1)\n}\n"
+        self.repo.write("internal/logging/cut_test.go", old)
+        self.start = self.repo.commit("an old test in the package")
+        mapped = [*self.MAP, {"item": "C3", "file": "internal/logging/cut_test.go",
+                              "name": "TestACutIsShort"}]
+        keep = f"{MODULE}logging::TestACutIsShort"
+        with self.assertRaises(mf.KeptNotRunError):
+            self.lock(mapped=mapped)
+        at_start = {keep: {"status": "passed", "file": ""}}
+        manifest = self.lock_with_start(mapped, at_start)
+        self.assertEqual(manifest["kept_at_start"], [keep])
+        self.assertEqual(manifest["keeps_behavior"],
+                         [f"{MODULE}components::TestACauseIsShort", keep])
+        self.assertIn(keep, manifest["tests"])
+        with self.subTest("it failed at the start"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort keeps behavior"):
+            self.lock_with_start(mapped, {keep: {"status": "failed", "file": ""}})
+        with self.subTest("it did not run at the start"), \
+                self.assertRaisesRegex(mf.FreezeError, "or at the start"):
+            self.lock_with_start(mapped, {})
+        with self.subTest("its source changed"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort was there at the start"):
+            self.repo.write("internal/logging/cut_test.go", old.replace("1", "2"))
+            self.lock_with_start(mapped, at_start)
+
+    def lock_with_start(self, mapped, at_start):
+        import json
+        self.repo.write(mf.ticket_path("T-1"), GO_TICKET)
+        self.repo.write("internal/logging/cause_test.go", CAUSE_TEST)
+        self.repo.write(mf.map_path("T-1"), json.dumps(mapped))
+        commit = self.repo.commit("test(T-1): the ticket and its locked tests")
+        return freeze.record(str(self.repo.path), "T-1", commit, self.start, self.settings,
+                             self.report(), 1, True, SEAM_OUTPUT, at_start)["manifest"]
+
     def test_a_test_that_was_there_at_the_start_is_not_counted_as_failing(self):
         self.repo.write("internal/logging/cause_test.go", CAUSE_TEST)
         self.start = self.repo.commit("the tests were there")

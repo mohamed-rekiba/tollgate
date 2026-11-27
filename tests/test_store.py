@@ -152,6 +152,48 @@ class FreezeTest(StoreCase):
         with self.assertRaisesRegex(StoreError, "already has 2 freezes"):
             self.store.freeze("T-1")
 
+    def test_a_kept_test_in_the_compile_unit_of_the_new_tests_passes_at_the_start(self):
+        # In a compiled language, the new tests and an old one may build as one unit, such
+        # as a Go package: while the new tests call a seam that is not there, the old test
+        # cannot run. This harness plays that: with tests/test_t1.py there, tests/test_old.py
+        # does not run.
+        one_unit = RUN_TESTS.replace("walk(suite)\n", "walk(suite)\nimport os\n"
+                                     "if os.path.exists('tests/test_t1.py'):\n"
+                                     "    cases[:] = [c for c in cases\n"
+                                     "                if type(c).__module__ != 'tests.test_old']\n")
+        old = 'import unittest\nimport app\n\n\nclass T(unittest.TestCase):\n' \
+              '    def test_greet(self):\n        self.assertEqual(app.greet("ann"), "hello ann")\n'
+        r = self.repo
+        r.write("run_tests.py", one_unit)
+        r.write("tests/test_old.py", old)
+        self.main = r.commit("an old test")
+        r.git("checkout", "-q", "-b", "tg/T-1", "main")
+        r.write(mf.ticket_path("T-1"), TICKET)
+        r.write("tests/test_t1.py", TESTS.split("    def test_c2_greet")[0])
+        r.write(mf.map_path("T-1"), json.dumps(
+            [{"item": "C2", "file": "tests/test_old.py", "name": "test_greet"}]))
+        r.commit("test(T-1): the ticket and its locked tests")
+        r.git("checkout", "-q", "main")
+        lock = state.read_record(Path(self.store.freeze("T-1")))
+        kept = "tests.test_old::test_greet"
+        self.assertEqual(lock["manifest"]["kept_at_start"], [kept])
+        self.assertEqual(lock["manifest"]["keeps_behavior"], [kept])
+        # The gate requires each locked test to pass after the build.
+        self.assertIn(kept, lock["manifest"]["tests"])
+        with self.subTest("it fails at the start"):
+            r.write("app.py", 'def greet(name):\n    return name\n')
+            self.main = r.commit("greet changed")
+            r.git("branch", "-q", "-f", "tg/T-1", "main")
+            r.git("checkout", "-q", "tg/T-1")
+            r.write(mf.ticket_path("T-1"), TICKET)
+            r.write("tests/test_t1.py", TESTS.split("    def test_c2_greet")[0])
+            r.write(mf.map_path("T-1"), json.dumps(
+                [{"item": "C2", "file": "tests/test_old.py", "name": "test_greet"}]))
+            r.commit("test(T-1): the ticket and its locked tests")
+            r.git("checkout", "-q", "main")
+            with self.assertRaisesRegex(StoreError, "test_greet keeps behavior, so it must pass"):
+                self.store.freeze("T-1")
+
     def test_refuses_a_ticket_that_differs_from_the_locked_plan(self):
         self.ticket_branch(ticket=TICKET.replace("plan: demo", "plan: retries"))
         r = self.repo
