@@ -9,7 +9,9 @@ place where the role runs differs.
 - Session: your own Claude Code session starts the role as one of Tollgate's
   subagents. The caller first looks for a saved answer to the same question:
   the same role, lens, and inputs. If there is one, it returns it. If not, it
-  writes the step file, run/step.json in the state folder, and raises Pause.
+  writes a step file, run/steps/<run>/<key>.json in the state folder, and raises
+  Pause. <run> names the task, roadmap, or brainstorm that driver.step runs, so
+  several of them can wait at once.
   The driver then lets go of its run lock and ends with 5. `driver.step answer`
   saves the answer, and the next run of the driver replays its log and the
   saved answers up to the next step.
@@ -24,7 +26,7 @@ the best try so far.
 
 A run replays the step it stopped in, and each event of that part was logged by
 the run before, which went at least as far. So when a run pauses, it notes the
-key of the role it paused at in run/replay. The next run's logs hold each event
+key of the role it paused at in its run's replay note, run/replays/<run>. The next run's logs hold each event
 until the run reaches that role again: once it gets that role's answer, or
 pauses at any role with no saved answer, it writes each event, whatever the
 event holds. A held event is written then, or when its log closes, unless the
@@ -36,10 +38,12 @@ ends without a pause clears the note.
 import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -86,8 +90,49 @@ def key(role: str, lens: str | None, inputs: dict) -> str:
     return hashlib.sha256(data.encode()).hexdigest()
 
 
-def replay_path(project: str) -> Path:
-    return state.path(project, "run", "replay")
+# The run whose steps this process writes and reads: a task, a roadmap, or a brainstorm,
+# such as "task-retries". driver.step sets it, so two runs of one project can each wait
+# at their own steps at the same time. "" is a run with no name, as in a direct run.
+_SLOT = [""]
+
+
+@contextmanager
+def in_slot(name: str):
+    """Write and read the steps and the replay note of the run `name` while inside."""
+    old, _SLOT[0] = _SLOT[0], name
+    try:
+        yield
+    finally:
+        _SLOT[0] = old
+
+
+def current_slot() -> str:
+    return _SLOT[0]
+
+
+def slot_of(task: str = "", roadmap: str = "", brainstorm: str = "") -> str:
+    """The name of a run, for in_slot."""
+    if roadmap:
+        return f"roadmap-{roadmap}"
+    if brainstorm:
+        return f"brainstorm-{brainstorm}"
+    return f"task-{task}" if task else ""
+
+
+def _slot_name(slot: str | None) -> str:
+    name = current_slot() if slot is None else slot
+    if name and not SLOT_NAME.match(name):
+        raise roles.RoleError(f"not a valid run name: {name!r}")
+    return name
+
+
+def replay_path(project: str, slot: str | None = None) -> Path:
+    name = _slot_name(slot)
+    if not name:
+        return state.path(project, "run", "replay")
+    folder = state.path(project, "run", "replays")
+    folder.mkdir(exist_ok=True)
+    return folder / name
 
 
 def replaying(project: str) -> bool:
@@ -110,8 +155,25 @@ def _replay_key(project: str) -> str:
         return ""
 
 
-def step_path(project: str) -> Path:
+def steps_dir(project: str, slot: str | None = None) -> Path:
+    """The folder of the steps that wait in one run: run/steps/<run>/, one file a step."""
+    folder = state.path(project, "run", "steps") / (_slot_name(slot) or "default")
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def legacy_step_path(project: str) -> Path:
+    """Where an older Tollgate kept the one step of a project. answer still reads it."""
     return state.path(project, "run", "step.json")
+
+
+def step_path(project: str, found_key: str = "", slot: str | None = None) -> Path:
+    """The file of one waiting step, by its key. With no key: the file of the only step
+    that waits in the run, or the legacy file."""
+    if found_key:
+        return steps_dir(project, slot) / f"{found_key}.json"
+    found = read_step(project, slot)
+    return Path(found["_path"]) if found else legacy_step_path(project)
 
 
 def answers_path(project: str, log: str) -> Path:
@@ -119,12 +181,12 @@ def answers_path(project: str, log: str) -> Path:
 
 
 STEP_FIELDS = ("role", "key", "log", "task", "prompt")
+SLOT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 
 
-def read_step(project: str) -> dict | None:
-    """The step that waits, or None when there is none or the file is not a step."""
+def _load(path: Path) -> dict | None:
     try:
-        found = json.loads(step_path(project).read_text())
+        found = json.loads(path.read_text())
     except (OSError, ValueError):
         return None
     if not isinstance(found, dict) or not all(isinstance(found.get(f), str) and found.get(f)
@@ -132,14 +194,50 @@ def read_step(project: str) -> dict | None:
         return None
     if not isinstance(found.get("task", ""), str) or not isinstance(found.get("copy", ""), str):
         return None
+    found["_path"] = str(path)
     return found
 
 
+def read_steps(project: str, slot: str | None = None) -> list:
+    """The steps that wait in one run, in the order the run asked for them."""
+    found = [s for s in (_load(p) for p in steps_dir(project, slot).glob("*.json")) if s]
+    return sorted(found, key=lambda s: (int(s.get("n") or 0), s["key"]))
+
+
+def all_steps(project: str) -> list:
+    """The steps that wait in every run of the project, and the legacy one."""
+    root = state.path(project, "run", "steps")
+    found = [s for s in (_load(p) for p in sorted(root.glob("*/*.json"))) if s]
+    legacy = _load(legacy_step_path(project))
+    return found + ([legacy] if legacy else [])
+
+
+def read_step(project: str, slot: str | None = None) -> dict | None:
+    """The first step that waits in the run, or None. With no run named here or set, it
+    is the only step that waits in the project, so an older call still works when one
+    step waits."""
+    found = read_steps(project, slot)
+    if found:
+        return found[0]
+    if _slot_name(slot) == "":
+        every = all_steps(project)
+        return every[0] if len(every) == 1 else None
+    return None
+
+
+def find_step(project: str, found_key: str) -> list:
+    """Every waiting step with this key, in any run."""
+    return [s for s in all_steps(project) if s["key"] == found_key]
+
+
 def _write_step(project: str, step: dict) -> None:
-    path = step_path(project)
+    path = Path(step["_path"]) if step.get("_path") else step_path(project, step["key"],
+                                                                     step.get("slot", ""))
+    data = {k: v for k, v in step.items() if k != "_path"}
     tmp = path.with_name(f".{path.name}.{os.getpid()}")
-    tmp.write_text(json.dumps(step, indent=1) + "\n")
+    tmp.write_text(json.dumps(data, indent=1) + "\n")
     os.replace(tmp, path)
+    step["_path"] = str(path)
 
 
 MAX_REFUSED = 1   # the answers with no final json block a step may get before it is an error
@@ -158,10 +256,11 @@ def digest(nonce: str) -> str:
     return hashlib.sha256(nonce.encode()).hexdigest()
 
 
-def new_nonce(project: str) -> str:
-    """A new nonce for the step that waits. Only its hash goes in the step file; the
-    nonce itself goes to your session in next's output, and answer needs it."""
-    step = read_step(project)
+def new_nonce(project: str, step: dict | None = None) -> str:
+    """A new nonce for a step that waits, the run's first by default. Only its hash goes
+    in the step file; the nonce itself goes to your session in next's output, and answer
+    needs it."""
+    step = step or read_step(project)
     if step is None:
         raise roles.RoleError("no step waits")
     nonce = secrets.token_hex(16)
@@ -171,17 +270,26 @@ def new_nonce(project: str) -> str:
 
 
 def note_roadmap(project: str, roadmap: str) -> None:
-    """Note in the step that waits that it belongs to this roadmap, so that answer goes
-    on with the roadmap, not only with the step's task."""
-    step = read_step(project)
-    if step is None:
+    """Note in each step that waits in the run that it belongs to this roadmap, so that
+    answer goes on with the roadmap, not only with the step's task."""
+    found = read_steps(project)
+    if not found:
         raise roles.RoleError("no step waits")
-    step["roadmap"] = roadmap
-    _write_step(project, step)
+    for step in found:
+        step["roadmap"] = roadmap
+        _write_step(project, step)
 
 
-def clear_step(project: str) -> None:
-    step_path(project).unlink(missing_ok=True)
+def clear_step(project: str, slot: str | None = None) -> None:
+    """Remove every step that waits in the run."""
+    for step in read_steps(project, slot):
+        Path(step["_path"]).unlink(missing_ok=True)
+    if _slot_name(slot) == "":
+        legacy_step_path(project).unlink(missing_ok=True)
+
+
+def remove_step(step: dict) -> None:
+    Path(step["_path"]).unlink(missing_ok=True)
 
 
 def _mac(line: dict) -> str:
@@ -262,7 +370,7 @@ def save_answer(project: str, step: dict, text: str) -> dict:
     from driver.log import Log
     with Log(str(answers_path(project, step["log"]))) as log:
         log.add("answer", **line)
-    clear_step(project)
+    remove_step(step)
     return line
 
 
@@ -296,7 +404,7 @@ class Session:
                 "lens": call.lens, "prompt": roles.prompt(call.role, call.inputs, call.lens),
                 "copy": os.path.realpath(call.copy) if call.copy else "", "key": found_key,
                 "log": call.log, "ticket": call.ticket, "task": call.task,
-                "asked_at": time.time()}
+                "slot": current_slot(), "n": 0, "asked_at": time.time()}
         _write_step(call.project, step)
         _mark_replay(call.project, found_key)
         raise Pause(step)
