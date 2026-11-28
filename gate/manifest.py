@@ -167,13 +167,21 @@ def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
 
 def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None:
     """Refuse a change to a test that was there at the start, and a mapped test that is
-    neither there at the start nor named for its item."""
+    neither there at the start nor named for its item. A file whose language has an entry
+    in TEST_SOURCES is read test by test: new tests may go next to the old ones. A file
+    with no entry that was there at the start must stay as it was, whole."""
     before_all = {}
     for path in paths:
-        if not path.endswith(".py"):
+        old_bytes = show_bytes(repo, start, path)
+        sources = TEST_SOURCES.get(PurePosixPath(path).suffix)
+        if sources is None:
+            if old_bytes is not None and show_bytes(repo, commit, path) != old_bytes:
+                raise FreezeError(f"{path} was there at the start, and it changed. Tollgate "
+                                  "cannot read its tests one by one, so leave the file as it "
+                                  "is, and put new tests in a new file")
             continue
-        before = python_tests(show_bytes(repo, start, path))
-        now = python_tests(show_bytes(repo, commit, path))
+        before = sources(old_bytes)
+        now = sources(show_bytes(repo, commit, path))
         before_all[path] = before
         for name, source in sorted(before.items()):
             if name not in now:

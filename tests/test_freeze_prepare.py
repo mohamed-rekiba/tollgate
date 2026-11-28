@@ -482,6 +482,26 @@ class GoNotBuiltTest(unittest.TestCase):
             self.repo.write("internal/logging/cut_test.go", old.replace("1", "2"))
             self.lock_with_start(mapped, at_start)
 
+    def test_an_edited_go_test_that_was_there_at_the_start_is_refused(self):
+        self.repo.write("internal/components/components_test.go", COMPONENTS_TEST.replace(
+            "func TestACauseIsShort(t *testing.T) {}", "func TestACauseIsShort(t *testing.T) {\n"
+            "\treturn\n}"))
+        with self.assertRaisesRegex(mf.FreezeError, "TestACauseIsShort was there at the start, "
+                                    "and it changed"):
+            self.lock()
+
+    def test_a_test_file_of_a_language_with_no_parser_must_stay_as_it_was(self):
+        self.repo.write("web/app.test.js", "test('adds', () => expect(1 + 1).toBe(2))\n")
+        start = self.repo.commit("a js test")
+        self.repo.write("web/app.test.js", "test('adds', () => expect(true).toBe(true))\n")
+        commit = self.repo.commit("weakened")
+        with self.assertRaisesRegex(mf.FreezeError, "web/app.test.js was there at the start, "
+                                    "and it changed"):
+            mf.check_kept(str(self.repo.path), commit, start, ["web/app.test.js"], [])
+        # A new file of such a language is free.
+        self.repo.write("web/new.test.js", "test('x', () => {})\n")
+        mf.check_kept(str(self.repo.path), self.repo.commit("new"), start, ["web/new.test.js"], [])
+
     def lock_with_start(self, mapped, at_start):
         import json
         self.repo.write(mf.ticket_path("T-1"), GO_TICKET)
