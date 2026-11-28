@@ -20,6 +20,10 @@ A Go test file's new tests may call a seam that the builder adds. Then their pac
 does not compile before the build, and the report has no test of it (see not_built).
 The lock names those tests by the package's import path and counts them as failing.
 The gate requires each of them to run and pass on each try, as it does any locked test.
+
+The same build failure stops an old test of that compile unit, such as one that keeps
+behavior, from running. The store then runs the tests at the start, and the lock takes
+such a test from that report (see claim and kept_at_start).
 """
 
 import ast
@@ -163,13 +167,21 @@ def not_built(repo, commit: str, ticket, test_results: dict, start: str | None,
 
 def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None:
     """Refuse a change to a test that was there at the start, and a mapped test that is
-    neither there at the start nor named for its item."""
+    neither there at the start nor named for its item. A file whose language has an entry
+    in TEST_SOURCES is read test by test: new tests may go next to the old ones. A file
+    with no entry that was there at the start must stay as it was, whole."""
     before_all = {}
     for path in paths:
-        if not path.endswith(".py"):
+        old_bytes = show_bytes(repo, start, path)
+        sources = TEST_SOURCES.get(PurePosixPath(path).suffix)
+        if sources is None:
+            if old_bytes is not None and show_bytes(repo, commit, path) != old_bytes:
+                raise FreezeError(f"{path} was there at the start, and it changed. Tollgate "
+                                  "cannot read its tests one by one, so leave the file as it "
+                                  "is, and put new tests in a new file")
             continue
-        before = python_tests(show_bytes(repo, start, path))
-        now = python_tests(show_bytes(repo, commit, path))
+        before = sources(old_bytes)
+        now = sources(show_bytes(repo, commit, path))
         before_all[path] = before
         for name, source in sorted(before.items()):
             if name not in now:
@@ -186,21 +198,104 @@ def check_kept(repo, commit: str, start: str, paths: list, mapped: list) -> None
                               f"named for its item, such as test_{entry['item'].lower()}_")
 
 
-def claim(repo, commit: str, ticket, test_results: dict, start: str | None = None) -> dict:
+class KeptNotRunError(FreezeError):
+    """A mapped test that keeps behavior did not run with the new tests, and the caller
+    passed no report of the start. The store then runs the tests at the start."""
+
+
+# A line that starts a new top-level declaration of a Go file.
+GO_TOP = re.compile(r"^(?:func|type|var|const|import)\b", re.MULTILINE)
+
+
+def go_test_sources(data: bytes | None) -> dict:
+    """{test name: its source} for each test function of a Go file: from its `func` line
+    to the next top-level declaration or the end of the file, less the blank and comment
+    lines at its end, which belong to the next declaration. A raw string that holds a line
+    `}` does not end it early."""
+    if data is None:
+        return {}
+    text = data.decode(errors="replace")
+    found = {}
+    for match in GO_TEST.finditer(text):
+        end = GO_TOP.search(text, match.end())
+        lines = text[match.start():end.start() if end else len(text)].splitlines()
+        while lines and (not lines[-1].strip() or lines[-1].lstrip().startswith("//")):
+            lines.pop()
+        found[match.group(1)] = "\n".join(lines)
+    return found
+
+
+# The source of each test function of a test file, by the file's suffix: {name: source}.
+# A language plugs in here with a function from the file's bytes to that dict. A file of
+# another language has no such function, so a test file of it that was there at the
+# start must stay unchanged, whole.
+TEST_SOURCES = {".py": python_tests, ".go": go_test_sources}
+
+
+def only_added(before: bytes, now: bytes | None) -> bool:
+    """True when now holds every line of before, in order: lines were only added."""
+    import difflib
+    if now is None:
+        return False
+    a, b = before.decode(errors="replace").splitlines(), now.decode(errors="replace").splitlines()
+    return all(op in ("equal", "insert")
+               for op, *_ in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes())
+
+
+def unchanged_test(repo, start: str, commit: str, path: str, name: str) -> bool:
+    """True when the test `name` of a file has the same source at the start and at the
+    commit, and the rest of the file only gained lines: a helper, a fixture, or a TestMain
+    of the file can change what the test checks. For a file with no entry in TEST_SOURCES,
+    the whole file must be the same."""
+    before, now = show_bytes(repo, start, path), show_bytes(repo, commit, path)
+    if before is None:
+        return False
+    sources = TEST_SOURCES.get(PurePosixPath(path).suffix)
+    if sources is None:
+        return before == now
+    old = sources(before).get(name)
+    return old is not None and old == sources(now).get(name) and only_added(before, now)
+
+
+def claim(repo, commit: str, ticket, test_results: dict, start: str | None = None,
+          start_results: dict | None = None) -> dict:
     """{test id: item id} for each test of the report that the ticket claims: a test of
     the ticket's test files that maps to a checklist item by its name or by the map.
     Raise FreezeError when the report has no test of those files, or a file has no test
-    that maps to an item."""
+    that maps to an item.
+
+    In a compiled language, the new tests of a ticket may stop a mapped test that keeps
+    behavior from building, when both are in one compile unit, such as a Go package.
+    Then it cannot run before the build. start_results is the report of the tests at the
+    start, the code before the new tests: a mapped test that keeps behavior and is not
+    in test_results is taken from it, when its source is the same at the start and at
+    the commit. With no start_results, such a test raises KeptNotRunError."""
     mapped = read_map(repo, commit, ticket.id)
     paths = test_files(ticket, mapped)
     defined = go_defined(repo, commit, paths)
     mine = {tid: r for tid, r in test_results.items() if junit.in_files(r, paths, defined)}
     if not mine:
         raise FreezeError("the test report has no test from the ticket's test files")
-    items = {}
+    items, at_start = {}, {}
     for entry in mapped:
         found = [t for t, r in mine.items() if t.split("::")[-1] == entry["name"]
                  and junit.in_files(r, [entry["file"]], defined)]
+        item = ticket.item(entry["item"])
+        if not found and item is not None and item.keeps_behavior and start:
+            if start_results is None:
+                raise KeptNotRunError(f"{entry['file']}::{entry['name']} is mapped to "
+                                      f"{entry['item']}, but it did not run")
+            then = go_defined(repo, start, [entry["file"]])
+            found = [t for t, r in start_results.items() if t.split("::")[-1] == entry["name"]
+                     and junit.in_files(r, [entry["file"]], then)]
+            if found and not unchanged_test(repo, start, commit, entry["file"], entry["name"]):
+                raise FreezeError(f"{entry['file']}::{entry['name']} was there at the start, "
+                                  "and it changed. Leave existing tests as they are")
+            at_start.update({t: start_results[t] for t in found})
+            if not found:
+                raise FreezeError(f"{entry['file']}::{entry['name']} is mapped to "
+                                  f"{entry['item']}, but it did not run, with the new tests "
+                                  "or at the start")
         if not found:
             raise FreezeError(f"{entry['file']}::{entry['name']} is mapped to {entry['item']}, "
                               "but it did not run")
@@ -224,7 +319,7 @@ def claim(repo, commit: str, ticket, test_results: dict, start: str | None = Non
         if in_file and not any(t in items for t in in_file):
             raise FreezeError(f"{in_file[0]} names no checklist item, such as c1_ in its name,"
                               f" and no test of {path} is in the test map")
-    return {t: items[t] for t in sorted(mine) if t in items}
+    return {t: items[t] for t in sorted({*mine, *at_start}) if t in items}
 
 
 def missing_items(ticket, items: dict) -> list:
@@ -249,7 +344,7 @@ def failed_at_setup(repo, ticket, paths: list, test_results: dict, start: str | 
 
 
 def build(repo, commit: str, ticket, test_results: dict, start: str | None = None,
-          tests_failed: bool = False, output: str = "") -> dict:
+          tests_failed: bool = False, output: str = "", start_results: dict | None = None) -> dict:
     """Return the manifest for a ticket at a commit.
 
     test_results maps a test id to a junit.TestResult from a run of the tests
@@ -264,6 +359,11 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     output is the test check's output. When a Go package of a locked test file did not
     compile only for a seam the builder adds (see not_built), its mapped tests count as
     failing, and the manifest lists them under `not_built` as well as under `tests`.
+
+    start_results is the report of the tests at the start (see claim). A test that keeps
+    behavior and ran only there must have passed there; the manifest lists it under
+    `kept_at_start` as well as under `tests` and `keeps_behavior`, so the gate requires
+    it to pass after the build.
     """
     mapped = read_map(repo, commit, ticket.id)
     paths = test_files(ticket, mapped)
@@ -278,10 +378,11 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
                 "keeps_behavior": [], "items": {}, "failed_at_setup": True}
     late = not_built(repo, commit, ticket, test_results, start, output)
     test_results = {**test_results, **late}
-    items = claim(repo, commit, ticket, test_results, start)
+    items = claim(repo, commit, ticket, test_results, start, start_results)
+    at_start = sorted(t for t in items if t not in test_results)
     tests, keeps = [], []
     for test_id, item_id in items.items():
-        result = test_results[test_id]
+        result = test_results.get(test_id) or start_results[test_id]
         item = ticket.item(item_id)
         if result.status == "skipped":
             raise FreezeError(f"{test_id} was skipped")
@@ -305,6 +406,8 @@ def build(repo, commit: str, ticket, test_results: dict, start: str | None = Non
     }
     if late:
         built["not_built"] = sorted(t for t in late if t in items)
+    if at_start:
+        built["kept_at_start"] = at_start
     return built
 
 

@@ -5,11 +5,13 @@
 It reads the prompt on standard input, acts as the role named in its first line,
 and prints {"result": ..., "total_cost_usd": ...}.
 
-Builder modes: pass2 (fails attempt 1, passes attempt 2), same (fails the same
+Builder modes: pass2 (fails attempt 1, passes attempt 2), pass1only (passes attempt 1 and
+fails each later one), same (fails the same
 way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
 function that does not exist), block=<lens> (that lens finds a blocking problem),
+major=<lens> (that lens finds a major problem in each ticket's change),
 taskmajor=<n> (the first n reviews of the whole task find a major problem),
 c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the checklist
 reviewer adds its inputs to this file), plan_review_to=<path> (each plan lens adds its lens
@@ -22,7 +24,8 @@ does, until the inputs hold a hint), tw_freeze=1 (the first tests it writes hold
 test that passes before the build, so the freeze refuses them), tw_map=1 (C2 is kept by
 the existing tests/test_greet.py::test_greet, named in the answer's map; tw_map=weaken
 first weakens that test; tw_map=next adds a new test next to it).
-Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
+Builder options: owntest=1 (the builder adds its own test, named for item C3), wrong=1 (the
+builder says a locked test is wrong), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file),
@@ -441,7 +444,8 @@ def main() -> int:
             time.sleep(5)
         if mode == "slow":
             time.sleep(30)
-        good = (mode == "pass2" and n >= 2) or mode == "pass1"
+        good = (mode == "pass2" and n >= 2) or mode == "pass1" or (mode == "pass1only"
+                                                                    and n == 1)
         if "seams: app.loud" in data.get("ticket", ""):
             kept = Path("app.py").read_text().split("\n\ndef loud(")[0]
             Path("app.py").write_text(kept + (LOUD if good else LOUD_BAD))
@@ -473,7 +477,9 @@ def main() -> int:
             Path("docs/diagrams/src/shout.json").write_text(json.dumps(spec))
             Path("docs/diagrams/shout.svg").write_text("<svg>drawn by hand</svg>")
             Path("docs/diagrams/notes.txt").write_text(json.dumps(sorted(data)))
-        answer({"changed": ["app.py"], "locked_test_wrong": None,
+        wrong = ("tests/test_t1.py::test_c1_shout: the ticket asks for HELLO ANN, the test is "
+                 "right only if greet is unchanged") if opts.get("wrong") else None
+        answer({"changed": ["app.py"], "locked_test_wrong": wrong,
                 "decisions": ["shout reuses greet"], "concerns": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: test fit" in prompt:
         answer({"verdict": "pass", "findings": [], "items": []}, cost)
@@ -527,6 +533,14 @@ def main() -> int:
             path, line = first_changed_line(data.get("diff", ""))
             answer({"verdict": "pass", "findings": [{"level": "major", "file": path, "line": line,
                                                      "text": "loud is missing"}]}, cost)
+            return 0
+        if not whole_task and opts.get("major") == lens:
+            # A major finding inside the change, on each review of a ticket's try.
+            path, line = first_changed_line(data.get("diff", ""))
+            answer({"verdict": "pass", "findings": [{"level": "major", "file": path,
+                                                     "line": line,
+                                                     "text": "an error branch has no test"}]},
+                   cost)
             return 0
         answer({"verdict": "fail" if block else "pass", "findings": [
             {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]

@@ -6,7 +6,7 @@ model: inherit
 maxTurns: 30
 ---
 
-Tollgate's driver starts you and gives you your inputs in the message that starts you: a json block under Inputs, and for a review, the lens to read with. Work only in the folder that message names, the copy: start each command with a cd to it, and give each file its full path in it. Do what the role below says, and end your answer the way it says.
+Tollgate's driver starts you and gives you your inputs in the message that starts you: a json block under Inputs, and for a review, the lens to read with. Work only in the folder that message names, the copy: start each command with a cd to it, and give each file its full path in it. Do what the role below says, and end your answer the way it says. You have at most 30 turns. Read only what your step needs. When about 5 of them are left, stop and write your answer with what you have: an answer that does not end with its json block is lost.
 
 # Role: reviewer
 
@@ -19,6 +19,7 @@ Words: a **finding** is one problem. It is `blocking` when the work must not go 
 - Report only what you can point to: a file and a line, or a test name. For an idea, point to a fact of the analysis, a file, or an answer.
 - Report a finding once.
 - If you find nothing, say so. Do not invent a finding.
+- If `decisions` is in the inputs, each one is what the advisor, a person or an AI, decided on this plan before, with its hint. A hint is a source, as an answer is: a fact that a hint states, such as an owner's confirmation, needs no other source. Point to it as the decision's number, from 1.
 
 ## Answer
 

@@ -282,10 +282,12 @@ class Driver:
 
     def __init__(self, project: str, ticket_id: str, store=None, ticket_text: str | None = None,
                  gate_api=None, review_api=None, runner: str | None = None, caller=None,
-                 base: str | None = None, hold: bool = False):
+                 base: str | None = None, hold: bool = False, approval_hint: str = ""):
         """base is the commit the ticket starts from, main by default; in a task, the
         ready change of the ticket before it. hold=True leaves the merge to the task:
-        the ticket ends at waiting_for_merge, even with auto_merge on."""
+        the ticket ends at waiting_for_merge, even with auto_merge on. approval_hint is
+        what the advisor said when it approved the plan: the test writer and the builder
+        get it as `approval_hint`."""
         self.project = os.path.abspath(project)
         self.ticket_id = ticket_id
         self.store = store or Store(self.project)
@@ -301,6 +303,8 @@ class Driver:
         self.ticket = tickets.parse(self.ticket_text)
         self.runner = runner    # None: the setting `runner` decides
         self.caller = caller
+        # Only when there is one, so the inputs of a ticket with none stay as they were.
+        self.approval = {"approval_hint": approval_hint} if approval_hint else {}
 
     # Helpers.
 
@@ -364,7 +368,7 @@ class Driver:
             # The round tells two rounds apart, in the log and in session mode's saved answers.
             n = st_.rejections + 1
             inputs = {"ticket": self.ticket_text, "ticket_id": self.ticket_id,
-                      "rejected": rejected, "round": n}
+                      "rejected": rejected, "round": n, **self.approval}
             if st_.hint:
                 inputs["hint"] = st_.hint
             if st_.relock_from:
@@ -480,6 +484,17 @@ class Driver:
         return [{"level": "blocking", "text": f"check {c.name} fails on a locked test:\n"
                  f"{c.output}"} for c in failed]
 
+    @staticmethod
+    def claim(answer) -> str:
+        """The builder's claim that a locked test is wrong, as a sentence for the advisor's
+        reason, or "". When the try stops, the advisor judges the claim: a retry or a
+        park, or a person who fixes the test by hand."""
+        wrong = answer.data.get("locked_test_wrong")
+        if not wrong:
+            return ""
+        return (". The builder also says a locked test is wrong: "
+                + (wrong if isinstance(wrong, str) else json.dumps(wrong)))
+
     def send_back(self, st_: history.Ticket, findings: list):
         """Send the tests back to the test writer for the one replacement lock, or park
         the ticket when it was used. The builder cannot change a locked test."""
@@ -492,6 +507,7 @@ class Driver:
         self.log.add("tests_sent_back", lock=st_.frozen, findings=findings)
         st_.relock_from, st_.relocks = st_.frozen, st_.relocks + 1
         st_.frozen, st_.tests_done, st_.rejections, st_.rejected = "", False, 0, findings
+        st_.fallback, st_.fallback_attempt = "", 0   # its pass record is of the old lock
 
     def try_once(self, st_: history.Ticket):
         """One try, from the best try so far."""
@@ -503,7 +519,8 @@ class Driver:
                   "diagram_guide": diagram_guide(self.ticket_text),
                   "findings": last[-1].get("findings", []) if last else [],
                   "failed": last[-1].get("failed", []) if last else [],
-                  "check_output": last[-1].get("check_output", {}) if last else {}}
+                  "check_output": last[-1].get("check_output", {}) if last else {},
+                  **self.approval}
         self.log.add("try_started", attempt=n, start=st_.best_commit)
         stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
         if st_.stronger and not stronger:
@@ -516,7 +533,8 @@ class Driver:
             st_.attempts = n
             return
         cost = answer.cost_usd
-        said = {k: answer.data.get(k) for k in ("decisions", "concerns") if answer.data.get(k)}
+        said = {k: answer.data.get(k) for k in ("decisions", "concerns", "locked_test_wrong")
+                if answer.data.get(k)}
         if said:
             self.log.add("builder_said", attempt=n, **said)
         folders, problem = draw_diagrams(self.copy)
@@ -548,7 +566,7 @@ class Driver:
         if cannot_fix:
             self.log.add("try_failed", findings=findings, score=-1, **fields)
             raise Stop("the gate failed on a check the builder cannot fix: "
-                       + "; ".join(f["message"] for f in cannot_fix))
+                       + "; ".join(f["message"] for f in cannot_fix) + self.claim(answer))
         if any(f["fixable"] for f in findings):
             # The score with no review: a lower bound, so the best try can still move.
             value, passed = score(self.ticket, locked, [], self.copy, mapped)
@@ -579,9 +597,33 @@ class Driver:
                 tier, self.ticket_text, self.review.diff(self.copy, self.start, "HEAD"), run_role)
             cost = roles.add_cost(cost, *spent)
             blocking += [f for f in found if f.get("level") == "blocking"]
+            majors = [f for f in found if f.get("level") == "major"]
             findings = self.gate.evaluate(facts)
+        else:
+            majors = []
         fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
+        if majors and not (findings or blocking or must_failed
+                           or value < self.settings["pass_score"]) and self.major_try(st_):
+            # A major finding of the review should be fixed now, so the builder gets one
+            # more try with it. Only once for a ticket, and only while it has a try left.
+            # The try passes the gate, so it gets its pass record now and is the fallback:
+            # when the next try does not pass, the ticket gets ready with this one, so a
+            # major finding alone never parks a ticket.
+            try:
+                record = self.gate.pass_record(facts, value)
+            except self.gate.GateError as err:
+                self.log.add("try_failed", findings=[{"level": "blocking", "text": str(err)}],
+                             **fields)
+                raise Stop(f"the gate refused a pass record: {err}") from None
+            self.store.record_pass(facts.head_sha, record)
+            self.log.add("try_failed", findings=majors, review_major=True, fallback=commit,
+                         **fields)
+            st_.fallback, st_.fallback_attempt = commit, n
+            self._keep_if_best(st_, value, commit)
+            return
+        if majors:
+            fields["majors"] = majors
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
             reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed,
                                    mapped)
@@ -596,7 +638,7 @@ class Driver:
                 self.send_back(st_, back)
             if findings:
                 raise Stop("the review of tier " + str(tier) + " failed: "
-                           + "; ".join(f["message"] for f in findings))
+                           + "; ".join(f["message"] for f in findings) + self.claim(answer))
             return
         try:
             record = self.gate.pass_record(facts, value)
@@ -608,6 +650,25 @@ class Driver:
         self.log.add("try_passed", **fields)
         st_.passed_commit = commit
         self._keep_if_best(st_, value, commit)
+
+    def use_fallback(self, st_: history.Ticket) -> bool:
+        """When the try after a fallback ended and did not pass, the fallback is the
+        passed try. Return True when it is used."""
+        if st_.passed_commit or not st_.fallback or st_.attempts <= st_.fallback_attempt:
+            return False
+        st_.passed_commit = st_.fallback
+        self.log.add("fallback_used", commit=st_.fallback,
+                     reason="the try after a try with only major findings did not pass")
+        return True
+
+    def major_try(self, st_: history.Ticket) -> bool:
+        """True when a try that only has major review findings goes back to the builder:
+        no try of the ticket went back for them yet, and the ticket has a try left after
+        this one."""
+        events = read(self.log_path)
+        if any(e["event"] == "try_failed" and e.get("review_major") for e in events):
+            return False
+        return stop.tries_left(events, self.settings["stop"]) > 1
 
     @staticmethod
     def _keep_if_best(st_: history.Ticket, value: int, commit: str):
@@ -735,6 +796,8 @@ class Driver:
                 if getattr(self, "until", None) == "frozen":
                     return 0
                 while not st_.passed_commit and st_.frozen:
+                    if self.use_fallback(st_):
+                        break
                     self.stop_check()
                     self.try_once(st_)
                 if not st_.frozen:
@@ -743,6 +806,8 @@ class Driver:
                     self.make_ready(st_)
                 return self.finish(st_)
             except Stop as stopped:
+                if st_.frozen and self.use_fallback(st_):
+                    continue    # the try after the fallback stopped: the fallback is ready
                 self.log.add("stopped", reason=str(stopped))
                 self.ask_advisor(st_, str(stopped))
 

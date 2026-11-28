@@ -335,7 +335,35 @@ def check_lines(root: Path, base: str, staged: bool = False) -> list:
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 TICKED = re.compile(r"`([^`\s]+)`")
 NOT_A_PATH = ("<", "*", "~", "$", "{", "://", "@")
-DEFINES = r"^\s*(?:async\s+def|def|class|func|fn|function|const|let|var)\s+{0}\b|^\s*{0}\s*="
+# The same patterns as gate/paths.py: tests/test_analysis.py keeps them the same.
+DEFINES = (r"^\s*(?:async\s+def|def|class|func|fn|function|const|let|var)\s+{0}\b"
+           r"|^\s*{0}\s*=")
+# The patterns of one language, by the file's suffix, tried as well as DEFINES. Each
+# has {0} where the name goes. A language plugs in with one entry here, and the same
+# entry in gate/paths.py.
+LANGUAGE_DEFINES = {
+    ".go": (r"^[ \t]*type[ \t]+{0}\b",                    # type Name struct, or an alias
+            r"^[ \t]+{0}[ \t]+(?:struct|interface)\b",     # a type in a type ( ... ) block
+            r"^func[ \t]*\([^)]*\)[ \t]*{0}[ \t]*[\[(]",    # a method: func (r *T) Name(
+            r"^[ \t]+{0}[ \t]*\([^)]*\)[ \t]*[\w(*\[]",    # an interface method with a result
+            r"^[ \t]+{0}(?:[ \t]*,[ \t]*\w+)*[ \t]+[\w.*\[\]]+[ \t]*="),  # a const or var in a block
+    ".rs": ((r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?(?:async[ \t]+)?(?:unsafe[ \t]+)?"
+            r"(?:fn|struct|enum|trait|type|mod|const|static|union)[ \t]+{0}\b"),),
+    ".ts": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?(?:abstract[ \t]+)?"
+            r"(?:interface|type|enum|class|function|const|let|var)[ \t]+{0}\b"),),
+    ".tsx": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?"
+             r"(?:interface|type|enum|class|function|const)[ \t]+{0}\b"),),
+    ".js": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?"
+            r"(?:class|function|const|let|var)[ \t]+{0}\b"),),
+}
+
+
+def defines(text: str, name: str, path: str = "") -> bool:
+    """True when text, the file at path, defines `name`: the last part after a dot."""
+    last = re.escape(name.rsplit(".", 1)[-1])
+    suffix = path[path.rfind("."):] if "." in path.rsplit("/", 1)[-1] else ""
+    patterns = (DEFINES, *LANGUAGE_DEFINES.get(suffix, ()))
+    return any(re.search(p.format(last), text, re.MULTILINE) for p in patterns)
 
 
 def _tree(root: Path, rev: str | None) -> set:
@@ -350,9 +378,8 @@ def _text(root: Path, rev: str | None, name: str) -> str:
     return out if code == 0 else ""
 
 
-def _defines(text: str, name: str) -> bool:
-    last = re.escape(name.rsplit(".", 1)[-1])
-    return bool(re.search(DEFINES.format(last), text, re.MULTILINE))
+def _defines(text: str, name: str, path: str = "") -> bool:
+    return defines(text, name, path)
 
 
 def _refs(doc: str, text: str):
@@ -411,8 +438,8 @@ def check_docs(root: Path, base: str, staged: bool = False) -> list:
             label = (paths[0] if not was else was[0]) + (f"::{name}" if name else "")
             if (n, label) in seen:
                 continue
-            if was and not any(p in new for p in was) or was and name and _defines(_text(root, old_rev, was[0]), name) \
-                    and not _defines(_text(root, new_rev, was[0]), name):
+            if was and not any(p in new for p in was) or was and name and _defines(_text(root, old_rev, was[0]), name, was[0]) \
+                    and not _defines(_text(root, new_rev, was[0]), name, was[0]):
                 seen.add((n, label))
                 found.append(f"{doc}:{n}: {kind} {label}, which this change removes. "
                              "Update the doc.")

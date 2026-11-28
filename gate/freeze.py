@@ -81,13 +81,17 @@ def check_guarded(ticket, settings: dict, paths: list | None = None) -> None:
 
 
 def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, tests: dict,
-           number: int, tests_failed: bool = False, output: str = "") -> dict:
+           number: int, tests_failed: bool = False, output: str = "",
+           start_tests: dict | None = None) -> dict:
     """Return the lock record of a ticket at a commit, without its time.
 
     tests maps a test id to {"status", "file"}, from one run of the tests at
     that commit with the harness of base_commit. tests_failed is True when the test
-    command of that run ended with an error, and output is what it said. Raise FreezeError when the ticket cannot be
-    locked.
+    command of that run ended with an error, and output is what it said. start_tests has
+    the same form, from a run at base_commit, the code before the new tests: see
+    manifest.claim. Raise FreezeError when the ticket cannot be locked, and
+    manifest.KeptNotRunError when a test that keeps behavior did not run and start_tests
+    is None.
     """
     check_id(ticket_id)
     if number > MAX_FREEZES:
@@ -95,8 +99,11 @@ def record(repo, ticket_id: str, commit: str, base_commit: str, settings: dict, 
     ticket = ticket_at(repo, commit, ticket_id)
     check_guarded(ticket, settings, mf.test_files(ticket, mf.read_map(repo, commit, ticket_id)))
     found = {i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in tests.items()}
-    built = mf.build(repo, commit, ticket, found, base_commit, tests_failed, output)
-    keys = ("files", "tests", "keeps_behavior", "items", "failed_at_setup", "not_built")
+    then = None if start_tests is None else {
+        i: junit.TestResult(i, r["status"], r.get("file", "")) for i, r in start_tests.items()}
+    built = mf.build(repo, commit, ticket, found, base_commit, tests_failed, output, then)
+    keys = ("files", "tests", "keeps_behavior", "items", "failed_at_setup", "not_built",
+            "kept_at_start")
     return {
         "ticket": ticket_id,
         "base_commit": base_commit,

@@ -453,6 +453,89 @@ class GoNotBuiltTest(unittest.TestCase):
         self.assertEqual(manifest["items"][f"{MODULE}logging::Test_c2_cause_never_panics"],
                          "C2")
 
+    def test_a_kept_test_in_the_package_that_does_not_build_is_taken_from_the_start(self):
+        # The kept test is in the package of the new tests, so it cannot build before the
+        # build. It must pass on the code before the new tests, and after the build.
+        old = "package logging\n\nimport \"testing\"\n\nfunc TestACutIsShort(t *testing.T) {\n" \
+              "\tt.Log(1)\n}\n"
+        self.repo.write("internal/logging/cut_test.go", old)
+        self.start = self.repo.commit("an old test in the package")
+        mapped = [*self.MAP, {"item": "C3", "file": "internal/logging/cut_test.go",
+                              "name": "TestACutIsShort"}]
+        keep = f"{MODULE}logging::TestACutIsShort"
+        with self.assertRaises(mf.KeptNotRunError):
+            self.lock(mapped=mapped)
+        at_start = {keep: {"status": "passed", "file": ""}}
+        manifest = self.lock_with_start(mapped, at_start)
+        self.assertEqual(manifest["kept_at_start"], [keep])
+        self.assertEqual(manifest["keeps_behavior"],
+                         [f"{MODULE}components::TestACauseIsShort", keep])
+        self.assertIn(keep, manifest["tests"])
+        with self.subTest("it failed at the start"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort keeps behavior"):
+            self.lock_with_start(mapped, {keep: {"status": "failed", "file": ""}})
+        with self.subTest("it did not run at the start"), \
+                self.assertRaisesRegex(mf.FreezeError, "or at the start"):
+            self.lock_with_start(mapped, {})
+        with self.subTest("a helper of its file changed"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort was there at the start"):
+            first = self.start
+            self.repo.git("checkout", "-q", "-B", "helper", first)
+            self.repo.write("internal/logging/cut_test.go", old + "\nfunc limit() int { return 8 }\n")
+            self.start = self.repo.commit("a helper")
+            self.repo.write("internal/logging/cut_test.go", old + "\nfunc limit() int { return 99 }\n")
+            self.lock_with_start(mapped, at_start)
+        self.repo.git("checkout", "-q", "-B", "plain", first)
+        self.start = first
+        with self.subTest("its source changed"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort was there at the start"):
+            self.repo.write("internal/logging/cut_test.go", old.replace("1", "2"))
+            self.lock_with_start(mapped, at_start)
+
+    def test_an_edited_go_test_that_was_there_at_the_start_is_refused(self):
+        self.repo.write("internal/components/components_test.go", COMPONENTS_TEST.replace(
+            "func TestACauseIsShort(t *testing.T) {}", "func TestACauseIsShort(t *testing.T) {\n"
+            "\treturn\n}"))
+        with self.assertRaisesRegex(mf.FreezeError, "TestACauseIsShort was there at the start, "
+                                    "and it changed"):
+            self.lock()
+
+    def test_a_go_test_ends_at_the_next_declaration_not_at_a_brace_in_a_string(self):
+        raw = ("package components\n\nimport \"testing\"\n\nfunc TestRaw(t *testing.T) {\n"
+               "\twant := `\n}\n`\n\t_ = want\n}\n\n// TestNext is new.\nfunc TestNext(t *testing.T) {}\n")
+        found = mf.go_test_sources(raw.encode())
+        self.assertIn("_ = want", found["TestRaw"])
+        self.assertNotIn("TestNext", found["TestRaw"])   # its comment belongs to the next one
+        self.assertNotEqual(found["TestRaw"],
+                            mf.go_test_sources(raw.replace("_ = want", "return").encode())["TestRaw"])
+        # One test on one line: removing the test after it does not change it.
+        self.repo.write("internal/components/components_test.go", COMPONENTS_TEST.replace(
+            "func TestOther(t *testing.T) {}\n", ""))
+        with self.assertRaisesRegex(mf.FreezeError, "TestOther was there at the start, "
+                                    "and it was removed"):
+            self.lock()
+
+    def test_a_test_file_of_a_language_with_no_parser_must_stay_as_it_was(self):
+        self.repo.write("web/app.test.js", "test('adds', () => expect(1 + 1).toBe(2))\n")
+        start = self.repo.commit("a js test")
+        self.repo.write("web/app.test.js", "test('adds', () => expect(true).toBe(true))\n")
+        commit = self.repo.commit("weakened")
+        with self.assertRaisesRegex(mf.FreezeError, "web/app.test.js was there at the start, "
+                                    "and it changed"):
+            mf.check_kept(str(self.repo.path), commit, start, ["web/app.test.js"], [])
+        # A new file of such a language is free.
+        self.repo.write("web/new.test.js", "test('x', () => {})\n")
+        mf.check_kept(str(self.repo.path), self.repo.commit("new"), start, ["web/new.test.js"], [])
+
+    def lock_with_start(self, mapped, at_start):
+        import json
+        self.repo.write(mf.ticket_path("T-1"), GO_TICKET)
+        self.repo.write("internal/logging/cause_test.go", CAUSE_TEST)
+        self.repo.write(mf.map_path("T-1"), json.dumps(mapped))
+        commit = self.repo.commit("test(T-1): the ticket and its locked tests")
+        return freeze.record(str(self.repo.path), "T-1", commit, self.start, self.settings,
+                             self.report(), 1, True, SEAM_OUTPUT, at_start)["manifest"]
+
     def test_a_test_that_was_there_at_the_start_is_not_counted_as_failing(self):
         self.repo.write("internal/logging/cause_test.go", CAUSE_TEST)
         self.start = self.repo.commit("the tests were there")

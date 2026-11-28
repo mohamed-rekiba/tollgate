@@ -267,6 +267,81 @@ class SameRuleTest(unittest.TestCase):
         from gate import paths
         from setup import check_writing
         self.assertEqual(paths.DEFINES, check_writing.DEFINES)
+        self.assertEqual(paths.LANGUAGE_DEFINES, check_writing.LANGUAGE_DEFINES)
+        import inspect
+        self.assertEqual(inspect.getsource(paths.defines), inspect.getsource(check_writing.defines))
+
+
+class LanguageNameTest(unittest.TestCase):
+    """A citation path::Name resolves for the definitions of each language."""
+
+    GO = """package ports
+
+import "context"
+
+type Acceptance struct {
+	ID string
+}
+
+type (
+	Receipt struct{}
+	Store   interface {
+		Accept(ctx context.Context, a Acceptance) error
+		Close()
+	}
+)
+
+const (
+	MaxTries int = 3
+)
+
+func NewAcceptance(id string) Acceptance { return Acceptance{ID: id} }
+
+func (s *store) Save(ctx context.Context) error {
+	doThing(ctx)
+	return nil
+}
+"""
+
+    def test_go_types_funcs_methods_and_interface_methods(self):
+        from gate import paths
+        for name in ("Acceptance", "Receipt", "Store", "Accept", "MaxTries", "NewAcceptance",
+                     "Save", "ports.Acceptance"):
+            with self.subTest(name=name):
+                self.assertTrue(paths.defines(self.GO, name, "internal/ports/repository.go"))
+        for name in ("doThing", "Missing", "ID"):
+            with self.subTest(name=name):
+                self.assertFalse(paths.defines(self.GO, name, "internal/ports/repository.go"))
+
+    def test_the_go_patterns_apply_only_to_go_files(self):
+        from gate import paths
+        self.assertFalse(paths.defines("type Acceptance struct {}\n", "Acceptance", "notes.txt"))
+        # The default still finds a Go func, and a Python def, in any file.
+        self.assertTrue(paths.defines("func Run() {}\n", "Run", "x.txt"))
+
+    def test_other_languages(self):
+        from gate import paths
+        cases = [("src/lib.rs", "pub struct Receipt {}\n", "Receipt"),
+                 ("src/lib.rs", "pub(crate) async fn accept() {}\n", "accept"),
+                 ("src/a.ts", "export interface Receipt {}\n", "Receipt"),
+                 ("src/a.tsx", "export default function App() {}\n", "App"),
+                 ("src/a.js", "export const total = 1\n", "total")]
+        for path, text, name in cases:
+            with self.subTest(path=path, name=name):
+                self.assertTrue(paths.defines(text, name, path))
+
+    def test_a_go_citation_in_an_analysis_is_found(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as root:
+            Path(root, "internal/ports").mkdir(parents=True)
+            Path(root, "internal/ports/repository.go").write_text(self.GO)
+            text = ("---\ntask: t\ncommit: c\n---\n"
+                    "## Structure\n- confirmed: the port [internal/ports/repository.go::Acceptance]\n"
+                    "## Entry points\n- confirmed: a method [internal/ports/repository.go::Save]\n"
+                    "## Frameworks\n- assumed: none\n## Similar features\n- assumed: none\n"
+                    "## Tests\n- assumed: none\n## Standards\n- assumed: none\n")
+            self.assertEqual(an.verify(an.parse(text), root), [])
 
 
 class CommandTest(unittest.TestCase):

@@ -37,17 +37,43 @@ def line_exists(root: str, file: str, line) -> bool:
 
 
 # A name is defined when a line starts with one of these words and the name, or
-# assigns to it. setup/check_writing.py carries the same pattern, because it runs
+# assigns to it. setup/check_writing.py carries the same patterns, because it runs
 # alone in a project; tests/test_analysis.py keeps the two the same.
 DEFINES = (r"^\s*(?:async\s+def|def|class|func|fn|function|const|let|var)\s+{0}\b"
            r"|^\s*{0}\s*=")
+# The patterns of one language, by the file's suffix, tried as well as DEFINES. Each
+# has {0} where the name goes. A language plugs in with one entry here, and the same
+# entry in setup/check_writing.py.
+LANGUAGE_DEFINES = {
+    ".go": (r"^[ \t]*type[ \t]+{0}\b",                    # type Name struct, or an alias
+            r"^[ \t]+{0}[ \t]+(?:struct|interface)\b",     # a type in a type ( ... ) block
+            r"^func[ \t]*\([^)]*\)[ \t]*{0}[ \t]*[\[(]",    # a method: func (r *T) Name(
+            r"^[ \t]+{0}[ \t]*\([^)]*\)[ \t]*[\w(*\[]",    # an interface method with a result
+            r"^[ \t]+{0}(?:[ \t]*,[ \t]*\w+)*[ \t]+[\w.*\[\]]+[ \t]*="),  # a const or var in a block
+    ".rs": ((r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?(?:async[ \t]+)?(?:unsafe[ \t]+)?"
+            r"(?:fn|struct|enum|trait|type|mod|const|static|union)[ \t]+{0}\b"),),
+    ".ts": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?(?:abstract[ \t]+)?"
+            r"(?:interface|type|enum|class|function|const|let|var)[ \t]+{0}\b"),),
+    ".tsx": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?"
+             r"(?:interface|type|enum|class|function|const)[ \t]+{0}\b"),),
+    ".js": ((r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?"
+            r"(?:class|function|const|let|var)[ \t]+{0}\b"),),
+}
+
+
+def defines(text: str, name: str, path: str = "") -> bool:
+    """True when text, the file at path, defines `name`: the last part after a dot."""
+    last = re.escape(name.rsplit(".", 1)[-1])
+    suffix = path[path.rfind("."):] if "." in path.rsplit("/", 1)[-1] else ""
+    patterns = (DEFINES, *LANGUAGE_DEFINES.get(suffix, ()))
+    return any(re.search(p.format(last), text, re.MULTILINE) for p in patterns)
 
 
 def name_exists(root: str, file: str, name: str) -> bool:
-    """True when root/file defines `name`: a function, a class, or an assignment."""
+    """True when root/file defines `name`: a function, a class, a type, or an assignment,
+    by DEFINES and the patterns of the file's language."""
     text = read_inside(root, file)
-    last = re.escape(name.rsplit(".", 1)[-1])
-    return text is not None and bool(re.search(DEFINES.format(last), text, re.MULTILINE))
+    return text is not None and defines(text, name, file)
 
 
 def heading_exists(root: str, file: str, heading: str) -> bool:

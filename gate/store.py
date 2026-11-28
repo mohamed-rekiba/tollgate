@@ -99,21 +99,21 @@ class Store:
             ticket_file = self._approved_ticket(ticket, commit, base)
             started = self._start(start, commit) if start else base
             with tempfile.TemporaryDirectory() as d:
-                git(d, "clone", "-q", "--no-checkout", self.project, ".")
-                git(d, "checkout", "-q", "--detach", commit)
-                prepare.restore(d, base, *ticket_file)
-                for command in settings["setup"]:
-                    done = subprocess.run(command, shell=True, cwd=d, capture_output=True,
-                                          text=True, check=False, env=checks.project_env())
-                    if done.returncode:
-                        raise mf.FreezeError(f"the setup command failed: {command}")
-                # UNFINISHED: the tests run here, not in the builder's isolation.
-                results = checks.run(settings, d, ["tests"])
+                results = self._run_tests(d, commit, base, settings, ticket_file)
                 failed = any(c.name == "tests" and not c.passed for c in results.checks)
                 output = "\n".join(c.output for c in results.checks if c.name == "tests")
                 try:
-                    lock = fz.record(d, ticket, commit, started, settings, results.tests,
-                                     number, failed, output)
+                    try:
+                        lock = fz.record(d, ticket, commit, started, settings, results.tests,
+                                         number, failed, output)
+                    except mf.KeptNotRunError:
+                        # A test that keeps behavior shares a compile unit with the new
+                        # tests, which do not build yet. It must pass on the code before
+                        # the new tests, so the tests run once more at the start.
+                        with tempfile.TemporaryDirectory() as s:
+                            then = self._run_tests(s, started, base, settings)
+                        lock = fz.record(d, ticket, commit, started, settings, results.tests,
+                                         number, failed, output, then.tests)
                 except mf.FreezeError as err:
                     said = [c.output for c in results.checks if c.output]
                     if results.tests or not said:
@@ -130,6 +130,21 @@ class Store:
             path.replace(old)
         state.write_record(path, lock)
         return str(path)
+
+    def _run_tests(self, folder: str, commit: str, base: str, settings: dict,
+                   ticket_file: tuple = (None, None)) -> checks.Results:
+        """Clone the project into folder at commit, put back main's harness and the
+        approved ticket file, run the setup commands, and run the test check."""
+        git(folder, "clone", "-q", "--no-checkout", self.project, ".")
+        git(folder, "checkout", "-q", "--detach", commit)
+        prepare.restore(folder, base, *ticket_file)
+        for command in settings["setup"]:
+            done = subprocess.run(command, shell=True, cwd=folder, capture_output=True,
+                                  text=True, check=False, env=checks.project_env())
+            if done.returncode:
+                raise mf.FreezeError(f"the setup command failed: {command}")
+        # UNFINISHED: the tests run here, not in the builder's isolation.
+        return checks.run(settings, folder, ["tests"])
 
     def _start(self, start: str, commit: str) -> str:
         """The full commit a ticket started from. Raise FreezeError unless it passed the
@@ -221,6 +236,11 @@ class Store:
             found = plantag.record(self.project, task, commit)
         except pl.PlanError as err:
             raise StoreError(f"the plan cannot be locked: {err}") from None
+        stray = self._stray_tickets(task, commit)
+        if stray:
+            raise StoreError(f"the plan cannot be locked: the plan commit holds ticket "
+                             f"{', '.join(stray)}, which names plan {task} but is not in its "
+                             "header. Drop it from the plan commit, or list it in the header")
         if old is not None:
             plan_file = pl.plan_path(task)
             for name, digest in old["files"].items():
@@ -236,6 +256,20 @@ class Store:
         found["at"] = _now()
         state.write_record(path, found)
         return str(path)
+
+    def _stray_tickets(self, task: str, commit: str) -> list:
+        """The tickets of a plan commit that name the plan, are not in its header, and
+        differ from main or are not on it."""
+        plan = pl.parse(show_bytes(self.project, commit, pl.plan_path(task)).decode())
+        paths = git(self.project, "ls-tree", "-r", "--name-only", commit,
+                    "--", ".tollgate/tickets").splitlines()
+
+        def read(path):
+            data = show_bytes(self.project, commit, path)
+            if data is None or data == show_bytes(self.project, MAIN, path):
+                return None
+            return data.decode(errors="replace")
+        return pl.stray_tickets(plan, read, paths)
 
     # Questions for you.
 

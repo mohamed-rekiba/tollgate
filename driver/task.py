@@ -174,10 +174,23 @@ class Task:
                 f"{q}" for q in self.brief.open_questions if q not in plan.assumptions]
 
     def plan_inputs(self, **inputs) -> dict:
-        """The builder's inputs for a plan. From a brief, they add its open questions."""
+        """The builder's inputs for a plan. From a brief, they add its open questions, and
+        after a decision on the plan, the decisions."""
         if self.brief:
             inputs["open_questions"] = self.brief.open_questions
-        return inputs
+        return {**inputs, **self.decision_inputs()}
+
+    def decision_inputs(self) -> dict:
+        """{"decisions": [{by, decision, hint}]}: each decision the advisor, a person or
+        an AI, made on this task's plan, oldest first, from the log. {} when there is none,
+        so the inputs of a plan that no one decided on stay as they were. A hint can settle
+        a fact, such as an owner's confirmation, so the roles that write and review the
+        plan read it as a source."""
+        found = [{"by": e.get("by", ""), "decision": e.get("decision", ""),
+                  "hint": e.get("hint", "")}
+                 for e in read(self.log_path) if e["event"] == "advisor_decided"
+                 and "checkpoint" not in e]
+        return {"decisions": found} if found else {}
 
     def kept_tickets(self, plan) -> list:
         """A new version of a locked plan keeps each ticket of the old one, unchanged."""
@@ -228,8 +241,15 @@ class Task:
     def review_plan(self, fix: str = "") -> list:
         """Up to 4 rounds. Return the findings still open, or [] after a clean round.
         In a fix round, `fix` holds the findings of the review of the whole task: the lenses
-        that judge need and readiness read the plan against them too."""
+        that judge need and readiness read the plan against them too.
+
+        A minor finding never makes a round unclean, but it goes to the builder: with the
+        open findings of its round, or, in a round with none, in one answer step of its
+        own. When that answer changes the plan or a ticket, the next round reviews the
+        change; a later round with only minor findings is clean. In the last round the
+        minor findings stay in the log, since no round is left to review a change."""
         open_findings = []
+        minors_answered = False
         for round_no in range(1, MAX_ROUNDS + 1):
             problems = self.check_plan()
             if problems:
@@ -241,11 +261,12 @@ class Task:
             text = self.read_copy(pl.plan_path(self.id))
             plan = pl.parse(text)
             tickets = {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md") for t in plan.tickets}
-            findings = []
+            findings, minors = [], []
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
                     "plan": text, "tickets": tickets, "request": self.request,
-                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {})}
+                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {}),
+                    **self.decision_inputs()}
                 try:
                     data = self.role("reviewer", inputs, lens=lens)
                 except roles.RoleError:
@@ -256,12 +277,23 @@ class Task:
                                          "text": f"the reviewer did not answer: {err}"})
                         continue
                 self.log.add("plan_reviewed", lens=lens, round=round_no, cost_usd=data.cost_usd)
-                findings += [dict(f, lens=lens) for f in data.data.get("findings", [])
-                             if f.get("level") in OPEN_LEVELS]
+                found = [dict(f, lens=lens) for f in data.data.get("findings", [])
+                         if isinstance(f, dict)]
+                findings += [f for f in found if f.get("level") in OPEN_LEVELS]
+                minors += [f for f in found if f.get("level") == "minor"]
             if not findings:
-                self.log.add("plan_review_clean", round=round_no)
+                if minors and not minors_answered and round_no < MAX_ROUNDS:
+                    minors_answered = True
+                    if self.answer_minors(round_no, minors, text, tickets):
+                        continue
+                self.log.add("plan_review_clean", round=round_no,
+                             **({"minor": minors} if minors else {}))
                 return []
-            answer = self.role("builder", {"mode": "answer", "findings": findings})
+            # The minor findings come after the open ones, so an open finding keeps its
+            # number, and only an open finding can be escalated.
+            answer = self.role("builder", {"mode": "answer", "findings": findings + minors,
+                                           **self.locked_inputs()})
+            self.keep_locked_tickets(round_no)
             answers = answer.data.get("answers", [])
             escalated = [findings[a["finding"]] for a in answers if a.get("action") == "escalate"
                          and isinstance(a.get("finding"), int) and a["finding"] < len(findings)]
@@ -275,6 +307,56 @@ class Task:
                 self.log.add("plan_invalid", problems=problems)
                 self.write_plan(problems)
         return open_findings or [{"level": "major", "text": f"{MAX_ROUNDS} rounds with findings"}]
+
+    def answer_minors(self, round_no: int, minors: list, text: str, tickets: dict) -> bool:
+        """Give the minor findings of a clean round to the builder, who fixes or contests
+        each one. Return True when the answer changed the plan or a ticket, so the change
+        needs a review round."""
+        answer = self.role("builder", {"mode": "answer", "findings": minors,
+                                       **self.locked_inputs()})
+        self.keep_locked_tickets(round_no)
+        self.log.add("plan_answered", round=round_no, cost_usd=answer.cost_usd,
+                     answers=answer.data.get("answers", []), escalated=0, minor=len(minors))
+        now = self.read_copy(pl.plan_path(self.id))
+        try:
+            ids = pl.parse(now).tickets if now is not None else []
+        except pl.PlanError:
+            return True
+        return now != text or {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md")
+                               for t in ids} != tickets
+
+    def locked_ids(self) -> list:
+        """The tickets that the plan's last lock holds, in a fix round; [] before a lock."""
+        locked = [e for e in read(self.log_path) if e["event"] == "plan_locked"]
+        return list(locked[-1].get("tickets", [])) if locked else []
+
+    def locked_inputs(self) -> dict:
+        """{"locked_tickets": [...]} for an answer step in a fix round, so the builder
+        knows which tickets it may not change; {} before any lock."""
+        ids = self.locked_ids()
+        return {"locked_tickets": ids} if ids else {}
+
+    def keep_locked_tickets(self, round_no: int) -> None:
+        """After an answer in a fix round, put back each ticket of the plan lock that the
+        answer changed, with a plan_invalid event, so the plan lock does not refuse it
+        late."""
+        problems = self.kept_tickets_problems()
+        if not problems:
+            return
+        commit = [e for e in read(self.log_path) if e["event"] == "plan_locked"][-1]["commit"]
+        for tid in self.locked_ids():
+            git(self.copy, "checkout", commit, "--", f".tollgate/tickets/{tid}")
+        self.log.add("plan_invalid", round=round_no, problems=problems)
+
+    def kept_tickets_problems(self) -> list:
+        text = self.read_copy(pl.plan_path(self.id))
+        try:
+            plan = pl.parse(text) if text is not None else None
+        except pl.PlanError:
+            plan = None
+        if plan is None:
+            return []
+        return self.kept_tickets(plan)
 
     @staticmethod
     def sent_back_hint(events: list) -> str | None:
@@ -356,18 +438,63 @@ class Task:
         return any(e["event"] == "checkpoint_passed" and e.get("name") == name
                    and e.get("key", "") == key for e in read(self.log_path))
 
-    def lock_plan(self):
+    def lock_plan(self, hint: str = ""):
+        """Commit the plan and lock it. hint is what the advisor said with `approve`: the
+        tickets of this lock are built with it (see approval_hint)."""
+        from gate.gitio import show_bytes
         # The analysis goes on the plan branch as the driver checked it.
         path = Path(self.copy, an.analysis_path(self.id))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.analysis_text())
-        git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets", ".tollgate/analysis")
+        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        dropped = self.drop_stray_tickets(plan)
+        if dropped:
+            self.log.add("plan_tickets_dropped", tickets=dropped)
+        # Only the plan, the tickets its header lists, and the analysis: a ticket the
+        # builder wrote and then left out of the plan is no part of what was approved.
+        git(self.copy, "add", "-A", "--", pl.plan_path(self.id), an.analysis_path(self.id),
+            *(f".tollgate/tickets/{t}" for t in plan.tickets),
+            *(f".tollgate/tickets/{t}/ticket.md" for t in dropped
+              if show_bytes(self.copy, "HEAD", f".tollgate/tickets/{t}/ticket.md") is not None))
         git(self.copy, "commit", "-q", "--allow-empty", "-m", f"docs({self.id}): the plan")
         fetch_branch(self.project, self.copy, f"tg-plan/{self.id}")
         path = self.store.lock_plan(self.id)
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
         self.log.add("plan_locked", path=path, commit=git(self.copy, "rev-parse", "HEAD"),
-                     tickets=plan.tickets)
+                     tickets=plan.tickets, **({"hint": hint.strip()} if hint.strip() else {}))
+
+    def drop_stray_tickets(self, plan) -> list:
+        """Drop from the copy each ticket of this plan that its header does not list: a
+        ticket whose `plan:` names this task, and that main does not hold as it is. A ticket
+        that is not on main is deleted; one that main holds goes back to main's folder.
+        Return their ids. A ticket of another plan stays. The store refuses a plan commit that
+        still holds such a ticket."""
+        import shutil
+
+        from gate.gitio import show_bytes
+        folder = Path(self.copy, ".tollgate/tickets")
+        paths = [f".tollgate/tickets/{p.parent.name}/ticket.md"
+                 for p in sorted(folder.glob("*/ticket.md"))] if folder.exists() else []
+
+        def read(path):
+            data = Path(self.copy, path).read_bytes()
+            return None if show_bytes(self.copy, self.base, path) == data else data.decode(
+                errors="replace")
+        dropped = pl.stray_tickets(plan, read, paths)
+        for tid in dropped:
+            shutil.rmtree(folder / tid)
+            if show_bytes(self.copy, self.base, f".tollgate/tickets/{tid}/ticket.md") is not None:
+                # A ticket that main holds was only edited: it goes back to main's folder.
+                git(self.copy, "checkout", self.base, "--", f".tollgate/tickets/{tid}")
+        return dropped
+
+    def approval_hint(self, tid: str) -> str:
+        """The hint given with the approval of the plan lock that first listed the ticket,
+        or "". The plan is locked by then, so the hint changes no ticket: it goes to the
+        ticket's test writer and builder, who follow it where the ticket allows."""
+        for e in read(self.log_path):
+            if e["event"] == "plan_locked" and tid in e.get("tickets", []):
+                return e.get("hint", "")
+        return ""
 
     def build_tickets(self) -> dict:
         plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
@@ -382,7 +509,7 @@ class Task:
             try:
                 code = Driver(self.project, tid, self.store, ticket_text=text,
                               runner=self.runner, base=start, hold=True,
-                              **self.driver_args).run()
+                              approval_hint=self.approval_hint(tid), **self.driver_args).run()
             except Busy:
                 code = 4
             except (roles.RoleError, tk.TicketError, StoreError,
@@ -503,7 +630,7 @@ class Task:
         if decision["decision"] != "approve":
             self.log.add("plan_sent_back", hint=decision.get("hint", ""))
             raise Parked("the plan of the fix round was sent back")
-        self.lock_plan()
+        self.lock_plan(decision.get("hint", ""))
         self.log.add("fix_round", round=self.fix_rounds() + 1, findings=findings)
 
     def merge_ready(self) -> list:
@@ -599,7 +726,7 @@ class Task:
                         self.write_plan(hint=decision.get("hint", ""))
                         self.log.add("plan_review_done", open=self.review_plan())
                         raise Parked("the plan was sent back and needs a new approval")
-                    self.lock_plan()
+                    self.lock_plan(decision.get("hint", ""))
                 while True:
                     done = self.build_tickets()
                     if not done or not all(c == 0 for c in done.values()):

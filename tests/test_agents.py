@@ -57,6 +57,14 @@ class AgentsTest(unittest.TestCase):
             self.assertLess(turns[role], turns["test_writer"])
         self.assertLess(turns["test_writer"], turns["builder"])
 
+    def test_each_agent_knows_its_turn_budget_and_keeps_turns_for_its_answer(self):
+        # A subagent that hits its limit ends with a part of its answer and no json block.
+        for role in ROLES:
+            fields, body = frontmatter((AGENTS / f"{role}.md").read_text())
+            with self.subTest(role=role):
+                self.assertIn(f"You have at most {fields['maxTurns']} turns.", body)
+                self.assertIn("When about 5 of them are left, stop and write your answer", body)
+
     def test_the_agents_match_the_roles(self):
         result = subprocess.run([sys.executable, "-m", "setup.agents", "--check"], cwd=ROOT,
                                 capture_output=True, text=True, check=False)

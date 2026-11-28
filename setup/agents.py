@@ -15,8 +15,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from driver.roles import TOOLS
-
 # What each role does, in one line, for the agent's description.
 DOES = {
     "analyst": "Reads the project and reports what it finds, with citations, before a plan.",
@@ -28,19 +26,27 @@ DOES = {
 # The most turns each role may take in your session. The builder builds, the test
 # writer writes tests, and the others only read, so they get few.
 MAX_TURNS = {"builder": 150, "test_writer": 80, "analyst": 40, "reviewer": 30, "advisor": 15}
+# The turns a role keeps for its answer, out of MAX_TURNS.
+KEEP_TURNS = 5
 ONLY = ("Only when Tollgate's driver names this role in a task; never for other work, "
         "and never on your own.")
 HEADER = ("Tollgate's driver starts you and gives you your inputs in the message that "
           "starts you: a json block under Inputs, and for a review, the lens to read with. "
           "Work only in the folder that message names, the copy: start each command with "
           "a cd to it, and give each file its full path in it. "
-          "Do what the role below says, and end your answer the way it says.")
+          "Do what the role below says, and end your answer the way it says. "
+          "You have at most {turns} turns. Read only what your step needs. When about "
+          "{keep} of them are left, stop and write your answer with what you have: an "
+          "answer that does not end with its json block is lost.")
 
 
 def render(role: str) -> str:
+    from driver.roles import TOOLS  # after sys.path holds Tollgate's folder
     tools = ", ".join(TOOLS[role])
     return (f"---\nname: {role}\ndescription: {DOES[role]} {ONLY}\ntools: {tools}\n"
-            f"model: inherit\nmaxTurns: {MAX_TURNS[role]}\n---\n\n{HEADER}\n\n" + (ROOT / "roles" / f"{role}.md").read_text())
+            f"model: inherit\nmaxTurns: {MAX_TURNS[role]}\n---\n\n"
+            f"{HEADER.format(turns=MAX_TURNS[role], keep=KEEP_TURNS)}\n\n"
+            + (ROOT / "roles" / f"{role}.md").read_text())
 
 
 def build(check: bool = False) -> list:
