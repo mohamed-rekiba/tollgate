@@ -484,6 +484,17 @@ class Driver:
         return [{"level": "blocking", "text": f"check {c.name} fails on a locked test:\n"
                  f"{c.output}"} for c in failed]
 
+    @staticmethod
+    def claim(answer) -> str:
+        """The builder's claim that a locked test is wrong, as a sentence for the advisor's
+        reason, or "". When the try stops, the advisor judges the claim: a retry or a
+        park, or a person who fixes the test by hand."""
+        wrong = answer.data.get("locked_test_wrong")
+        if not wrong:
+            return ""
+        return (". The builder also says a locked test is wrong: "
+                + (wrong if isinstance(wrong, str) else json.dumps(wrong)))
+
     def send_back(self, st_: history.Ticket, findings: list):
         """Send the tests back to the test writer for the one replacement lock, or park
         the ticket when it was used. The builder cannot change a locked test."""
@@ -521,7 +532,8 @@ class Driver:
             st_.attempts = n
             return
         cost = answer.cost_usd
-        said = {k: answer.data.get(k) for k in ("decisions", "concerns") if answer.data.get(k)}
+        said = {k: answer.data.get(k) for k in ("decisions", "concerns", "locked_test_wrong")
+                if answer.data.get(k)}
         if said:
             self.log.add("builder_said", attempt=n, **said)
         folders, problem = draw_diagrams(self.copy)
@@ -553,7 +565,7 @@ class Driver:
         if cannot_fix:
             self.log.add("try_failed", findings=findings, score=-1, **fields)
             raise Stop("the gate failed on a check the builder cannot fix: "
-                       + "; ".join(f["message"] for f in cannot_fix))
+                       + "; ".join(f["message"] for f in cannot_fix) + self.claim(answer))
         if any(f["fixable"] for f in findings):
             # The score with no review: a lower bound, so the best try can still move.
             value, passed = score(self.ticket, locked, [], self.copy, mapped)
@@ -614,7 +626,7 @@ class Driver:
                 self.send_back(st_, back)
             if findings:
                 raise Stop("the review of tier " + str(tier) + " failed: "
-                           + "; ".join(f["message"] for f in findings))
+                           + "; ".join(f["message"] for f in findings) + self.claim(answer))
             return
         try:
             record = self.gate.pass_record(facts, value)

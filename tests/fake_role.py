@@ -23,7 +23,8 @@ does, until the inputs hold a hint), tw_freeze=1 (the first tests it writes hold
 test that passes before the build, so the freeze refuses them), tw_map=1 (C2 is kept by
 the existing tests/test_greet.py::test_greet, named in the answer's map; tw_map=weaken
 first weakens that test; tw_map=next adds a new test next to it).
-Builder options: owntest=1 (the builder adds its own test, named for item C3), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
+Builder options: owntest=1 (the builder adds its own test, named for item C3), wrong=1 (the
+builder says a locked test is wrong), ask=1 (the plan lists an assumption), diagram=ok or bad (the try
 writes a diagram spec, and an SVG file by hand). Advisor options: plan_decision=<d>,
 decision=<d>, checkpoint=<continue or stop>.
 Planner options: plan_sees=<path> (adds what app.py holds in its copy to that file),
@@ -474,7 +475,9 @@ def main() -> int:
             Path("docs/diagrams/src/shout.json").write_text(json.dumps(spec))
             Path("docs/diagrams/shout.svg").write_text("<svg>drawn by hand</svg>")
             Path("docs/diagrams/notes.txt").write_text(json.dumps(sorted(data)))
-        answer({"changed": ["app.py"], "locked_test_wrong": None,
+        wrong = ("tests/test_t1.py::test_c1_shout: the ticket asks for HELLO ANN, the test is "
+                 "right only if greet is unchanged") if opts.get("wrong") else None
+        answer({"changed": ["app.py"], "locked_test_wrong": wrong,
                 "decisions": ["shout reuses greet"], "concerns": []}, cost)
     elif first == "# Role: reviewer" and "# Lens: test fit" in prompt:
         answer({"verdict": "pass", "findings": [], "items": []}, cost)

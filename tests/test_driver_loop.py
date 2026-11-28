@@ -168,6 +168,27 @@ class BuildTest(LoopCase):
         self.assertEqual(d.run(), 0)
         self.assertEqual([e["event"] for e in self.tries(s)], ["try_passed"])
 
+    def test_a_builder_that_says_a_locked_test_is_wrong_sends_the_tests_back(self):
+        s = self.sample(builder="same wrong=1", advisor=())
+        d, _ = driver(s)
+        d.run()
+        said = [e for e in s.log() if e["event"] == "builder_said"]
+        self.assertIn("test_c1_shout", said[0]["locked_test_wrong"])
+        back = [e for e in s.log() if e["event"] == "tests_sent_back"]
+        self.assertIn("the builder says a locked test is wrong: tests/test_t1.py::test_c1_shout",
+                      back[0]["findings"][0]["text"])
+        # The test writer, the role that can change a locked test, writes them again.
+        events = s.events()
+        self.assertIn("tests_written", events[events.index("tests_sent_back"):])
+
+    def test_a_claim_that_a_test_is_wrong_reaches_the_advisor_when_the_try_stops(self):
+        s = self.sample(builder="pass1 wrong=1", reviewer="ok block=review", advisor=(),
+                        tier1={"max_files": 0, "max_lines": 0})
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 3)
+        stopped = [e["reason"] for e in s.log() if e["event"] == "stopped"]
+        self.assertIn("The builder also says a locked test is wrong: tests/test_t1.py", stopped[0])
+
     def test_the_driver_draws_a_diagram_from_the_builder_s_spec(self):
         s = self.sample(builder="good diagram=ok")
         d, store = driver(s)
