@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/tollgate-ai/tollgate/compare/v0.13.2...v0.13.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **driver:** route each problem to the role that can fix it ([#169](https://github.com/tollgate-ai/tollgate/issues/169)) ([3c34cfa](https://github.com/tollgate-ai/tollgate/commit/3c34cfa0c03ea91f609f78085d2a1492a10e26a0))
+
 ## [0.13.2](https://github.com/tollgate-ai/tollgate/compare/v0.13.1...v0.13.2) (2026-11-27)
 
 
