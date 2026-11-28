@@ -161,6 +161,20 @@ class BuildTest(LoopCase):
         self.assertEqual(tries[1]["majors"][0]["text"], "an error branch has no test")
         self.assertEqual(len(store.ready_marks), 1)
 
+    def test_when_the_extra_try_fails_the_try_with_the_major_finding_gets_ready(self):
+        # The extra try for a major finding fails, and it is the last try: the ticket gets
+        # ready with the first try, as it would have before the extra try existed.
+        s = self.sample(builder="pass1only", reviewer="ok major=review", advisor=(),
+                        tier1={"max_files": 0, "max_lines": 0}, stop={"attempts": 2})
+        d, store = driver(s)
+        self.assertEqual(d.run(), 0)
+        tries = self.tries(s)
+        self.assertEqual([e["event"] for e in tries], ["try_failed", "try_failed"])
+        first = tries[0]["commit"]
+        self.assertTrue(store.passed(first))
+        self.assertEqual(store.ready_marks[0][2], first)
+        self.assertIn("fallback_used", s.events())
+
     def test_a_major_review_finding_on_the_last_try_does_not_park_the_ticket(self):
         s = self.sample(builder="pass1", reviewer="ok major=review",
                         tier1={"max_files": 0, "max_lines": 0}, stop={"attempts": 1})

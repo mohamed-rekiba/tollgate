@@ -507,6 +507,7 @@ class Driver:
         self.log.add("tests_sent_back", lock=st_.frozen, findings=findings)
         st_.relock_from, st_.relocks = st_.frozen, st_.relocks + 1
         st_.frozen, st_.tests_done, st_.rejections, st_.rejected = "", False, 0, findings
+        st_.fallback, st_.fallback_attempt = "", 0   # its pass record is of the old lock
 
     def try_once(self, st_: history.Ticket):
         """One try, from the best try so far."""
@@ -605,9 +606,20 @@ class Driver:
         if majors and not (findings or blocking or must_failed
                            or value < self.settings["pass_score"]) and self.major_try(st_):
             # A major finding of the review should be fixed now, so the builder gets one
-            # more try with it. Only once for a ticket, and only while it has a try left:
-            # a major finding alone never parks a ticket.
-            self.log.add("try_failed", findings=majors, review_major=True, **fields)
+            # more try with it. Only once for a ticket, and only while it has a try left.
+            # The try passes the gate, so it gets its pass record now and is the fallback:
+            # when the next try does not pass, the ticket gets ready with this one, so a
+            # major finding alone never parks a ticket.
+            try:
+                record = self.gate.pass_record(facts, value)
+            except self.gate.GateError as err:
+                self.log.add("try_failed", findings=[{"level": "blocking", "text": str(err)}],
+                             **fields)
+                raise Stop(f"the gate refused a pass record: {err}") from None
+            self.store.record_pass(facts.head_sha, record)
+            self.log.add("try_failed", findings=majors, review_major=True, fallback=commit,
+                         **fields)
+            st_.fallback, st_.fallback_attempt = commit, n
             self._keep_if_best(st_, value, commit)
             return
         if majors:
@@ -638,6 +650,16 @@ class Driver:
         self.log.add("try_passed", **fields)
         st_.passed_commit = commit
         self._keep_if_best(st_, value, commit)
+
+    def use_fallback(self, st_: history.Ticket) -> bool:
+        """When the try after a fallback ended and did not pass, the fallback is the
+        passed try. Return True when it is used."""
+        if st_.passed_commit or not st_.fallback or st_.attempts <= st_.fallback_attempt:
+            return False
+        st_.passed_commit = st_.fallback
+        self.log.add("fallback_used", commit=st_.fallback,
+                     reason="the try after a try with only major findings did not pass")
+        return True
 
     def major_try(self, st_: history.Ticket) -> bool:
         """True when a try that only has major review findings goes back to the builder:
@@ -774,6 +796,8 @@ class Driver:
                 if getattr(self, "until", None) == "frozen":
                     return 0
                 while not st_.passed_commit and st_.frozen:
+                    if self.use_fallback(st_):
+                        break
                     self.stop_check()
                     self.try_once(st_)
                 if not st_.frozen:
@@ -782,6 +806,8 @@ class Driver:
                     self.make_ready(st_)
                 return self.finish(st_)
             except Stop as stopped:
+                if st_.frozen and self.use_fallback(st_):
+                    continue    # the try after the fallback stopped: the fallback is ready
                 self.log.add("stopped", reason=str(stopped))
                 self.ask_advisor(st_, str(stopped))
 

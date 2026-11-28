@@ -5,7 +5,8 @@
 It reads the prompt on standard input, acts as the role named in its first line,
 and prints {"result": ..., "total_cost_usd": ...}.
 
-Builder modes: pass2 (fails attempt 1, passes attempt 2), same (fails the same
+Builder modes: pass2 (fails attempt 1, passes attempt 2), pass1only (passes attempt 1 and
+fails each later one), same (fails the same
 way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
@@ -443,7 +444,8 @@ def main() -> int:
             time.sleep(5)
         if mode == "slow":
             time.sleep(30)
-        good = (mode == "pass2" and n >= 2) or mode == "pass1"
+        good = (mode == "pass2" and n >= 2) or mode == "pass1" or (mode == "pass1only"
+                                                                    and n == 1)
         if "seams: app.loud" in data.get("ticket", ""):
             kept = Path("app.py").read_text().split("\n\ndef loud(")[0]
             Path("app.py").write_text(kept + (LOUD if good else LOUD_BAD))

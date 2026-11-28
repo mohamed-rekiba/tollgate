@@ -42,6 +42,8 @@ class Ticket:
     stronger: bool = False
     relock_from: str = ""      # the lock commit that a replacement lock builds on, while one waits
     relocks: int = 0           # the tests sent back after the lock: at most one replacement
+    fallback: str = ""         # a try that passed but for major findings: it has a pass record
+    fallback_attempt: int = 0  # its try number; a later try that does not pass falls back to it
 
 
 def better(score: int, best: int) -> bool:
@@ -71,6 +73,7 @@ def replay(events: list) -> Ticket:
             t.frozen, t.tests_done, t.rejections = "", False, 0
             t.rejected = e.get("findings", [])
             t.relock_from, t.relocks = e.get("lock", ""), t.relocks + 1
+            t.fallback, t.fallback_attempt = "", 0   # its pass record is of the old lock
         elif kind == "relocked":
             # The build goes on from the best try, merged onto the replacement lock.
             t.relock_from, t.best_commit, t.best_score = "", e.get("commit", ""), -1
@@ -84,6 +87,10 @@ def replay(events: list) -> Ticket:
                 t.best_score, t.best_commit = e["score"], e.get("commit", t.best_commit)
             if kind == "try_passed":
                 t.passed_commit = e.get("commit", "")
+            elif e.get("fallback"):
+                t.fallback, t.fallback_attempt = e["fallback"], t.attempts
+        elif kind == "fallback_used":
+            t.passed_commit = e.get("commit", "")
         elif kind == "ready":
             t.ready = e.get("commit", "")
         elif kind == "advisor_decided":
