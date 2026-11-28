@@ -49,6 +49,8 @@ When the analysis has specified facts and the plan adds behavior that no specifi
 
 Prefer the simplest plan that fits the architecture the analysis found. Plan a new architecture only when the request asks for one.
 
+When `decisions` is in the inputs, each one is what the advisor, a person or an AI, decided on this plan before, with its hint. A hint answers a question or confirms a fact: write the plan by it, and name it under Design as the source of what it settles, such as "the owner confirmed the doc change (decision 1)".
+
 When `open_questions` is in the inputs, the request is a brief from a brainstorm. Its Goals and Non-goals set what the plan does and does not do: each goal needs a ticket, and each non-goal goes under Out of scope in the ticket it touches. Copy each question of the brief's `Open questions`, word for word, as one assumption under Assumptions.
 
 1. Read the analysis, then the project, until you can name every file that changes and every seam a test can observe. Done when no name in your plan is a guess.

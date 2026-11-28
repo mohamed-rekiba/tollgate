@@ -256,6 +256,8 @@ The review ends after one round with no open blocking or major finding. The limi
 
 A reviewer that fails to answer gets one retry. After that, the round does not count as clean.
 
+The builder and the lenses that read more than the plan get the decisions made on the plan so far, from the task's log: who decided, the decision, and its hint. A hint can settle a fact, such as an owner's confirmation of a doc change, so a reviewer reads it as a source. The fresh reader reads the plan alone.
+
 ## Tiers
 
 <picture>

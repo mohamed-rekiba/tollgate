@@ -37,6 +37,8 @@ class Script:
                 self.fix(inputs)
             return roles.Answer({"answers": [{"finding": i, "action": "fix", "evidence": "x"}
                                              for i, _ in enumerate(inputs["findings"])]}, 0, 0)
+        if name == "builder" and inputs.get("mode") == "plan":
+            return roles.Answer({"plan": ".tollgate/plans/demo.md"}, 0, 0)
         raise AssertionError(f"unexpected role {name}")
 
     def answers(self):
@@ -128,6 +130,30 @@ class ApprovalHintTest(TaskCase):
         text = Path(self.task.copy, ".tollgate/tickets/demo-1/ticket.md").read_text()
         d = Driver(str(self.s.project), "demo-1", self.store, ticket_text=text)
         self.assertEqual(d.approval, {})
+
+
+class DecisionsTest(TaskCase):
+    def test_the_plan_s_reviewers_and_planner_read_the_earlier_decisions(self):
+        hint = "the owner confirms the change to docs/design.md"
+        self.task.log.add("advisor_decided", by="person", question=1, decision="send_back",
+                          hint=hint)
+        self.task.log.add("advisor_decided", by="ai", checkpoint="ticket", decision="continue",
+                          hint="")
+        self.task.role = Script()
+        self.task.write_plan(hint=hint)
+        self.assertEqual(self.task.review_plan(), [])
+        want = [{"by": "person", "decision": "send_back", "hint": hint}]
+        for name, lens, inputs in self.task.role.calls:
+            with self.subTest(role=name, lens=lens):
+                if lens == "fresh_reader":
+                    self.assertNotIn("decisions", inputs)   # it reads the plan alone
+                else:
+                    self.assertEqual(inputs["decisions"], want)
+
+    def test_with_no_decision_the_inputs_stay_as_they_were(self):
+        self.task.role = Script()
+        self.task.review_plan()
+        self.assertFalse(any("decisions" in i for _, _, i in self.task.role.calls))
 
 
 class PlanLockTest(TaskCase):

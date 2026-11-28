@@ -174,10 +174,23 @@ class Task:
                 f"{q}" for q in self.brief.open_questions if q not in plan.assumptions]
 
     def plan_inputs(self, **inputs) -> dict:
-        """The builder's inputs for a plan. From a brief, they add its open questions."""
+        """The builder's inputs for a plan. From a brief, they add its open questions, and
+        after a decision on the plan, the decisions."""
         if self.brief:
             inputs["open_questions"] = self.brief.open_questions
-        return inputs
+        return {**inputs, **self.decision_inputs()}
+
+    def decision_inputs(self) -> dict:
+        """{"decisions": [{by, decision, hint}]}: each decision the advisor, a person or
+        an AI, made on this task's plan, oldest first, from the log. {} when there is none,
+        so the inputs of a plan that no one decided on stay as they were. A hint can settle
+        a fact, such as an owner's confirmation, so the roles that write and review the
+        plan read it as a source."""
+        found = [{"by": e.get("by", ""), "decision": e.get("decision", ""),
+                  "hint": e.get("hint", "")}
+                 for e in read(self.log_path) if e["event"] == "advisor_decided"
+                 and "checkpoint" not in e]
+        return {"decisions": found} if found else {}
 
     def kept_tickets(self, plan) -> list:
         """A new version of a locked plan keeps each ticket of the old one, unchanged."""
@@ -252,7 +265,8 @@ class Task:
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
                     "plan": text, "tickets": tickets, "request": self.request,
-                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {})}
+                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {}),
+                    **self.decision_inputs()}
                 try:
                     data = self.role("reviewer", inputs, lens=lens)
                 except roles.RoleError:
