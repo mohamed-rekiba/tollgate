@@ -236,6 +236,11 @@ class Store:
             found = plantag.record(self.project, task, commit)
         except pl.PlanError as err:
             raise StoreError(f"the plan cannot be locked: {err}") from None
+        stray = self._stray_tickets(task, commit)
+        if stray:
+            raise StoreError(f"the plan cannot be locked: the plan commit holds ticket "
+                             f"{', '.join(stray)}, which names plan {task} but is not in its "
+                             "header. Drop it from the plan commit, or list it in the header")
         if old is not None:
             plan_file = pl.plan_path(task)
             for name, digest in old["files"].items():
@@ -251,6 +256,20 @@ class Store:
         found["at"] = _now()
         state.write_record(path, found)
         return str(path)
+
+    def _stray_tickets(self, task: str, commit: str) -> list:
+        """The tickets of a plan commit that name the plan, are not in its header, and
+        differ from main or are not on it."""
+        plan = pl.parse(show_bytes(self.project, commit, pl.plan_path(task)).decode())
+        paths = git(self.project, "ls-tree", "-r", "--name-only", commit,
+                    "--", ".tollgate/tickets").splitlines()
+
+        def read(path):
+            data = show_bytes(self.project, commit, path)
+            if data is None or data == show_bytes(self.project, MAIN, path):
+                return None
+            return data.decode(errors="replace")
+        return pl.stray_tickets(plan, read, paths)
 
     # Questions for you.
 

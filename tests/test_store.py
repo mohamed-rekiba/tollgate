@@ -225,6 +225,21 @@ class LockPlanTest(StoreCase):
         self.assertEqual(sorted(found["files"]), sorted([mf.ticket_path("T-1"), pl.plan_path("retries")]))
         self.assertEqual(self.repo.git("tag", "--list"), "")
 
+    def test_refuses_a_ticket_of_the_plan_that_its_header_does_not_list(self):
+        r = self.repo
+        r.git("checkout", "-q", "-b", "tg-plan/retries", "main")
+        r.write(pl.plan_path("retries"), PLAN)
+        r.write(mf.ticket_path("T-1"), TICKET.replace("plan: demo", "plan: retries"))
+        # A ticket the builder wrote in an early round, then left out of the header.
+        r.write(mf.ticket_path("T-old"), TICKET.replace("plan: demo", "plan: retries")
+                .replace("id: T-1", "id: T-old"))
+        # A ticket of another plan is no concern of this one.
+        r.write(mf.ticket_path("T-other"), TICKET.replace("id: T-1", "id: T-other"))
+        r.commit("the plan")
+        r.git("checkout", "-q", "main")
+        with self.assertRaisesRegex(StoreError, "holds ticket T-old, which names plan retries"):
+            self.store.lock_plan("retries")
+
     def test_refuses_a_missing_ticket_and_a_second_lock(self):
         self.plan_branch(with_ticket=False)
         with self.assertRaisesRegex(StoreError, "T-1 has no file"):

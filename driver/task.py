@@ -390,17 +390,47 @@ class Task:
     def lock_plan(self, hint: str = ""):
         """Commit the plan and lock it. hint is what the advisor said with `approve`: the
         tickets of this lock are built with it (see approval_hint)."""
+        from gate.gitio import show_bytes
         # The analysis goes on the plan branch as the driver checked it.
         path = Path(self.copy, an.analysis_path(self.id))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.analysis_text())
-        git(self.copy, "add", "-A", ".tollgate/plans", ".tollgate/tickets", ".tollgate/analysis")
+        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
+        dropped = self.drop_stray_tickets(plan)
+        if dropped:
+            self.log.add("plan_tickets_dropped", tickets=dropped)
+        # Only the plan, the tickets its header lists, and the analysis: a ticket the
+        # builder wrote and then left out of the plan is no part of what was approved.
+        git(self.copy, "add", "-A", "--", pl.plan_path(self.id), an.analysis_path(self.id),
+            *(f".tollgate/tickets/{t}" for t in plan.tickets),
+            *(f".tollgate/tickets/{t}/ticket.md" for t in dropped
+              if show_bytes(self.copy, "HEAD", f".tollgate/tickets/{t}/ticket.md") is not None))
         git(self.copy, "commit", "-q", "--allow-empty", "-m", f"docs({self.id}): the plan")
         fetch_branch(self.project, self.copy, f"tg-plan/{self.id}")
         path = self.store.lock_plan(self.id)
-        plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
         self.log.add("plan_locked", path=path, commit=git(self.copy, "rev-parse", "HEAD"),
                      tickets=plan.tickets, **({"hint": hint.strip()} if hint.strip() else {}))
+
+    def drop_stray_tickets(self, plan) -> list:
+        """Delete from the copy each ticket of this plan that its header does not list: a
+        ticket whose `plan:` names this task, and that main does not hold as it is. Return
+        their ids. A ticket of another plan stays. The store refuses a plan commit that
+        still holds such a ticket."""
+        import shutil
+
+        from gate.gitio import show_bytes
+        folder = Path(self.copy, ".tollgate/tickets")
+        paths = [f".tollgate/tickets/{p.parent.name}/ticket.md"
+                 for p in sorted(folder.glob("*/ticket.md"))] if folder.exists() else []
+
+        def read(path):
+            data = Path(self.copy, path).read_bytes()
+            return None if show_bytes(self.copy, self.base, path) == data else data.decode(
+                errors="replace")
+        dropped = pl.stray_tickets(plan, read, paths)
+        for tid in dropped:
+            shutil.rmtree(folder / tid)
+        return dropped
 
     def approval_hint(self, tid: str) -> str:
         """The hint given with the approval of the plan lock that first listed the ticket,

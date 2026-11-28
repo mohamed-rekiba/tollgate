@@ -123,6 +123,35 @@ def _assumptions(lines: list) -> list:
     return items
 
 
+def ticket_plan(text: str) -> str:
+    """The `plan:` of a ticket's header, or "". It reads only the header, so a ticket that
+    breaks another rule of the format still names its plan."""
+    lines = text.strip().splitlines()
+    if not lines or lines[0].strip() != "---":
+        return ""
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        key, sep, value = line.partition(":")
+        if sep and key.strip() == "plan":
+            return value.strip()
+    return ""
+
+
+def stray_tickets(plan: Plan, read, paths: list) -> list:
+    """The ids of the tickets among paths, files .tollgate/tickets/<id>/ticket.md, that
+    name this plan but are not in its header. read(path) returns a file's text or None."""
+    found = []
+    for path in paths:
+        parts = path.split("/")
+        if len(parts) != 4 or parts[:2] != [".tollgate", "tickets"] or parts[3] != "ticket.md":
+            continue
+        text = read(path)
+        if parts[2] not in plan.tickets and text is not None and ticket_plan(text) == plan.id:
+            found.append(parts[2])
+    return found
+
+
 def check_tickets(plan: Plan, read) -> list:
     """read(path) returns the text of a file or None. Return a list of problems."""
     problems = []

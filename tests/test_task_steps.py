@@ -130,5 +130,33 @@ class ApprovalHintTest(TaskCase):
         self.assertEqual(d.approval, {})
 
 
+class PlanLockTest(TaskCase):
+    def test_the_lock_commits_only_the_plan_and_the_tickets_it_lists(self):
+        # demo-old was in the plan's first round, and the builder then dropped it.
+        self.write_ticket("demo-old", TICKET_T1.format(task="demo").replace(
+            "id: demo-1", "id: demo-old"))
+        # A ticket of another plan in the copy stays as it is, out of this commit.
+        self.write_ticket("other-1", TICKET_T1.format(task="other"))
+        self.task.lock_plan()
+        files = sh(self.s.project, "git", "diff", "--name-only", "main", "tg-plan/demo").split()
+        self.assertEqual(sorted(files), [".tollgate/analysis/demo.md", ".tollgate/plans/demo.md",
+                                         ".tollgate/tickets/demo-1/ticket.md",
+                                         ".tollgate/tickets/demo-2/ticket.md"])
+        self.assertEqual(self.events("plan_tickets_dropped")[0]["tickets"], ["demo-old"])
+        self.assertFalse(Path(self.task.copy, ".tollgate/tickets/demo-old").exists())
+        self.assertTrue(Path(self.task.copy, ".tollgate/tickets/other-1/ticket.md").exists())
+
+    def test_a_stray_ticket_an_earlier_lock_committed_is_dropped_too(self):
+        # Before this fix, a lock committed every ticket file. The next version, in a fix
+        # round, drops it, so the store does not refuse the new plan commit.
+        self.write_ticket("demo-old", TICKET_T1.format(task="demo").replace(
+            "id: demo-1", "id: demo-old"))
+        sh(self.task.copy, "git", "add", "-A", ".tollgate")
+        sh(self.task.copy, "git", "commit", "-q", "-m", "an old lock")
+        self.task.lock_plan()
+        files = sh(self.s.project, "git", "diff", "--name-only", "main", "tg-plan/demo").split()
+        self.assertNotIn(".tollgate/tickets/demo-old/ticket.md", files)
+
+
 if __name__ == "__main__":
     unittest.main()
