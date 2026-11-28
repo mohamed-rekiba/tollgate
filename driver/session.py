@@ -142,6 +142,18 @@ def _write_step(project: str, step: dict) -> None:
     os.replace(tmp, path)
 
 
+MAX_REFUSED = 1   # the answers with no final json block a step may get before it is an error
+
+
+def note_refused(project: str, step: dict) -> int:
+    """Count one answer refused for the step that waits, in its step file. Return the
+    count. A role that runs out of turns ends with a part of its answer and no json
+    block; the step then runs once more before the refusal is an error."""
+    step["refused"] = int(step.get("refused") or 0) + 1
+    _write_step(project, step)
+    return step["refused"]
+
+
 def digest(nonce: str) -> str:
     return hashlib.sha256(nonce.encode()).hexdigest()
 

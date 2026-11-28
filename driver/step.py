@@ -21,7 +21,9 @@ answers, up to the next role. It prints one JSON object:
 - an error: {"error": <the reason>}, and the command ends with 1.
 
 `answer` refuses a key or a nonce that is not the waiting step's, and never
-says what they are; and an answer with no final json block. A role cannot run
+says what they are; and an answer with no final json block. The first such answer of
+a step prints the same step again, with its key and nonce and a `retry` reason, for
+a subagent that ran out of turns; the second is an error. A role cannot run
 this command: the hook refuses any Tollgate command from a role. It saves the answer, then runs `next` and prints what
 `next` prints. The request of the task is .tollgate/requests/<task id>.md.
 
@@ -250,6 +252,15 @@ def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> t
     try:
         session.save_answer(project, step, text)
     except roles.RoleError as err:
+        if int(step.get("refused") or 0) < session.MAX_REFUSED:
+            # A subagent that ran out of turns ends with a part of its answer. The same
+            # step runs once more, with the same key and nonce.
+            session.note_refused(project, step)
+            return {"agent": step.get("agent", ""), "prompt": step["prompt"],
+                    "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce,
+                    "retry": f"the answer was not saved: {err}. The subagent may have run out "
+                             "of turns. Start it again; it must end its answer with a "
+                             "```json block."}, 0
         return {"error": f"the answer was not saved: {err}. The role must end its answer "
                          "with a ```json block."}, 1
     except (OSError, subprocess.CalledProcessError) as err:

@@ -355,10 +355,20 @@ class StepTest(Case):
     def test_answer_refuses_an_answer_with_no_final_json_block(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
-        code, refused = self.answer(s, store, out, "I looked around. All good.")
+        # A subagent that ran out of turns ends with a part of its answer. The first such
+        # answer prints the same step again, to run once more.
+        code, again = self.answer(s, store, out, "I looked around. All")
+        self.assertEqual(code, 0)
+        self.assertIn("json block", again["retry"])
+        self.assertEqual((again["key"], again["nonce"], again["prompt"], again["agent"]),
+                         (out["key"], out["nonce"], out["prompt"], out["agent"]))
+        self.assertIsNotNone(session.read_step(str(s.project)))
+        code, refused = self.answer(s, store, again, "I looked around. All good.")
         self.assertEqual(code, 1)
         self.assertIn("json block", refused["error"])
         self.assertIsNotNone(session.read_step(str(s.project)))
+        # A whole answer to the same step is still saved.
+        self.assertEqual(self.answer(s, store, out, fake_answer(out))[0], 0)
 
     def test_next_refuses_to_start_a_task_that_cannot_pass(self):
         s, store = self.task_sample()

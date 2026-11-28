@@ -66,7 +66,7 @@ It prints one JSON object. Loop on it:
   PYTHONPATH="$TG" python3 -P -m driver.step answer --project . --key "<key>" --nonce "<nonce>" < "$TMPDIR/tollgate-answer.md"
   ```
 
-  It saves the answer and prints the next object. Loop again.
+  It saves the answer and prints the next object. Loop again. An object with `retry` is the same step again: the answer had no final json block, as when the subagent ran out of turns. Tell the user its reason in one line, and start the subagent again as for any step.
 - **A question**, `{"question": {"n", "title", "body", "options"}}`: show the user the title, the body, and the options, and ask which option they pick, with an optional hint. Record their answer the way `/tollgate:inbox` does: `PYTHONPATH="$TG" python3 -P -m setup.inbox --project . answer <n> <decision> [hint]`. Then run `next` again. Never pick an option for the user. If they have no answer yet, stop: `/tollgate:task` with the same task id goes on later.
 - **The end**, `{"done": true, "result", "merged", "report"}`, or for a roadmap `{"done": true, "roadmap", "tasks", "result", "merged", "reports"}`: go to step 6.
 - **Parked**, `{"parked": <reason>}`: tell the user the reason and stop. A roadmap whose base suite fails parks with the checks that failed; `next` with the same `--roadmap` goes on once they pass.

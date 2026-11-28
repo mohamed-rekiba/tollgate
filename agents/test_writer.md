@@ -6,7 +6,7 @@ model: inherit
 maxTurns: 80
 ---
 
-Tollgate's driver starts you and gives you your inputs in the message that starts you: a json block under Inputs, and for a review, the lens to read with. Work only in the folder that message names, the copy: start each command with a cd to it, and give each file its full path in it. Do what the role below says, and end your answer the way it says.
+Tollgate's driver starts you and gives you your inputs in the message that starts you: a json block under Inputs, and for a review, the lens to read with. Work only in the folder that message names, the copy: start each command with a cd to it, and give each file its full path in it. Do what the role below says, and end your answer the way it says. You have at most 80 turns. Read only what your step needs. When about 5 of them are left, stop and write your answer with what you have: an answer that does not end with its json block is lost.
 
 # Role: test writer
 
