@@ -228,8 +228,15 @@ class Task:
     def review_plan(self, fix: str = "") -> list:
         """Up to 4 rounds. Return the findings still open, or [] after a clean round.
         In a fix round, `fix` holds the findings of the review of the whole task: the lenses
-        that judge need and readiness read the plan against them too."""
+        that judge need and readiness read the plan against them too.
+
+        A minor finding never makes a round unclean, but it goes to the builder: with the
+        open findings of its round, or, in a round with none, in one answer step of its
+        own. When that answer changes the plan or a ticket, the next round reviews the
+        change; a later round with only minor findings is clean. In the last round the
+        minor findings stay in the log, since no round is left to review a change."""
         open_findings = []
+        minors_answered = False
         for round_no in range(1, MAX_ROUNDS + 1):
             problems = self.check_plan()
             if problems:
@@ -241,7 +248,7 @@ class Task:
             text = self.read_copy(pl.plan_path(self.id))
             plan = pl.parse(text)
             tickets = {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md") for t in plan.tickets}
-            findings = []
+            findings, minors = [], []
             for lens in PLAN_LENSES:
                 inputs = {"plan": text} if lens == "fresh_reader" else {
                     "plan": text, "tickets": tickets, "request": self.request,
@@ -256,12 +263,21 @@ class Task:
                                          "text": f"the reviewer did not answer: {err}"})
                         continue
                 self.log.add("plan_reviewed", lens=lens, round=round_no, cost_usd=data.cost_usd)
-                findings += [dict(f, lens=lens) for f in data.data.get("findings", [])
-                             if f.get("level") in OPEN_LEVELS]
+                found = [dict(f, lens=lens) for f in data.data.get("findings", [])
+                         if isinstance(f, dict)]
+                findings += [f for f in found if f.get("level") in OPEN_LEVELS]
+                minors += [f for f in found if f.get("level") == "minor"]
             if not findings:
-                self.log.add("plan_review_clean", round=round_no)
+                if minors and not minors_answered and round_no < MAX_ROUNDS:
+                    minors_answered = True
+                    if self.answer_minors(round_no, minors, text, tickets):
+                        continue
+                self.log.add("plan_review_clean", round=round_no,
+                             **({"minor": minors} if minors else {}))
                 return []
-            answer = self.role("builder", {"mode": "answer", "findings": findings})
+            # The minor findings come after the open ones, so an open finding keeps its
+            # number, and only an open finding can be escalated.
+            answer = self.role("builder", {"mode": "answer", "findings": findings + minors})
             answers = answer.data.get("answers", [])
             escalated = [findings[a["finding"]] for a in answers if a.get("action") == "escalate"
                          and isinstance(a.get("finding"), int) and a["finding"] < len(findings)]
@@ -275,6 +291,21 @@ class Task:
                 self.log.add("plan_invalid", problems=problems)
                 self.write_plan(problems)
         return open_findings or [{"level": "major", "text": f"{MAX_ROUNDS} rounds with findings"}]
+
+    def answer_minors(self, round_no: int, minors: list, text: str, tickets: dict) -> bool:
+        """Give the minor findings of a clean round to the builder, who fixes or contests
+        each one. Return True when the answer changed the plan or a ticket, so the change
+        needs a review round."""
+        answer = self.role("builder", {"mode": "answer", "findings": minors})
+        self.log.add("plan_answered", round=round_no, cost_usd=answer.cost_usd,
+                     answers=answer.data.get("answers", []), escalated=0, minor=len(minors))
+        now = self.read_copy(pl.plan_path(self.id))
+        try:
+            ids = pl.parse(now).tickets if now is not None else []
+        except pl.PlanError:
+            return True
+        return now != text or {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md")
+                               for t in ids} != tickets
 
     @staticmethod
     def sent_back_hint(events: list) -> str | None:

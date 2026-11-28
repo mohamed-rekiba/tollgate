@@ -252,7 +252,7 @@ The builder writes the plan, with its tickets, checklists, must-have marks, and 
 - **Contest.** The finding is wrong, and the builder points to evidence that the reviewer could read.
 - **Escalate.** The builder cannot settle it. The advisor decides.
 
-The review ends after one round with no open blocking or major finding. The limit is 4 rounds. Then the advisor approves the plan or sends it back. The driver fetches the approved plan into `tg-plan/<task id>`, and the store signs the plan lock.
+The review ends after one round with no open blocking or major finding. The limit is 4 rounds. A minor finding never keeps a round open, but it can still be a real error, so it goes to the builder too: after the open findings of its round, where it cannot be escalated, or, in a round with no open finding, in one answer step of its own. When that answer changes the plan or a ticket, one more round reviews the change, and a round after it with only minor findings is clean. In round 4 the minor findings only go into the log. Then the advisor approves the plan or sends it back. The driver fetches the approved plan into `tg-plan/<task id>`, and the store signs the plan lock.
 
 A reviewer that fails to answer gets one retry. After that, the round does not count as clean.
 

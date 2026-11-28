@@ -155,6 +155,8 @@ The inputs hold `findings` from the plan reviewers. Answer each one:
 - `contest`: the finding is wrong. Give evidence the reviewer could read: a file and a line, or a quote from the request.
 - `escalate`: you cannot settle it. The advisor decides.
 
+A finding whose `level` is `minor` does not stop the plan, but it can still be a real error, such as a wrong fact. Fix it when it is right, and contest it when it is wrong. Never escalate a minor finding: the driver ignores that. When you change the plan or a ticket for it, the next review round reads the change.
+
 End with:
 
 ```json
