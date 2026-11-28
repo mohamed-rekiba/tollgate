@@ -155,7 +155,8 @@ def only_missing_seams(output: str, files: list, seams: list) -> bool:
     """True when each line of a check's output that names one of the files is a compile
     or type error about a name that one of the seams names, such as `undefined:
     logging.Cause` for the seam `internal/logging.Cause`. The name matches when its parts
-    end the seam's parts. A Rust error names its file on a later `-->` line, so that line
+    end the seam's parts, or end a leading run of them: then it names an owner of the seam,
+    such as `ports.JobState` for the seam `internal/ports.JobState.Live`. A Rust error names its file on a later `-->` line, so that line
     counts as the `error` line above it. The Go compiler stops after 10 errors with a line
     `too many errors`, and golangci-lint heads a package that does not compile with a
     line `file:1: : # <package>`. Each names the file but is no error of its own, so it
@@ -174,10 +175,16 @@ def only_missing_seams(output: str, files: list, seams: list) -> bool:
         if line.lstrip().startswith("-->"):
             line = next((x for x in reversed(lines[:i]) if x.lstrip().startswith("error")), "")
         parts = _missing_name(line)
-        if not parts or not any(len(parts) <= len(s) and s[-len(parts):] == parts
-                                for s in seam_parts):
+        if not parts or not any(_names_seam_or_owner(parts, s) for s in seam_parts):
             return False
     return named > 0
+
+
+def _names_seam_or_owner(parts: list, seam: list) -> bool:
+    """True when the parts end the seam's parts, or end a leading run of them: `ports.JobState`
+    names the owner of the seam `internal/ports.JobState.Live`, which the builder adds too."""
+    n = len(parts)
+    return any(seam[k - n:k] == parts for k in range(n, len(seam) + 1))
 
 
 def main(argv=None) -> int:
