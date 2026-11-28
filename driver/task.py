@@ -291,7 +291,9 @@ class Task:
                 return []
             # The minor findings come after the open ones, so an open finding keeps its
             # number, and only an open finding can be escalated.
-            answer = self.role("builder", {"mode": "answer", "findings": findings + minors})
+            answer = self.role("builder", {"mode": "answer", "findings": findings + minors,
+                                           **self.locked_inputs()})
+            self.keep_locked_tickets(round_no)
             answers = answer.data.get("answers", [])
             escalated = [findings[a["finding"]] for a in answers if a.get("action") == "escalate"
                          and isinstance(a.get("finding"), int) and a["finding"] < len(findings)]
@@ -310,7 +312,9 @@ class Task:
         """Give the minor findings of a clean round to the builder, who fixes or contests
         each one. Return True when the answer changed the plan or a ticket, so the change
         needs a review round."""
-        answer = self.role("builder", {"mode": "answer", "findings": minors})
+        answer = self.role("builder", {"mode": "answer", "findings": minors,
+                                       **self.locked_inputs()})
+        self.keep_locked_tickets(round_no)
         self.log.add("plan_answered", round=round_no, cost_usd=answer.cost_usd,
                      answers=answer.data.get("answers", []), escalated=0, minor=len(minors))
         now = self.read_copy(pl.plan_path(self.id))
@@ -320,6 +324,39 @@ class Task:
             return True
         return now != text or {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md")
                                for t in ids} != tickets
+
+    def locked_ids(self) -> list:
+        """The tickets that the plan's last lock holds, in a fix round; [] before a lock."""
+        locked = [e for e in read(self.log_path) if e["event"] == "plan_locked"]
+        return list(locked[-1].get("tickets", [])) if locked else []
+
+    def locked_inputs(self) -> dict:
+        """{"locked_tickets": [...]} for an answer step in a fix round, so the builder
+        knows which tickets it may not change; {} before any lock."""
+        ids = self.locked_ids()
+        return {"locked_tickets": ids} if ids else {}
+
+    def keep_locked_tickets(self, round_no: int) -> None:
+        """After an answer in a fix round, put back each ticket of the plan lock that the
+        answer changed, with a plan_invalid event, so the plan lock does not refuse it
+        late."""
+        problems = self.kept_tickets_problems()
+        if not problems:
+            return
+        commit = [e for e in read(self.log_path) if e["event"] == "plan_locked"][-1]["commit"]
+        for tid in self.locked_ids():
+            git(self.copy, "checkout", commit, "--", f".tollgate/tickets/{tid}")
+        self.log.add("plan_invalid", round=round_no, problems=problems)
+
+    def kept_tickets_problems(self) -> list:
+        text = self.read_copy(pl.plan_path(self.id))
+        try:
+            plan = pl.parse(text) if text is not None else None
+        except pl.PlanError:
+            plan = None
+        if plan is None:
+            return []
+        return self.kept_tickets(plan)
 
     @staticmethod
     def sent_back_hint(events: list) -> str | None:

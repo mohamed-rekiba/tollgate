@@ -132,6 +132,27 @@ class ApprovalHintTest(TaskCase):
         self.assertEqual(d.approval, {})
 
 
+class FixRoundAnswerTest(TaskCase):
+    def test_a_minor_answer_in_a_fix_round_cannot_change_a_locked_ticket(self):
+        self.task.lock_plan()
+        ticket = Path(self.task.copy, ".tollgate/tickets/demo-1/ticket.md")
+        locked = ticket.read_text()
+
+        def edit_locked(inputs):
+            ticket.write_text(locked.replace("There is no shout.", "Changed by an answer."))
+        self.task.role = Script({"readiness": [[MINOR]]}, fix=edit_locked)
+        self.assertEqual(self.task.review_plan(), [])
+        self.assertEqual(self.task.role.answers()[0]["locked_tickets"], ["demo-1", "demo-2"])
+        self.assertEqual(ticket.read_text(), locked)
+        invalid = self.events("plan_invalid")
+        self.assertIn("ticket demo-1 is locked by the approved plan", invalid[0]["problems"][0])
+
+    def test_before_a_lock_the_answer_inputs_stay_as_they_were(self):
+        self.task.role = Script({"readiness": [[MINOR]]})
+        self.task.review_plan()
+        self.assertNotIn("locked_tickets", self.task.role.answers()[0])
+
+
 class DecisionsTest(TaskCase):
     def test_the_plan_s_reviewers_and_planner_read_the_earlier_decisions(self):
         hint = "the owner confirms the change to docs/design.md"

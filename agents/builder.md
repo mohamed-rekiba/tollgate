@@ -158,6 +158,8 @@ The inputs hold `findings` from the plan reviewers. Answer each one:
 - `contest`: the finding is wrong. Give evidence the reviewer could read: a file and a line, or a quote from the request.
 - `escalate`: you cannot settle it. The advisor decides.
 
+When `locked_tickets` is in the inputs, the plan is a fix round, and those tickets are locked by the approved plan: never change them. Fix a finding about one of them in a new ticket. The driver puts back a locked ticket that an answer changed.
+
 A finding whose `level` is `minor` does not stop the plan, but it can still be a real error, such as a wrong fact. Fix it when it is right, and contest it when it is wrong. Never escalate a minor finding: the driver ignores that. When you change the plan or a ticket for it, the next review round reads the change.
 
 End with:
