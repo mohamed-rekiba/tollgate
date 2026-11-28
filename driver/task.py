@@ -113,14 +113,32 @@ class Task:
         self.runner = runner    # None: the setting `runner` decides
         self.caller = None
 
-    def role(self, name, inputs, lens=None, command=None):
+    def call(self, name, inputs, lens=None, command=None) -> session.Call:
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name in ("reviewer", "analyst")
                               else s["ai"]["builder"])
         # The builder writes the plan here, so it may write plans and tickets.
         policy = "planner" if name == "builder" else name
-        return self.caller(session.Call(name, inputs, lens, command, policy, self.copy,
-                                        self.project, f"task-{self.id}", "", self.id))
+        return session.Call(name, inputs, lens, command, policy, self.copy, self.project,
+                            f"task-{self.id}", "", self.id)
+
+    def role(self, name, inputs, lens=None, command=None):
+        return self.caller(self.call(name, inputs, lens, command))
+
+    def roles_at_once(self, asked: list) -> list:
+        """Ask the roles of [(name, inputs, lens)] that do not depend on one another: at
+        once in session mode, one after another in the background. Each element is the
+        Answer or the RoleError it raised."""
+        if isinstance(self.caller, session.Session):
+            return self.caller.many([self.call(name, inputs, lens)
+                                     for name, inputs, lens in asked])
+        found = []
+        for name, inputs, lens in asked:
+            try:
+                found.append(self.role(name, inputs, lens=lens))
+            except roles.RoleError as err:
+                found.append(err)
+        return found
 
     def read_copy(self, path):
         p = Path(self.copy, path)
@@ -262,14 +280,15 @@ class Task:
             plan = pl.parse(text)
             tickets = {t: self.read_copy(f".tollgate/tickets/{t}/ticket.md") for t in plan.tickets}
             findings, minors = [], []
-            for lens in PLAN_LENSES:
-                inputs = {"plan": text} if lens == "fresh_reader" else {
-                    "plan": text, "tickets": tickets, "request": self.request,
-                    "analysis": self.analysis_text(), **({"fix": fix} if fix else {}),
-                    **self.decision_inputs()}
-                try:
-                    data = self.role("reviewer", inputs, lens=lens)
-                except roles.RoleError:
+            asked = [("reviewer", {"plan": text} if lens == "fresh_reader" else {
+                "plan": text, "tickets": tickets, "request": self.request,
+                "analysis": self.analysis_text(), **({"fix": fix} if fix else {}),
+                **self.decision_inputs()}, lens) for lens in PLAN_LENSES]
+            # The lenses read the same plan and not one another: in session mode they run
+            # at once, and the round goes on once each has answered.
+            answers = self.roles_at_once(asked)
+            for (_, inputs, lens), data in zip(asked, answers, strict=True):
+                if isinstance(data, roles.RoleError):
                     try:  # one retry, then the round does not count as clean
                         data = self.role("reviewer", inputs, lens=lens)
                     except roles.RoleError as err:

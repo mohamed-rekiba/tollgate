@@ -392,22 +392,53 @@ class Session:
     The cost of a role is not known here, so the answer's cost is None."""
 
     def __call__(self, call: Call) -> roles.Answer:
-        found_key = key(call.role, call.lens, call.inputs)
-        found = saved(call.project, call.log, found_key)
-        if found and (not found.get("work") or restore_work(call.copy, found["work"])):
-            if found_key == _replay_key(call.project):
-                end_replay(call.project)    # the run is where the run before it paused
-            text = found["text"]
-            return roles.Answer(roles.last_block(text), None, float(found.get("seconds") or 0),
-                                text)
-        step = {"agent": f"tollgate:{call.role}", "role": call.role, "policy": call.policy,
+        return self.many([call])[0]
+
+    def many(self, calls: list) -> list:
+        """The answers to roles that do not depend on one another, in the order asked.
+        Each that has no saved answer becomes a step, and all of them wait together, so
+        your session can run them at once; then Pause. A replay goes on past the first
+        of them only once each is answered."""
+        answers, waiting = [], []
+        for call in calls:
+            found_key = key(call.role, call.lens, call.inputs)
+            found = saved(call.project, call.log, found_key)
+            if found and (not found.get("work") or restore_work(call.copy, found["work"])):
+                if found_key == _replay_key(call.project):
+                    end_replay(call.project)    # the run is where the run before it paused
+                text = found["text"]
+                answers.append(roles.Answer(roles.last_block(text), None,
+                                            float(found.get("seconds") or 0), text))
+                continue
+            waiting.append({
+                "agent": f"tollgate:{call.role}", "role": call.role, "policy": call.policy,
                 "lens": call.lens, "prompt": roles.prompt(call.role, call.inputs, call.lens),
                 "copy": os.path.realpath(call.copy) if call.copy else "", "key": found_key,
                 "log": call.log, "ticket": call.ticket, "task": call.task,
-                "slot": current_slot(), "n": 0, "asked_at": time.time()}
-        _write_step(call.project, step)
-        _mark_replay(call.project, found_key)
-        raise Pause(step)
+                "slot": current_slot(), "n": len(answers) + len(waiting),
+                "asked_at": time.time()})
+        if waiting:
+            project = calls[0].project
+            for step in waiting:
+                _write_step(project, step)
+            _mark_replay(project, waiting[0]["key"])
+            raise Pause(waiting[0])
+        return answers
+
+
+def ask_many(caller, calls: list) -> list:
+    """Ask roles that do not depend on one another: together in session mode, one after
+    another in the background. Each element is the role's Answer, or the RoleError it
+    raised, so the caller decides what a failure means."""
+    if isinstance(caller, Session):
+        return caller.many(calls)
+    found = []
+    for call in calls:
+        try:
+            found.append(caller(call))
+        except roles.RoleError as err:
+            found.append(err)
+    return found
 
 
 def caller(settings: dict, runner: str | None = None):

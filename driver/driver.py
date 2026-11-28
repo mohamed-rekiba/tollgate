@@ -308,12 +308,14 @@ class Driver:
 
     # Helpers.
 
-    def role(self, name, inputs, lens=None, command=None):
+    def call(self, name, inputs, lens=None, command=None) -> session.Call:
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name == "reviewer" else s["ai"]["builder"])
-        return self.caller(session.Call(name, inputs, lens, command, name, self.copy,
-                                        self.project, self.ticket_id, self.ticket_id,
-                                        self.ticket.plan))
+        return session.Call(name, inputs, lens, command, name, self.copy, self.project,
+                            self.ticket_id, self.ticket_id, self.ticket.plan)
+
+    def role(self, name, inputs, lens=None, command=None):
+        return self.caller(self.call(name, inputs, lens, command))
 
     def lock(self) -> dict | None:
         """The ticket's lock as the store wrote it. The driver reads it only to put back
@@ -580,22 +582,27 @@ class Driver:
         # reviewer judges every item that no locked test covers, as score() counts them.
         tested = sorted({item_of(t, mapped) for t in locked if item_of(t, mapped)})
         diff = self.review.diff(self.copy, st_.frozen, "HEAD")
-        checked = self.role("reviewer", {"ticket": self.ticket_text, "tested": tested,
-                                         "diff": diff}, lens="checklist")
-        cost = roles.add_cost(cost, checked.cost_usd)
+        # The checklist reviewer and, from tier 2, the review lenses read the change and
+        # not one another, so session mode asks them all at once.
+        change = self.review.diff(self.copy, self.start, "HEAD") if tier >= 2 else ""
+        asked = self.review.lens_inputs(tier, self.ticket_text, change) if tier >= 2 else []
+        # `answer` stays the builder's: its claim goes into the stop reason below.
+        reviews = session.ask_many(self.caller, [
+            self.call("reviewer", {"ticket": self.ticket_text, "tested": tested, "diff": diff},
+                      lens="checklist"),
+            *(self.call("reviewer", inputs, lens=lens) for lens, inputs in asked)])
+        for review in reviews:
+            if isinstance(review, roles.RoleError):
+                raise review
+        checked = reviews[0]
+        cost = roles.add_cost(cost, *(r.cost_usd for r in reviews))
         value, passed = score(self.ticket, locked, checked.data.get("items", []), self.copy,
                               mapped)
         blocking = [f for f in checked.data.get("findings", []) if f.get("level") == "blocking"]
         if tier >= 2:
-            spent = []
-
-            def run_role(lens, role_inputs):
-                answer = self.role("reviewer", role_inputs, lens=lens)
-                spent.append(answer.cost_usd)
-                return answer.data
-            facts.review_passed, found, _ = self.review.review(
-                tier, self.ticket_text, self.review.diff(self.copy, self.start, "HEAD"), run_role)
-            cost = roles.add_cost(cost, *spent)
+            facts.review_passed, found, _ = self.review.judge(
+                tier, change, [(lens, a.data) for (lens, _), a in zip(asked, reviews[1:],
+                                                                      strict=True)])
             blocking += [f for f in found if f.get("level") == "blocking"]
             majors = [f for f in found if f.get("level") == "major"]
             findings = self.gate.evaluate(facts)

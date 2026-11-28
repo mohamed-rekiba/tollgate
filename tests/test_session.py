@@ -28,7 +28,28 @@ def fake_answer(step: dict, mode: str = "pass2") -> str:
     return json.loads(done.stdout)["result"]
 
 
+def expand(step_fn, project: str, out: dict, mode: str, reverse=False, seen=None) -> dict:
+    """Roles that run at once come as {"steps": [...]}. Answer each but one, as parallel
+    subagents would, in the order given or reversed, and return the one left, so a test's
+    loop answers it as any step. seen gets the agents answered here."""
+    if "steps" not in out:
+        return out
+    order = list(reversed(out["steps"])) if reverse else list(out["steps"])
+    for step in order[:-1]:
+        code, got = step_fn("answer", "--project", project, "--key", step["key"],
+                            "--nonce", step["nonce"], stdin=fake_answer(step, mode))
+        assert code == 0 and got.get("saved") == step["key"] and got["waiting"], got
+        if seen is not None:
+            seen.append(step["agent"])
+    return order[-1]
+
+
 class Case(unittest.TestCase):
+    mode = "pass2"          # what the fake roles of steps that run at once answer
+    reverse = False         # answer those steps out of the order they came in
+    batches = None          # a list that gets the agent:lens of each list of steps
+    expand_steps = True     # False: step returns a list of steps as next printed it
+
     def sample(self, **settings_args):
         s = Sample(**{"runner": "session", **settings_args})
         self.addCleanup(s.close)
@@ -77,6 +98,35 @@ class CallerTest(Case):
         self.assertIsNone(answer.cost_usd)
         with self.assertRaises(session.Pause):
             caller(self.call(s, inputs={"x": 2}))
+
+    def test_roles_asked_at_once_wait_together_and_answer_in_the_order_asked(self):
+        s = self.sample()
+        caller = session.Session()
+        calls = [self.call(s, lens="simplicity"), self.call(s, lens="readiness"),
+                 self.call(s, lens="fresh_reader")]
+        with self.assertRaises(session.Pause):
+            caller.many(calls)
+        steps = session.read_steps(str(s.project))
+        self.assertEqual([st["lens"] for st in steps], ["simplicity", "readiness", "fresh_reader"])
+        # Answered out of order: the run still pauses while one of them waits.
+        for st, verdict in ((steps[2], "c"), (steps[0], "a")):
+            session.save_answer(str(s.project), st, f'```json\n{{"verdict": "{verdict}"}}\n```')
+        with self.assertRaises(session.Pause):
+            caller.many(calls)
+        self.assertEqual([st["lens"] for st in session.read_steps(str(s.project))],
+                         ["readiness"])
+        session.save_answer(str(s.project), session.read_steps(str(s.project))[0],
+                            '```json\n{"verdict": "b"}\n```')
+        self.assertEqual([a.data["verdict"] for a in caller.many(calls)], ["a", "b", "c"])
+        self.assertEqual(session.read_steps(str(s.project)), [])
+
+    def test_the_background_asks_roles_one_after_another_and_keeps_each_failure(self):
+        s = self.sample()
+        failed = roles.RoleError("no answer")
+        caller = mock.Mock(side_effect=["one", failed, "three"])
+        found = session.ask_many(caller, [self.call(s, lens=lens) for lens in "abc"])
+        self.assertEqual(found, ["one", failed, "three"])
+        self.assertEqual([c.args[0].lens for c in caller.call_args_list], ["a", "b", "c"])
 
     def test_a_saved_answer_written_by_anyone_but_answer_is_ignored(self):
         s = self.sample()
@@ -235,7 +285,15 @@ class StepTest(Case):
         out = io.StringIO()
         with redirect_stdout(out):
             code = step.main(list(argv), store=store, stdin=io.StringIO(stdin))
-        return code, json.loads(out.getvalue())
+        found = json.loads(out.getvalue())
+        project = argv[argv.index("--project") + 1]
+        if "steps" in found and self.batches is not None:
+            self.batches.append([f"{st['agent']}:{session.find_step(project, st['key'])[0]['lens']}"
+                                 for st in found["steps"]])
+        if not self.expand_steps:
+            return code, found
+        return code, expand(lambda *a, **k: self.step(store, *a, **k), project, found,
+                            self.mode, self.reverse, getattr(self, "seen", None))
 
     def next(self, s, store):
         return self.step(store, "next", "--project", str(s.project), "--task", "demo")
@@ -470,8 +528,51 @@ class StepTest(Case):
         report = Path(state.path(str(s.project), "reports", "demo.md")).read_text()
         self.assertIn("Cost: unknown", report)
 
+    def test_the_lenses_come_as_steps_at_once_and_may_answer_in_any_order(self):
+        s, store = self.task_sample(tier1={"max_files": 0, "max_lines": 0})   # tier 2
+        self.batches, self.reverse = [], True
+        out = self.run_task(s, store)
+        self.assertTrue(out.get("done"), out)
+        plan = ["tollgate:reviewer:simplicity", "tollgate:reviewer:fresh_reader",
+                "tollgate:reviewer:readiness"]
+        self.assertIn(plan, self.batches)
+        # The checklist reviewer of a try and the tier's review lenses run at once too.
+        change = [b for b in self.batches if b[0] == "tollgate:reviewer:checklist"]
+        self.assertTrue(change, self.batches)
+        self.assertTrue(all(len(b) > 1 for b in change), change)
+
+    def test_each_step_of_a_list_has_its_own_key_and_nonce_and_the_last_answer_goes_on(self):
+        s, store = self.task_sample()
+        self.expand_steps = False
+        code, out = self.next(s, store)
+        for _ in range(20):
+            if "steps" in out:
+                break
+            self.assertEqual(code, 0, out)
+            code, out = self.answer(s, store, out, fake_answer(out))
+        first, second, third = out["steps"]
+        self.assertEqual(len({st["key"] for st in out["steps"]}), 3)
+        self.assertEqual(len({st["nonce"] for st in out["steps"]}), 3)
+        # A nonce answers only its own step.
+        self.assertEqual(self.answer(s, store, first, "x", nonce=second["nonce"])[0], 1)
+        code, got = self.answer(s, store, second, fake_answer(second))
+        self.assertEqual((code, got["saved"]), (0, second["key"]))
+        self.assertEqual(sorted(got["waiting"]), sorted([first["key"], third["key"]]))
+        # next prints only the steps that still wait, each with a new nonce.
+        code, again = self.next(s, store)
+        self.assertEqual([st["key"] for st in again["steps"]], [first["key"], third["key"]])
+        self.assertEqual(self.answer(s, store, first, fake_answer(first))[0], 1)
+        rest = {st["key"]: st for st in again["steps"]}
+        code, got = self.answer(s, store, rest[third["key"]], fake_answer(third))
+        self.assertEqual(got, {"saved": third["key"], "waiting": [first["key"]]})
+        code, got = self.answer(s, store, rest[first["key"]], fake_answer(first))
+        self.assertEqual(code, 0, got)
+        self.assertNotIn("saved", got)
+        self.assertNotIn(first["key"], json.dumps(got))
+
     def run_task(self, s, store, role="pass2", decide=None, rounds=150):
         """next and answer until the task is done or parked. decide answers a question."""
+        self.mode = role
         code, out = self.next(s, store)
         for _ in range(rounds):
             self.assertEqual(code, 0, out)

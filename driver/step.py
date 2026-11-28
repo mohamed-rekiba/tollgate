@@ -1,4 +1,4 @@
-"""Session mode, one step at a time: your own Claude Code session runs each role.
+"""Session mode, step by step: your own Claude Code session runs each role.
 
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --task <task id>
     PYTHONPATH=<tollgate> python3 -P -m driver.step next --project . --brainstorm <id>
@@ -13,6 +13,11 @@ answers, up to the next role. It prints one JSON object:
   its whole final answer to `answer` with that key and that nonce. The nonce is
   new for each `next`, and the step file keeps only its hash, so only the session
   that ran `next` can answer.
+- steps that run at once: {"steps": [step, ...]}, each step as above, with its own
+  key and nonce. These are roles that do not depend on one another, such as the
+  lenses that review one plan or one change. Start their subagents in parallel and
+  answer each one. Each answer but the last prints {"saved": <key>, "waiting":
+  [keys still due]}; the last one runs `next` and prints what it prints.
 - the end: {"done": true, "result": <done and still to do>, "merged": [tickets],
   "report": <path>}.
 - a question for a person: {"question": {"n", "title", "body", "options"}}.

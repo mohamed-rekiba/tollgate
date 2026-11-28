@@ -95,13 +95,16 @@ class Brainstorm:
         self.log_path = str(state.path(self.project, "logs", f"{self.name}.jsonl"))
         self.events = []
 
-    def role(self, name, inputs, lens=None, command=None):
+    def call(self, name, inputs, lens=None, command=None) -> session.Call:
         s = self.settings
         command = command or (s["ai"]["reviewer"] if name in ("reviewer", "analyst")
                               else s["ai"]["builder"])
         policy = "planner" if name == "builder" else name
-        return self.caller(session.Call(name, inputs, lens, command, policy, self.copy,
-                                        self.project, self.name, "", self.id))
+        return session.Call(name, inputs, lens, command, policy, self.copy, self.project,
+                            self.name, "", self.id)
+
+    def role(self, name, inputs, lens=None, command=None):
+        return self.caller(self.call(name, inputs, lens, command))
 
     def add(self, event: str, **fields) -> None:
         """Log an event and keep it in self.events, from which each step reads where
@@ -220,11 +223,14 @@ class Brainstorm:
 
     # Step 4: the lenses.
 
-    def lens_answer(self, lens: str, inputs: dict) -> dict:
-        """What one lens found: {findings, items, cost_usd}. A lens that does not answer
+    def lens_answer(self, lens: str, inputs: dict, answer=None) -> dict:
+        """What one lens found: {findings, items, cost_usd}. answer is the lens's answer
+        when it was asked already, or the RoleError it raised. A lens that does not answer
         gets one retry; then its finding says so."""
         try:
-            answer = self.role("reviewer", inputs, lens=lens)
+            if isinstance(answer, roles.RoleError):
+                raise answer
+            answer = answer or self.role("reviewer", inputs, lens=lens)
         except roles.RoleError:
             try:
                 answer = self.role("reviewer", inputs, lens=lens)
@@ -243,8 +249,13 @@ class Brainstorm:
                   "analysis": analysis}
         done = {e["lens"] for e in self.of("idea_reviewed")}
         todo = [lens for lens in LENSES if lens not in done]
-        if isinstance(self.caller, session.Session) or len(todo) < 2:
-            # Your session runs one step at a time.
+        if isinstance(self.caller, session.Session):
+            # Your session runs the lenses at once, as parallel subagents; the brainstorm
+            # goes on once each has answered.
+            answers = self.caller.many([self.call("reviewer", inputs, lens) for lens in todo])
+            for lens, answer in zip(todo, answers, strict=True):
+                self.add("idea_reviewed", lens=lens, **self.lens_answer(lens, inputs, answer))
+        elif len(todo) < 2:
             for lens in todo:
                 self.add("idea_reviewed", lens=lens, **self.lens_answer(lens, inputs))
         else:

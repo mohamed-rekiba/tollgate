@@ -1,6 +1,6 @@
 ---
 name: task
-description: Run a Tollgate task in this project, from a request or from a brief that /tollgate:brainstorm wrote. It analyzes the project, plans the task, has the plan reviewed, locks the tests, builds each ticket until its tests pass, and reviews the whole task. By default this session runs each role as a subagent, one step at a time; the background driver is the other mode. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
+description: Run a Tollgate task in this project, from a request or from a brief that /tollgate:brainstorm wrote. It analyzes the project, plans the task, has the plan reviewed, locks the tests, builds each ticket until its tests pass, and reviews the whole task. By default this session runs each role as a subagent, step by step, and the reviewers of one plan or change in parallel; the background driver is the other mode. A request too large for one plan becomes a roadmap of tasks. Use when the user runs /tollgate:task or asks Tollgate to build something.
 ---
 
 # Run a task
@@ -67,12 +67,13 @@ It prints one JSON object. Loop on it:
   ```
 
   It saves the answer and prints the next object. Loop again. An object with `retry` is the same step again: the answer had no final json block, as when the subagent ran out of turns. Tell the user its reason in one line, and start the subagent again as for any step.
+- **Steps that run at once**, `{"steps": [{"agent", "prompt", "cwd", "key", "nonce"}, ...]}`: reviewers that read the same plan or the same change and not one another. Start one subagent for each step, all in one message, so they run in parallel. Treat each one as a step above: when it ends, write its answer to its own file, such as `$TMPDIR/tollgate-answer-<key>.md`, and run `answer` with that step's own key and nonce. Run the `answer` commands one at a time, in any order. Each answer but the last prints `{"saved": <key>, "waiting": [keys]}`: the keys of the steps whose answers are still due. The last answer prints the next object. A `retry` object is for its step only: start that subagent again, and answer it with the same key and nonce.
 - **A question**, `{"question": {"n", "title", "body", "options"}}`: show the user the title, the body, and the options, and ask which option they pick, with an optional hint. Record their answer the way `/tollgate:inbox` does: `PYTHONPATH="$TG" python3 -P -m setup.inbox --project . answer <n> <decision> [hint]`. Then run `next` again. Never pick an option for the user. If they have no answer yet, stop: `/tollgate:task` with the same task id goes on later.
 - **The end**, `{"done": true, "result", "merged", "report"}`, or for a roadmap `{"done": true, "roadmap", "tasks", "result", "merged", "reports"}`: go to step 6.
 - **Parked**, `{"parked": <reason>}`: tell the user the reason and stop. A roadmap whose base suite fails parks with the checks that failed; `next` with the same `--roadmap` goes on once they pass.
 - **An error**, `{"error": <reason>}`: show it to the user and stop. If it says to run `/tollgate:init`, the task cannot pass until they do.
 
-Never give the nonce to a subagent, and never put it in a file in the project. Never edit a file of the copy yourself, never change an answer, and never answer for a subagent: the driver asks again for anything it has no answer to. Run `next` again at any time to see the step that waits. The cost of the roles is your session's own; the report shows it as unknown.
+Never give the nonce to a subagent, and never put it in a file in the project. Never edit a file of the copy yourself, never change an answer, and never answer for a subagent: the driver asks again for anything it has no answer to. Run `next` again at any time to see the steps that wait. `next` prints a new nonce for each waiting step, so after it, answer only with the nonces it printed; it leaves out the steps already answered. The cost of the roles is your session's own; the report shows it as unknown.
 
 ## 5. Background mode: start the driver
 

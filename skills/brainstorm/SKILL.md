@@ -42,6 +42,7 @@ It prints one JSON object. Loop on it as `/tollgate:task` does in its step 4:
   ```
 
   It saves the answer and prints the next object. Loop again.
+- **Steps that run at once**, `{"steps": [{"agent", "prompt", "cwd", "key", "nonce"}, ...]}`: the lenses that challenge the idea. Start one subagent for each step, all in one message, so they run in parallel. Answer each one as a step above, with its own answer file, key, and nonce, one `answer` command at a time, in any order. Each answer but the last prints `{"saved": <key>, "waiting": [keys]}`; the last prints the next object.
 - **A question**, `{"question": {"n", "title", "body", "options"}}`: show the user the body and the options. For a question about the idea, the options are `answer`, with their answer as the hint, and `skip`, when they do not know. For the statement of the idea, they are `confirm`, and `add`, with what the statement misses as the hint. Record their words the way `/tollgate:inbox` does: `PYTHONPATH="$TG" python3 -P -m setup.inbox --project . answer <n> <decision> [hint]`. Then run `next` again. Never answer for the user. If they have no answer yet, stop: `/tollgate:brainstorm` with the same id goes on later.
 - **The end**, `{"done": true, "brief", "size", "open_questions"}`: go to step 5.
 - **Parked**, `{"parked": <reason>}`: tell the user the reason and stop.
