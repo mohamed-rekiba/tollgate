@@ -214,6 +214,63 @@ class StepFileTest(Env):
                            role="", agent_type="tollgate:builder")
 
 
+class StepsOfTwoTasksTest(Env):
+    """Two tasks wait at once, each at a builder step in its own copy, one file a step
+    under run/steps/<run>/."""
+
+    def setUp(self):
+        super().setUp()
+        self.other = state.path(str(self.project), "builders", "T-2")
+        self.other.mkdir()
+        for run, key, copy in (("task-one", "k1", self.copy), ("task-two", "k2", self.other)):
+            folder = state.path(str(self.project), "run", "steps") / run
+            folder.mkdir(parents=True)
+            (folder / f"{key}.json").write_text(json.dumps(
+                {"role": "builder", "policy": "builder", "copy": str(copy), "key": key}))
+
+    def test_each_builder_edits_its_own_copy(self):
+        for copy in (self.copy, self.other):
+            with self.subTest(copy=copy.name):
+                self.assertLets("Write", {"file_path": str(copy / "app.py"), "content": "x"},
+                                role="", cwd=copy, agent_type="tollgate:builder")
+
+    def test_a_path_in_no_waiting_copy_is_refused(self):
+        self.assertRefuses("outside the role's own copy", "Write",
+                           {"file_path": str(self.project / "app.py"), "content": "x"},
+                           role="", agent_type="tollgate:builder")
+        self.assertRefuses("state folder", "Write",
+                           {"file_path": str(state.path(str(self.project), "locks", "x.json")),
+                            "content": "x"}, role="", agent_type="tollgate:builder")
+
+    def test_a_step_of_another_role_gives_no_copy(self):
+        self.assertRefuses("outside the role's own copy", "Write",
+                           {"file_path": str(self.copy / "app.py"), "content": "x"},
+                           role="", agent_type="tollgate:test_writer")
+
+
+class DependencyCacheReadTest(Env):
+    """A read-only role checks a library's source in a dependency cache, such as Go's
+    module cache, or the copy's node_modules or .venv."""
+
+    def test_a_reviewer_reads_the_module_cache_and_the_copy_s_dependencies(self):
+        cache = Path(os.path.realpath(tempfile.mkdtemp()))
+        self.addCleanup(lambda: __import__("shutil").rmtree(cache, ignore_errors=True))
+        lib = cache / "example.com/lib@v1.0.0"
+        lib.mkdir(parents=True)
+        (lib / "lib.go").write_text("package lib\n")
+        folder = state.path(str(self.project), "run", "steps") / "task-one"
+        folder.mkdir(parents=True)
+        (folder / "k.json").write_text(json.dumps(
+            {"role": "reviewer", "policy": "reviewer", "copy": str(self.copy), "key": "k"}))
+        for tool, data in (("Read", {"file_path": str(lib / "lib.go")}),
+                           ("Grep", {"pattern": "package", "path": str(cache)}),
+                           ("Glob", {"pattern": f"{cache}/**/*.go"}),
+                           ("Read", {"file_path": str(self.copy / "node_modules/x/index.js")}),
+                           ("Read", {"file_path": str(self.copy / ".venv/lib/x.py")})):
+            with self.subTest(tool=tool, data=data):
+                self.assertLets(tool, data, role="", agent_type="tollgate:reviewer")
+
+
 class KeyAndStateReadTest(Env):
     """A role reads neither the key folder nor the state folder outside its copy."""
 

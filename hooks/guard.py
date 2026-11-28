@@ -39,9 +39,11 @@ example by building it from parts, so this rule is one layer, not a wall.
 A call from one of Tollgate's subagents carries its agent type, such as
 "tollgate:builder". The hook applies that role's rules, as if the driver had
 named the role. A call from any other subagent gets your own session's rules.
-In session mode no driver names the copy, so the hook reads it from the step
-file, run/step.json in the state folder, and only when the step is for that
-same role. The hook keeps a role's plain edits, reads, and commands out of the
+In session mode no driver names the copy, so the hook reads it from the waiting
+steps, one file a step under run/steps/<run>/ in the state folder (or the older
+run/step.json): the step of that same role whose copy holds the paths of the call,
+and its working folder. Several tasks may wait at once; a path in no step's copy is
+refused as before. The hook keeps a role's plain edits, reads, and commands out of the
 state folder. As defense in depth, the step file holds only a hash of the nonce
 that `answer` needs, and saved answers carry a code made with the machine secret.
 
@@ -151,6 +153,15 @@ def check_read(path: str, cwd: str, copy: str, project: str) -> str:
     return ""
 
 
+def call_paths(tool: str, data: dict) -> list:
+    """The paths a call names: the files it reads or edits. A command names none here."""
+    if tool in READS:
+        return read_target(tool, data)
+    if tool in EDITS:
+        return [data.get("file_path") or data.get("notebook_path") or ""]
+    return []
+
+
 def read_target(tool: str, data: dict) -> list:
     """The paths a Read, Grep, or Glob call touches."""
     if tool == "Read":
@@ -257,13 +268,32 @@ def check_git_folder(command: str) -> str:
     return ""
 
 
-def step_of(project: str) -> dict:
-    """The step that waits for your session, from run/step.json, or {}."""
-    try:
-        found = json.loads((state.state_dir(project) / "run" / "step.json").read_text())
-    except (OSError, ValueError):
-        return {}
-    return found if isinstance(found, dict) else {}
+def steps_of(project: str) -> list:
+    """Every step that waits for your session: one file a step under run/steps/<run>/,
+    so that several tasks can wait at once, and the older run/step.json."""
+    run = state.state_dir(project) / "run"
+    found = []
+    for path in [*sorted(run.glob("steps/*/*.json")), run / "step.json"]:
+        try:
+            step = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(step, dict):
+            found.append(step)
+    return found
+
+
+def step_of(project: str, role: str = "", paths=()) -> dict:
+    """The waiting step of this role that the call works in, or {}: the one whose copy
+    holds every path the call names. With one step of the role, that one. A call whose
+    paths are in no step's copy gets {}, so it is refused as outside the role's copy."""
+    mine = [s for s in steps_of(project) if not role or s.get("role") == role]
+    targets = [Path(os.path.realpath(p)) for p in paths if p]
+    for step in mine:
+        copy = str(step.get("copy") or "")
+        if copy and targets and all(_under(t, Path(os.path.realpath(copy))) for t in targets):
+            return step
+    return mine[0] if len(mine) == 1 else {}
 
 
 def _words(part: str) -> list:
@@ -398,8 +428,9 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
     cwd = call.get("cwd") or os.getcwd()
     project = project or os.environ.get("CLAUDE_PROJECT_DIR") or cwd
     if role and not named and not copy:
-        # Session mode: the copy of the step that waits, if the step is for this role.
-        step = step_of(project)
+        # Session mode: the copy of the waiting step of this role that the call works in.
+        # Several tasks may wait at once, each with its own copy.
+        step = step_of(project, role, [_real(p, cwd) for p in call_paths(tool, data)] or [cwd])
         if step.get("role") == role:
             copy = str(step.get("copy") or "")
             if role == "builder" and step.get("policy") == "planner":
