@@ -477,6 +477,16 @@ class GoNotBuiltTest(unittest.TestCase):
         with self.subTest("it did not run at the start"), \
                 self.assertRaisesRegex(mf.FreezeError, "or at the start"):
             self.lock_with_start(mapped, {})
+        with self.subTest("a helper of its file changed"), \
+                self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort was there at the start"):
+            first = self.start
+            self.repo.git("checkout", "-q", "-B", "helper", first)
+            self.repo.write("internal/logging/cut_test.go", old + "\nfunc limit() int { return 8 }\n")
+            self.start = self.repo.commit("a helper")
+            self.repo.write("internal/logging/cut_test.go", old + "\nfunc limit() int { return 99 }\n")
+            self.lock_with_start(mapped, at_start)
+        self.repo.git("checkout", "-q", "-B", "plain", first)
+        self.start = first
         with self.subTest("its source changed"), \
                 self.assertRaisesRegex(mf.FreezeError, "TestACutIsShort was there at the start"):
             self.repo.write("internal/logging/cut_test.go", old.replace("1", "2"))

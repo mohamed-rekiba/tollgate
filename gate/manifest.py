@@ -232,15 +232,29 @@ def go_test_sources(data: bytes | None) -> dict:
 TEST_SOURCES = {".py": python_tests, ".go": go_test_sources}
 
 
+def only_added(before: bytes, now: bytes | None) -> bool:
+    """True when now holds every line of before, in order: lines were only added."""
+    import difflib
+    if now is None:
+        return False
+    a, b = before.decode(errors="replace").splitlines(), now.decode(errors="replace").splitlines()
+    return all(op in ("equal", "insert")
+               for op, *_ in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes())
+
+
 def unchanged_test(repo, start: str, commit: str, path: str, name: str) -> bool:
     """True when the test `name` of a file has the same source at the start and at the
-    commit. For a file with no entry in TEST_SOURCES, the whole file must be the same."""
+    commit, and the rest of the file only gained lines: a helper, a fixture, or a TestMain
+    of the file can change what the test checks. For a file with no entry in TEST_SOURCES,
+    the whole file must be the same."""
     before, now = show_bytes(repo, start, path), show_bytes(repo, commit, path)
+    if before is None:
+        return False
     sources = TEST_SOURCES.get(PurePosixPath(path).suffix)
     if sources is None:
-        return before is not None and before == now
+        return before == now
     old = sources(before).get(name)
-    return old is not None and old == sources(now).get(name)
+    return old is not None and old == sources(now).get(name) and only_added(before, now)
 
 
 def claim(repo, commit: str, ticket, test_results: dict, start: str | None = None,
