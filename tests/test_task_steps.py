@@ -172,6 +172,21 @@ class PlanLockTest(TaskCase):
         self.assertFalse(Path(self.task.copy, ".tollgate/tickets/demo-old").exists())
         self.assertTrue(Path(self.task.copy, ".tollgate/tickets/other-1/ticket.md").exists())
 
+    def test_a_ticket_on_main_that_the_builder_edited_goes_back_to_main(self):
+        on_main = TICKET_T1.format(task="demo").replace("id: demo-1", "id: demo-0")
+        Path(self.s.project, ".tollgate/tickets/demo-0").mkdir(parents=True)
+        Path(self.s.project, ".tollgate/tickets/demo-0/ticket.md").write_text(on_main)
+        sh(self.s.project, "git", "add", "-A")
+        sh(self.s.project, "git", "commit", "-q", "-m", "a ticket on main")
+        sh(self.task.copy, "git", "fetch", "-q", str(self.s.project), "main:main")
+        self.write_ticket("demo-0", on_main.replace("There is no shout.", "Edited."))
+        Path(self.task.copy, ".tollgate/tickets/demo-0/notes.md").write_text("extra\n")
+        self.task.lock_plan()
+        self.assertEqual(Path(self.task.copy, ".tollgate/tickets/demo-0/ticket.md").read_text(),
+                         on_main)
+        files = sh(self.s.project, "git", "diff", "--name-only", "main", "tg-plan/demo").split()
+        self.assertFalse([f for f in files if "demo-0" in f])
+
     def test_a_stray_ticket_an_earlier_lock_committed_is_dropped_too(self):
         # Before this fix, a lock committed every ticket file. The next version, in a fix
         # round, drops it, so the store does not refuse the new plan commit.

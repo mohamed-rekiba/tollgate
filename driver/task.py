@@ -426,9 +426,10 @@ class Task:
                      tickets=plan.tickets, **({"hint": hint.strip()} if hint.strip() else {}))
 
     def drop_stray_tickets(self, plan) -> list:
-        """Delete from the copy each ticket of this plan that its header does not list: a
-        ticket whose `plan:` names this task, and that main does not hold as it is. Return
-        their ids. A ticket of another plan stays. The store refuses a plan commit that
+        """Drop from the copy each ticket of this plan that its header does not list: a
+        ticket whose `plan:` names this task, and that main does not hold as it is. A ticket
+        that is not on main is deleted; one that main holds goes back to main's folder.
+        Return their ids. A ticket of another plan stays. The store refuses a plan commit that
         still holds such a ticket."""
         import shutil
 
@@ -444,6 +445,9 @@ class Task:
         dropped = pl.stray_tickets(plan, read, paths)
         for tid in dropped:
             shutil.rmtree(folder / tid)
+            if show_bytes(self.copy, self.base, f".tollgate/tickets/{tid}/ticket.md") is not None:
+                # A ticket that main holds was only edited: it goes back to main's folder.
+                git(self.copy, "checkout", self.base, "--", f".tollgate/tickets/{tid}")
         return dropped
 
     def approval_hint(self, tid: str) -> str:
