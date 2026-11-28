@@ -210,19 +210,25 @@ class BackgroundTest(Case):
 class SessionTest(Case):
     """driver.step next --brainstorm and answer, as the brainstorm skill runs them."""
 
+    mode = "pass2"
+
     def step(self, store, *argv, stdin=""):
         from driver import step
+        from tests.test_session import expand
         out = io.StringIO()
         with redirect_stdout(out):
             code = step.main(list(argv), store=store, stdin=io.StringIO(stdin))
-        return code, json.loads(out.getvalue())
+        project = argv[argv.index("--project") + 1]
+        return code, expand(lambda *a, **k: self.step(store, *a, **k), project,
+                            json.loads(out.getvalue()), self.mode, seen=getattr(self, "seen", None))
 
     def next(self, s, store):
         return self.step(store, "next", "--project", str(s.project), "--brainstorm", "demo")
 
     def loop(self, s, store, decide=lambda q: "confirm", mode="pass2"):
+        self.mode = mode
+        agents = self.seen = []
         code, out = self.next(s, store)
-        agents = []
         for _ in range(60):
             self.assertEqual(code, 0, out)
             if "question" in out:

@@ -43,21 +43,22 @@ def in_change(finding: dict, lines: dict) -> bool:
     return finding.get("file") in lines and isinstance(line, int) and line in lines[finding["file"]]
 
 
-def review(level: int, ticket: str, change: str, run_role, lenses=None) -> tuple:
-    """Return (passed, findings, text).
-
-    run_role(lens, inputs) runs the reviewer and returns its answer:
-    {verdict, findings: [{level, text, file, line}]}. A "fail" verdict with no
-    blocking finding at all still fails. `lenses` replaces the tier's lenses, for
-    the review of a whole task.
-    """
+def lens_inputs(level: int, ticket: str, change: str, lenses=None) -> list:
+    """[(lens, inputs)] for each lens of a review: the roles to ask. They read the same
+    change and do not depend on one another, so they may run at once."""
     lenses = LENSES_BY_TIER[level] if lenses is None else lenses
-    if not lenses:
+    return [(lens, {"ticket": ticket, "diff": change, "tier": level}) for lens in lenses]
+
+
+def judge(level: int, change: str, answers: list) -> tuple:
+    """Return (passed, findings, text) from [(lens, answer)], each answer
+    {verdict, findings: [{level, text, file, line}]}. A "fail" verdict with no blocking
+    finding at all still fails."""
+    if not answers:
         return True, [], f"Not needed for tier {level}."
     lines = changed_lines(change)
     findings, dropped = [], 0
-    for lens in lenses:
-        data = run_role(lens, {"ticket": ticket, "diff": change, "tier": level})
+    for lens, data in answers:
         found = data.get("findings", [])
         kept = [f for f in found if in_change(f, lines)]
         dropped += len(found) - len(kept)
@@ -74,3 +75,15 @@ def review(level: int, ticket: str, change: str, run_role, lenses=None) -> tuple
     title = (f"Passed. Tier {level}." if not blocking
              else f"Failed: {len(blocking)} blocking finding(s). Tier {level}.")
     return not blocking, findings, "\n".join([title, *out])
+
+
+def review(level: int, ticket: str, change: str, run_role, lenses=None) -> tuple:
+    """Return (passed, findings, text).
+
+    run_role(lens, inputs) runs the reviewer and returns its answer:
+    {verdict, findings: [{level, text, file, line}]}. A "fail" verdict with no
+    blocking finding at all still fails. `lenses` replaces the tier's lenses, for
+    the review of a whole task. To ask the lenses at once, use lens_inputs and judge.
+    """
+    asked = lens_inputs(level, ticket, change, lenses)
+    return judge(level, change, [(lens, run_role(lens, inputs)) for lens, inputs in asked])
