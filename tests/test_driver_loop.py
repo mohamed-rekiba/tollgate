@@ -148,6 +148,26 @@ class BuildTest(LoopCase):
                             for e in failed for f in e.get("findings", [])))
         self.assertEqual(store.ready_marks, [])
 
+    def test_a_major_review_finding_gives_the_builder_one_more_try(self):
+        s = self.sample(builder="pass1", reviewer="ok major=review",
+                        tier1={"max_files": 0, "max_lines": 0})
+        d, store = driver(s)
+        self.assertEqual(d.run(), 0)
+        tries = self.tries(s)
+        self.assertEqual([e["event"] for e in tries], ["try_failed", "try_passed"])
+        self.assertTrue(tries[0]["review_major"])
+        self.assertEqual(tries[0]["findings"][0]["text"], "an error branch has no test")
+        # Only once: the second try's major finding goes into the log, and the try passes.
+        self.assertEqual(tries[1]["majors"][0]["text"], "an error branch has no test")
+        self.assertEqual(len(store.ready_marks), 1)
+
+    def test_a_major_review_finding_on_the_last_try_does_not_park_the_ticket(self):
+        s = self.sample(builder="pass1", reviewer="ok major=review",
+                        tier1={"max_files": 0, "max_lines": 0}, stop={"attempts": 1})
+        d, _ = driver(s)
+        self.assertEqual(d.run(), 0)
+        self.assertEqual([e["event"] for e in self.tries(s)], ["try_passed"])
+
     def test_the_driver_draws_a_diagram_from_the_builder_s_spec(self):
         s = self.sample(builder="good diagram=ok")
         d, store = driver(s)

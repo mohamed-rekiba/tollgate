@@ -584,9 +584,22 @@ class Driver:
                 tier, self.ticket_text, self.review.diff(self.copy, self.start, "HEAD"), run_role)
             cost = roles.add_cost(cost, *spent)
             blocking += [f for f in found if f.get("level") == "blocking"]
+            majors = [f for f in found if f.get("level") == "major"]
             findings = self.gate.evaluate(facts)
+        else:
+            majors = []
         fields.update(cost_usd=roles.add_cost(cost), score=value, items=passed)
         must_failed = [i.id for i in self.ticket.items if i.must and not passed.get(i.id)]
+        if majors and not (findings or blocking or must_failed
+                           or value < self.settings["pass_score"]) and self.major_try(st_):
+            # A major finding of the review should be fixed now, so the builder gets one
+            # more try with it. Only once for a ticket, and only while it has a try left:
+            # a major finding alone never parks a ticket.
+            self.log.add("try_failed", findings=majors, review_major=True, **fields)
+            self._keep_if_best(st_, value, commit)
+            return
+        if majors:
+            fields["majors"] = majors
         if findings or blocking or must_failed or value < self.settings["pass_score"]:
             reasons = item_reasons(self.ticket, locked, checked.data.get("items", []), passed,
                                    mapped)
@@ -613,6 +626,15 @@ class Driver:
         self.log.add("try_passed", **fields)
         st_.passed_commit = commit
         self._keep_if_best(st_, value, commit)
+
+    def major_try(self, st_: history.Ticket) -> bool:
+        """True when a try that only has major review findings goes back to the builder:
+        no try of the ticket went back for them yet, and the ticket has a try left after
+        this one."""
+        events = read(self.log_path)
+        if any(e["event"] == "try_failed" and e.get("review_major") for e in events):
+            return False
+        return stop.tries_left(events, self.settings["stop"]) > 1
 
     @staticmethod
     def _keep_if_best(st_: history.Ticket, value: int, commit: str):

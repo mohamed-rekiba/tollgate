@@ -10,6 +10,7 @@ way every time), different (fails a different test each attempt), slow (runs too
 long), github (also changes a file under .github).
 Reviewer options: badline (names a line that does not exist), badcite (the analyst cites a
 function that does not exist), block=<lens> (that lens finds a blocking problem),
+major=<lens> (that lens finds a major problem in each ticket's change),
 taskmajor=<n> (the first n reviews of the whole task find a major problem),
 c3fail (the checklist reviewer fails C3, with a reason), review_to=<path> (the checklist
 reviewer adds its inputs to this file), plan_review_to=<path> (each plan lens adds its lens
@@ -527,6 +528,14 @@ def main() -> int:
             path, line = first_changed_line(data.get("diff", ""))
             answer({"verdict": "pass", "findings": [{"level": "major", "file": path, "line": line,
                                                      "text": "loud is missing"}]}, cost)
+            return 0
+        if not whole_task and opts.get("major") == lens:
+            # A major finding inside the change, on each review of a ticket's try.
+            path, line = first_changed_line(data.get("diff", ""))
+            answer({"verdict": "pass", "findings": [{"level": "major", "file": path,
+                                                     "line": line,
+                                                     "text": "an error branch has no test"}]},
+                   cost)
             return 0
         answer({"verdict": "fail" if block else "pass", "findings": [
             {"level": "blocking", "file": "app.py", "line": 1, "text": f"{lens} problem"}]

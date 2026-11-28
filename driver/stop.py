@@ -65,6 +65,15 @@ def _reason(events: list, limits: dict, task_spent: float, usd: bool = True) -> 
     return ""
 
 
+def tries_left(events: list, limits: dict) -> int:
+    """The tries the ticket may still start: `attempts`, plus one for each retry the
+    advisor granted after the tests were locked, less the tries that ended."""
+    locked = next((i for i, e in enumerate(events) if e["event"] == "frozen"), -1)
+    granted = sum(1 for i, e in enumerate(events) if i > locked
+                  and e["event"] == "advisor_decided" and e.get("decision") in RETRY)
+    return limits["attempts"] + granted - sum(1 for e in events if e["event"] in TRY_ENDS)
+
+
 def failed_items(event: dict) -> list:
     return sorted(i for i, ok in (event.get("items") or {}).items() if not ok)
 
