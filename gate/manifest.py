@@ -203,23 +203,32 @@ class KeptNotRunError(FreezeError):
     passed no report of the start. The store then runs the tests at the start."""
 
 
-# The source of each test function of a test file, by the file's suffix: {name: source}.
-# A language plugs in here with a function from the file's bytes to that dict. A file of
-# another language has no such function, so its test counts as unchanged only when the
-# whole file is unchanged.
+# A line that starts a new top-level declaration of a Go file.
+GO_TOP = re.compile(r"^(?:func|type|var|const|import)\b", re.MULTILINE)
+
+
 def go_test_sources(data: bytes | None) -> dict:
-    """{test name: its source} for each test function of a Go file: from its `func` line to
-    the first line that is only `}`, as gofmt writes the end of a function."""
+    """{test name: its source} for each test function of a Go file: from its `func` line
+    to the next top-level declaration or the end of the file, less the blank and comment
+    lines at its end, which belong to the next declaration. A raw string that holds a line
+    `}` does not end it early."""
     if data is None:
         return {}
     text = data.decode(errors="replace")
     found = {}
     for match in GO_TEST.finditer(text):
-        end = re.compile(r"^}\s*$", re.MULTILINE).search(text, match.end())
-        found[match.group(1)] = text[match.start():end.end() if end else len(text)]
+        end = GO_TOP.search(text, match.end())
+        lines = text[match.start():end.start() if end else len(text)].splitlines()
+        while lines and (not lines[-1].strip() or lines[-1].lstrip().startswith("//")):
+            lines.pop()
+        found[match.group(1)] = "\n".join(lines)
     return found
 
 
+# The source of each test function of a test file, by the file's suffix: {name: source}.
+# A language plugs in here with a function from the file's bytes to that dict. A file of
+# another language has no such function, so a test file of it that was there at the
+# start must stay unchanged, whole.
 TEST_SOURCES = {".py": python_tests, ".go": go_test_sources}
 
 

@@ -490,6 +490,21 @@ class GoNotBuiltTest(unittest.TestCase):
                                     "and it changed"):
             self.lock()
 
+    def test_a_go_test_ends_at_the_next_declaration_not_at_a_brace_in_a_string(self):
+        raw = ("package components\n\nimport \"testing\"\n\nfunc TestRaw(t *testing.T) {\n"
+               "\twant := `\n}\n`\n\t_ = want\n}\n\n// TestNext is new.\nfunc TestNext(t *testing.T) {}\n")
+        found = mf.go_test_sources(raw.encode())
+        self.assertIn("_ = want", found["TestRaw"])
+        self.assertNotIn("TestNext", found["TestRaw"])   # its comment belongs to the next one
+        self.assertNotEqual(found["TestRaw"],
+                            mf.go_test_sources(raw.replace("_ = want", "return").encode())["TestRaw"])
+        # One test on one line: removing the test after it does not change it.
+        self.repo.write("internal/components/components_test.go", COMPONENTS_TEST.replace(
+            "func TestOther(t *testing.T) {}\n", ""))
+        with self.assertRaisesRegex(mf.FreezeError, "TestOther was there at the start, "
+                                    "and it was removed"):
+            self.lock()
+
     def test_a_test_file_of_a_language_with_no_parser_must_stay_as_it_was(self):
         self.repo.write("web/app.test.js", "test('adds', () => expect(1 + 1).toBe(2))\n")
         start = self.repo.commit("a js test")
