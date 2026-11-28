@@ -42,7 +42,8 @@ named the role. A call from any other subagent gets your own session's rules.
 In session mode no driver names the copy, so the hook reads it from the waiting
 steps, one file a step under run/steps/<run>/ in the state folder (or the older
 run/step.json): the step of that same role whose copy holds the paths of the call,
-and its working folder. Several tasks may wait at once; a path in no step's copy is
+and its working folder. For a command, those are its words that name a path in a
+waiting step's copy, resolved after each `cd`; with none, its working folder. Several tasks may wait at once; a path in no step's copy is
 refused as before. The hook keeps a role's plain edits, reads, and commands out of the
 state folder. As defense in depth, the step file holds only a hash of the nonce
 that `answer` needs, and saved answers carry a code made with the machine secret.
@@ -176,17 +177,50 @@ def read_target(tool: str, data: dict) -> list:
     return paths
 
 
-def _forms(folder: Path) -> list:
-    """The ways a command may write a folder: its path, and from home with ~ or $HOME."""
-    forms = {str(folder)}
+def _forms(*folders) -> list:
+    """The ways a command may write one folder, given in any of its spellings, such as
+    its real path and a path through a link (/tmp and /private/tmp on macOS): each
+    spelling, and from home with ~ or $HOME."""
+    forms = set()
     home = Path(os.path.realpath(Path.home()))
-    if _under(folder, home) and folder != home:
-        rel = folder.relative_to(home).as_posix()
-        forms |= {f"~/{rel}", f"$HOME/{rel}", f"${{HOME}}/{rel}"}
+    for folder in {Path(f) for f in folders if f}:
+        forms.add(str(folder))
+        for base in {home, Path.home()}:
+            if _under(folder, base) and folder != base:
+                rel = folder.relative_to(base).as_posix()
+                forms |= {f"~/{rel}", f"$HOME/{rel}", f"${{HOME}}/{rel}"}
     return sorted(forms, key=len, reverse=True)
 
 
+def _spellings(folder: Path, project: str) -> list:
+    """The spellings of a folder in the state folder: its real path, and the same path
+    under the state folder as Tollgate names it, which may pass through a link."""
+    real = Path(os.path.realpath(folder))
+    named = state.state_dir(project).parent
+    found = [folder, real]
+    root = Path(os.path.realpath(named))
+    if _under(real, root):
+        found.append(named / real.relative_to(root))
+    return found
+
+
 REDIRECT = re.compile(r"^\d*[<>]+&?")
+
+
+def command_paths(command: str, cwd: str):
+    """(word, path) for each word of a command that may be a path, resolved from the
+    folder it runs in. A `cd` moves the folder for the words after it."""
+    here = cwd or "."
+    for part in SPLIT.split(command):
+        words = _words(part)
+        for word in words:
+            word = REDIRECT.sub("", word)
+            word = word.split("=", 1)[1] if word.startswith("-") and "=" in word else word
+            if not word or word.startswith("-") or "://" in word:
+                continue
+            yield word, _real(word, here)
+        if len(words) >= 2 and words[0] == "cd":
+            here = str(_real(words[1], here))
 
 
 def check_paths(command: str, cwd: str, copy: str, project: str) -> str:
@@ -198,23 +232,13 @@ def check_paths(command: str, cwd: str, copy: str, project: str) -> str:
     keys = Path(os.path.realpath(state.key_dir()))
     root = Path(os.path.realpath(state.state_dir(project).parent))
     copies = Path(os.path.realpath(state.state_dir(project))) / "builders"
-    here = cwd or "."
-    for part in SPLIT.split(command):
-        words = _words(part)
-        for n, word in enumerate(words):
-            word = REDIRECT.sub("", word)
-            word = word.split("=", 1)[1] if word.startswith("-") and "=" in word else word
-            if not word or word.startswith("-") or "://" in word:
-                continue
-            target = _real(word, here)
-            if _under(target, keys):
-                return f"the command names {word}, in the key folder, which no role may reach"
-            if (_under(target, root) and not (own and _under(target, own))
-                    and not (own and _under(own, target)) and not _under(target, copies)):
-                return (f"the command names {word}, in the state folder outside the role's "
-                        "own copy, which no role may reach")
-        if len(words) >= 2 and words[0] == "cd":
-            here = str(_real(words[1], here))
+    for word, target in command_paths(command, cwd):
+        if _under(target, keys):
+            return f"the command names {word}, in the key folder, which no role may reach"
+        if (_under(target, root) and not (own and _under(target, own))
+                and not (own and _under(own, target)) and not _under(target, copies)):
+            return (f"the command names {word}, in the state folder outside the role's "
+                    "own copy, which no role may reach")
     return ""
 
 
@@ -223,10 +247,11 @@ def check_names(command: str, copy: str, project: str) -> str:
     state folder, or "". The role's own copy may be named."""
     text = command
     if copy:
-        for own in sorted({copy, os.path.realpath(copy)}, key=len, reverse=True):
+        for own in _forms(*_spellings(Path(copy), project)):
             text = text.replace(own, " ")
+    named = {"key folder": state.key_dir(), "state folder": state.state_dir(project).parent}
     for name, folder in _places(project):
-        for form in _forms(folder):
+        for form in _forms(folder, named[name]):
             if form in text:
                 return f"the command names the {name}, which no role may reach"
     return ""
@@ -430,7 +455,16 @@ def decide(call: dict, role: str = "", copy: str = "", project: str = "") -> str
     if role and not named and not copy:
         # Session mode: the copy of the waiting step of this role that the call works in.
         # Several tasks may wait at once, each with its own copy.
-        step = step_of(project, role, [_real(p, cwd) for p in call_paths(tool, data)] or [cwd])
+        paths = [_real(p, cwd) for p in call_paths(tool, data)]
+        if tool == "Bash":
+            # The command's paths in the copy of a waiting step tell which step it works
+            # in. Its other words, such as python3, a path in the project, or `cd ..`,
+            # do not; the checks below still refuse them where they must.
+            copies = [Path(os.path.realpath(s["copy"])) for s in steps_of(project)
+                      if isinstance(s.get("copy"), str) and s["copy"]]
+            paths = [t for _, t in command_paths(str(data.get("command") or ""), cwd)
+                     if any(_under(t, c) for c in copies)]
+        step = step_of(project, role, paths or [_real(".", cwd)])
         if step.get("role") == role:
             copy = str(step.get("copy") or "")
             if role == "builder" and step.get("policy") == "planner":

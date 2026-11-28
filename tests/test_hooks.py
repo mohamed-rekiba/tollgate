@@ -248,6 +248,93 @@ class StepsOfTwoTasksTest(Env):
                            role="", agent_type="tollgate:test_writer")
 
 
+class CommandsWhileSeveralStepsWaitTest(Env):
+    """Several steps wait at once, many of the same role, one in the older run/step.json.
+    A builder runs commands that name paths in its own copy. The state folder has a space
+    in its path, as ~/Library/Application Support has on macOS, and is named by a path
+    that is not its real path, as /tmp is on macOS."""
+
+    def setUp(self):
+        super().setUp()
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        # Not resolved: on macOS the temporary folder is a link into /private.
+        spaced = Path(tmp.name) / "Application Support" / "tollgate"
+        self.env = {**self.env, "TOLLGATE_STATE": str(spaced)}
+        patch = mock.patch.dict(os.environ, self.env)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.copies = {}
+        for ticket in ("T-0", "T-1", "T-2", "T-3"):
+            copy = state.path(str(self.project), "builders", ticket)
+            (copy / ".tollgate" / "checks").mkdir(parents=True)
+            (copy / "docs").mkdir()
+            self.copies[ticket] = copy
+        self.copy = self.copies["T-1"]
+        state.path(str(self.project), "run", "step.json").write_text(json.dumps(
+            {"role": "builder", "policy": "builder", "copy": str(self.copies["T-0"]), "key": "k0"}))
+        for run, key, role, ticket in (("task-one", "k1", "builder", "T-1"),
+                                       ("task-two", "k2", "builder", "T-2"),
+                                       ("task-two", "k3", "analyst", "T-3")):
+            folder = state.path(str(self.project), "run", "steps") / run
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / f"{key}.json").write_text(json.dumps(
+                {"role": role, "policy": role, "copy": str(self.copies[ticket]), "key": key}))
+
+    def run_builder(self, command, cwd):
+        return self.guard("Bash", {"command": command}, role="", cwd=cwd,
+                          agent_type="tollgate:builder")
+
+    def test_a_builder_runs_a_relative_path_from_its_copy(self):
+        for ticket in ("T-0", "T-1", "T-2"):
+            with self.subTest(ticket=ticket):
+                self.assertEqual(self.run_builder(
+                    "python3 .tollgate/checks/check_writing.py docs/LAYOUT.md",
+                    self.copies[ticket]), (0, ""))
+
+    def test_a_builder_runs_the_quoted_absolute_path_of_its_copy(self):
+        for copy in (self.copies["T-1"], os.path.realpath(self.copies["T-1"])):
+            for command in (
+                    f'python3 "{copy}/.tollgate/checks/check_writing.py" "{copy}/docs/LAYOUT.md"',
+                    f"cd '{copy}' && python3 .tollgate/checks/check_writing.py docs/LAYOUT.md"):
+                for cwd in (self.copies["T-1"], self.project):
+                    with self.subTest(command=command, cwd=cwd):
+                        self.assertEqual(self.run_builder(command, cwd), (0, ""))
+
+    def test_a_role_cds_into_its_copy_from_the_project(self):
+        """A subagent's Bash starts in the project, not in its copy."""
+        for run, key, ticket in (("task-three", "k4", "T-4"), ("task-four", "k5", "T-5")):
+            copy = state.path(str(self.project), "builders", ticket)
+            copy.mkdir()
+            self.copies[ticket] = copy
+            folder = state.path(str(self.project), "run", "steps") / run
+            folder.mkdir(parents=True)
+            (folder / f"{key}.json").write_text(json.dumps(
+                {"role": "test_writer", "policy": "test_writer", "copy": str(copy), "key": key}))
+        for copy in (self.copies["T-4"], os.path.realpath(self.copies["T-4"])):
+            for command in (f'cd "{copy}"', f'cd "{copy}" && ls tests && python3 -m pytest -q'):
+                with self.subTest(command=command):
+                    self.assertEqual(self.guard("Bash", {"command": command}, role="",
+                                                cwd=self.project,
+                                                agent_type="tollgate:test_writer"), (0, ""))
+        code, err = self.guard("Bash", {"command": f'cd "{self.copies["T-1"]}" && ls'}, role="",
+                               cwd=self.project, agent_type="tollgate:test_writer")
+        self.assertEqual(code, 2, err)
+        self.assertIn("state folder", err)
+
+    def test_a_builder_may_not_name_another_copy(self):
+        own = self.copies["T-1"]
+        for other in ("T-2", "T-3"):
+            command = f'cat "{own}/docs/LAYOUT.md" "{self.copies[other]}/app.py"'
+            with self.subTest(other=other):
+                code, err = self.run_builder(command, own)
+                self.assertEqual(code, 2, err)
+                self.assertIn("state folder", err)
+        code, err = self.run_builder(f'cat "{self.copies["T-3"]}/app.py"', self.project)
+        self.assertEqual(code, 2, err)
+        self.assertIn("state folder", err)
+
+
 class DependencyCacheReadTest(Env):
     """A read-only role checks a library's source in a dependency cache, such as Go's
     module cache, or the copy's node_modules or .venv."""
