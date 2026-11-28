@@ -15,8 +15,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from driver.roles import TOOLS  # noqa: E402 - the line above puts Tollgate on the import path
-
 # What each role does, in one line, for the agent's description.
 DOES = {
     "analyst": "Reads the project and reports what it finds, with citations, before a plan.",
@@ -43,6 +41,7 @@ HEADER = ("Tollgate's driver starts you and gives you your inputs in the message
 
 
 def render(role: str) -> str:
+    from driver.roles import TOOLS  # after sys.path holds Tollgate's folder
     tools = ", ".join(TOOLS[role])
     return (f"---\nname: {role}\ndescription: {DOES[role]} {ONLY}\ntools: {tools}\n"
             f"model: inherit\nmaxTurns: {MAX_TURNS[role]}\n---\n\n"
