@@ -24,7 +24,7 @@ starts it as its own process. The setting `runner` picks one.
 
 Exit codes: 0 the ticket is a ready change or merged, 3 the ticket waits for the
 advisor or is parked, 4 another driver holds the ticket, 5 a role waits for your
-session (the step file, run/step.json, says which), 1 an error.
+session (its step file, under run/steps/, says which), 1 an error.
 """
 
 import argparse

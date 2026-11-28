@@ -291,6 +291,67 @@ class StepTest(Case):
         self.assertNotIn("spec", asked)
         self.assertEqual(out["key"], session.key("analyst", None, asked))
 
+    def two_tasks(self):
+        s, store = self.task_sample()
+        Path(s.project, ".tollgate/requests/other.md").write_text("Add shout and whisper.\n")
+        return s, store
+
+    def next_of(self, s, store, task):
+        return self.step(store, "next", "--project", str(s.project), "--task", task)
+
+    def run_two(self, s, store, order):
+        """next and answer two tasks of one project, each waiting at its own step, in
+        turns that order gives. Return what each printed last."""
+        outs = {t: self.next_of(s, store, t)[1] for t in ("demo", "other")}
+        for i in range(400):
+            # Turn by turn: one step of one task, then one of the other.
+            names = order(outs) if i % 2 == 0 else order(outs)[::-1]
+            todo = [t for t in names if not outs[t].get("done")]
+            if not todo:
+                return outs
+            task = todo[0]
+            out = outs[task]
+            self.assertNotIn("error", out, (task, out))
+            if "question" in out:
+                options = out["question"]["options"]
+                store.answer(out["question"]["n"], "tollgate decide "
+                             + ("approve" if "approve" in options else "continue"))
+                outs[task] = self.next_of(s, store, task)[1]
+            elif "parked" in out:
+                self.fail(f"{task} parked: {out}")
+            else:
+                code, outs[task] = self.answer(s, store, out, fake_answer(out))
+                self.assertEqual(code, 0, outs[task])
+        self.fail(f"the tasks did not end: {outs}")
+
+    def test_two_tasks_of_one_project_wait_at_once_and_both_finish(self):
+        for name, order in (("demo first", lambda outs: ["demo", "other"]),
+                            ("other first", lambda outs: ["other", "demo"])):
+            with self.subTest(name):
+                s, store = self.two_tasks()
+                first = {t: self.next_of(s, store, t)[1] for t in ("demo", "other")}
+                # Both wait, each at its own step: the second next did not replace the first.
+                self.assertEqual(len(session.all_steps(str(s.project))), 2)
+                self.assertNotEqual(first["demo"]["key"], first["other"]["key"])
+                outs = self.run_two(s, store, order)
+                self.assertTrue(outs["demo"]["done"] and outs["other"]["done"], outs)
+                for task in ("demo", "other"):
+                    self.assertIn("reported", [e["event"] for e in s.log(f"task-{task}")])
+
+    def test_a_key_or_nonce_of_the_other_task_is_refused(self):
+        s, store = self.two_tasks()
+        demo = self.next_of(s, store, "demo")[1]
+        other = self.next_of(s, store, "other")[1]
+        code, refused = self.answer(s, store, demo, fake_answer(demo), nonce=other["nonce"])
+        self.assertEqual(code, 1)
+        self.assertIn("not the ones next printed", refused["error"])
+        code, refused = self.answer(s, store, demo, fake_answer(demo), key="0" * 64)
+        self.assertEqual(code, 1)
+        self.assertEqual(len(session.all_steps(str(s.project))), 2)
+        # The right pair is still saved, and the other task's step still waits.
+        self.assertEqual(self.answer(s, store, demo, fake_answer(demo))[0], 0)
+        self.assertIn(other["key"], [st["key"] for st in session.all_steps(str(s.project))])
+
     def test_answer_refuses_a_key_that_is_not_the_waiting_step_s(self):
         s, store = self.task_sample()
         _, out = self.next(s, store)
@@ -604,7 +665,7 @@ class StepTest(Case):
             self.fail(f"the plan review did not reach the readiness lens: {out}")
         session.save_answer(str(s.project), session.read_step(str(s.project)),
                             fake_answer(out))
-        session.replay_path(str(s.project)).write_text("a step no run reaches\n")
+        session.replay_path(str(s.project), "task-demo").write_text("a step no run reaches\n")
         asked = []
 
         def decide(question):
@@ -682,9 +743,9 @@ class StepTest(Case):
 
     def test_logging_goes_on_once_a_role_has_no_saved_answer(self):
         s, store = self.task_sample()
-        session.replay_path(str(s.project)).write_text("a step no run reaches\n")
+        session.replay_path(str(s.project), "task-demo").write_text("a step no run reaches\n")
         _, out = self.next(s, store)
-        self.assertEqual(session.replay_path(str(s.project)).read_text().strip(), out["key"])
+        self.assertEqual(session.replay_path(str(s.project), "task-demo").read_text().strip(), out["key"])
         self.answer(s, store, out, fake_answer(out))
         events = [e["event"] for e in s.log("task-demo")]
         self.assertEqual(events.count("analysis_written"), 1)

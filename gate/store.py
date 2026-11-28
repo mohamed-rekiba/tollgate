@@ -411,7 +411,17 @@ class Store:
 
     def merge(self, commit: str) -> str:
         """Merge a ready change into main with a merge commit (--no-ff). Refuse without
-        a pass record, and for tier 3 and 4 without an approval. Return the merge commit."""
+        a pass record, and for tier 3 and 4 without an approval. Return the merge commit.
+        One merge runs at a time in a project: two tasks that run at once wait in turn."""
+        import fcntl
+        with open(state.path(self.project, "run", "merge.lock"), "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            try:
+                return self._merge(commit)
+            finally:
+                fcntl.flock(held, fcntl.LOCK_UN)
+
+    def _merge(self, commit: str) -> str:
         full = commit_of(self.project, commit or "")
         if not full:
             raise StoreError(f"the project has no commit {commit!r}")

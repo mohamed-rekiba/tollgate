@@ -98,31 +98,42 @@ def _merged(project: str, task: str) -> list:
     return out
 
 
+def _printed(project: str, step: dict, nonce: str) -> dict:
+    return {"agent": step.get("agent", ""), "prompt": step["prompt"],
+            "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}
+
+
 def _paused(project: str, lock_name: str, roadmap: str = "") -> tuple:
-    """The step that waits, with a new nonce. Return (what to print, exit code).
-    roadmap names the roadmap the step belongs to, so answer goes on with it."""
-    # The nonce goes in under the run lock, so a second next cannot interleave.
+    """The steps that wait in the run, each with a new nonce. Return (what to print, exit
+    code): one step as it is, or several that can run at once as {"steps": [...]}.
+    roadmap names the roadmap the steps belong to, so answer goes on with it."""
+    # The nonces go in under the run lock, so a second next cannot interleave.
     lock = run_lock(project, lock_name)
     try:
         lock.acquire()
     except Busy as err:
         return {"error": str(err)}, 1
     try:
-        step = session.read_step(project)
-        if step is None:
+        steps = session.read_steps(project)
+        if not steps:
             return {"error": "the driver paused, but no step file is there; run next "
                              "again"}, 1
         if roadmap:
             session.note_roadmap(project, roadmap)
-        nonce = session.new_nonce(project)
+            steps = session.read_steps(project)
+        printed = [_printed(project, step, session.new_nonce(project, step)) for step in steps]
     finally:
         lock.release()
-    return {"agent": step.get("agent", ""), "prompt": step["prompt"],
-            "cwd": step.get("copy") or project, "key": step["key"], "nonce": nonce}, 0
+    return (printed[0] if len(printed) == 1 else {"steps": printed}), 0
 
 
 def next_brainstorm(project: str, brainstorm: str, store=None) -> tuple:
     """Run the brainstorm to its next step. Return (what to print, exit code)."""
+    with session.in_slot(session.slot_of(brainstorm=brainstorm)):
+        return _next_brainstorm(project, brainstorm, store)
+
+
+def _next_brainstorm(project: str, brainstorm: str, store=None) -> tuple:
     project = str(Path(project).resolve())
     problem = session.cannot_pass(project)
     if problem:
@@ -157,6 +168,11 @@ def next_brainstorm(project: str, brainstorm: str, store=None) -> tuple:
 
 def next_step(project: str, task: str, store=None) -> tuple:
     """Run the task to its next step. Return (what to print, exit code)."""
+    with session.in_slot(session.slot_of(task=task)):
+        return _next_step(project, task, store)
+
+
+def _next_step(project: str, task: str, store=None) -> tuple:
     project = str(Path(project).resolve())
     problem = session.cannot_pass(project)
     if problem:
@@ -200,6 +216,11 @@ def _checklist_task(project: str, checklist: str) -> str:
 
 def next_roadmap(project: str, roadmap_id: str, store=None) -> tuple:
     """Run the roadmap in session mode to its next step. Return (what to print, exit code)."""
+    with session.in_slot(session.slot_of(roadmap=roadmap_id)):
+        return _next_roadmap(project, roadmap_id, store)
+
+
+def _next_roadmap(project: str, roadmap_id: str, store=None) -> tuple:
     project = str(Path(project).resolve())
     problem = session.cannot_pass(project)
     if problem:
@@ -241,12 +262,18 @@ def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> t
     """Save the answer to the waiting step, then run next. Return (what to print, exit code)."""
     import hmac
     project = str(Path(project).resolve())
-    step = session.read_step(project)
-    if not step:
+    if not session.all_steps(project):
         return {"error": "no step waits for an answer; run next"}, 1
-    wanted = str(step.get("nonce_sha256") or "")
-    if not (hmac.compare_digest(found_key, step["key"]) and wanted
-            and hmac.compare_digest(session.digest(nonce), wanted)):
+    # The key finds the step, in whichever run waits for it; the nonce proves that this
+    # session is the one that ran next. Each step is tried, so the time does not say
+    # which keys wait.
+    step = None
+    for waiting in session.all_steps(project):
+        wanted = str(waiting.get("nonce_sha256") or "")
+        if (hmac.compare_digest(found_key, waiting["key"]) and wanted
+                and hmac.compare_digest(session.digest(nonce), wanted)):
+            step = waiting
+    if step is None:
         return {"error": "the key or the nonce is not the ones next printed for the step "
                          "that waits. Run next, and answer with what it prints."}, 1
     try:
@@ -265,6 +292,12 @@ def answer(project: str, found_key: str, nonce: str, text: str, store=None) -> t
                          "with a ```json block."}, 1
     except (OSError, subprocess.CalledProcessError) as err:
         return {"error": f"the answer was not saved: {err}"}, 1
+    others = [s for s in session.all_steps(project)
+              if s.get("slot", "") == step.get("slot", "") and s["key"] != step["key"]
+              and s.get("_path") != step.get("_path")]
+    if others:
+        # Steps that run at once: the run goes on once the last of them is answered.
+        return {"saved": step["key"], "waiting": [s["key"] for s in others]}, 0
     if isinstance(step.get("roadmap"), str) and step["roadmap"]:
         return next_roadmap(project, step["roadmap"], store)
     if step["log"] == f"brainstorm-{step['task']}":
