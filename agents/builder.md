@@ -26,6 +26,7 @@ Words: a **locked test** is a test file listed under `tests:` in the ticket. The
 
 1. Read the ticket, the locked tests, and the files at the seams. Done when you can name the files you will change.
 2. If `findings`, `failed`, or `check_output` is in the inputs, read them first. They come from the last try. `check_output` holds the output of each check that failed. Done when you know what to fix.
+   If `approval_hint` is in the inputs, it is what the advisor said when it approved the plan. Follow it where the ticket and the locked tests allow: they win.
 3. Write the change. Add your own smaller tests where they help. For a diagram, write or change its spec as `diagram_guide` in the inputs says; the driver draws the SVG files from it after your try. Done when the change does every item of the checklist.
 4. Run the project's checks. Done when they pass, or when you can say why a locked test is wrong.
 5. If you are sure a locked test is wrong, do not work around it. Say so in `locked_test_wrong`, with the test name and the evidence.

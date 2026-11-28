@@ -387,7 +387,9 @@ class Task:
         return any(e["event"] == "checkpoint_passed" and e.get("name") == name
                    and e.get("key", "") == key for e in read(self.log_path))
 
-    def lock_plan(self):
+    def lock_plan(self, hint: str = ""):
+        """Commit the plan and lock it. hint is what the advisor said with `approve`: the
+        tickets of this lock are built with it (see approval_hint)."""
         # The analysis goes on the plan branch as the driver checked it.
         path = Path(self.copy, an.analysis_path(self.id))
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -398,7 +400,16 @@ class Task:
         path = self.store.lock_plan(self.id)
         plan = pl.parse(self.read_copy(pl.plan_path(self.id)))
         self.log.add("plan_locked", path=path, commit=git(self.copy, "rev-parse", "HEAD"),
-                     tickets=plan.tickets)
+                     tickets=plan.tickets, **({"hint": hint.strip()} if hint.strip() else {}))
+
+    def approval_hint(self, tid: str) -> str:
+        """The hint given with the approval of the plan lock that first listed the ticket,
+        or "". The plan is locked by then, so the hint changes no ticket: it goes to the
+        ticket's test writer and builder, who follow it where the ticket allows."""
+        for e in read(self.log_path):
+            if e["event"] == "plan_locked" and tid in e.get("tickets", []):
+                return e.get("hint", "")
+        return ""
 
     def build_tickets(self) -> dict:
         plan = pl.parse(self.read_locked(pl.plan_path(self.id)))
@@ -413,7 +424,7 @@ class Task:
             try:
                 code = Driver(self.project, tid, self.store, ticket_text=text,
                               runner=self.runner, base=start, hold=True,
-                              **self.driver_args).run()
+                              approval_hint=self.approval_hint(tid), **self.driver_args).run()
             except Busy:
                 code = 4
             except (roles.RoleError, tk.TicketError, StoreError,
@@ -534,7 +545,7 @@ class Task:
         if decision["decision"] != "approve":
             self.log.add("plan_sent_back", hint=decision.get("hint", ""))
             raise Parked("the plan of the fix round was sent back")
-        self.lock_plan()
+        self.lock_plan(decision.get("hint", ""))
         self.log.add("fix_round", round=self.fix_rounds() + 1, findings=findings)
 
     def merge_ready(self) -> list:
@@ -630,7 +641,7 @@ class Task:
                         self.write_plan(hint=decision.get("hint", ""))
                         self.log.add("plan_review_done", open=self.review_plan())
                         raise Parked("the plan was sent back and needs a new approval")
-                    self.lock_plan()
+                    self.lock_plan(decision.get("hint", ""))
                 while True:
                     done = self.build_tickets()
                     if not done or not all(c == 0 for c in done.values()):

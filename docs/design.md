@@ -282,7 +282,7 @@ The advisor chain is `ai.advisor` in the settings: a list of commands and the wo
 
 | Decision | What the driver does |
 | --- | --- |
-| Approve | Has the store sign the plan lock. |
+| Approve | Has the store sign the plan lock. A hint given with it goes to the test writer and the builder of each ticket of that lock, as `approval_hint`. The plan is locked, so the hint changes no ticket: the roles follow it where the ticket and the locked tests allow. To change the plan, send it back. |
 | Send back | Parks the task. The plan needs a new approval. |
 | Retry | Runs one more try, with the advisor's hint. |
 | Stronger | Runs one more try with `ai.stronger_builder`. |

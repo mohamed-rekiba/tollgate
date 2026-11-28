@@ -8,7 +8,7 @@ from driver import roles
 from driver.log import Log, read
 from driver.task import Task
 from gate import settings as st
-from tests.driver_fakes import FakeStore, Sample
+from tests.driver_fakes import FakeStore, Sample, sh
 from tests.fake_role import PLAN, TICKET_T1, TICKET_T2
 
 MINOR = {"level": "minor", "text": "the plan says greet is in main.py; it is in app.py"}
@@ -48,17 +48,22 @@ class TaskCase(unittest.TestCase):
         self.s = Sample(ticket=False)
         self.addCleanup(self.s.close)
         p = self.s.project
-        self.plan_file = Path(p, ".tollgate/plans/demo.md")
+        self.store = FakeStore(p)
+        self.task = Task(str(p), "demo", "Add shout and whisper.", self.store)
+        copy = self.task.copy = roles.make_copy(str(p), "task-demo")
+        sh(copy, "git", "checkout", "-q", "-B", "tg-plan/demo", "main")
+        self.plan_file = Path(copy, ".tollgate/plans/demo.md")
         self.plan_file.parent.mkdir(parents=True)
         self.plan_file.write_text(PLAN.format(task="demo", request="Add shout and whisper."))
         for tid, text in (("demo-1", TICKET_T1), ("demo-2", TICKET_T2)):
-            Path(p, f".tollgate/tickets/{tid}").mkdir(parents=True)
-            Path(p, f".tollgate/tickets/{tid}/ticket.md").write_text(text.format(task="demo"))
-        self.task = Task(str(p), "demo", "Add shout and whisper.", FakeStore(p))
-        self.task.copy = str(p)
+            self.write_ticket(tid, text.format(task="demo"))
         self.task.settings = st.load_from_ref(str(p), "main")
         self.task.log = Log(self.task.log_path, task="demo")
         self.addCleanup(self.task.log.close)
+
+    def write_ticket(self, tid, text):
+        Path(self.task.copy, f".tollgate/tickets/{tid}").mkdir(parents=True, exist_ok=True)
+        Path(self.task.copy, f".tollgate/tickets/{tid}/ticket.md").write_text(text)
 
     def events(self, name=None):
         found = read(self.task.log_path)
@@ -92,6 +97,37 @@ class MinorFindingsTest(TaskCase):
         self.assertEqual(self.task.review_plan(), [])
         first = self.task.role.answers()[0]["findings"]
         self.assertEqual(first, [dict(MAJOR, lens="simplicity"), dict(MINOR, lens="simplicity")])
+
+
+class ApprovalHintTest(TaskCase):
+    def test_a_hint_given_with_approve_reaches_the_ticket_roles(self):
+        self.task.lock_plan("keep the error text short")
+        locked = self.events("plan_locked")[0]
+        self.assertEqual(locked["hint"], "keep the error text short")
+        self.assertEqual(self.task.approval_hint("demo-1"), "keep the error text short")
+        self.assertEqual(self.task.approval_hint("demo-9"), "")
+        # The ticket's driver gives it to the test writer and to the builder.
+        from driver.driver import Driver
+        seen = []
+
+        def caller(call):
+            seen.append((call.role, call.inputs))
+            raise roles.RoleError("stop here")
+        text = Path(self.task.copy, ".tollgate/tickets/demo-1/ticket.md").read_text()
+        d = Driver(str(self.s.project), "demo-1", self.store, ticket_text=text, caller=caller,
+                   approval_hint=self.task.approval_hint("demo-1"))
+        with self.assertRaises(roles.RoleError):
+            d.run()
+        self.assertEqual(seen[0][0], "test_writer")
+        self.assertEqual(seen[0][1]["approval_hint"], "keep the error text short")
+
+    def test_no_hint_leaves_the_inputs_as_they_were(self):
+        self.task.lock_plan()
+        self.assertNotIn("hint", self.events("plan_locked")[0])
+        from driver.driver import Driver
+        text = Path(self.task.copy, ".tollgate/tickets/demo-1/ticket.md").read_text()
+        d = Driver(str(self.s.project), "demo-1", self.store, ticket_text=text)
+        self.assertEqual(d.approval, {})
 
 
 if __name__ == "__main__":

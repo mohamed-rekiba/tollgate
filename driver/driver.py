@@ -282,10 +282,12 @@ class Driver:
 
     def __init__(self, project: str, ticket_id: str, store=None, ticket_text: str | None = None,
                  gate_api=None, review_api=None, runner: str | None = None, caller=None,
-                 base: str | None = None, hold: bool = False):
+                 base: str | None = None, hold: bool = False, approval_hint: str = ""):
         """base is the commit the ticket starts from, main by default; in a task, the
         ready change of the ticket before it. hold=True leaves the merge to the task:
-        the ticket ends at waiting_for_merge, even with auto_merge on."""
+        the ticket ends at waiting_for_merge, even with auto_merge on. approval_hint is
+        what the advisor said when it approved the plan: the test writer and the builder
+        get it as `approval_hint`."""
         self.project = os.path.abspath(project)
         self.ticket_id = ticket_id
         self.store = store or Store(self.project)
@@ -301,6 +303,8 @@ class Driver:
         self.ticket = tickets.parse(self.ticket_text)
         self.runner = runner    # None: the setting `runner` decides
         self.caller = caller
+        # Only when there is one, so the inputs of a ticket with none stay as they were.
+        self.approval = {"approval_hint": approval_hint} if approval_hint else {}
 
     # Helpers.
 
@@ -364,7 +368,7 @@ class Driver:
             # The round tells two rounds apart, in the log and in session mode's saved answers.
             n = st_.rejections + 1
             inputs = {"ticket": self.ticket_text, "ticket_id": self.ticket_id,
-                      "rejected": rejected, "round": n}
+                      "rejected": rejected, "round": n, **self.approval}
             if st_.hint:
                 inputs["hint"] = st_.hint
             if st_.relock_from:
@@ -503,7 +507,8 @@ class Driver:
                   "diagram_guide": diagram_guide(self.ticket_text),
                   "findings": last[-1].get("findings", []) if last else [],
                   "failed": last[-1].get("failed", []) if last else [],
-                  "check_output": last[-1].get("check_output", {}) if last else {}}
+                  "check_output": last[-1].get("check_output", {}) if last else {},
+                  **self.approval}
         self.log.add("try_started", attempt=n, start=st_.best_commit)
         stronger = self.settings["ai"]["stronger_builder"] if st_.stronger else ""
         if st_.stronger and not stronger:
