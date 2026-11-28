@@ -114,10 +114,12 @@ def run(settings: dict, workdir, only=None) -> Results:
 
 
 # A compile or type error about a name that is not there yet, in Go, TypeScript, mypy,
-# pyright, and Rust. Each pattern gives the parts of the name, the qualifier first.
+# pyright, and Rust. Each pattern gives the parts of the name, the qualifier first. A Go
+# generic type drops its type arguments: `flow.Spec[testParams]` is `flow.Spec`.
 MISSING_NAME = [(re.compile(p), order) for p, order in (
     (r"undefined: ([\w.]+)", (1,)),                                          # Go
-    (r"\S+ undefined \(type \*?([\w.]+) has no (?:field or )?method (\w+)", (1, 2)),
+    (r"\S+ undefined \(type \*?([\w.]+)(?:\[.*\])? has no (?:field or )?method (\w+)", (1, 2)),
+    (r"unknown field '?(\w+)'? in struct literal of type \*?([\w.]+)", (2, 1)),
     (r"has no exported member (?:named )?'([\w$]+)'", (1,)),                  # TypeScript
     (r"Cannot find name '([\w$]+)'", (1,)),
     (r"Property '([\w$]+)' does not exist on type", (1,)),
