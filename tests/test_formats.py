@@ -484,6 +484,47 @@ class MissingSeamsTest(unittest.TestCase):
         self.assertTrue(self.allowed(out, seams=["internal/logging.Logger.Cause"]))
         self.assertFalse(self.allowed(out, seams=["internal/logging.Cause"]))
 
+    def test_a_go_field_or_method_of_a_generic_type_that_is_a_seam_is_allowed(self):
+        seams = ["internal/flow.Spec.Do", "internal/flow.Tx", "internal/flow.Runner",
+                 "internal/flow.Result"]
+        files = ["internal/command/register_test.go"]
+        field = ("internal/command/register_test.go:52:3: unknown field Do in struct literal "
+                 "of type flow.Spec[testParams]\n")
+        self.assertTrue(self.allowed(field, files, seams))
+        self.assertTrue(self.allowed(field.replace("Spec[testParams]", "Spec"), files, seams))
+        self.assertFalse(self.allowed(field.replace("field Do", "field Run"), files, seams))
+        self.assertFalse(self.allowed(field.replace("flow.Spec", "other.Spec"), files, seams))
+        method = ("internal/command/register_test.go:60:9: s.Do undefined (type "
+                  "*flow.Spec[testParams] has no field or method Do)\n")
+        self.assertTrue(self.allowed(method, files, seams))
+        self.assertTrue(self.allowed(method.replace("[testParams]", ""), files, seams))
+        self.assertFalse(self.allowed(method.replace("method Do)", "method Run)"), files, seams))
+        self.assertFalse(self.allowed(method.replace("flow.Spec", "flow.Plan"), files, seams))
+
+    def test_a_name_that_owns_a_seam_is_allowed(self):
+        # The seam is a method, so the builder adds its type too, and a test that names
+        # the type does not compile on it either.
+        seams = ["internal/ports.JobState.Live", "internal/ports.LiveJobStates"]
+        files = ["internal/ports/jobs_test.go"]
+        go = ("internal/ports/jobs_test.go:9:8: undefined: ports.JobState\n"
+              "internal/ports/jobs_test.go:12:9: undefined: ports.LiveJobStates\n")
+        self.assertTrue(self.allowed(go, files, seams))
+        owner = go.splitlines()[0] + "\n"
+        self.assertTrue(self.allowed(owner, files, seams[:1]), "ports.JobState owns the seam")
+        self.assertFalse(self.allowed(owner, files, seams[1:]), "no seam is JobState's")
+        self.assertFalse(self.allowed(go.replace("ports.JobState\n", "ports.JobStat\n"),
+                                      files, seams))
+        self.assertFalse(self.allowed(go.replace("ports.JobState\n", "other.JobState\n"),
+                                      files, seams))
+        mypy = ('tests/test_jobs.py:3: error: Module "app.ports" has no attribute "JobState"'
+                "  [attr-defined]\n")
+        self.assertTrue(self.allowed(mypy, ["tests/test_jobs.py"], ["app.ports.JobState.live"]))
+        self.assertFalse(self.allowed(mypy, ["tests/test_jobs.py"], ["app.ports.Job.live"]))
+        rust = ("error[E0412]: cannot find type `JobState` in module `ports`\n"
+                " --> tests/jobs.rs:4:22\n")
+        self.assertTrue(self.allowed(rust, ["tests/jobs.rs"], ["crate::ports::JobState::live"]))
+        self.assertFalse(self.allowed(rust, ["tests/jobs.rs"], ["crate::ports::Job::live"]))
+
     def test_a_compile_error_on_a_name_that_is_not_a_seam_is_blocking(self):
         self.assertFalse(self.allowed(
             "internal/logging/cause_test.go:12:9: undefined: logging.Caus\n"))
