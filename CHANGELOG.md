@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/tollgate-ai/tollgate/compare/v0.13.3...v0.14.0) (2026-11-28)
+
+
+### Features
+
+* **session:** let several tasks of one project wait at once ([#172](https://github.com/tollgate-ai/tollgate/issues/172)) ([b500961](https://github.com/tollgate-ai/tollgate/commit/b500961730739efb7746889a4eebb53ae66ca914))
+
 ## [0.13.3](https://github.com/tollgate-ai/tollgate/compare/v0.13.2...v0.13.3) (2026-11-28)
 
 
