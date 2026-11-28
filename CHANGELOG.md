@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/tollgate-ai/tollgate/compare/v0.14.1...v0.14.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **checks:** count a seam's owner and a generic type's field as seam names ([#177](https://github.com/tollgate-ai/tollgate/issues/177)) ([342dcad](https://github.com/tollgate-ai/tollgate/commit/342dcade053a84269dd497ee1c50b2f51840a1cd))
+
 ## [0.14.1](https://github.com/tollgate-ai/tollgate/compare/v0.14.0...v0.14.1) (2026-11-28)
 
 
