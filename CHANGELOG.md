@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/tollgate-ai/tollgate/compare/v0.14.0...v0.14.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **guard:** let a role run commands in its own copy while several steps wait ([#174](https://github.com/tollgate-ai/tollgate/issues/174)) ([27a626a](https://github.com/tollgate-ai/tollgate/commit/27a626a7de96c57dc48f59c77e3496775d560203))
+
 ## [0.14.0](https://github.com/tollgate-ai/tollgate/compare/v0.13.3...v0.14.0) (2026-11-28)
 
 
